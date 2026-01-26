@@ -1,4 +1,4 @@
-import { API_URL } from '../src/constants';
+import { API_URL, BASE_URL } from '../src/constants';
 
 export interface InasistenciaPayload {
   [key: string]: any;
@@ -44,6 +44,48 @@ export const saveInasistencias = async (payload: InasistenciaPayload) => {
     return data;
   } catch (error) {
     console.error('Error saving inasistencias:', error);
+    throw error;
+  }
+};
+
+export const getDocentes = async () => {
+  try {
+    const response = await fetch(`${BASE_URL}/getprofes.php`);
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching docentes:', error);
+    throw error;
+  }
+};
+
+export const getMaterias = async () => {
+  try {
+    const response = await fetch(`${BASE_URL}/getMaterias.php`);
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching materias:', error);
+    throw error;
+  }
+};
+
+export const getEstudiantes = async () => {
+  try {
+    const response = await fetch(`${BASE_URL}/getEstudiantes.php`);
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching estudiantes:', error);
     throw error;
   }
 };
