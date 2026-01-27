@@ -8,7 +8,10 @@
     getEstudiantes,
   } from "../../api/service";
   import { SPREADSHEET_ID, WORKSHEET_TITLE } from "../constants";
+  import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
+
+  export let onBack: () => void;
 
   // --- Interfaces para tipado estricto ---
   interface Estudiante {
@@ -60,24 +63,17 @@
     window.open(getSheetsUrl(), "_blank");
   };
 
-  // --- Tema y Estilos ---
-  let isDarkMode = true;
-  let showThemeOptions = false;
-  let currentTheme: "light" | "dark" | "system" = "dark";
-  let systemPreferenceListener: ((e: MediaQueryListEvent) => void) | null =
-    null;
-
-  // Optimización: Variable reactiva para estilos (se calcula solo cuando cambia isDarkMode)
+  // Optimización: Variable reactiva para estilos basada en el tema global
   $: styles = {
-    bg: isDarkMode ? "rgb(39, 39, 42)" : "rgb(255, 255, 255)",
-    text: isDarkMode ? "rgb(250, 250, 250)" : "rgb(9, 9, 11)",
-    label: isDarkMode ? "rgb(212, 212, 216)" : "rgb(63, 63, 70)",
-    border: isDarkMode ? "rgb(82, 82, 91)" : "rgb(228, 228, 231)",
-    placeholder: isDarkMode ? "rgb(161, 161, 170)" : "rgb(156, 163, 175)",
-    icon: isDarkMode ? "rgb(161, 161, 170)" : "rgb(156, 163, 175)",
-    cardBg: isDarkMode ? "rgb(24, 24, 27)" : "rgb(255, 255, 255)",
-    cardBorder: isDarkMode ? "rgb(63, 63, 70)" : "rgb(228, 228, 231)",
-    inputBg: isDarkMode ? "rgb(39, 39, 42)" : "rgb(255, 255, 255)",
+    bg: "rgb(var(--bg-primary))",
+    text: "rgb(var(--text-primary))",
+    label: "rgb(var(--text-secondary))",
+    border: "rgb(var(--border-primary))",
+    placeholder: "rgb(var(--text-muted))",
+    icon: "rgb(var(--text-muted))",
+    cardBg: "rgb(var(--card-bg))",
+    cardBorder: "rgb(var(--card-border))",
+    inputBg: "rgb(var(--bg-secondary))",
   };
 
   // Optimización: Filtrado reactivo (se ejecuta solo cuando cambia estudiantes o el grado seleccionado)
@@ -266,32 +262,12 @@
   ];
 
   // --- Funciones de Tema ---
-  const applyTheme = (theme: "light" | "dark" | "system") => {
-    currentTheme = theme;
-    if (theme === "light") isDarkMode = false;
-    else if (theme === "dark") isDarkMode = true;
-    else isDarkMode = window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-    if (isDarkMode) {
-      document.documentElement.classList.add("dark");
-      document.documentElement.setAttribute("data-theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      document.documentElement.removeAttribute("data-theme");
-    }
-    localStorage.setItem("theme", theme);
-  };
-
-  const setTheme = (theme: "light" | "dark" | "system") => {
-    applyTheme(theme);
-    showThemeOptions = false;
-  };
-
-  const toggleThemeOptions = () => (showThemeOptions = !showThemeOptions);
-
-  const handleClickOutside = (event: MouseEvent) => {
-    const target = event.target as HTMLElement;
-    if (!target.closest(".theme-dropdown")) showThemeOptions = false;
+  const toggleTheme = () => {
+    theme.update((t) => {
+      if (t === "light") return "dim";
+      if (t === "dim") return "dark";
+      return "light";
+    });
   };
 
   // --- Carga de Datos ---
@@ -420,38 +396,14 @@
     }
   };
 
-  // --- Ciclo de Vida ---
   onMount(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    systemPreferenceListener = () => {
-      if (currentTheme === "system") applyTheme("system");
-    };
-    mediaQuery.addEventListener("change", systemPreferenceListener);
-
-    const savedTheme =
-      (localStorage.getItem("theme") as "light" | "dark" | "system") ||
-      "system";
-    applyTheme(savedTheme);
-
     loadData();
-    document.addEventListener("click", handleClickOutside);
-  });
-
-  onDestroy(() => {
-    if (systemPreferenceListener) {
-      window
-        .matchMedia("(prefers-color-scheme: dark)")
-        .removeEventListener("change", systemPreferenceListener);
-    }
-    document.removeEventListener("click", handleClickOutside);
   });
 </script>
 
 <div
   class="min-h-screen flex flex-col lg:flex-row transition-colors duration-200"
-  style="background-color: {isDarkMode
-    ? 'rgb(9, 9, 11)'
-    : 'rgb(250, 250, 250)'};"
+  style="background-color: {styles.bg};"
 >
   <!-- Sidebar (Escritorio) / Header (Móvil) -->
   <aside
@@ -489,16 +441,39 @@
           >
         </button>
 
-        <div class="relative theme-dropdown">
+        <!-- Botón de Dashboard -->
+        <button
+          on:click={onBack}
+          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+          title="Volver al Dashboard"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+            />
+          </svg>
+          <span class="text-sm font-medium hidden lg:inline">Dashboard</span>
+        </button>
+
+        <div class="relative">
           <button
-            on:click={toggleThemeOptions}
+            on:click={toggleTheme}
             class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5 w-full"
             style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
             aria-label="Cambiar tema"
           >
-            {#if currentTheme === "dark"}
+            {#if $theme === "dark"}
               <svg
-                class="w-5 h-5"
+                class="w-5 h-5 text-indigo-500"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -510,9 +485,9 @@
                   d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
                 ></path>
               </svg>
-            {:else if currentTheme === "light"}
+            {:else if $theme === "light"}
               <svg
-                class="w-5 h-5"
+                class="w-5 h-5 text-amber-500"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -526,7 +501,7 @@
               </svg>
             {:else}
               <svg
-                class="w-5 h-5"
+                class="w-5 h-5 text-indigo-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -535,41 +510,14 @@
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   stroke-width="2"
-                  d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
                 ></path>
               </svg>
             {/if}
-            <span class="text-sm font-medium hidden lg:inline">
-              {currentTheme === "system"
-                ? "Sistema"
-                : currentTheme === "light"
-                  ? "Claro"
-                  : "Oscuro"}
+            <span class="text-sm font-medium hidden lg:inline capitalize">
+              {$theme}
             </span>
           </button>
-
-          {#if showThemeOptions}
-            <div
-              class="absolute top-full lg:top-auto lg:bottom-full mb-2 lg:mb-0 lg:mt-2 right-0 lg:left-0 lg:right-auto border rounded-lg shadow-xl p-2 min-w-[140px] animate-fade-in z-50 transition-colors duration-200"
-              style="background-color: {styles.cardBg}; border-color: {styles.border};"
-            >
-              {#each ["light", "dark", "system"] as themeOption}
-                <button
-                  on:click={() => setTheme(themeOption as any)}
-                  class="w-full flex items-center px-3 py-2 text-sm rounded-md transition-colors hover:bg-black/5 dark:hover:bg-white/5 text-left"
-                  style="color: {styles.text};"
-                >
-                  <span class="capitalize">
-                    {themeOption === "system"
-                      ? "🖥️ Sistema"
-                      : themeOption === "light"
-                        ? "☀️ Claro"
-                        : "🌙 Oscuro"}
-                  </span>
-                </button>
-              {/each}
-            </div>
-          {/if}
         </div>
       </div>
     </div>

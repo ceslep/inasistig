@@ -1,0 +1,105 @@
+<script lang="ts">
+  import { onMount } from "svelte";
+  export let onBack: () => void;
+  let isDarkMode = true;
+
+  onMount(() => {
+    isDarkMode = document.documentElement.classList.contains("dark");
+  });
+</script>
+
+<div
+  class="min-h-screen p-6 sm:p-12 transition-colors duration-500 {isDarkMode
+    ? 'bg-[#09090b] text-white'
+    : 'bg-slate-50 text-slate-900'}"
+>
+  <div class="max-w-6xl mx-auto">
+    <button
+      on:click={onBack}
+      class="group mb-12 flex items-center gap-3 px-6 py-3 rounded-2xl border transition-all duration-300 hover:scale-105 active:scale-95
+             {isDarkMode
+        ? 'bg-white/5 border-white/10 hover:bg-white/10'
+        : 'bg-white border-slate-200 hover:shadow-lg'}"
+    >
+      <svg
+        class="w-5 h-5 transition-transform group-hover:-translate-x-1"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M10 19l-7-7m0 0l7-7m-7 7h18"
+        />
+      </svg>
+      <span class="font-semibold text-sm">Volver al Dashboard</span>
+    </button>
+
+    <div
+      class="relative p-16 border rounded-[3rem] text-center overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700
+             {isDarkMode
+        ? 'bg-white/[0.03] border-white/10'
+        : 'bg-white border-slate-200 shadow-xl shadow-slate-200/50'}"
+    >
+      <!-- Background Glow -->
+      <div
+        class="absolute -top-[20%] -right-[20%] w-[50%] h-[50%] bg-purple-500/10 blur-[100px] rounded-full"
+      ></div>
+
+      <div class="relative z-10">
+        <div
+          class="w-24 h-24 bg-purple-500/10 text-purple-500 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-purple-500/20"
+        >
+          <svg
+            class="w-12 h-12"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
+          </svg>
+        </div>
+        <h1 class="text-5xl font-bold mb-6 tracking-tight">
+          Anotador de Clase
+        </h1>
+        <p class="text-xl opacity-60 max-w-xl mx-auto leading-relaxed">
+          Estamos preparando las mejores herramientas para que puedas llevar tus
+          apuntes académicos al siguiente nivel digital.
+        </p>
+        <div
+          class="mt-12 inline-flex items-center gap-2 px-4 py-2 bg-purple-500/10 text-purple-500 rounded-full text-sm font-bold uppercase tracking-widest border border-purple-500/20"
+        >
+          <span class="relative flex h-2 w-2">
+            <span
+              class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"
+            ></span>
+            <span
+              class="relative inline-flex rounded-full h-2 w-2 bg-purple-500"
+            ></span>
+          </span>
+          En Desarrollo
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  @keyframes animate-in {
+    from {
+      opacity: 0;
+      transform: translateY(2rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
