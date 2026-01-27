@@ -1,59 +1,264 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import Swal from "sweetalert2";
+  import {
+    saveInasistencias,
+    getDocentes,
+    getMaterias,
+    getEstudiantes,
+    getOpcionesAnotador2 as getOpcionesAnotador,
+  } from "../../api/service";
+  import {
+    SPREADSHEET_ID_ANOTADOR,
+    WORKSHEET_TITLE_ANOTADOR,
+  } from "../constants";
+  import { theme } from "../lib/themeStore";
+  import eieLogo from "../assets/eie.png";
+
   export let onBack: () => void;
-  let isDarkMode = true;
+
+  // --- Interfaces ---
+  interface Estudiante {
+    nombre: string;
+    grado: number | string;
+  }
+
+  interface Materia {
+    materia: string;
+  }
+
+  interface OpcionAnotacion {
+    text: string;
+    selected: boolean;
+  }
+
+  // --- Estado de datos ---
+  let docentes: string[] = [];
+  let materias: Materia[] = [];
+  let estudiantes: Estudiante[] = [];
+
+  let isLoadingDocentes = false;
+  let isLoadingMaterias = false;
+  let isLoadingEstudiantes = false;
+  let isLoadingOpciones = false;
+
+  let anotacionGrupos: Record<string, OpcionAnotacion[]> = {};
+
+  const getCategoryColor = (cat: string) => {
+    const colors: Record<string, string> = {
+      "Estrategias de Enseñanza-Aprendizaje": "#6366f1", // Indigo
+      "Evaluación y Verificación de Saberes": "#10b981", // Emerald
+      "Enfoque STEM+ y Contexto Rural": "#f59e0b", // Amber
+      "Prácticas de Laboratorio y Mantenimiento": "#f43f5e", // Rose
+      "Ciudadanía Digital y Ética": "#8b5cf6", // Violet
+      "Pensamiento Computacional y Programación": "#06b6d4", // Cyan
+      "Recursos Analógicos y Contingencias": "#f97316", // Orange
+      "Ofimática y Competencias Productivas": "#14b8a6", // Teal
+      "Gestión Administrativa y Proyectos Transversales": "#3b82f6", // Blue
+    };
+    return colors[cat] || "#6366f1";
+  };
+
+  // --- Formulario ---
+  let formData = {
+    docente: "",
+    materia: "",
+    horas: "",
+    grado: "",
+    anotacion: "",
+    observacion: "",
+  };
+
+  let isLoading = false;
+
+  const getSheetsUrl = () => {
+    return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID_ANOTADOR}`;
+  };
+
+  const openSheets = () => {
+    window.open(getSheetsUrl(), "_blank");
+  };
+
+  // Reactividad para estilos
+  $: styles = {
+    bg: "rgb(var(--bg-primary))",
+    text: "rgb(var(--text-primary))",
+    label: "rgb(var(--text-secondary))",
+    border: "rgb(var(--border-primary))",
+    placeholder: "rgb(var(--text-muted))",
+    icon: "rgb(var(--text-muted))",
+    cardBg: "rgb(var(--card-bg))",
+    cardBorder: "rgb(var(--card-border))",
+    inputBg: "rgb(var(--bg-secondary))",
+  };
+
+  const toggleTheme = () => {
+    theme.update((t) => {
+      if (t === "light") return "dim";
+      if (t === "dim") return "dark";
+      return "light";
+    });
+  };
+
+  const loadData = async () => {
+    isLoadingDocentes = true;
+    isLoadingMaterias = true;
+    isLoadingEstudiantes = true;
+    isLoadingOpciones = true;
+
+    try {
+      const [docentesData, materiasData, estudiantesData, opcionesData] =
+        await Promise.all([
+          getDocentes(),
+          getMaterias(),
+          getEstudiantes(),
+          getOpcionesAnotador(),
+        ]);
+      docentes = docentesData;
+      materias = materiasData;
+      estudiantes = estudiantesData;
+
+      // Transformar opciones a objetos editables
+      const transformed: Record<string, OpcionAnotacion[]> = {};
+      for (const [cat, items] of Object.entries(
+        opcionesData as Record<string, string[]>,
+      )) {
+        transformed[cat] = items.map((text) => ({ text, selected: false }));
+      }
+      anotacionGrupos = transformed;
+    } catch (error) {
+      console.error("Error cargando datos iniciales:", error);
+    } finally {
+      isLoadingDocentes = false;
+      isLoadingMaterias = false;
+      isLoadingEstudiantes = false;
+      isLoadingOpciones = false;
+    }
+  };
+
+  const handleSubmit = async (event: Event) => {
+    event.preventDefault();
+    if (isLoading) return;
+
+    isLoading = true;
+    try {
+      const currentTimestamp = new Date().toLocaleString();
+      const selectedTexts = Object.values(anotacionGrupos)
+        .flat()
+        .filter((o) => o.selected)
+        .map((o) => o.text);
+      const anotacionFinal = selectedTexts.join(" | ");
+
+      const payload = [
+        [
+          currentTimestamp,
+          formData.docente,
+          formData.materia,
+          formData.grado,
+          formData.horas,
+          anotacionFinal,
+          formData.observacion,
+        ],
+      ];
+
+      await saveInasistencias({
+        spreadsheetId: SPREADSHEET_ID_ANOTADOR,
+        worksheetTitle: WORKSHEET_TITLE_ANOTADOR,
+        inasistencias: payload, // Reusing the parameter name 'inasistencias' from the service
+      });
+
+      await Swal.fire({
+        icon: "success",
+        title: "¡Éxito!",
+        text: `Anotación registrada exitosamente`,
+        timer: 3000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+        position: "top-end",
+        toast: true,
+      });
+
+      formData = {
+        docente: formData.docente,
+        materia: formData.materia,
+        grado: formData.grado,
+        horas: "",
+        anotacion: "",
+        observacion: "",
+      };
+
+      // Resetear selecciones
+      for (const cat in anotacionGrupos) {
+        anotacionGrupos[cat] = anotacionGrupos[cat].map((o) => ({
+          ...o,
+          selected: false,
+        }));
+      }
+    } catch (error) {
+      console.error("Error enviando:", error);
+      await Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Error al registrar la anotación",
+        confirmButtonColor: "#ef4444",
+      });
+    } finally {
+      isLoading = false;
+    }
+  };
 
   onMount(() => {
-    isDarkMode = document.documentElement.classList.contains("dark");
+    loadData();
   });
 </script>
 
 <div
-  class="min-h-screen p-6 sm:p-12 transition-colors duration-500 {isDarkMode
-    ? 'bg-[#09090b] text-white'
-    : 'bg-slate-50 text-slate-900'}"
+  class="min-h-screen flex flex-col lg:flex-row transition-colors duration-200"
+  style="background-color: {styles.bg};"
 >
-  <div class="max-w-6xl mx-auto">
-    <button
-      on:click={onBack}
-      class="group mb-12 flex items-center gap-3 px-6 py-3 rounded-2xl border transition-all duration-300 hover:scale-105 active:scale-95
-             {isDarkMode
-        ? 'bg-white/5 border-white/10 hover:bg-white/10'
-        : 'bg-white border-slate-200 hover:shadow-lg'}"
-    >
-      <svg
-        class="w-5 h-5 transition-transform group-hover:-translate-x-1"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M10 19l-7-7m0 0l7-7m-7 7h18"
-        />
-      </svg>
-      <span class="font-semibold text-sm">Volver al Dashboard</span>
-    </button>
-
+  <!-- Sidebar -->
+  <aside
+    class="w-full lg:w-80 lg:h-screen lg:sticky lg:top-0 border-b lg:border-b-0 lg:border-r transition-colors duration-200 p-6 lg:p-8 flex flex-col flex-shrink-0 z-40"
+    style="background-color: {styles.cardBg}; border-color: {styles.cardBorder};"
+  >
     <div
-      class="relative p-16 border rounded-[3rem] text-center overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700
-             {isDarkMode
-        ? 'bg-white/[0.03] border-white/10'
-        : 'bg-white border-slate-200 shadow-xl shadow-slate-200/50'}"
+      class="flex flex-row lg:flex-col items-center justify-between lg:justify-start gap-4 lg:gap-8"
     >
-      <!-- Background Glow -->
-      <div
-        class="absolute -top-[20%] -right-[20%] w-[50%] h-[50%] bg-purple-500/10 blur-[100px] rounded-full"
-      ></div>
+      <div class="flex items-center gap-4 lg:flex-col">
+        <img src={eieLogo} alt="EIE Logo" class="h-12 lg:h-20 w-auto" />
+        <h1
+          class="text-xl lg:text-2xl tracking-tight font-bold lg:text-center"
+          style="color: {styles.text};"
+        >
+          Anotador de Clase
+        </h1>
+      </div>
 
-      <div class="relative z-10">
-        <div
-          class="w-24 h-24 bg-purple-500/10 text-purple-500 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-purple-500/20"
+      <div class="flex flex-row lg:flex-col gap-3 w-auto lg:w-full">
+        <button
+          on:click={openSheets}
+          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+          title="Abrir hoja de cálculo"
+        >
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"
+            />
+          </svg>
+          <span class="text-sm font-medium hidden lg:inline"
+            >Hoja de Cálculo</span
+          >
+        </button>
+
+        <button
+          on:click={onBack}
+          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+          title="Volver al Dashboard"
         >
           <svg
-            class="w-12 h-12"
+            class="w-5 h-5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -62,44 +267,339 @@
               stroke-linecap="round"
               stroke-linejoin="round"
               stroke-width="2"
-              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
             />
           </svg>
-        </div>
-        <h1 class="text-5xl font-bold mb-6 tracking-tight">
-          Anotador de Clase
-        </h1>
-        <p class="text-xl opacity-60 max-w-xl mx-auto leading-relaxed">
-          Estamos preparando las mejores herramientas para que puedas llevar tus
-          apuntes académicos al siguiente nivel digital.
-        </p>
-        <div
-          class="mt-12 inline-flex items-center gap-2 px-4 py-2 bg-purple-500/10 text-purple-500 rounded-full text-sm font-bold uppercase tracking-widest border border-purple-500/20"
+          <span class="text-sm font-medium hidden lg:inline">Dashboard</span>
+        </button>
+
+        <button
+          on:click={toggleTheme}
+          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5 w-full"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+          aria-label="Cambiar tema"
         >
-          <span class="relative flex h-2 w-2">
-            <span
-              class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"
-            ></span>
-            <span
-              class="relative inline-flex rounded-full h-2 w-2 bg-purple-500"
-            ></span>
+          {#if $theme === "dark"}
+            <svg
+              class="w-5 h-5 text-indigo-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+              ></path>
+            </svg>
+          {:else if $theme === "light"}
+            <svg
+              class="w-5 h-5 text-amber-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+              ></path>
+            </svg>
+          {:else}
+            <svg
+              class="w-5 h-5 text-indigo-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+              ></path>
+            </svg>
+          {/if}
+          <span class="text-sm font-medium hidden lg:inline capitalize">
+            {$theme}
           </span>
-          En Desarrollo
-        </div>
+        </button>
       </div>
     </div>
-  </div>
-</div>
+  </aside>
 
-<style>
-  @keyframes animate-in {
-    from {
-      opacity: 0;
-      transform: translateY(2rem);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-</style>
+  <!-- Contenido Principal -->
+  <main class="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto pb-32">
+    <div
+      class="max-w-4xl mx-auto rounded-2xl p-6 lg:p-8 transition-colors duration-200 border"
+      style="background-color: {styles.cardBg}; border-color: {styles.cardBorder};"
+    >
+      <form on:submit={handleSubmit} class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="space-y-2">
+            <label
+              for="docente"
+              class="block text-sm font-medium"
+              style="color: {styles.label};">Docente</label
+            >
+            <select
+              id="docente"
+              bind:value={formData.docente}
+              required
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50"
+              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+            >
+              <option value=""
+                >{isLoadingDocentes
+                  ? "Cargando..."
+                  : "Seleccione docente"}</option
+              >
+              {#each docentes as docente}
+                <option value={docente}>{docente}</option>
+              {/each}
+            </select>
+          </div>
+
+          <div class="space-y-2">
+            <label
+              for="materia"
+              class="block text-sm font-medium"
+              style="color: {styles.label};">Asignatura</label
+            >
+            <select
+              id="materia"
+              bind:value={formData.materia}
+              required
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50"
+              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+            >
+              <option value=""
+                >{isLoadingMaterias
+                  ? "Cargando..."
+                  : "Seleccione asignatura"}</option
+              >
+              {#each materias as materia}
+                <option value={materia.materia}>{materia.materia}</option>
+              {/each}
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="space-y-2">
+            <label
+              for="grado"
+              class="block text-sm font-medium"
+              style="color: {styles.label};">Grado</label
+            >
+            <select
+              id="grado"
+              bind:value={formData.grado}
+              required
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50"
+              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+            >
+              <option value=""
+                >{isLoadingEstudiantes
+                  ? "Cargando..."
+                  : "Seleccione grado"}</option
+              >
+              {#each [...new Set(estudiantes.map( (e) => e.grado.toString(), ))] as g}
+                <option value={g}
+                  >{g
+                    .replace(/0(\d)$/, "°$1")
+                    .replace(/(\d{1,2})0(\d)/, "$1°$2")}</option
+                >
+              {/each}
+            </select>
+          </div>
+
+          <div class="space-y-2">
+            <label
+              for="horas"
+              class="block text-sm font-medium"
+              style="color: {styles.label};">Horas</label
+            >
+            <select
+              id="horas"
+              bind:value={formData.horas}
+              required
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer"
+              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+            >
+              <option value="">Seleccione horas</option>
+              {#each [1, 2, 3, 4] as h}
+                <option value={h.toString()}
+                  >{h} {h === 1 ? "Hora" : "Horas"}</option
+                >
+              {/each}
+            </select>
+          </div>
+        </div>
+
+        <div class="space-y-8">
+          {#if isLoadingOpciones}
+            <div class="space-y-4">
+              <div
+                class="h-6 w-48 rounded animate-pulse"
+                style="background-color: {styles.inputBg};"
+              ></div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {#each Array(6) as _}
+                  <div
+                    class="h-20 rounded-xl animate-pulse"
+                    style="background-color: {styles.inputBg};"
+                  ></div>
+                {/each}
+              </div>
+            </div>
+          {:else}
+            {#each Object.entries(anotacionGrupos) as [categoria, opciones]}
+              {@const catColor = getCategoryColor(categoria)}
+              <div class="space-y-4">
+                <div class="flex items-center gap-3">
+                  <h3
+                    class="text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full text-white"
+                    style="background-color: {catColor};"
+                  >
+                    {categoria}
+                  </h3>
+                  <div
+                    class="h-px flex-1"
+                    style="background-color: {catColor}; opacity: 0.2;"
+                  ></div>
+                </div>
+
+                <div
+                  class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+                >
+                  {#each opciones as opcion}
+                    <div
+                      class="relative group flex flex-col p-0 rounded-xl border transition-all duration-200"
+                      style="
+                        background-color: {opcion.selected
+                        ? `${catColor}10`
+                        : styles.inputBg};
+                        border-color: {opcion.selected
+                        ? catColor
+                        : styles.border};
+                      "
+                    >
+                      <div class="flex items-start gap-0 p-3">
+                        <label class="flex-shrink-0 cursor-pointer p-1 mt-1">
+                          <input
+                            type="checkbox"
+                            bind:checked={opcion.selected}
+                            class="hidden"
+                          />
+                          <div
+                            class="w-5 h-5 rounded border flex items-center justify-center transition-colors"
+                            style="
+                              border-color: {opcion.selected
+                              ? catColor
+                              : styles.border};
+                              background-color: {opcion.selected
+                              ? catColor
+                              : 'transparent'};
+                            "
+                          >
+                            {#if opcion.selected}
+                              <svg
+                                class="w-3 h-3 text-white"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                              >
+                                <path
+                                  fill-rule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clip-rule="evenodd"
+                                />
+                              </svg>
+                            {/if}
+                          </div>
+                        </label>
+
+                        <textarea
+                          bind:value={opcion.text}
+                          rows="6"
+                          class="w-full bg-transparent border-none focus:ring-0 text-sm font-medium leading-tight resize-none p-1 transition-colors min-h-[120px] pb-4"
+                          style="color: {styles.text};"
+                          placeholder="Escriba aquí..."
+                        ></textarea>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/each}
+          {/if}
+        </div>
+
+        <div class="space-y-2">
+          <label
+            for="observacion"
+            class="block text-sm font-medium"
+            style="color: {styles.label};">Observación</label
+          >
+          <textarea
+            id="observacion"
+            bind:value={formData.observacion}
+            rows="3"
+            class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none resize-none"
+            style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+            placeholder="Observaciones adicionales (opcional)..."
+          ></textarea>
+        </div>
+
+        <div class="fixed bottom-8 right-8 z-50">
+          <button
+            type="submit"
+            disabled={isLoading}
+            class="w-16 h-16 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 active:scale-95 backdrop-blur-sm bg-opacity-95 flex items-center justify-center overflow-hidden border border-white/20"
+            aria-label="Guardar Anotación"
+            title="Guardar Anotación"
+          >
+            {#if isLoading}
+              <svg
+                class="animate-spin h-7 w-7 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+            {:else}
+              <svg
+                class="w-8 h-8 transform rotate-90"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                />
+              </svg>
+            {/if}
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+</div>
