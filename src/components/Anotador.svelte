@@ -7,11 +7,13 @@
     getMaterias,
     getEstudiantes,
     getOpcionesAnotador2 as getOpcionesAnotador,
+    saveAnotador,
   } from "../../api/service";
   import {
     SPREADSHEET_ID_ANOTADOR,
     WORKSHEET_TITLE_ANOTADOR,
   } from "../constants";
+  import Loader from "./Loader.svelte";
   import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
 
@@ -61,6 +63,7 @@
 
   // --- Formulario ---
   let formData = {
+    fecha: new Date().toISOString().split("T")[0],
     docente: "",
     materia: "",
     horas: "",
@@ -99,6 +102,19 @@
       return "light";
     });
   };
+
+  // Validación de formulario
+  $: hasSelectedAnotacion = Object.values(anotacionGrupos)
+    .flat()
+    .some((o) => o.selected);
+
+  $: isFormValid =
+    formData.fecha &&
+    formData.docente &&
+    formData.materia &&
+    formData.grado &&
+    formData.horas &&
+    hasSelectedAnotacion;
 
   const loadData = async () => {
     isLoadingDocentes = true;
@@ -140,18 +156,56 @@
     event.preventDefault();
     if (isLoading) return;
 
+    const selectedTexts = Object.values(anotacionGrupos)
+      .flat()
+      .filter((o) => o.selected)
+      .map((o) => o.text);
+    const anotacionFinal = selectedTexts.join(" | ");
+
+    // Confirmación con SweetAlert2
+    const confirmResult = await Swal.fire({
+      title: "¿Confirmar Registro?",
+      html: `
+        <div class="text-left space-y-2 p-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10" style="font-size: 0.9rem; line-height: 1.4;">
+          <div style="margin-bottom: 8px;"><strong style="color: #6366f1;">Fecha:</strong> ${formData.fecha}</div>
+          <div style="margin-bottom: 8px;"><strong style="color: #6366f1;">Docente:</strong> ${formData.docente}</div>
+          <div style="margin-bottom: 8px;"><strong style="color: #6366f1;">Asignatura:</strong> ${formData.materia}</div>
+          <div style="margin-bottom: 8px;"><strong style="color: #6366f1;">Grado:</strong> ${formData.grado}</div>
+          <div style="margin-bottom: 8px;"><strong style="color: #6366f1;">Horas:</strong> ${formData.horas}</div>
+          <div style="margin-top: 12px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 8px;">
+            <strong style="color: #6366f1;">Anotaciones:</strong>
+            <ul style="list-style-type: disc; padding-left: 20px; margin-top: 4px; font-size: 0.8rem; opacity: 0.8;">
+              ${selectedTexts.map((t) => `<li>${t}</li>`).join("")}
+            </ul>
+          </div>
+          ${
+            formData.observacion
+              ? `<div style="margin-top: 12px;"><strong style="color: #6366f1;">Observación:</strong> <span style="font-size: 0.8rem;">${formData.observacion}</span></div>`
+              : ""
+          }
+        </div>
+      `,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Si, de acuerdo",
+      cancelButtonText: "No",
+      confirmButtonColor: "#4f46e5",
+      cancelButtonColor: "#64748b",
+      reverseButtons: true,
+      background: $theme === "light" ? "#fff" : "#1e293b",
+      color: $theme === "light" ? "#1e293b" : "#f1f5f9",
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
     isLoading = true;
     try {
       const currentTimestamp = new Date().toLocaleString();
-      const selectedTexts = Object.values(anotacionGrupos)
-        .flat()
-        .filter((o) => o.selected)
-        .map((o) => o.text);
-      const anotacionFinal = selectedTexts.join(" | ");
 
       const payload = [
         [
           currentTimestamp,
+          formData.fecha,
           formData.docente,
           formData.materia,
           formData.grado,
@@ -161,10 +215,10 @@
         ],
       ];
 
-      await saveInasistencias({
+      await saveAnotador({
         spreadsheetId: SPREADSHEET_ID_ANOTADOR,
         worksheetTitle: WORKSHEET_TITLE_ANOTADOR,
-        inasistencias: payload, // Reusing the parameter name 'inasistencias' from the service
+        datos: payload, // Reusing the parameter name 'inasistencias' from the service
       });
 
       await Swal.fire({
@@ -179,6 +233,7 @@
       });
 
       formData = {
+        fecha: new Date().toISOString().split("T")[0],
         docente: formData.docente,
         materia: formData.materia,
         grado: formData.grado,
@@ -337,7 +392,26 @@
       style="background-color: {styles.cardBg}; border-color: {styles.cardBorder};"
     >
       <form on:submit={handleSubmit} class="space-y-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="space-y-2">
+            <label
+              for="fecha"
+              class="block text-sm font-medium"
+              style="color: {styles.label};">Fecha</label
+            >
+            <input
+              type="date"
+              id="fecha"
+              bind:value={formData.fecha}
+              required
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text}; color-scheme: {$theme ===
+              'light'
+                ? 'light'
+                : 'dark'};"
+            />
+          </div>
+
           <div class="space-y-2">
             <label
               for="docente"
@@ -441,19 +515,8 @@
 
         <div class="space-y-8">
           {#if isLoadingOpciones}
-            <div class="space-y-4">
-              <div
-                class="h-6 w-48 rounded animate-pulse"
-                style="background-color: {styles.inputBg};"
-              ></div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {#each Array(6) as _}
-                  <div
-                    class="h-20 rounded-xl animate-pulse"
-                    style="background-color: {styles.inputBg};"
-                  ></div>
-                {/each}
-              </div>
+            <div class="flex items-center justify-center py-12">
+              <Loader message="Cargando opciones de anotación..." />
             </div>
           {:else}
             {#each Object.entries(anotacionGrupos) as [categoria, opciones]}
@@ -472,12 +535,10 @@
                   ></div>
                 </div>
 
-                <div
-                  class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
-                >
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {#each opciones as opcion}
                     <div
-                      class="relative group flex flex-col p-0 rounded-xl border transition-all duration-200"
+                      class="relative group flex flex-col p-0 rounded-2xl border transition-all duration-200 shadow-sm hover:shadow-md"
                       style="
                         background-color: {opcion.selected
                         ? `${catColor}10`
@@ -487,7 +548,7 @@
                         : styles.border};
                       "
                     >
-                      <div class="flex items-start gap-0 p-3">
+                      <div class="flex items-start gap-1 p-4">
                         <label class="flex-shrink-0 cursor-pointer p-1 mt-1">
                           <input
                             type="checkbox"
@@ -523,8 +584,8 @@
 
                         <textarea
                           bind:value={opcion.text}
-                          rows="6"
-                          class="w-full bg-transparent border-none focus:ring-0 text-sm font-medium leading-tight resize-none p-1 transition-colors min-h-[120px] pb-4"
+                          rows="8"
+                          class="w-full bg-transparent border-none focus:ring-0 text-base font-medium leading-relaxed resize-none p-1 transition-colors min-h-[180px] pb-6"
                           style="color: {styles.text};"
                           placeholder="Escriba aquí..."
                         ></textarea>
@@ -556,10 +617,12 @@
         <div class="fixed bottom-8 right-8 z-50">
           <button
             type="submit"
-            disabled={isLoading}
-            class="w-16 h-16 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 active:scale-95 backdrop-blur-sm bg-opacity-95 flex items-center justify-center overflow-hidden border border-white/20"
+            disabled={isLoading || !isFormValid}
+            class="w-16 h-16 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 dark:disabled:bg-slate-700 disabled:cursor-not-allowed disabled:scale-100 text-white rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 active:scale-95 backdrop-blur-sm bg-opacity-95 flex items-center justify-center overflow-hidden border border-white/20"
             aria-label="Guardar Anotación"
-            title="Guardar Anotación"
+            title={!isFormValid
+              ? "Complete todos los campos requeridos y al menos una anotación"
+              : "Guardar Anotación"}
           >
             {#if isLoading}
               <svg
