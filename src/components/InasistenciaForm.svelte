@@ -367,17 +367,19 @@
     isLoading = true;
     try {
       const currentTimestamp = new Date().toISOString();
-      const inasistenciasPayload = inasistencias.map((item) => [
-        currentTimestamp,
-        formData.docente,
-        formData.fecha,
-        item.horas,
-        formData.materia,
-        item.motivo,
-        formData.grado,
-        item.nombre,
-        formData.observaciones,
-      ]);
+      const inasistenciasPayload = inasistencias
+        .filter((item) => item.motivo && item.motivo !== "Ignorar")
+        .map((item) => [
+          currentTimestamp,
+          formData.docente,
+          formData.fecha,
+          item.horas,
+          formData.materia,
+          item.motivo,
+          formData.grado,
+          item.nombre,
+          formData.observaciones,
+        ]);
 
       await saveInasistencias({
         spreadsheetId: SPREADSHEET_ID,
@@ -863,7 +865,7 @@
               placeholder="Opcional..."
               class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none resize-none"
               style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
-            />
+            ></textarea>
           </div>
         </div>
 
