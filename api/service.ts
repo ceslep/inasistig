@@ -1,4 +1,4 @@
-import { API_URL, BASE_URL } from '../src/constants';
+import { API_URL, BASE_URL,DOCENTES_URL, MATERIAS_URL, ESTUDIANTES_URL } from '../src/constants';
 
 export interface InasistenciaPayload {
   [key: string]: any;
@@ -50,7 +50,7 @@ export const saveInasistencias = async (payload: InasistenciaPayload) => {
 
 export const getDocentes = async () => {
   try {
-    const response = await fetch(`${BASE_URL}/getprofes.php`);
+    const response = await fetch(`${DOCENTES_URL}`);
     if (!response.ok) {
       throw new Error(`Error: ${response.status}`);
     }
@@ -64,7 +64,7 @@ export const getDocentes = async () => {
 
 export const getMaterias = async () => {
   try {
-    const response = await fetch(`${BASE_URL}/getMaterias.php`);
+    const response = await fetch(`${MATERIAS_URL}`);
     if (!response.ok) {
       throw new Error(`Error: ${response.status}`);
     }
@@ -78,7 +78,7 @@ export const getMaterias = async () => {
 
 export const getEstudiantes = async () => {
   try {
-    const response = await fetch(`${BASE_URL}/getEstudiantes.php`);
+    const response = await fetch(`${ESTUDIANTES_URL}`);
     if (!response.ok) {
       throw new Error(`Error: ${response.status}`);
     }

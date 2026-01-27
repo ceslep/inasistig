@@ -1,5 +1,5 @@
 <script lang="ts">
-  import InasistenciaForm from './components/InasistenciaForm.svelte';
+  import InasistenciaForm from "./components/InasistenciaForm.svelte";
 </script>
 
 <main>

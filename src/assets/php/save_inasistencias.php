@@ -4,7 +4,7 @@
  * 
  * Recibe los datos de inasistencias y los guarda en Google Sheets.
  * Espera un arreglo de valores con la estructura:
- * [timestamp, docente, fecha, horas, asignatura, tipo_registro, grupo, observaciones, estudiante]
+ * [timestamp, docente, fecha, horas, asignatura, tipo_registro, grupo, observaciones, estudiante, observaciones_estudiante]
  */
 
 require __DIR__ . '/vendor/autoload.php';
@@ -18,7 +18,7 @@ const SERVICE_ACCOUNT_KEY_FILE = __DIR__ . '/assets/serviceaccount.json';
 
 // CORS y Cabeceras
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *'); 
+header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
@@ -72,22 +72,28 @@ try {
     }
 
     // Validar que cada inasistencia tenga los campos requeridos
-    $expectedFields = 9; // timestamp, docente, fecha, horas, asignatura, tipo_registro, grupo, observaciones, estudiante
-    
+    $expectedFields = 9; // timestamp, docente, fecha, horas, asignatura, tipo_registro, grupo, estudiante, observaciones
+
     foreach ($inasistenciasData as $index => $inasistencia) {
         if (!is_array($inasistencia) || count($inasistencia) !== $expectedFields) {
             throw new Exception("Inasistencia en índice $index debe tener exactamente $expectedFields campos.");
         }
-        
-        // Validar campos clave (primeros 4 deben estar presentes)
-        foreach ([1, 2, 3] as $fieldIndex) { // docente, fecha, horas
-            if (!isset($inasistencia[$fieldIndex]) || trim((string)$inasistencia[$fieldIndex]) === '') {
+
+        // Validar campos clave (docente, fecha, horas, estudiante deben estar presentes)
+        foreach ([1, 2, 3, 7] as $fieldIndex) { // docente, fecha, horas, estudiante
+            if (!isset($inasistencia[$fieldIndex]) || trim((string) $inasistencia[$fieldIndex]) === '') {
                 throw new Exception("Campo requerido en posición $fieldIndex está vacío en inasistencia $index.");
             }
         }
     }
 
     error_log("DEBUG: Payload válido con $totalInasistencias inasistencias.");
+    
+    // Log detallado de los datos recibidos
+    foreach ($inasistenciasData as $index => $inasistencia) {
+        error_log("DEBUG: Inasistencia $index - Estudiante: " . ($inasistencia[8] ?? 'NO DEFINIDO'));
+        error_log("DEBUG: Inasistencia $index - Datos completos: " . json_encode($inasistencia));
+    }
 
     // Preparar todos los datos para insertar
     $allRowsToInsert = [];
@@ -105,15 +111,16 @@ try {
     // Leer la hoja para encontrar la siguiente fila vacía
     $response = $service->spreadsheets_values->get($spreadsheetId, $range);
     $allValues = $response->getValues() ?: [];
-    
+
     $nextRow = count($allValues) + 1; // Siguiente fila vacía
-    if ($nextRow < 2) $nextRow = 2; // Saltar encabezado si la hoja está vacía
+    if ($nextRow < 2)
+        $nextRow = 2; // Saltar encabezado si la hoja está vacía
 
     // Insertar todas las inasistencias en batch
     $insertRange = $worksheetTitle . "!A{$nextRow}:I" . ($nextRow + $totalInasistencias - 1);
     $body = new ValueRange(['values' => $allRowsToInsert]);
     $params = ['valueInputOption' => 'RAW'];
-    
+
     $service->spreadsheets_values->update($spreadsheetId, $insertRange, $body, $params);
 
     echo json_encode([

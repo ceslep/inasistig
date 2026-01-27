@@ -1,18 +1,41 @@
 <script lang="ts">
-import { saveInasistencias, getDocentes, getMaterias, getEstudiantes } from "../../api/service";
+  import { onMount, onDestroy } from "svelte";
+  import Swal from "sweetalert2";
   import {
-    SPREADSHEET_ID,
-  } from "../constants";
-
+    saveInasistencias,
+    getDocentes,
+    getMaterias,
+    getEstudiantes,
+  } from "../../api/service";
+  import { SPREADSHEET_ID, WORKSHEET_TITLE } from "../constants";
   import eieLogo from "../assets/eie.png";
 
+  // --- Interfaces para tipado estricto ---
+  interface Estudiante {
+    nombre: string;
+    grado: number | string;
+  }
+
+  interface Materia {
+    materia: string;
+  }
+
+  interface Inasistencia {
+    nombre: string;
+    motivo: string;
+    observaciones?: string;
+  }
+
+  // --- Estado de datos ---
   let docentes: string[] = [];
-  let materias: Array<{ materia: string }> = [];
-  let estudiantes: Array<{ nombre: string; grado: number }> = [];
+  let materias: Materia[] = [];
+  let estudiantes: Estudiante[] = [];
+
   let isLoadingDocentes = false;
   let isLoadingMaterias = false;
   let isLoadingEstudiantes = false;
 
+  // --- Formulario ---
   let formData = {
     docente: "",
     materia: "",
@@ -22,13 +45,49 @@ import { saveInasistencias, getDocentes, getMaterias, getEstudiantes } from "../
     observaciones: "",
   };
 
-  let inasistencias: Array<{ nombre: string; motivo: string }> = [];
+  let inasistencias: Inasistencia[] = [];
+  let isLoading = false;
+  let message = "";
 
-const motivos = [
+  // --- Funciones auxiliares ---
+  const getSheetsUrl = () => {
+    return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}`;
+  };
+
+  const openSheets = () => {
+    window.open(getSheetsUrl(), '_blank');
+  };
+
+  // --- Tema y Estilos ---
+  let isDarkMode = true;
+  let showThemeOptions = false;
+  let currentTheme: "light" | "dark" | "system" = "dark";
+  let systemPreferenceListener: ((e: MediaQueryListEvent) => void) | null =
+    null;
+
+  // Optimización: Variable reactiva para estilos (se calcula solo cuando cambia isDarkMode)
+  $: styles = {
+    bg: isDarkMode ? "rgb(39, 39, 42)" : "rgb(255, 255, 255)",
+    text: isDarkMode ? "rgb(250, 250, 250)" : "rgb(9, 9, 11)",
+    label: isDarkMode ? "rgb(212, 212, 216)" : "rgb(63, 63, 70)",
+    border: isDarkMode ? "rgb(82, 82, 91)" : "rgb(228, 228, 231)",
+    placeholder: isDarkMode ? "rgb(161, 161, 170)" : "rgb(156, 163, 175)",
+    icon: isDarkMode ? "rgb(161, 161, 170)" : "rgb(156, 163, 175)",
+    cardBg: isDarkMode ? "rgb(24, 24, 27)" : "rgb(255, 255, 255)",
+    cardBorder: isDarkMode ? "rgb(63, 63, 70)" : "rgb(228, 228, 231)",
+    inputBg: isDarkMode ? "rgb(39, 39, 42)" : "rgb(255, 255, 255)",
+  };
+
+  // Optimización: Filtrado reactivo (se ejecuta solo cuando cambia estudiantes o el grado seleccionado)
+  $: estudiantesFiltrados = formData.grado
+    ? estudiantes.filter((e) => e.grado.toString() === formData.grado)
+    : [];
+
+  // --- Motivos predefinidos ---
+  const motivos = [
     {
       value: "Sin excusa",
       label: "Sin excusa",
-      color: "bg-red-500",
       icon: "🚫",
       bgColor: "bg-red-50",
       borderColor: "border-red-300",
@@ -40,7 +99,6 @@ const motivos = [
     {
       value: "Excusa",
       label: "Excusa",
-      color: "bg-blue-500",
       icon: "📄",
       bgColor: "bg-blue-50",
       borderColor: "border-blue-300",
@@ -52,7 +110,6 @@ const motivos = [
     {
       value: "Permiso",
       label: "Permiso",
-      color: "bg-green-500",
       icon: "✅",
       bgColor: "bg-green-50",
       borderColor: "border-green-300",
@@ -64,7 +121,6 @@ const motivos = [
     {
       value: "Pacto de Aula",
       label: "Pacto de Aula",
-      color: "bg-purple-500",
       icon: "🤝",
       bgColor: "bg-purple-50",
       borderColor: "border-purple-300",
@@ -76,7 +132,6 @@ const motivos = [
     {
       value: "Uso del celular",
       label: "Uso del celular",
-      color: "bg-orange-500",
       icon: "📱",
       bgColor: "bg-orange-50",
       borderColor: "border-orange-300",
@@ -88,7 +143,6 @@ const motivos = [
     {
       value: "Desorden en Clase",
       label: "Desorden en Clase",
-      color: "bg-yellow-500",
       icon: "🔊",
       bgColor: "bg-yellow-50",
       borderColor: "border-yellow-300",
@@ -100,7 +154,6 @@ const motivos = [
     {
       value: "Fuga",
       label: "Fuga",
-      color: "bg-red-600",
       icon: "🏃‍♂️",
       bgColor: "bg-red-100",
       borderColor: "border-red-400",
@@ -112,7 +165,6 @@ const motivos = [
     {
       value: "LLegada Tarde",
       label: "Llegada Tarde",
-      color: "bg-indigo-500",
       icon: "⏰",
       bgColor: "bg-indigo-50",
       borderColor: "border-indigo-300",
@@ -124,7 +176,6 @@ const motivos = [
     {
       value: "No realización de Aseo",
       label: "No realización de Aseo",
-      color: "bg-teal-500",
       icon: "🧹",
       bgColor: "bg-teal-50",
       borderColor: "border-teal-300",
@@ -136,7 +187,6 @@ const motivos = [
     {
       value: "Licencia por salud",
       label: "Licencia por salud",
-      color: "bg-cyan-500",
       icon: "🏥",
       bgColor: "bg-cyan-50",
       borderColor: "border-cyan-300",
@@ -148,7 +198,6 @@ const motivos = [
     {
       value: "Incapacidad",
       label: "Incapacidad",
-      color: "bg-pink-500",
       icon: "🩺",
       bgColor: "bg-pink-50",
       borderColor: "border-pink-300",
@@ -160,8 +209,18 @@ const motivos = [
     {
       value: "Reunión interna",
       label: "Reunión interna",
-      color: "bg-zinc-500",
       icon: "👥",
+      bgColor: "bg-zinc-50",
+      borderColor: "border-zinc-300",
+      textColor: "text-zinc-700",
+      darkBgColor: "dark:bg-zinc-950",
+      darkBorderColor: "dark:border-zinc-800",
+      darkTextColor: "dark:text-zinc-300",
+    },
+    {
+      value: "Ignorar",
+      label: "Ignorar",
+      icon: "🚫",
       bgColor: "bg-zinc-50",
       borderColor: "border-zinc-300",
       textColor: "text-zinc-700",
@@ -171,454 +230,445 @@ const motivos = [
     },
   ];
 
-let isLoading = false;
-  let message = "";
-  let isDarkMode = true;
-  let showThemeOptions = false;
+  // --- Funciones de Tema ---
+  const applyTheme = (theme: "light" | "dark" | "system") => {
+    currentTheme = theme;
+    if (theme === "light") isDarkMode = false;
+    else if (theme === "dark") isDarkMode = true;
+    else isDarkMode = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
-  // Function to toggle theme
-  const toggleTheme = () => {
-    isDarkMode = !isDarkMode;
     if (isDarkMode) {
-      document.documentElement.classList.add('dark');
+      document.documentElement.classList.add("dark");
+      document.documentElement.setAttribute("data-theme", "dark");
     } else {
-      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.remove("dark");
+      document.documentElement.removeAttribute("data-theme");
     }
-    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+    localStorage.setItem("theme", theme);
+  };
+
+  const setTheme = (theme: "light" | "dark" | "system") => {
+    applyTheme(theme);
     showThemeOptions = false;
   };
 
-  // Function to set specific theme
-  const setTheme = (theme: 'light' | 'dark' | 'system') => {
-    console.log('Setting theme to:', theme); // Debug log
-    
-    if (theme === 'dark') {
-      isDarkMode = true;
-      document.documentElement.classList.add('dark');
-      document.documentElement.setAttribute('data-theme', 'dark');
-      console.log('Classes after setting dark:', document.documentElement.classList.toString());
-    } else if (theme === 'light') {
-      isDarkMode = false;
-      document.documentElement.classList.remove('dark');
-      document.documentElement.removeAttribute('data-theme');
-      console.log('Classes after setting light:', document.documentElement.classList.toString());
-    } else if (theme === 'system') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      isDarkMode = prefersDark;
-      if (prefersDark) {
-        document.documentElement.classList.add('dark');
-        document.documentElement.setAttribute('data-theme', 'dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-        document.documentElement.removeAttribute('data-theme');
-      }
-      console.log('Classes after setting system:', document.documentElement.classList.toString());
-    }
-    localStorage.setItem('theme', theme);
-    showThemeOptions = false;
-  };
+  const toggleThemeOptions = () => (showThemeOptions = !showThemeOptions);
 
-  // Function to toggle theme options dropdown
-  const toggleThemeOptions = () => {
-    showThemeOptions = !showThemeOptions;
-  };
-
-  // Set initial theme on mount
-  const initializeTheme = () => {
-    const savedTheme = localStorage.getItem('theme') || 'dark'; // Default to dark
-    console.log('Initializing with theme:', savedTheme); // Debug log
-    
-    if (savedTheme === 'light') {
-      isDarkMode = false;
-      document.documentElement.classList.remove('dark');
-      document.documentElement.removeAttribute('data-theme');
-    } else if (savedTheme === 'system') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      isDarkMode = prefersDark;
-      if (prefersDark) {
-        document.documentElement.classList.add('dark');
-        document.documentElement.setAttribute('data-theme', 'dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-        document.documentElement.removeAttribute('data-theme');
-      }
-    } else {
-      isDarkMode = true;
-      document.documentElement.classList.add('dark');
-      document.documentElement.setAttribute('data-theme', 'dark');
-    }
-  };
-
-  // Initialize after DOM is ready
-  if (typeof document !== 'undefined') {
-    // Wait for next tick to ensure DOM is ready
-    setTimeout(() => {
-      initializeTheme();
-      console.log('Final HTML classes:', document.documentElement.classList.toString());
-    }, 0);
-  }
-
-  // Close theme options when clicking outside
   const handleClickOutside = (event: MouseEvent) => {
     const target = event.target as HTMLElement;
-    if (!target.closest('.theme-dropdown')) {
-      showThemeOptions = false;
-    }
+    if (!target.closest(".theme-dropdown")) showThemeOptions = false;
   };
 
-  // Add event listener for outside clicks
-  if (typeof window !== 'undefined') {
-    document.addEventListener('click', handleClickOutside);
-  }
-
-// Cargar docentes al montar el componente
-  const loadDocentes = async () => {
+  // --- Carga de Datos ---
+  const loadData = async () => {
     isLoadingDocentes = true;
+    isLoadingMaterias = true;
+    isLoadingEstudiantes = true;
+
     try {
-      const data = await getDocentes();
-      docentes = data;
+      const [docentesData, materiasData, estudiantesData] = await Promise.all([
+        getDocentes(),
+        getMaterias(),
+        getEstudiantes(),
+      ]);
+      docentes = docentesData;
+      materias = materiasData;
+      estudiantes = estudiantesData;
     } catch (error) {
-      console.error("Error cargando docentes:", error);
+      console.error("Error cargando datos iniciales:", error);
     } finally {
       isLoadingDocentes = false;
-    }
-  };
-
-// Cargar materias al montar el componente
-  const loadMaterias = async () => {
-    isLoadingMaterias = true;
-    try {
-      const data = await getMaterias();
-      materias = data;
-    } catch (error) {
-      console.error("Error cargando materias:", error);
-    } finally {
       isLoadingMaterias = false;
-    }
-  };
-
-  loadDocentes();
-  loadMaterias();
-
-// Cargar estudiantes al montar el componente
-  const loadEstudiantes = async () => {
-    isLoadingEstudiantes = true;
-    try {
-      const data = await getEstudiantes();
-      estudiantes = data;
-    } catch (error) {
-      console.error("Error cargando estudiantes:", error);
-    } finally {
       isLoadingEstudiantes = false;
     }
   };
 
-  loadDocentes();
-  loadMaterias();
-  loadEstudiantes();
-
+  // --- Manejadores del Formulario ---
   const handleChange = (event: Event) => {
     const target = event.target as
       | HTMLInputElement
       | HTMLSelectElement
       | HTMLTextAreaElement;
-    const { name, value } = target;
-    (formData as any)[name] = value;
+    (formData as any)[target.name] = target.value;
+  };
+
+  // Lógica extraída para mejor rendimiento y claridad
+  const handleInasistenciaChange = (
+    estudianteNombre: string,
+    nuevoMotivo: string,
+  ) => {
+    const index = inasistencias.findIndex((i) => i.nombre === estudianteNombre);
+
+    if (nuevoMotivo === "" || nuevoMotivo === "Ignorar") {
+      // Eliminar si existe
+      if (index >= 0) {
+        inasistencias.splice(index, 1);
+        inasistencias = inasistencias; // Trigger reactividad
+      }
+    } else {
+      // Actualizar o Agregar
+      if (index >= 0) {
+        inasistencias[index].motivo = nuevoMotivo;
+      } else {
+        inasistencias.push({
+          nombre: estudianteNombre,
+          motivo: nuevoMotivo,
+        });
+      }
+      inasistencias = inasistencias; // Trigger reactividad
+    }
   };
 
   const handleSubmit = async (event: Event) => {
     event.preventDefault();
+    if (isLoading || inasistencias.length === 0) return;
+
     isLoading = true;
     message = "";
 
     try {
-      // Importar el SPREADSHEET_ID desde constants
-      const { SPREADSHEET_ID } = await import("../constants");
-
-      // Preparar el payload con la estructura de 9 columnas
       const currentTimestamp = new Date().toISOString();
       const inasistenciasPayload = inasistencias.map((item) => [
-        currentTimestamp, // 0. Marca temporal
-        formData.docente, // 1. Docente
-        formData.fecha, // 2. Fecha
-        formData.horas === "0"
-          ? "Sin hora específica"
-          : `${formData.horas} horas`, // 3. Horas de Inasistencia
-        formData.materia, // 4. Asignatura
-        item.motivo, // 5. Tipo de registro
-        formData.grado, // 6. Grupo (Grado)
-        formData.observaciones, // 7. Observaciones
-        item.nombre, // 8. Estudiante
+        currentTimestamp,
+        formData.docente,
+        formData.fecha,
+        formData.horas,
+        formData.materia,
+        item.motivo,
+        formData.grado,
+        item.nombre,
+        formData.observaciones,
       ]);
 
-      const payload = {
-        spreadsheetId: SPREADSHEET_ID,
-        worksheetTitle: new Date().toISOString().slice(0, 7), // YYYY-MM
-        inasistencias: inasistenciasPayload,
-      };
+      console.log("📤 Payload a enviar:", inasistenciasPayload);
+      console.log("👥 Inasistencias originales:", inasistencias);
+      inasistenciasPayload.forEach((item, index) => {
+        console.log(
+          `  Inasistencia ${index}:`,
+          item,
+          `Estudiante: "${item[8]}"`,
+        );
+      });
 
-      await saveInasistencias(payload);
-      message = `${inasistencias.length} inasistencia(s) registrada(s) exitosamente`;
+      await saveInasistencias({
+        spreadsheetId: SPREADSHEET_ID,
+        worksheetTitle: WORKSHEET_TITLE,
+        inasistencias: inasistenciasPayload,
+      });
+
+      // Mostrar SweetAlert con mensaje de éxito
+      await Swal.fire({
+        icon: 'success',
+        title: '¡Éxito!',
+        text: `${inasistencias.length} inasistencia(s) registrada(s) exitosamente`,
+        timer: 3000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+        position: 'top-end',
+        toast: true
+      });
+
+      // Reseteo Correcto del Formulario
       formData = {
-        docente: "",
-        materia: "",
-        horas: "",
-        grado: "",
-        fecha: new Date().toISOString().split("T")[0],
+        ...formData,
+        grado: "", // Resetear grado
+        fecha: new Date().toISOString().split("T")[0], // Resetear fecha a hoy
         observaciones: "",
+        horas: "", // Opcional: Resetear horas también
       };
       inasistencias = [];
     } catch (error) {
-      console.error("Error detallado:", error);
-      message = "Error al registrar la inasistencia";
+      console.error("Error enviando:", error);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Error al registrar la inasistencia',
+        confirmButtonColor: '#ef4444'
+      });
     } finally {
       isLoading = false;
     }
   };
+
+  // --- Ciclo de Vida ---
+  onMount(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    systemPreferenceListener = () => {
+      if (currentTheme === "system") applyTheme("system");
+    };
+    mediaQuery.addEventListener("change", systemPreferenceListener);
+
+    const savedTheme =
+      (localStorage.getItem("theme") as "light" | "dark" | "system") ||
+      "system";
+    applyTheme(savedTheme);
+
+    loadData();
+    document.addEventListener("click", handleClickOutside);
+  });
+
+  onDestroy(() => {
+    if (systemPreferenceListener) {
+      window
+        .matchMedia("(prefers-color-scheme: dark)")
+        .removeEventListener("change", systemPreferenceListener);
+    }
+    document.removeEventListener("click", handleClickOutside);
+  });
 </script>
 
-<div class="min-h-screen bg-zinc-50 dark:bg-zinc-950 py-6 px-4 sm:py-8 transition-colors duration-200">
-  <!-- Theme dropdown container -->
-  <div class="theme-dropdown fixed bottom-6 right-6 z-50">
-    <!-- Theme options dropdown -->
-    {#if showThemeOptions}
-      <div class="absolute bottom-16 right-0 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-xl p-2 min-w-[160px] mb-2">
-        <!-- Light mode option -->
-        <button
-          on:click|preventDefault={() => setTheme('light')}
-          on:click={() => {
-            console.log('Light mode clicked'); // Debug log
-            setTheme('light');
-          }}
-          class="w-full flex items-center px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md transition-colors"
-        >
-          <svg class="w-4 h-4 mr-3 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-          Modo Claro
-        </button>
-        
-        <!-- Dark mode option -->
-        <button
-          on:click={() => {
-            console.log('Dark mode clicked'); // Debug log
-            setTheme('dark');
-          }}
-          class="w-full flex items-center px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md transition-colors"
-        >
-          <svg class="w-4 h-4 mr-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-          </svg>
-          Modo Oscuro
-        </button>
-        
-        <!-- System mode option -->
-        <button
-          on:click={() => {
-            console.log('System mode clicked'); // Debug log
-            setTheme('system');
-          }}
-          class="w-full flex items-center px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-md transition-colors"
-        >
-          <svg class="w-4 h-4 mr-3 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-          Sistema
-        </button>
-      </div>
-    {/if}
+<div
+  class="min-h-screen py-6 px-4 sm:py-8 transition-colors duration-200"
+  style="background-color: {isDarkMode
+    ? 'rgb(9, 9, 11)'
+    : 'rgb(250, 250, 250)'};"
+>
 
-    <!-- Main theme toggle button -->
-    <button
-      on:click={toggleThemeOptions}
-      class="w-12 h-12 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group active:scale-95"
-      aria-label="Theme options"
-    >
-      {#if isDarkMode}
-        <!-- Sun icon for light mode -->
-        <svg class="w-5 h-5 text-zinc-600 dark:text-zinc-300 group-hover:text-amber-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-      {:else}
-        <!-- Moon icon for dark mode -->
-        <svg class="w-5 h-5 text-zinc-600 group-hover:text-indigo-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-        </svg>
-      {/if}
-    </button>
-  </div>
 
-  <div class="w-full max-w-2xl mx-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 sm:p-8 transition-colors duration-200">
-    <div class="flex justify-center mb-8">
+  <div
+    class="w-full max-w-2xl mx-auto rounded-xl p-6 sm:p-8 transition-colors duration-200 border"
+    style="background-color: {styles.cardBg}; border-color: {styles.cardBorder};"
+  >
+    <div class="flex justify-center mb-6">
       <img src={eieLogo} alt="EIE Logo" class="h-16 w-auto" />
     </div>
 
-    <h1 class="text-2xl sm:text-3xl tracking-tight font-bold text-center text-zinc-900 dark:text-zinc-100 mb-8">
-      Registrar Inasistencia
+    <h1
+      class="text-2xl sm:text-3xl tracking-tight font-bold text-center mb-4"
+      style="color: {styles.text};"
+    >
+      Registrar Inasistencias y otros
     </h1>
 
+    <!-- Botones superiores -->
+    <div class="flex justify-center gap-4 mb-8">
+      <!-- Botón de Google Sheets -->
+      <button
+        on:click={openSheets}
+        class="inline-flex items-center gap-2 px-4 py-2 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
+        style="background-color: {styles.cardBg}; border-color: {styles.border}; color: {styles.text};"
+        title="Abrir hoja de cálculo"
+      >
+        <svg
+          class="w-5 h-5"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+        >
+          <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/>
+        </svg>
+        <span class="text-sm font-medium">Abrir Hoja de Cálculo</span>
+      </button>
+
+      <!-- Botón de tema con dropdown -->
+      <div class="relative theme-dropdown">
+        <button
+          on:click={toggleThemeOptions}
+          class="inline-flex items-center gap-2 px-4 py-2 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
+          style="background-color: {styles.cardBg}; border-color: {styles.border}; color: {styles.text};"
+          aria-label="Cambiar tema"
+        >
+          {#if currentTheme === "dark"}
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+            </svg>
+          {:else if currentTheme === "light"}
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+            </svg>
+          {:else}
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+            </svg>
+          {/if}
+          <span class="text-sm font-medium">
+            {currentTheme === "system" ? "Sistema" : currentTheme === "light" ? "Claro" : "Oscuro"}
+          </span>
+        </button>
+
+        {#if showThemeOptions}
+          <div
+            class="absolute top-full mt-2 right-0 border rounded-lg shadow-xl p-2 min-w-[140px] animate-fade-in z-50"
+            style="background-color: {styles.cardBg}; border-color: {styles.border};"
+          >
+            {#each ["light", "dark", "system"] as themeOption}
+              <button
+                on:click={() => setTheme(themeOption as any)}
+                class="w-full flex items-center px-3 py-2 text-sm rounded-md transition-colors hover:bg-black/5 dark:hover:bg-white/5 text-left"
+                style="color: {styles.text};"
+              >
+                <span class="capitalize"
+                  >{themeOption === "system"
+                    ? "🖥️ Sistema"
+                    : themeOption === "light"
+                      ? "☀️ Claro"
+                      : "🌙 Oscuro"}</span
+                >
+              </button>
+            {/each}
+          </div>
+        {/if}
+      </div>
+    </div>
+
     <form on:submit={handleSubmit} class="space-y-6">
-<!-- Modern input with Shadcn-style focus states -->
       <div class="relative">
         <label
           for="docente"
-          class="block text-sm font-medium tracking-wide text-zinc-700 dark:text-zinc-300 mb-2"
+          class="block text-sm font-medium tracking-wide mb-2"
+          style="color: {styles.label};">Docente</label
         >
-          Docente
-        </label>
         <select
           id="docente"
           name="docente"
           bind:value={formData.docente}
-          on:change={handleChange}
           required
           disabled={isLoadingDocentes}
-          class="w-full px-3 py-2.5 text-base bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-zinc-900 disabled:opacity-50 transition-colors appearance-none cursor-pointer text-zinc-900 dark:text-zinc-100"
+          class="w-full px-3 py-2.5 text-base rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors appearance-none cursor-pointer"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
         >
-          <option value="" class="text-zinc-900 dark:text-zinc-100">
-            {isLoadingDocentes ? "Cargando..." : "Seleccione un docente"}
-          </option>
+          <option value=""
+            >{isLoadingDocentes
+              ? "Cargando..."
+              : "Seleccione un docente"}</option
+          >
           {#each docentes as docente}
-            <option value={docente} class="text-zinc-900 dark:text-zinc-100">{docente}</option>
+            <option value={docente}>{docente}</option>
           {/each}
         </select>
-        <!-- Custom dropdown arrow -->
-        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-zinc-400 dark:text-zinc-500">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
       </div>
 
-<div class="relative">
+      <div class="relative">
         <label
           for="materia"
-          class="block text-sm font-medium tracking-wide text-zinc-700 dark:text-zinc-300 mb-2"
+          class="block text-sm font-medium tracking-wide mb-2"
+          style="color: {styles.label};">Materia</label
         >
-          Materia
-        </label>
         <select
           id="materia"
           name="materia"
           bind:value={formData.materia}
-          on:change={handleChange}
           required
           disabled={isLoadingMaterias}
-          class="w-full px-3 py-2.5 text-base bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-zinc-900 disabled:opacity-50 transition-colors appearance-none cursor-pointer text-zinc-900 dark:text-zinc-100"
+          class="w-full px-3 py-2.5 text-base rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors appearance-none cursor-pointer"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
         >
-          <option value="" class="text-zinc-900 dark:text-zinc-100">
-            {isLoadingMaterias ? "Cargando..." : "Seleccione una materia"}
-          </option>
+          <option value=""
+            >{isLoadingMaterias
+              ? "Cargando..."
+              : "Seleccione una materia"}</option
+          >
           {#each materias as materia}
-            <option value={materia.materia} class="text-zinc-900 dark:text-zinc-100">{materia.materia}</option>
+            <option value={materia.materia}>{materia.materia}</option>
           {/each}
         </select>
-        <!-- Custom dropdown arrow -->
-        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-zinc-400 dark:text-zinc-500">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
       </div>
 
-<div class="relative">
-        <label for="horas" class="block text-sm font-medium tracking-wide text-zinc-700 dark:text-zinc-300 mb-2">
-          Cantidad de Horas
-        </label>
-        <select
-          id="horas"
-          name="horas"
-          bind:value={formData.horas}
-          on:change={handleChange}
-          required
-          class="w-full px-3 py-2.5 text-base bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-zinc-900 transition-colors appearance-none cursor-pointer text-zinc-900 dark:text-zinc-100"
-        >
-          <option value="" class="text-zinc-900 dark:text-zinc-100">Seleccione horas</option>
-          <option value="0" class="text-zinc-900 dark:text-zinc-100">Sin hora específica</option>
-          <option value="1" class="text-zinc-900 dark:text-zinc-100">1 Hora</option>
-          <option value="2" class="text-zinc-900 dark:text-zinc-100">2 Horas</option>
-          <option value="3" class="text-zinc-900 dark:text-zinc-100">3 Horas</option>
-          <option value="4" class="text-zinc-900 dark:text-zinc-100">4 Horas</option>
-        </select>
-        <!-- Custom dropdown arrow -->
-        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-zinc-400 dark:text-zinc-500">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-      </div>
-
-<div class="relative">
-        <label for="grado" class="block text-sm font-medium tracking-wide text-zinc-700 dark:text-zinc-300 mb-2">
-          Grado
-        </label>
-        <select
-          id="grado"
-          name="grado"
-          bind:value={formData.grado}
-          on:change={handleChange}
-          required
-          disabled={isLoadingEstudiantes}
-          class="w-full px-3 py-2.5 text-base bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-zinc-900 disabled:opacity-50 transition-colors appearance-none cursor-pointer text-zinc-900 dark:text-zinc-100"
-        >
-          <option value="" class="text-zinc-900 dark:text-zinc-100">
-            {isLoadingEstudiantes ? "Cargando..." : "Seleccione un grado"}
-          </option>
-          <option value="601" class="text-zinc-900 dark:text-zinc-100">6°1</option>
-          <option value="602" class="text-zinc-900 dark:text-zinc-100">6°2</option>
-          <option value="701" class="text-zinc-900 dark:text-zinc-100">7°1</option>
-          <option value="702" class="text-zinc-900 dark:text-zinc-100">7°2</option>
-          <option value="801" class="text-zinc-900 dark:text-zinc-100">8°1</option>
-          <option value="802" class="text-zinc-900 dark:text-zinc-100">8°2</option>
-          <option value="901" class="text-zinc-900 dark:text-zinc-100">9°1</option>
-          <option value="902" class="text-zinc-900 dark:text-zinc-100">9°2</option>
-          <option value="1001" class="text-zinc-900 dark:text-zinc-100">10°1</option>
-          <option value="1101" class="text-zinc-900 dark:text-zinc-100">11°1</option>
-          <option value="1102" class="text-zinc-900 dark:text-zinc-100">11°2</option>
-        </select>
-        <!-- Custom dropdown arrow -->
-        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-zinc-400 dark:text-zinc-500">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-      </div>
-
-{#if formData.grado && formData.horas !== ""}
-        <div>
-          <!-- Modern student list section -->
-          <!-- svelte-ignore a11y_label_has_associated_control -->
-          <label class="block text-sm font-medium tracking-wide text-zinc-700 dark:text-zinc-300 mb-3">
-            Estudiantes del Grado {formData.grado} ({formData.horas === "0"
-              ? "Sin hora específica"
-              : formData.horas +
-                (parseInt(formData.horas) === 1 ? " hora" : " horas")})
-          </label>
-          <!-- Bento-style card container -->
-          <div
-            class="space-y-2 max-h-72 overflow-y-auto border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50/50 dark:bg-zinc-900/50 backdrop-blur-sm"
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="relative">
+          <label
+            for="horas"
+            class="block text-sm font-medium tracking-wide mb-2"
+            style="color: {styles.label};">Cantidad de Horas</label
           >
-{#each estudiantes.filter((e) => e.grado.toString() === formData.grado) as estudiante}
+          <select
+            id="horas"
+            name="horas"
+            bind:value={formData.horas}
+            required
+            class="w-full px-3 py-2.5 text-base rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
+            style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+          >
+            <option value="">Seleccione horas</option>
+            <option value="0">Sin hora específica</option>
+            {#each [1, 2, 3, 4] as h}
+              <option value={h.toString()}
+                >{h} {h === 1 ? "Hora" : "Horas"}</option
+              >
+            {/each}
+          </select>
+        </div>
+
+        <div class="relative">
+          <label
+            for="grado"
+            class="block text-sm font-medium tracking-wide mb-2"
+            style="color: {styles.label};">Grado</label
+          >
+          <select
+            id="grado"
+            name="grado"
+            bind:value={formData.grado}
+            required
+            disabled={isLoadingEstudiantes}
+            class="w-full px-3 py-2.5 text-base rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors appearance-none cursor-pointer"
+            style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+          >
+            <option value=""
+              >{isLoadingEstudiantes
+                ? "Cargando..."
+                : "Seleccione un grado"}</option
+            >
+            {#each [...new Set(estudiantes.map( (estudiante) => estudiante.grado.toString(), ))] as g}
+              <option value={g}
+                >{g
+                  .replace(/0(\d)$/, "°$1")
+                  .replace(/(\d{1,2})0(\d)/, "$1°$2")}</option
+              >
+            {/each}
+
+            <!--    {#each ["601", "602", "701", "702", "801", "802", "901", "902", "1001", "1101", "1102"] as g}
+              <option value={g}
+                >{g
+                  .replace(/0(\d)$/, "°$1")
+                  .replace(/(\d{1,2})0(\d)/, "$1°$2")}</option
+              >
+            {/each} -->
+          </select>
+        </div>
+      </div>
+
+      {#if formData.grado && formData.horas !== ""}
+        <div class="animate-fade-in">
+          <!-- svelte-ignore a11y_label_has_associated_control -->
+          <label
+            class="block text-sm font-medium tracking-wide mb-3"
+            style="color: {styles.label};"
+          >
+            Estudiantes del Grado {formData.grado}
+          </label>
+
+          <div
+            class="space-y-2 max-h-[500px] overflow-y-auto border rounded-xl p-3 bg-zinc-50/50 dark:bg-zinc-900/50 backdrop-blur-sm scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-600"
+            style="border-color: {styles.border};"
+          >
+            {#each estudiantesFiltrados as estudiante (estudiante.nombre)}
               {@const currentInasistencia = inasistencias.find(
-                (item) => item.nombre === estudiante.nombre,
+                (i) => i.nombre === estudiante.nombre,
               )}
-              {@const motivoSeleccionado = currentInasistencia?.motivo
+              {@const motivoSeleccionado = currentInasistencia
                 ? motivos.find((m) => m.value === currentInasistencia.motivo)
                 : null}
 
-              <!-- Modern student row card -->
               <div
-                class="flex items-center justify-between p-3 bg-white dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all duration-150"
+                class="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg transition-all duration-150 hover:shadow-sm gap-3"
+                style="background-color: {styles.bg}; border-color: {motivoSeleccionado
+                  ? 'transparent'
+                  : styles.border};"
+                class:ring-1={motivoSeleccionado}
+                class:ring-indigo-500={motivoSeleccionado}
               >
-                <div class="flex-1">
-                  <span class="text-sm font-medium text-zinc-900 dark:text-zinc-100"
-                    >{estudiante.nombre}</span
+                <div class="flex-1 min-w-0">
+                  <span
+                    class="text-sm font-medium truncate block"
+                    style="color: {styles.text};"
                   >
+                    {estudiante.nombre}
+                  </span>
+
                   {#if motivoSeleccionado}
-                    <div class="mt-2">
-                      <!-- Modern badge with opacity and subtle borders -->
+                    <div class="mt-2 animate-fade-in">
                       <span
-                        class={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${motivoSeleccionado.bgColor} ${motivoSeleccionado.textColor} ${motivoSeleccionado.borderColor} border ${motivoSeleccionado.darkBgColor} ${motivoSeleccionado.darkTextColor} ${motivoSeleccionado.darkBorderColor}`}
+                        class={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${motivoSeleccionado.bgColor} ${motivoSeleccionado.textColor} ${motivoSeleccionado.borderColor} ${motivoSeleccionado.darkBgColor} ${motivoSeleccionado.darkTextColor} ${motivoSeleccionado.darkBorderColor}`}
                       >
                         <span class="mr-1">{motivoSeleccionado.icon}</span>
                         {motivoSeleccionado.label}
@@ -627,152 +677,219 @@ let isLoading = false;
                   {/if}
                 </div>
 
-                <div class="relative">
+                <div class="relative w-full sm:w-48">
                   <select
                     value={currentInasistencia?.motivo || ""}
-                    on:change={(e) => {
-                      const motivoValue = (e.target as HTMLSelectElement).value;
-                      const existingIndex = inasistencias.findIndex(
-                        (item) => item.nombre === estudiante.nombre,
-                      );
-                      if (existingIndex >= 0) {
-                        if (motivoValue) {
-                          inasistencias[existingIndex].motivo = motivoValue;
-                        } else {
-                          inasistencias.splice(existingIndex, 1);
-                        }
-                      } else if (motivoValue) {
-                        inasistencias.push({
-                          nombre: estudiante.nombre,
-                          motivo: motivoValue,
-                        });
-                      }
-                    }}
-                    class="appearance-none bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-600 rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-zinc-900 cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-500 transition-colors text-zinc-900 dark:text-zinc-100"
+                    on:change={(e) =>
+                      handleInasistenciaChange(
+                        estudiante.nombre,
+                        e.currentTarget.value,
+                      )}
+                    class="w-full appearance-none border rounded-lg px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-colors"
+                    style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
                   >
-                    <option value="" class="text-zinc-900 dark:text-zinc-100">Motivo...</option>
+                    <option value="">Seleccionar motivo...</option>
                     {#each motivos as motivo}
-                      <option value={motivo.value} class="text-zinc-900 dark:text-zinc-100"
-                        >{motivo.icon} {motivo.label}</option
+                      <option value={motivo.value}
+                        >{motivo.icon}
+                        {motivo.label}</option
                       >
                     {/each}
                   </select>
-                  <!-- Modern dropdown arrow -->
+
                   <div
-                    class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-zinc-400 dark:text-zinc-500"
+                    class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3"
+                    style="color: {styles.icon};"
                   >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      ><path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 9l-7 7-7-7"
+                      /></svg
+                    >
                   </div>
                 </div>
               </div>
             {/each}
+
+            {#if estudiantesFiltrados.length === 0}
+              <div
+                class="text-center py-8 text-sm opacity-60"
+                style="color: {styles.text}"
+              >
+                No se encontraron estudiantes en este grado.
+              </div>
+            {/if}
           </div>
         </div>
       {/if}
 
-<!-- Modern date input -->
       <div>
-        <label for="fecha" class="block text-sm font-medium tracking-wide text-zinc-700 dark:text-zinc-300 mb-2">
-          Fecha de Inasistencia/Registro
-        </label>
+        <label
+          for="fecha"
+          class="block text-sm font-medium tracking-wide mb-2"
+          style="color: {styles.label};">Fecha</label
+        >
         <input
           type="date"
           id="fecha"
           name="fecha"
           bind:value={formData.fecha}
-          on:change={handleChange}
           required
-          class="w-full px-3 py-2.5 text-base bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-zinc-900 transition-colors text-zinc-900 dark:text-zinc-100"
+          class="w-full px-3 py-2.5 text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
         />
       </div>
 
-      <!-- Modern textarea -->
       <div>
         <label
           for="observaciones"
-          class="block text-sm font-medium tracking-wide text-zinc-700 dark:text-zinc-300 mb-2"
+          class="block text-sm font-medium tracking-wide mb-2"
+          style="color: {styles.label};">Observaciones</label
         >
-          Observaciones
-        </label>
         <!-- svelte-ignore element_invalid_self_closing_tag -->
         <textarea
           id="observaciones"
           name="observaciones"
           bind:value={formData.observaciones}
-          on:change={handleChange}
-          rows={3}
-          placeholder="Añadir observaciones opcionales..."
-          class="w-full px-3 py-2.5 text-base bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-zinc-900 resize-none transition-colors placeholder:text-zinc-400 dark:placeholder:text-zinc-500 text-zinc-900 dark:text-zinc-100"
+          rows="3"
+          placeholder="Opcional..."
+          class="w-full px-3 py-2.5 text-base border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none transition-colors"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text}; placeholder-color: {styles.placeholder};"
         />
       </div>
 
-      <!-- Modern sticky submit area -->
-      <div class="flex items-center justify-between pt-4 mt-6 border-t border-zinc-200 dark:border-zinc-700">
-        <div class="text-sm text-zinc-600 dark:text-zinc-400">
-          Total de inasistencias:
-          <span class="font-semibold text-zinc-900 dark:text-zinc-100">{inasistencias.length}</span>
+      <div
+        class="flex items-center justify-between pt-4 mt-6 border-t"
+        style="border-color: {styles.border};"
+      >
+        <div class="text-sm" style="color: {styles.label};">
+          Total: <span class="font-semibold" style="color: {styles.text};"
+            >{inasistencias.length}</span
+          >
         </div>
 
-        <button
-          type="submit"
-          disabled={isLoading || inasistencias.length === 0}
-          class="active:scale-[0.98] bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 px-6 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-150 flex items-center font-medium"
-        >
-          {#if isLoading}
-            <svg
-              class="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-            Registrando...
-          {:else}
-            <svg
-              class="-ml-1 mr-2 h-4 w-4"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            Registrar {inasistencias.length}
-            {inasistencias.length === 1 ? "Inasistencia" : "Inasistencias"}
-          {/if}
-        </button>
+
       </div>
     </form>
 
-{#if message}
-      <!-- Modern alert with proper dark mode support -->
+    <!-- Botón flotante de guardar -->
+    <button
+      on:click={handleSubmit}
+      disabled={isLoading || inasistencias.length === 0}
+      class="fixed bottom-6 right-6 bg-green-600 hover:bg-green-700 text-white p-4 rounded-full shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none z-50"
+      title="Guardar inasistencias"
+    >
+      {#if isLoading}
+        <svg
+          class="animate-spin h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          ></circle>
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          ></path>
+        </svg>
+      {:else}
+        <svg
+          class="h-6 w-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M5 13l4 4L19 7"
+          ></path>
+        </svg>
+      {/if}
+      {#if !isLoading && inasistencias.length > 0}
+        <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+          {inasistencias.length}
+        </span>
+      {/if}
+    </button>
+
+    {#if message}
       <div
-        class={`mt-6 p-4 rounded-lg text-sm font-medium ${message.includes("exitosamente") 
-          ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800" 
-          : "bg-red-50 dark:bg-red-950 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800"}`}
+        class={`mt-6 p-4 rounded-lg text-sm font-medium animate-fade-in border flex items-center justify-center`}
+        style={`
+            background-color: ${
+              message.includes("exitosamente")
+                ? isDarkMode
+                  ? "rgba(6, 78, 59, 0.5)"
+                  : "rgb(236, 253, 245)"
+                : isDarkMode
+                  ? "rgba(127, 29, 29, 0.5)"
+                  : "rgb(254, 242, 242)"
+            };
+            border-color: ${
+              message.includes("exitosamente")
+                ? isDarkMode
+                  ? "rgb(6, 78, 59)"
+                  : "rgb(167, 243, 208)"
+                : isDarkMode
+                  ? "rgb(127, 29, 29)"
+                  : "rgb(254, 202, 202)"
+            };
+            color: ${
+              message.includes("exitosamente")
+                ? isDarkMode
+                  ? "rgb(209, 213, 219)"
+                  : "rgb(21, 128, 61)"
+                : isDarkMode
+                  ? "rgb(254, 202, 202)"
+                  : "rgb(153, 27, 27)"
+            };
+        `}
       >
         {message}
       </div>
     {/if}
   </div>
 </div>
+
+<style>
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out forwards;
+  }
+  /* Estilos para scrollbar personalizado */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.5);
+    border-radius: 20px;
+  }
+</style>
