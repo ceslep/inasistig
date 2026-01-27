@@ -782,7 +782,7 @@
     <!-- Botón flotante de guardar -->
     <button
       on:click={handleSubmit}
-      disabled={isLoading || inasistencias.length === 0}
+      disabled={isLoading || inasistencias.length === 0 || !formData.docente || !formData.materia}
       class="fixed bottom-6 right-6 bg-green-600 hover:bg-green-700 text-white p-4 rounded-full shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none z-50"
       title="Guardar inasistencias"
     >
