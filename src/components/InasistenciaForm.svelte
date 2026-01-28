@@ -11,6 +11,7 @@
     SPREADSHEET_ID,
     WORKSHEET_TITLE,
     INFO_INASISTENCIA,
+    URL_LOCKER_STUDIO,
   } from "../constants";
   import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
@@ -109,6 +110,10 @@
 
   const openSheets = () => {
     window.open(getSheetsUrl(), "_blank");
+  };
+
+  const openLocker = () => {
+    window.open(URL_LOCKER_STUDIO, "_blank");
   };
 
   // Optimización: Variable reactiva para estilos basada en el tema global
@@ -506,6 +511,30 @@
           </svg>
           <span class="text-sm font-medium hidden lg:inline"
             >Hoja de Cálculo</span
+          >
+        </button>
+
+        <!-- Botón de Locker Studio -->
+        <button
+          on:click={openLocker}
+          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+          title="Abrir Looker Studio"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            />
+          </svg>
+          <span class="text-sm font-medium hidden lg:inline">Looker Studio</span
           >
         </button>
 

@@ -24,6 +24,9 @@ export const SPREADSHEET_ID_ANOTADOR =
 
 // Textos informativos para alertas dismissibles
 export const INFO_INASISTENCIA =
-  "Selecciona un grado y una asignatura para comenzar a registrar inasistencias. Ahora puedes marcar motivos individuales y observaciones específicas por estudiante.";
+  "Selecciona un grado y una asignatura para comenzar a registrar inasistencias. Ahora puedes marcar motivos individuales y observaciones específicas por estudiante.Tambien pueden ver el filtro de datos en Locker Studio";
 export const INFO_ANOTADOR =
   "Completa los datos de la clase y selecciona las observaciones que correspondan. Puedes editar el texto de cada observación si es necesario.Recuerda hacer check en el cuadro de selección para guardar esa anotación.";
+
+export const URL_LOCKER_STUDIO =
+  "https://lookerstudio.google.com/reporting/be2efb22-dc5f-4f21-9dfc-0253e763e19f";
