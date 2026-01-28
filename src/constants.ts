@@ -21,3 +21,9 @@ export const WORKSHEET_TITLE = "Inasistencias";
 export const WORKSHEET_TITLE_ANOTADOR = "Datos";
 export const SPREADSHEET_ID_ANOTADOR =
   "1Q6EcSvccB7BoJiw9PD2s5J4PB8AJmr-6v-yKhiE4E8k";
+
+// Textos informativos para alertas dismissibles
+export const INFO_INASISTENCIA =
+  "Selecciona un grado y una asignatura para comenzar a registrar inasistencias. Ahora puedes marcar motivos individuales y observaciones específicas por estudiante.";
+export const INFO_ANOTADOR =
+  "Completa los datos de la clase y selecciona las observaciones que correspondan. Puedes editar el texto de cada observación si es necesario.Recuerda hacer check en el cuadro de selección para guardar esa anotación.";

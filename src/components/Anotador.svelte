@@ -2,7 +2,6 @@
   import { onMount } from "svelte";
   import Swal from "sweetalert2";
   import {
-    saveInasistencias,
     getDocentes,
     getMaterias,
     getEstudiantes,
@@ -12,6 +11,7 @@
   import {
     SPREADSHEET_ID_ANOTADOR,
     WORKSHEET_TITLE_ANOTADOR,
+    INFO_ANOTADOR,
   } from "../constants";
   import Loader from "./Loader.svelte";
   import { theme } from "../lib/themeStore";
@@ -64,12 +64,52 @@
   // --- Formulario ---
   let formData = {
     fecha: new Date().toISOString().split("T")[0],
-    docente: "",
+    docente: localStorage.getItem("lastDocente") || "",
     materia: "",
     horas: "",
     grado: "",
     anotacion: "",
     observacion: "",
+  };
+
+  // --- Persistencia de Materias por Docente ---
+  let docenteMaterias: Record<string, string[]> = JSON.parse(
+    localStorage.getItem("docenteMaterias") || "{}",
+  );
+
+  const saveMateriaForDocente = (docente: string, materia: string) => {
+    if (!docente || !materia) return;
+    if (!docenteMaterias[docente]) {
+      docenteMaterias[docente] = [];
+    }
+    if (!docenteMaterias[docente].includes(materia)) {
+      docenteMaterias[docente] = [...docenteMaterias[docente], materia];
+      localStorage.setItem("docenteMaterias", JSON.stringify(docenteMaterias));
+    }
+  };
+
+  $: if (formData.docente) {
+    localStorage.setItem("lastDocente", formData.docente);
+  }
+
+  $: materiasSorted = formData.docente
+    ? [...materias].sort((a, b) => {
+        const aSaved = docenteMaterias[formData.docente]?.includes(a.materia);
+        const bSaved = docenteMaterias[formData.docente]?.includes(b.materia);
+        if (aSaved && !bSaved) return -1;
+        if (!aSaved && bSaved) return 1;
+        return a.materia.localeCompare(b.materia);
+      })
+    : materias;
+
+  // --- Alertas Dismissibles ---
+  let showInfoAlert =
+    INFO_ANOTADOR &&
+    localStorage.getItem("dismissedInfoAnotadorContent") !== INFO_ANOTADOR;
+
+  const dismissAlert = () => {
+    showInfoAlert = false;
+    localStorage.setItem("dismissedInfoAnotadorContent", INFO_ANOTADOR);
   };
 
   let isLoading = false;
@@ -220,6 +260,9 @@
         worksheetTitle: WORKSHEET_TITLE_ANOTADOR,
         datos: payload, // Reusing the parameter name 'inasistencias' from the service
       });
+
+      // Persistir la materia para el docente solo después del éxito
+      saveMateriaForDocente(formData.docente, formData.materia);
 
       await Swal.fire({
         icon: "success",
@@ -391,6 +434,61 @@
       class="max-w-4xl mx-auto rounded-2xl p-6 lg:p-8 transition-colors duration-200 border"
       style="background-color: {styles.cardBg}; border-color: {styles.cardBorder};"
     >
+      {#if showInfoAlert}
+        <div
+          class="mb-6 p-4 rounded-xl border flex items-start gap-4 animate-fade-in relative transition-all duration-300 bg-green-50 dark:bg-indigo-900/40 border-green-200 dark:border-indigo-700 shadow-sm"
+        >
+          <div
+            class="p-2 rounded-lg bg-green-100 dark:bg-indigo-800 text-green-700 dark:text-indigo-200 flex-shrink-0"
+          >
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          </div>
+          <div class="flex-1 pr-6 pt-0.5">
+            <h4
+              class="text-sm font-bold mb-1 text-green-900 dark:text-indigo-100"
+            >
+              Información
+            </h4>
+            <p
+              class="text-sm leading-relaxed text-green-800 dark:text-indigo-200"
+            >
+              {INFO_ANOTADOR}
+            </p>
+          </div>
+          <button
+            on:click={dismissAlert}
+            class="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-green-100 dark:hover:bg-indigo-700 text-green-600 hover:text-green-800 dark:text-indigo-400 dark:hover:text-indigo-100 transition-colors"
+            aria-label="Cerrar alerta"
+          >
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+      {/if}
+
       <form on:submit={handleSubmit} class="space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div class="space-y-2">
@@ -454,8 +552,16 @@
                   ? "Cargando..."
                   : "Seleccione asignatura"}</option
               >
-              {#each materias as materia}
-                <option value={materia.materia}>{materia.materia}</option>
+              {#each materiasSorted as materia}
+                {@const isSaved = docenteMaterias[formData.docente]?.includes(
+                  materia.materia,
+                )}
+                <option
+                  value={materia.materia}
+                  style={isSaved ? "color: #6366f1; font-weight: 600;" : ""}
+                >
+                  {isSaved ? "⭐ " : ""}{materia.materia}
+                </option>
               {/each}
             </select>
           </div>

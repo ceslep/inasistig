@@ -7,7 +7,11 @@
     getMaterias,
     getEstudiantes,
   } from "../../api/service";
-  import { SPREADSHEET_ID, WORKSHEET_TITLE } from "../constants";
+  import {
+    SPREADSHEET_ID,
+    WORKSHEET_TITLE,
+    INFO_INASISTENCIA,
+  } from "../constants";
   import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
 
@@ -27,7 +31,7 @@
     nombre: string;
     motivo: string;
     horas: string;
-    observaciones?: string;
+    observaciones: string;
   }
 
   // --- Estado de datos ---
@@ -41,7 +45,7 @@
 
   // --- Formulario ---
   let formData = {
-    docente: "",
+    docente: localStorage.getItem("lastDocente") || "",
     materia: "",
     horas: "",
     grado: "",
@@ -51,8 +55,52 @@
 
   let inasistencias: Inasistencia[] = [];
   let individualHours: Record<string, string> = {}; // Almacena horas individuales antes de marcar motivo
+  let openObservations: Record<string, boolean> = {}; // Controla qué áreas de observación están abiertas
   let isLoading = false;
   let message = "";
+
+  // --- Alertas Dismissibles ---
+  let showInfoAlert =
+    INFO_INASISTENCIA &&
+    localStorage.getItem("dismissedInfoInasistenciaContent") !==
+      INFO_INASISTENCIA;
+
+  const dismissAlert = () => {
+    showInfoAlert = false;
+    localStorage.setItem("dismissedInfoInasistenciaContent", INFO_INASISTENCIA);
+  };
+
+  // --- Persistencia de Materias por Docente ---
+  let docenteMaterias: Record<string, string[]> = JSON.parse(
+    localStorage.getItem("docenteMaterias") || "{}",
+  );
+
+  const saveMateriaForDocente = (docente: string, materia: string) => {
+    if (!docente || !materia) return;
+    if (!docenteMaterias[docente]) {
+      docenteMaterias[docente] = [];
+    }
+    if (!docenteMaterias[docente].includes(materia)) {
+      docenteMaterias[docente] = [...docenteMaterias[docente], materia];
+      localStorage.setItem("docenteMaterias", JSON.stringify(docenteMaterias));
+    }
+  };
+
+  // No longer saving reactively to allow "normal" operation until first success
+
+  $: if (formData.docente) {
+    localStorage.setItem("lastDocente", formData.docente);
+  }
+
+  $: materiasSorted = formData.docente
+    ? [...materias].sort((a, b) => {
+        const aSaved = docenteMaterias[formData.docente]?.includes(a.materia);
+        const bSaved = docenteMaterias[formData.docente]?.includes(b.materia);
+        if (aSaved && !bSaved) return -1;
+        if (!aSaved && bSaved) return 1;
+        return a.materia.localeCompare(b.materia);
+      })
+    : materias;
 
   // --- Funciones auxiliares ---
   const getSheetsUrl = () => {
@@ -318,10 +366,26 @@
           nombre: estudianteNombre,
           motivo: nuevoMotivo,
           horas: hourToUse,
+          observaciones: "",
         });
       }
       inasistencias = inasistencias;
     }
+  };
+
+  const handleIndividualObservationChange = (
+    estudianteNombre: string,
+    nuevaObs: string,
+  ) => {
+    const index = inasistencias.findIndex((i) => i.nombre === estudianteNombre);
+    if (index >= 0) {
+      inasistencias[index].observaciones = nuevaObs;
+      inasistencias = inasistencias;
+    }
+  };
+
+  const toggleObservation = (estudianteNombre: string) => {
+    openObservations[estudianteNombre] = !openObservations[estudianteNombre];
   };
 
   const handleIndividualHourChange = (
@@ -354,7 +418,7 @@
           item.motivo,
           formData.grado,
           item.nombre,
-          formData.observaciones,
+          item.observaciones || formData.observaciones,
         ]);
 
       await saveInasistencias({
@@ -362,6 +426,9 @@
         worksheetTitle: WORKSHEET_TITLE,
         inasistencias: inasistenciasPayload,
       });
+
+      // Persistir la materia para el docente solo después del éxito
+      saveMateriaForDocente(formData.docente, formData.materia);
 
       await Swal.fire({
         icon: "success",
@@ -383,6 +450,7 @@
       };
       inasistencias = [];
       individualHours = {};
+      openObservations = {};
     } catch (error) {
       console.error("Error enviando:", error);
       await Swal.fire({
@@ -529,6 +597,61 @@
       class="max-w-4xl mx-auto rounded-2xl p-6 lg:p-8 transition-colors duration-200 border"
       style="background-color: {styles.cardBg}; border-color: {styles.cardBorder};"
     >
+      {#if showInfoAlert}
+        <div
+          class="mb-6 p-4 rounded-xl border flex items-start gap-4 animate-fade-in relative transition-all duration-300 bg-green-50 dark:bg-indigo-900/40 border-green-200 dark:border-indigo-700 shadow-sm"
+        >
+          <div
+            class="p-2 rounded-lg bg-green-100 dark:bg-indigo-800 text-green-700 dark:text-indigo-200 flex-shrink-0"
+          >
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          </div>
+          <div class="flex-1 pr-6 pt-0.5">
+            <h4
+              class="text-sm font-bold mb-1 text-green-900 dark:text-indigo-100"
+            >
+              Información
+            </h4>
+            <p
+              class="text-sm leading-relaxed text-green-800 dark:text-indigo-200"
+            >
+              {INFO_INASISTENCIA}
+            </p>
+          </div>
+          <button
+            on:click={dismissAlert}
+            class="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-green-100 dark:hover:bg-indigo-700 text-green-600 hover:text-green-800 dark:text-indigo-400 dark:hover:text-indigo-100 transition-colors"
+            aria-label="Cerrar alerta"
+          >
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+      {/if}
+
       <form on:submit={handleSubmit} class="space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="space-y-2">
@@ -558,11 +681,13 @@
           </div>
 
           <div class="space-y-2">
-            <label
-              for="materia"
-              class="block text-sm font-medium"
-              style="color: {styles.label};">Materia</label
-            >
+            <div class="flex items-center justify-between">
+              <label
+                for="materia"
+                class="block text-sm font-medium"
+                style="color: {styles.label};">Materia</label
+              >
+            </div>
             <select
               id="materia"
               name="materia"
@@ -577,8 +702,16 @@
                   ? "Cargando..."
                   : "Seleccione materia"}</option
               >
-              {#each materias as materia}
-                <option value={materia.materia}>{materia.materia}</option>
+              {#each materiasSorted as materia}
+                {@const isSaved = docenteMaterias[formData.docente]?.includes(
+                  materia.materia,
+                )}
+                <option
+                  value={materia.materia}
+                  style={isSaved ? "color: #6366f1; font-weight: 600;" : ""}
+                >
+                  {isSaved ? "⭐ " : ""}{materia.materia}
+                </option>
               {/each}
             </select>
           </div>
@@ -650,7 +783,7 @@
               Estudiantes del Grado {formData.grado}
             </label>
             <div
-              class="space-y-2 max-h-[400px] overflow-y-auto border rounded-2xl p-4 bg-zinc-50/50 dark:bg-zinc-900/50 backdrop-blur-sm scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-600"
+              class="space-y-2 max-h-[700px] overflow-y-auto border rounded-2xl p-4 bg-zinc-50/50 dark:bg-zinc-900/50 backdrop-blur-sm scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-600"
               style="border-color: {styles.border};"
             >
               {#each estudiantesFiltrados as estudiante (estudiante.nombre)}
@@ -766,7 +899,52 @@
                       </div>
                     </div>
                   </div>
+
+                  {#if motivoSeleccionado}
+                    <div class="flex items-center gap-2">
+                      <button
+                        type="button"
+                        on:click={() => toggleObservation(estudiante.nombre)}
+                        class="p-2 rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                        style="color: {currentInasistencia?.observaciones
+                          ? 'rgb(var(--text-primary))'
+                          : styles.icon};"
+                        title="Agregar observación"
+                      >
+                        <svg
+                          class="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  {/if}
                 </div>
+
+                {#if motivoSeleccionado && (openObservations[estudiante.nombre] || currentInasistencia?.observaciones)}
+                  <div class="px-4 pb-4 animate-fade-in">
+                    <textarea
+                      value={currentInasistencia?.observaciones || ""}
+                      on:input={(e) =>
+                        handleIndividualObservationChange(
+                          estudiante.nombre,
+                          e.currentTarget.value,
+                        )}
+                      placeholder="Escribe una observación específica para este estudiante..."
+                      rows="2"
+                      class="w-full px-4 py-2 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none resize-none text-sm"
+                      style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+                    ></textarea>
+                  </div>
+                {/if}
               {/each}
 
               {#if estudiantesFiltrados.length === 0}
