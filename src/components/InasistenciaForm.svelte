@@ -15,6 +15,7 @@
   } from "../constants";
   import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
+  import InasistenciaFilter from "./InasistenciaFilter.svelte";
 
   export let onBack: () => void;
 
@@ -59,6 +60,15 @@
   let openObservations: Record<string, boolean> = {}; // Controla qué áreas de observación están abiertas
   let isLoading = false;
   let message = "";
+
+  // --- Filtros ---
+  let showFilter = false;
+  const openFilters = () => {
+    showFilter = true;
+  };
+  const closeFilters = () => {
+    showFilter = false;
+  };
 
   // --- Alertas Dismissibles ---
   let showInfoAlert =
@@ -512,6 +522,29 @@
           <span class="text-sm font-medium hidden lg:inline"
             >Hoja de Cálculo</span
           >
+        </button>
+
+        <!-- Botón de Filtros -->
+        <button
+          on:click={openFilters}
+          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+          title="Abrir Looker Studio"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+            />
+          </svg>
+          <span class="text-sm font-medium hidden lg:inline">Filtros</span>
         </button>
 
         <!-- Botón de Locker Studio -->
@@ -1092,6 +1125,13 @@
     {/if}
   </button>
 </div>
+
+{#if showFilter}
+  <InasistenciaFilter
+    onClose={closeFilters}
+    selectedDocente={formData.docente}
+  />
+{/if}
 
 <style>
   @keyframes fade-in {
