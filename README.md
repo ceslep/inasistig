@@ -1,47 +1,160 @@
-# Svelte + TS + Vite
+# Inasistig - Ecosistema Digital EIE
 
-This template should help get you started developing with Svelte and TypeScript in Vite.
+Sistema integral de gestión educativa diseñado para potenciar la excelencia pedagógica a través de herramientas inteligentes y un diseño centrado en el docente.
 
-## Recommended IDE Setup
+## 🎯 Propósito
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
+**Inasistig** es una aplicación web moderna que facilita la gestión académica en contextos educativos, permitiendo a los docentes controlar asistencias, registrar incidencias y documentar el proceso pedagógico de manera eficiente.
 
-## Need an official Svelte framework?
+## ✨ Características Principales
 
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
+### 📊 Registro Diario
+- Control preciso de inasistencias y novedades diarias del aula
+- Gestión operativa de asistencia con interfaz intuitiva
 
-## Technical considerations
+### 📝 Anotador de Clase  
+- Registro dinámico de incidencias y avances pedagógicos por sesión
+- Seguimiento ágil del progreso estudiantil
 
-**Why use this over SvelteKit?**
+### 📖 Diario de Campo
+- Espacio para reflexión profunda y documentación pedagógica
+- Herramienta estratégica para la mejora continua docente
 
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
+## 🛠️ Stack Tecnológico
 
-This template contains as little as possible to get started with Vite + TypeScript + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
+- **Frontend**: Svelte 5 + TypeScript
+- **Build Tool**: Vite 7.2.4
+- **Estilos**: TailwindCSS 4.1.18
+- **Transiciones**: Svelte transitions
+- **Alertas**: SweetAlert2
+- **Despliegue**: gh-pages
 
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
+## 🎨 Diseño y Experiencia
 
-**Why `global.d.ts` instead of `compilerOptions.types` inside `jsconfig.json` or `tsconfig.json`?**
+- **Interfaz Moderna**: Diseño futurista con efectos glassmorphism
+- **Modo Tema**: Soporte para temas claro, dim y oscuro
+- **Transiciones Fluidas**: Animaciones suaves y microinteracciones
+- **Responsive**: Adaptación completa a dispositivos móviles y escritorio
+- **Accesibilidad**: Navegación intuitiva y controles accesibles
 
-Setting `compilerOptions.types` shuts out all other types not explicitly listed in the configuration. Using triple-slash references keeps the default TypeScript setting of accepting type information from the entire workspace, while also adding `svelte` and `vite/client` type information.
+## 🚀 Instalación y Uso
 
-**Why include `.vscode/extensions.json`?**
+### Prerrequisitos
+- Node.js 18+ 
+- npm o yarn
 
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
+### Instalación
+```bash
+# Clonar el repositorio
+git clone <repository-url>
+cd inasistig
 
-**Why enable `allowJs` in the TS template?**
+# Instalar dependencias
+npm install
 
-While `allowJs: false` would indeed prevent the use of `.js` files in the project, it does not prevent the use of JavaScript syntax in `.svelte` files. In addition, it would force `checkJs: false`, bringing the worst of both worlds: not being able to guarantee the entire codebase is TypeScript, and also having worse typechecking for the existing JavaScript. In addition, there are valid use cases in which a mixed codebase may be relevant.
-
-**Why is HMR not preserving my local component state?**
-
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/rixo/svelte-hmr#svelte-hmr).
-
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
-
-```ts
-// store.ts
-// An extremely simple external store
-import { writable } from 'svelte/store'
-export default writable(0)
+# Iniciar servidor de desarrollo
+npm run dev
 ```
+
+### Scripts Disponibles
+```bash
+npm run dev      # Servidor de desarrollo
+npm run build    # Construcción para producción
+npm run preview  # Previsualizar build
+npm run check    # Verificación de tipos y Svelte
+npm run deploy   # Despliegue a GitHub Pages
+```
+
+## 📁 Estructura del Proyecto
+
+```
+src/
+├── components/          # Componentes principales
+│   ├── Dashboard.svelte     # Vista principal con navegación
+│   ├── InasistenciaForm.svelte # Formulario de registro diario
+│   ├── Anotador.svelte      # Módulo de anotaciones
+│   ├── Diario.svelte        # Diario de campo
+│   └── Loader.svelte        # Componente de carga
+├── lib/                # Utilidades y stores
+│   ├── themeStore.ts       # Gestión de temas
+│   └── Counter.svelte      # Componente utilitario
+├── assets/             # Recursos estáticos
+├── constants.ts        # Constantes de la aplicación
+├── App.svelte          # Componente raíz
+└── main.ts            # Punto de entrada
+```
+
+## 🎯 Funcionalidades por Módulo
+
+### Dashboard
+- Navegación centralizada entre módulos
+- Selector de temas con animaciones
+- Vista general del sistema
+
+### Registro Diario
+- Formulario optimizado para control de asistencia
+- Validación en tiempo real
+- Exportación de datos
+
+### Anotador de Clase
+- Registro rápido de incidencias
+- Categorización de eventos
+- Búsqueda y filtrado
+
+### Diario de Campo
+- Editor de texto enriquecido
+- Organización por fechas
+- Reflexiones pedagógicas
+
+## 🔧 Configuración
+
+### Variables de Entorno
+El proyecto utiliza configuración por defecto. Para personalización:
+
+```typescript
+// src/constants.ts
+export const APP_CONFIG = {
+  version: "2.0.4",
+  theme: "light" // light | dim | dark
+};
+```
+
+### Temas Personalizados
+Los temas se gestionan a través de CSS variables en `src/lib/themeStore.ts`.
+
+## 📦 Build y Despliegue
+
+### Construcción para Producción
+```bash
+npm run build
+```
+
+### Despliegue Automatizado
+```bash
+npm run deploy
+```
+El proyecto se configura automáticamente para despliegue en GitHub Pages.
+
+## 🤝 Contribución
+
+1. Fork del proyecto
+2. Crear feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit cambios (`git commit -m 'Add amazing feature'`)
+4. Push al branch (`git push origin feature/amazing-feature`)
+5. Abrir Pull Request
+
+## 📄 Licencia
+
+Este proyecto es parte del Ecosistema Digital EIE - 2026
+
+## 🆘 Soporte
+
+Para soporte técnico o sugerencias:
+- Crear un issue en el repositorio
+- Contactar al equipo de desarrollo EIE
+
+---
+
+**Versión**: 2.0.4 PLATINUM  
+**Última Actualización**: Enero 2026  
+**Desarrollado por**: EIE Digital Team
