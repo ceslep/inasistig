@@ -395,7 +395,7 @@
     style="background-color: {styles.cardBg}; border-color: {styles.cardBorder};"
   >
     <div
-      class="flex flex-row lg:flex-col items-center justify-between lg:justify-start gap-4 lg:gap-8"
+      class="flex flex-col lg:flex-col items-center justify-between lg:justify-start gap-4 lg:gap-8"
     >
       <div class="flex items-center gap-4 lg:flex-col">
         <img src={eieLogo} alt="EIE Logo" class="h-12 lg:h-20 w-auto" />
@@ -407,7 +407,7 @@
         </h1>
       </div>
 
-      <div class="flex flex-row lg:flex-col gap-3 w-auto lg:w-full">
+      <div class="flex flex-wrap justify-center lg:flex-col gap-3 w-full">
         <button
           on:click={openSheets}
           class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
@@ -609,7 +609,7 @@
             ></div>
             
             <!-- Contenido del popup -->
-            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 text-white p-4 rounded-xl shadow-2xl border border-blue-400 dark:border-blue-500 min-w-[280px] max-w-[320px]">
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 text-white p-4 rounded-xl shadow-2xl border border-blue-400 dark:border-blue-500 min-w-[280px] max-w-[calc(100vw-20px)] md:max-w-[320px]">
               <!-- Header con ícono y texto NUEVO -->
               <div class="flex items-center gap-2 mb-3">
                 <div class="p-1.5 bg-white/20 rounded-lg">
