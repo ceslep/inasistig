@@ -81,7 +81,7 @@
   {#if mounted}
     <!-- Content Header -->
     <header
-      class="max-w-7xl w-full mb-12 lg:mb-20 text-center relative"
+      class="max-w-7xl w-full mb-6 lg:mb-8 text-center relative"
       in:fly={{ y: -20, duration: 800, delay: 100 }}
     >
       <!-- Theme Switcher -->
@@ -137,19 +137,19 @@
         </button>
       </div>
 
-      <div class="inline-block mb-6 relative">
+      <div class="inline-block mb-4 relative">
         <div
           class="absolute inset-0 bg-indigo-500/20 blur-2xl rounded-full"
         ></div>
         <img
           src={logoEie}
           alt="EIE Logo"
-          class="relative h-20 md:h-28 object-contain hover:scale-110 transition-transform duration-700 ease-out cursor-none"
+          class="relative h-12 md:h-16 object-contain hover:scale-110 transition-transform duration-700 ease-out cursor-none"
         />
       </div>
 
-      <div class="space-y-2">
-        <h1 class="text-4xl md:text-6xl font-black tracking-tight">
+      <div class="space-y-1">
+        <h1 class="text-3xl md:text-5xl font-black tracking-tight">
           <span
             class="bg-gradient-to-b from-[rgb(var(--text-primary))] to-[rgb(var(--text-secondary))] bg-clip-text text-transparent"
           >
@@ -217,7 +217,7 @@
                 <img
                   src={module.image}
                   alt={module.title}
-                  class="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 group-hover:scale-110 transition-all duration-700 ease-in-out opacity-60 group-hover:opacity-100"
+                  class="w-3/4 h-3/4 mx-auto object-cover grayscale-[0.5] group-hover:grayscale-0 group-hover:scale-110 transition-all duration-700 ease-in-out opacity-60 group-hover:opacity-100"
                 />
 
                 <!-- Overlay details -->
