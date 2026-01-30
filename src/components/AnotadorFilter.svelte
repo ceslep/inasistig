@@ -2,12 +2,12 @@
   import { onMount } from "svelte";
   import Swal from "sweetalert2";
   import {
-    getInasistencias,
+    getAnotador,
     getDocentes,
     getMaterias,
     getEstudiantes,
   } from "../../api/service";
-  import { SPREADSHEET_ID, WORKSHEET_TITLE } from "../constants";
+  import { SPREADSHEET_ID_ANOTADOR, WORKSHEET_TITLE_ANOTADOR } from "../constants";
   import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
 
@@ -15,16 +15,15 @@
   export let selectedDocente: string = "";
 
   // --- Interfaces para tipado ---
-  interface InasistenciaData {
+  interface AnotadorData {
     timestamp: string;
-    docente: string;
     fecha: string;
-    horas: string;
+    docente: string;
     materia: string;
-    motivo: string;
     grado: string;
-    nombre: string;
-    observaciones: string;
+    horas: string;
+    anotacion: string;
+    observacion: string;
   }
 
   interface APIResponse {
@@ -36,7 +35,7 @@
   }
 
   // --- Estado de datos ---
-  let inasistencias: InasistenciaData[] = [];
+  let anotaciones: AnotadorData[] = [];
   let docentes: string[] = [];
   let materias: { materia: string }[] = [];
   let estudiantes: { nombre: string; grado: string | number }[] = [];
@@ -44,9 +43,8 @@
   let isLoading = false;
   let isLoadingData = false;
   let filtrarPorFecha = false;
-  let inasistenciasFiltradas: InasistenciaData[] = [];
+  let anotacionesFiltradas: AnotadorData[] = [];
 
-  // --- Filtros ---
   // --- Filtros ---
   let filtros = {
     docente: selectedDocente || "",
@@ -54,7 +52,7 @@
     grado: "",
     fechaInicio: "",
     fechaFin: "",
-    motivo: "",
+    anotacion: "",
   };
 
   // --- Inicializar fechas ---
@@ -120,120 +118,81 @@
     filtros.fechaInicio = formatLocalDate(startDate);
     filtros.fechaFin = formatLocalDate(today);
     filtrarPorFecha = true;
-
-    console.log("✅ setFechaPreset ejecutado:", {
-      preset,
-      fechaInicio: filtros.fechaInicio,
-      fechaFin: filtros.fechaFin,
-      filtrarPorFecha,
-    });
   };
 
-  // --- Motivos con iconos ---
-  const motivosConfig = [
+  // --- Categorías de anotación con colores ---
+  const categoriasConfig = [
     {
-      value: "Sin excusa",
-      icon: "🚫",
-      color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+      value: "Estrategias de Enseñanza-Aprendizaje",
+      icon: "📚",
+      color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
     },
     {
-      value: "Excusa",
-      icon: "📄",
-      color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+      value: "Evaluación y Verificación de Saberes",
+      icon: "📝",
+      color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
     },
     {
-      value: "LLegada Tarde",
-      icon: "⏰",
-      color:
-        "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
+      value: "Enfoque STEM+ y Contexto Rural",
+      icon: "🔬",
+      color: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
     },
     {
-      value: "Transporte Escolar",
-      icon: "🚌",
-      color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+      value: "Prácticas de Laboratorio y Mantenimiento",
+      icon: "🔧",
+      color: "bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200",
     },
     {
-      value: "Permiso",
-      icon: "✅",
-      color:
-        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+      value: "Ciudadanía Digital y Ética",
+      icon: "💻",
+      color: "bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200",
     },
     {
-      value: "No portar/sin uniforme",
-      icon: "👚",
+      value: "Pensamiento Computacional y Programación",
+      icon: "💻",
       color: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
     },
     {
-      value: "Pacto de Aula",
-      icon: "🤝",
-      color:
-        "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+      value: "Recursos Analógicos y Contingencias",
+      icon: "📋",
+      color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
     },
     {
-      value: "Uso del celular",
-      icon: "📱",
-      color:
-        "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-    },
-    {
-      value: "Desorden en Clase",
-      icon: "🔊",
-      color:
-        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-    },
-    {
-      value: "Fuga",
-      icon: "🏃‍♂️",
-      color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-    },
-    {
-      value: "No realización de Aseo",
-      icon: "🧹",
+      value: "Ofimática y Competencias Productivas",
+      icon: "🖥️",
       color: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
     },
     {
-      value: "Licencia por salud",
-      icon: "🏥",
-      color: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
-    },
-    {
-      value: "Incapacidad",
-      icon: "🩺",
-      color: "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200",
-    },
-    {
-      value: "Reunión interna",
-      icon: "👥",
-      color: "bg-zinc-100 text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200",
-    },
-    {
-      value: "Psicoorientación",
-      icon: "🧠",
-      color:
-        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+      value: "Gestión Administrativa y Proyectos Transversales",
+      icon: "📊",
+      color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
     },
   ];
 
-  const getMotivoConfig = (motivoName: string) => {
-    return (
-      motivosConfig.find((m) => m.value === motivoName) || {
-        icon: "❓",
-        color: "bg-gray-100 text-gray-800",
+  const getCategoriaConfig = (anotacionText: string) => {
+    // Buscar si el texto de la anotación contiene alguna categoría
+    for (const config of categoriasConfig) {
+      if (anotacionText.includes(config.value)) {
+        return config;
       }
-    );
+    }
+    return {
+      icon: "📝",
+      color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
+    };
   };
 
-  // --- Datos únicos para filtros (extraídos de las inasistencias y APIs) ---
+  // --- Datos únicos para filtros (extraídos de las anotaciones y APIs) ---
   let docentesUnicos: string[] = [];
   let materiasUnicas: string[] = [];
   let gradosUnicos: string[] = [];
-  let motivosUnicos: string[] = [];
+  let anotacionesUnicas: string[] = [];
 
   // --- Datos filtrados para selects dependientes ---
   $: materiasPorDocente = filtros.docente
     ? [
         ...new Set(
-          inasistencias
+          anotaciones
             .filter((i) => i.docente === filtros.docente)
             .map((i) => i.materia)
             .filter(Boolean),
@@ -244,7 +203,7 @@
   $: gradosPorDocente = filtros.docente
     ? [
         ...new Set(
-          inasistencias
+          anotaciones
             .filter((i) => i.docente === filtros.docente)
             .map((i) => i.grado)
             .filter(Boolean),
@@ -262,7 +221,7 @@
   $: gradosPorMateria = filtros.materia
     ? [
         ...new Set(
-          inasistencias
+          anotaciones
             .filter((i) => i.materia === filtros.materia)
             .map((i) => i.grado)
             .filter(Boolean),
@@ -277,11 +236,11 @@
       })
     : gradosPorDocente;
 
-  $: motivosPorFiltros =
+  $: anotacionesPorFiltros =
     filtros.docente || filtros.materia || filtros.grado
       ? [
           ...new Set(
-            inasistencias
+            anotaciones
               .filter((i) => {
                 if (filtros.docente && i.docente !== filtros.docente)
                   return false;
@@ -290,11 +249,11 @@
                 if (filtros.grado && i.grado !== filtros.grado) return false;
                 return true;
               })
-              .map((i) => i.motivo)
+              .map((i) => i.anotacion)
               .filter(Boolean),
           ),
         ].sort()
-      : motivosUnicos;
+      : anotacionesUnicas;
 
   // --- Estilos reactivos ---
   $: styles = {
@@ -309,37 +268,17 @@
     inputBg: "rgb(var(--bg-secondary))",
   };
 
-  // --- Inasistencias filtradas ---
+  // --- Anotaciones filtradas ---
   $: {
-    console.log("🔄 Filtro reactivo ejecutándose:", {
-      totalInasistencias: inasistencias.length,
-      filtrarPorFecha,
-      fechaInicio: filtros.fechaInicio,
-      fechaFin: filtros.fechaFin,
-    });
-
-    inasistenciasFiltradas = inasistencias.filter((item) => {
+    anotacionesFiltradas = anotaciones.filter((item) => {
       if (filtros.docente && item.docente !== filtros.docente) return false;
       if (filtros.materia && item.materia !== filtros.materia) return false;
       if (filtros.grado && item.grado !== filtros.grado) return false;
-      if (filtros.motivo && item.motivo !== filtros.motivo) return false;
+      if (filtros.anotacion && !item.anotacion.toLowerCase().includes(filtros.anotacion.toLowerCase())) return false;
 
       if (filtrarPorFecha) {
         // La fecha ya viene en formato YYYY-MM-DD del API, comparación directa
         const itemFecha = item.fecha; // Ya es "YYYY-MM-DD"
-
-        // DEBUG: Log para ver qué está pasando
-        if (item === inasistencias[0]) {
-          console.log("🔍 DEBUG FILTRO FECHAS:", {
-            filtrarPorFecha,
-            fechaInicio: filtros.fechaInicio,
-            fechaFin: filtros.fechaFin,
-            itemFecha,
-            pasaFechaInicio:
-              !filtros.fechaInicio || itemFecha >= filtros.fechaInicio,
-            pasaFechaFin: !filtros.fechaFin || itemFecha <= filtros.fechaFin,
-          });
-        }
 
         if (filtros.fechaInicio && itemFecha < filtros.fechaInicio)
           return false;
@@ -348,10 +287,6 @@
 
       return true;
     });
-
-    console.log(
-      `📊 Resultados filtrados: ${inasistenciasFiltradas.length} de ${inasistencias.length}`,
-    );
   }
 
   // --- Auto-inicializar fechas cuando se activa el filtro ---
@@ -363,27 +298,19 @@
   const loadData = async () => {
     isLoadingData = true;
     try {
-      const [inasistenciasData, docentesData, materiasData, estudiantesData] =
+      const [anotacionesData, docentesData, materiasData, estudiantesData] =
         await Promise.all([
-          getInasistencias({
-            spreadsheetId: SPREADSHEET_ID,
-            worksheetTitle: WORKSHEET_TITLE,
+          getAnotador({
+            spreadsheetId: SPREADSHEET_ID_ANOTADOR,
+            worksheetTitle: WORKSHEET_TITLE_ANOTADOR,
           }),
           getDocentes(),
           getMaterias(),
           getEstudiantes(),
         ]);
 
-      // Debug: Verificar la estructura de los datos
-      console.log("Respuesta cruda de inasistencias:", inasistenciasData);
-      console.log("Tipo de dato:", typeof inasistenciasData);
-      console.log("Es array:", Array.isArray(inasistenciasData));
-      if (inasistenciasData && typeof inasistenciasData === "object") {
-        console.log("Keys:", Object.keys(inasistenciasData));
-      }
-
-      // --- Función para procesar las inasistencias del API ---
-      const procesarInasistencias = (data: any): InasistenciaData[] => {
+      // --- Función para procesar las anotaciones del API ---
+      const procesarAnotaciones = (data: any): AnotadorData[] => {
         if (!data?.records || !Array.isArray(data.records)) return [];
 
         // La primera fila contiene los encabezados
@@ -395,17 +322,16 @@
             const values = row.values || [];
             return {
               timestamp: values[0] || "",
-              docente: values[1] || "",
-              fecha: values[2] || "",
-              horas: values[3] || "",
-              materia: values[4] || "",
-              motivo: values[5] || "",
-              grado: values[6] || "",
-              nombre: values[7] || "",
-              observaciones: values[8] || "",
+              fecha: values[1] || "",
+              docente: values[2] || "",
+              materia: values[3] || "",
+              grado: values[4] || "",
+              horas: values[5] || "",
+              anotacion: values[6] || "",
+              observacion: values[7] || "",
             };
           })
-          .filter((item: InasistenciaData) => item.docente && item.fecha); // Solo registros válidos
+          .filter((item: AnotadorData) => item.docente && item.fecha); // Solo registros válidos
       };
 
       // --- Función helper para extraer array de diferentes estructuras de respuesta ---
@@ -414,38 +340,36 @@
         if (data?.data && Array.isArray(data.data)) return data.data;
         if (data?.rows && Array.isArray(data.rows)) return data.rows;
         if (data?.values && Array.isArray(data.values)) return data.values;
-        if (data?.inasistencias && Array.isArray(data.inasistencias))
-          return data.inasistencias;
+        if (data?.anotaciones && Array.isArray(data.anotaciones))
+          return data.anotaciones;
         return [];
       };
 
       // Procesar datos
-      inasistencias = procesarInasistencias(inasistenciasData);
+      anotaciones = procesarAnotaciones(anotacionesData);
       docentes = extractArray(docentesData);
       materias = extractArray(materiasData);
       estudiantes = extractArray(estudiantesData);
 
-      // Extraer valores únicos para filtros (combinando datos de APIs y de inasistencias)
+      // Extraer valores únicos para filtros (combinando datos de APIs y de anotaciones)
 
-      // Docentes: combinar de la API de docentes y de las inasistencias
-      // Docentes: extraer solo de las inasistencias (registros existentes)
+      // Docentes: extraer solo de las anotaciones (registros existentes)
       docentesUnicos =
-        inasistencias.length > 0
+        anotaciones.length > 0
           ? [
-              ...new Set(inasistencias.map((i) => i.docente).filter(Boolean)),
+              ...new Set(anotaciones.map((i) => i.docente).filter(Boolean)),
             ].sort()
           : [];
 
-      // Materias: combinar de la API de materias y de las inasistencias
-      // Materias: extraer solo de las inasistencias (registros existentes)
+      // Materias: extraer solo de las anotaciones (registros existentes)
       materiasUnicas =
-        inasistencias.length > 0
+        anotaciones.length > 0
           ? [
-              ...new Set(inasistencias.map((i) => i.materia).filter(Boolean)),
+              ...new Set(anotaciones.map((i) => i.materia).filter(Boolean)),
             ].sort()
           : [];
 
-      // Grados: combinar de la API de estudiantes y de las inasistencias
+      // Grados: combinar de la API de estudiantes y de las anotaciones
       const gradosFromAPI = [
         ...new Set(
           estudiantes
@@ -456,12 +380,12 @@
             .filter(Boolean),
         ),
       ];
-      const gradosFromInasistencias =
-        inasistencias.length > 0
-          ? inasistencias.map((i) => i.grado).filter(Boolean)
+      const gradosFromAnotaciones =
+        anotaciones.length > 0
+          ? anotaciones.map((i) => i.grado).filter(Boolean)
           : [];
       gradosUnicos = [
-        ...new Set([...gradosFromAPI, ...gradosFromInasistencias]),
+        ...new Set([...gradosFromAPI, ...gradosFromAnotaciones]),
       ].sort((a, b) => {
         // Ordenar grados numéricamente si es posible
         const aNum = parseInt(a);
@@ -472,11 +396,11 @@
         return a.localeCompare(b);
       });
 
-      // Motivos: extraer solo de las inasistencias (no hay API para esto)
-      motivosUnicos =
-        inasistencias.length > 0
+      // Anotaciones: extraer solo de las anotaciones (no hay API para esto)
+      anotacionesUnicas =
+        anotaciones.length > 0
           ? [
-              ...new Set(inasistencias.map((i) => i.motivo).filter(Boolean)),
+              ...new Set(anotaciones.map((i) => i.anotacion).filter(Boolean)),
             ].sort()
           : [];
 
@@ -484,19 +408,19 @@
       initializeDates();
 
       console.log("Datos cargados:", {
-        inasistencias: inasistencias.length,
+        anotaciones: anotaciones.length,
         docentes: docentes.length,
         docentesUnicos: docentesUnicos.length,
         materiasUnicas: materiasUnicas.length,
         gradosUnicos: gradosUnicos.length,
-        motivosUnicos: motivosUnicos.length,
+        anotacionesUnicas: anotacionesUnicas.length,
       });
     } catch (error) {
       console.error("Error cargando datos:", error);
       await Swal.fire({
         icon: "error",
         title: "Error",
-        text: "No se pudieron cargar los datos de inasistencias",
+        text: "No se pudieron cargar los datos de anotaciones",
         confirmButtonColor: "#ef4444",
       });
     } finally {
@@ -512,7 +436,7 @@
       grado: "",
       fechaInicio: "",
       fechaFin: "",
-      motivo: "",
+      anotacion: "",
     };
     initializeDates();
     filtrarPorFecha = false;
@@ -520,7 +444,7 @@
 
   // --- Exportar a CSV ---
   const exportarCSV = () => {
-    if (inasistenciasFiltradas.length === 0) {
+    if (anotacionesFiltradas.length === 0) {
       Swal.fire({
         icon: "warning",
         title: "Sin datos",
@@ -535,24 +459,22 @@
       "Docente",
       "Materia",
       "Grado",
-      "Estudiante",
-      "Motivo",
       "Horas",
-      "Observaciones",
+      "Anotación",
+      "Observación",
     ];
 
     const csvContent = [
       headers.join(","),
-      ...inasistenciasFiltradas.map((item) =>
+      ...anotacionesFiltradas.map((item) =>
         [
           item.fecha,
           `"${item.docente}"`,
           `"${item.materia}"`,
           item.grado,
-          `"${item.nombre}"`,
-          `"${item.motivo}"`,
           item.horas,
-          `"${item.observaciones}"`,
+          `"${item.anotacion}"`,
+          `"${item.observacion}"`,
         ].join(","),
       ),
     ].join("\n");
@@ -563,7 +485,7 @@
     link.setAttribute("href", url);
     link.setAttribute(
       "download",
-      `inasistencias_${new Date().toISOString().split("T")[0]}.csv`,
+      `anotaciones_${new Date().toISOString().split("T")[0]}.csv`,
     );
     link.style.visibility = "hidden";
     document.body.appendChild(link);
@@ -586,55 +508,10 @@
     }
   };
 
-  // --- Calcular total de horas por estudiante ---
-  const calculateTotalHours = (studentName: string) => {
-    if (!filtros.docente || !filtros.materia || !filtros.grado) return;
-
-    // Filtrar inasistencias del estudiante con TODOS los criterios
-    const studentInasistencias = inasistencias.filter((item) => {
-      // Filtros básicos obligatorios
-      if (item.nombre !== studentName) return false;
-      if (item.docente !== filtros.docente) return false;
-      if (item.materia !== filtros.materia) return false;
-      if (item.grado !== filtros.grado) return false;
-
-      // Filtro de fecha si está activo
-      if (filtrarPorFecha) {
-        const itemFecha = item.fecha; // Ya es "YYYY-MM-DD"
-
-        if (filtros.fechaInicio && itemFecha < filtros.fechaInicio)
-          return false;
-        if (filtros.fechaFin && itemFecha > filtros.fechaFin) return false;
-      }
-      return true;
-    });
-
-    // Calcular suma de horas
-    const totalHours = studentInasistencias.reduce((sum, item) => {
-      const hours = parseInt(item.horas) || 0;
-      return sum + hours;
-    }, 0);
-
-    // Mensaje sobre el rango de fechas
-    let dateMessage = "";
-    if (filtrarPorFecha && filtros.fechaInicio && filtros.fechaFin) {
-      dateMessage = `entre ${formatearFecha(filtros.fechaInicio)} y ${formatearFecha(filtros.fechaFin)}`;
-    } else {
-      dateMessage = "en total (histórico)";
-    }
-
-    Swal.fire({
-      icon: "info",
-      title: studentName,
-      html: `
-        <div class="text-left space-y-2">
-          <p><strong>Materia:</strong> ${filtros.materia}</p>
-          <p><strong>Total inasistencias:</strong> ${totalHours} horas</p>
-          <p class="text-sm text-gray-500 text-center mt-4">(${dateMessage})</p>
-        </div>
-      `,
-      confirmButtonColor: "#4f46e5",
-    });
+  // --- Formatear anotación larga ---
+  const formatearAnotacion = (anotacion: string, maxLength: number = 50) => {
+    if (anotacion.length <= maxLength) return anotacion;
+    return anotacion.substring(0, maxLength) + "...";
   };
 
   onMount(() => {
@@ -670,7 +547,7 @@
             class="text-lg sm:text-xl font-bold"
             style="color: {styles.text};"
           >
-            Inasistencias
+            Anotaciones de Clase
           </h2>
           <p class="text-xs hidden sm:block" style="color: {styles.label};">
             Filtra y consulta los registros
@@ -681,7 +558,7 @@
         <button
           on:click={exportarCSV}
           class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
-          disabled={inasistenciasFiltradas.length === 0}
+          disabled={anotacionesFiltradas.length === 0}
         >
           <svg
             class="w-4 h-4"
@@ -690,7 +567,7 @@
             viewBox="0 0 24 24"
           >
             <path
-              stroke-linecap="round"
+              strokecap="round"
               stroke-linejoin="round"
               stroke-width="2"
               d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
@@ -711,7 +588,7 @@
             viewBox="0 0 24 24"
           >
             <path
-              stroke-linecap="round"
+              strokecap="round"
               stroke-linejoin="round"
               stroke-width="2"
               d="M6 18L18 6M6 6l12 12"
@@ -741,7 +618,7 @@
           <div class="flex items-center justify-between mb-2 sm:mb-3">
             <h3 class="text-lg font-semibold" style="color: {styles.text};">
               Filtros
-              {#if filtros.docente || filtros.materia || filtros.grado || filtros.motivo || filtros.fechaInicio || filtros.fechaFin}
+              {#if filtros.docente || filtros.materia || filtros.grado || filtros.anotacion || filtros.fechaInicio || filtros.fechaFin}
                 <span
                   class="ml-2 px-2 py-1 text-xs bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded-full"
                 >
@@ -915,38 +792,20 @@
 
               <div class="flex-1 space-y-1.5 sm:space-y-2">
                 <label
-                  for="filtroMotivo"
+                  for="filtroAnotacion"
                   class="block text-xs sm:text-sm font-medium"
                   style="color: {styles.label};"
                 >
-                  Motivo
+                  Búsqueda en anotación
                 </label>
-                <select
-                  id="filtroMotivo"
-                  bind:value={filtros.motivo}
+                <input
+                  id="filtroAnotacion"
+                  type="text"
+                  bind:value={filtros.anotacion}
+                  placeholder="Buscar en anotaciones..."
                   class="w-full px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border focus:ring-2 focus:ring-indigo-500 outline-none text-xs sm:text-sm"
                   style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
-                >
-                  <option value="">
-                    {filtros.docente || filtros.materia || filtros.grado
-                      ? "Todos los motivos filtrados"
-                      : "Todos los motivos"}
-                  </option>
-                  {#each motivosPorFiltros as motivo}
-                    {@const config = getMotivoConfig(motivo)}
-                    <option value={motivo}>
-                      {config.icon}
-                      {motivo}
-                    </option>
-                  {/each}
-                </select>
-                {#if (filtros.docente || filtros.materia || filtros.grado) && motivosPorFiltros.length === 0}
-                  <p
-                    class="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400 mt-1"
-                  >
-                    No hay motivos para los filtros seleccionados
-                  </p>
-                {/if}
+                />
               </div>
             </div>
 
@@ -995,12 +854,12 @@
           <div class="mb-4 px-0 sm:px-3">
             <p class="text-sm" style="color: {styles.label};">
               Se encontraron <span class="font-bold text-indigo-500"
-                >{inasistenciasFiltradas.length}</span
+                >{anotacionesFiltradas.length}</span
               > registros
             </p>
           </div>
 
-          {#if inasistenciasFiltradas.length === 0}
+          {#if anotacionesFiltradas.length === 0}
             <div class="flex-1 flex items-center justify-center">
               <div class="text-center py-12 px-4">
                 <svg
@@ -1011,7 +870,7 @@
                   style="color: {styles.icon};"
                 >
                   <path
-                    stroke-linecap="round"
+                    strokecap="round"
                     stroke-linejoin="round"
                     stroke-width="2"
                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
@@ -1029,7 +888,7 @@
                 class="flex-1 overflow-auto min-w-full border rounded-lg"
                 style="border-color: {styles.cardBorder};"
               >
-                <table class="w-full border-collapse text-sm min-w-[800px]">
+                <table class="w-full border-collapse text-sm min-w-[900px]">
                   <thead
                     class="sticky top-0 z-10 border-b"
                     style="background-color: {styles.cardBg}; border-color: {styles.border};"
@@ -1052,26 +911,22 @@
                         style="color: {styles.text};">Grado</th
                       >
                       <th
-                        class="text-left p-2 font-semibold whitespace-nowrap"
-                        style="color: {styles.text};">Estudiante</th
-                      >
-                      <th
-                        class="text-center p-2 font-semibold whitespace-nowrap"
-                        style="color: {styles.text};">Motivo</th
-                      >
-                      <th
                         class="text-center p-2 font-semibold whitespace-nowrap"
                         style="color: {styles.text};">Horas</th
                       >
                       <th
                         class="text-left p-2 font-semibold whitespace-nowrap"
-                        style="color: {styles.text};">Observaciones</th
+                        style="color: {styles.text};">Anotación</th
+                      >
+                      <th
+                        class="text-left p-2 font-semibold whitespace-nowrap"
+                        style="color: {styles.text};">Observación</th
                       >
                     </tr>
                   </thead>
                   <tbody>
-                    {#each inasistenciasFiltradas as item, index}
-                      {@const config = getMotivoConfig(item.motivo)}
+                    {#each anotacionesFiltradas as item, index}
+                      {@const config = getCategoriaConfig(item.anotacion)}
                       <tr
                         class="border-b transition-colors hover:bg-black/5 dark:hover:bg-white/5 text-xs"
                         style="border-color: {styles.border};"
@@ -1094,144 +949,29 @@
                           style="color: {styles.text};">{item.grado}</td
                         >
                         <td
-                          class="p-2 truncate max-w-[150px]"
-                          style="color: {styles.text};"
-                          title={item.nombre}
-                        >
-                          {#if filtros.docente && filtros.materia && filtros.grado}
-                            <button
-                              class="text-indigo-600 dark:text-indigo-400 hover:underline font-medium text-left truncate w-full"
-                              on:click={() => calculateTotalHours(item.nombre)}
-                            >
-                              {item.nombre}
-                            </button>
-                          {:else}
-                            {item.nombre}
-                          {/if}
-                        </td>
-                        <td class="p-2 text-center">
-                          <span
-                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium {config.color}"
-                          >
-                            <span>{config.icon}</span>
-                            {item.motivo}
-                          </span>
-                        </td>
-                        <td
                           class="p-2 text-center"
                           style="color: {styles.text};">{item.horas}</td
                         >
                         <td class="p-2" style="color: {styles.text};">
+                          <div class="flex items-center gap-2 max-w-[300px]">
+                            <span
+                              class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium {config.color} flex-shrink-0"
+                            >
+                              <span>{config.icon}</span>
+                            </span>
+                            <span 
+                              class="truncate" 
+                              title={item.anotacion}
+                            >
+                              {formatearAnotacion(item.anotacion, 100)}
+                            </span>
+                          </div>
+                        </td>
+                        <td class="p-2" style="color: {styles.text};">
                           <span class="truncate block max-w-xs text-xs">
-                            {item.observaciones || "-"}
+                            {item.observacion || "-"}
                           </span>
                         </td>
-                      </tr>
-                    {/each}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- Vista Tablet -->
-            <div class="hidden md:flex lg:hidden flex-1 overflow-auto">
-              <div
-                class="min-w-full border rounded-lg"
-                style="border-color: {styles.cardBorder};"
-              >
-                <table class="w-full border-collapse text-xs">
-                  <thead
-                    class="sticky top-0 z-10 border-b"
-                    style="background-color: {styles.cardBg}; border-color: {styles.border};"
-                  >
-                    <tr>
-                      <th
-                        class="text-left p-2 font-semibold whitespace-nowrap"
-                        style="color: {styles.text};">Fecha</th
-                      >
-                      <th
-                        class="text-left p-2 font-semibold whitespace-nowrap"
-                        style="color: {styles.text};">Docente</th
-                      >
-                      <th
-                        class="text-left p-2 font-semibold whitespace-nowrap"
-                        style="color: {styles.text};">Materia</th
-                      >
-                      <th
-                        class="text-left p-2 font-semibold whitespace-nowrap"
-                        style="color: {styles.text};">Estudiante</th
-                      >
-                      <th
-                        class="text-center p-2 font-semibold whitespace-nowrap"
-                        style="color: {styles.text};">Motivo</th
-                      >
-                      <th
-                        class="text-center p-2 font-semibold whitespace-nowrap"
-                        style="color: {styles.text};">Horas</th
-                      >
-                      <th
-                        class="text-center p-2 font-semibold whitespace-nowrap"
-                        style="color: {styles.text};">Grado</th
-                      >
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {#each inasistenciasFiltradas as item, index}
-                      {@const config = getMotivoConfig(item.motivo)}
-                      <tr
-                        class="border-b transition-colors hover:bg-black/5 dark:hover:bg-white/5 text-xs"
-                        style="border-color: {styles.border};"
-                      >
-                        <td
-                          class="p-2 whitespace-nowrap"
-                          style="color: {styles.text};"
-                          >{formatearFecha(item.fecha)}</td
-                        >
-                        <td class="p-2" style="color: {styles.text};">
-                          <span
-                            class="truncate block max-w-[120px]"
-                            title={item.docente}>{item.docente}</span
-                          >
-                        </td>
-                        <td
-                          class="p-2 truncate max-w-[120px]"
-                          style="color: {styles.text};"
-                          title={item.materia}>{item.materia}</td
-                        >
-                        <td class="p-2" style="color: {styles.text};">
-                          <span
-                            class="truncate block max-w-[100px]"
-                            title={item.nombre}
-                          >
-                            {#if filtros.docente && filtros.materia && filtros.grado}
-                              <button
-                                class="text-indigo-600 dark:text-indigo-400 hover:underline font-medium text-left truncate w-full"
-                                on:click={() =>
-                                  calculateTotalHours(item.nombre)}
-                              >
-                                {item.nombre}
-                              </button>
-                            {:else}
-                              {item.nombre}
-                            {/if}
-                          </span>
-                        </td>
-                        <td class="p-2 text-center">
-                          <span
-                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium {config.color}"
-                          >
-                            <span>{config.icon}</span>
-                            {item.motivo}
-                          </span>
-                        </td>
-                        <td
-                          class="p-2 whitespace-nowrap text-center"
-                          style="color: {styles.text};">{item.horas}</td
-                        >
-                        <td
-                          class="p-2 whitespace-nowrap text-center"
-                          style="color: {styles.text};">{item.grado}</td
-                        >
                       </tr>
                     {/each}
                   </tbody>
@@ -1240,57 +980,36 @@
             </div>
 
             <!-- Vista Mobile: Tarjetas -->
-            <div class="flex-1 overflow-y-auto md:hidden px-1">
+            <div class="flex-1 overflow-y-auto lg:hidden px-1">
               <div class="space-y-2">
-                {#each inasistenciasFiltradas as item, index}
-                  {@const config = getMotivoConfig(item.motivo)}
+                {#each anotacionesFiltradas as item, index}
+                  {@const config = getCategoriaConfig(item.anotacion)}
                   <div
-                    class="border rounded-lg p-2 transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                    class="border rounded-lg p-3 transition-colors hover:bg-black/5 dark:hover:bg-white/5"
                     style="border-color: {styles.cardBorder}; background-color: {styles.cardBg};"
                   >
                     <!-- Header compacto de la tarjeta -->
-                    <div class="flex justify-between items-center mb-1.5">
+                    <div class="flex justify-between items-center mb-2">
                       <div class="flex-1 min-w-0">
-                        {#if filtros.docente && filtros.materia && filtros.grado}
-                          <button
-                            class="font-semibold text-xs text-indigo-600 dark:text-indigo-400 truncate hover:underline text-left w-full"
-                            on:click={() => calculateTotalHours(item.nombre)}
+                        <div class="flex items-center gap-2 mb-1">
+                          <span
+                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium {config.color} flex-shrink-0"
                           >
-                            {item.nombre}
-                          </button>
-                        {:else}
+                            <span>{config.icon}</span>
+                          </span>
                           <p
-                            class="font-semibold text-xs text-indigo-600 dark:text-indigo-400 truncate"
+                            class="text-xs opacity-75"
+                            style="color: {styles.label};"
                           >
-                            {item.nombre}
+                            {item.grado} • {formatearFecha(item.fecha)} • {item.horas}h
                           </p>
-                        {/if}
-                        <p
-                          class="text-[10px] opacity-75"
-                          style="color: {styles.label};"
-                        >
-                          {item.grado} • {formatearFecha(item.fecha)}
-                        </p>
-                      </div>
-                      <div class="flex flex-col items-end ml-2 flex-shrink-0">
-                        <span
-                          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium {config.color} mb-0.5"
-                        >
-                          <span>{config.icon}</span>
-                          {item.motivo}
-                        </span>
-                        <span
-                          class="text-[10px] font-semibold"
-                          style="color: {styles.text};"
-                        >
-                          {item.horas}h
-                        </span>
+                        </div>
                       </div>
                     </div>
 
-                    <!-- Información compacta del docente y materia -->
+                    <!-- Información del docente y materia -->
                     <div
-                      class="flex gap-3 text-[10px] mb-1.5"
+                      class="flex gap-2 text-[10px] mb-2"
                       style="color: {styles.text};"
                     >
                       <div class="flex items-center flex-1 min-w-0">
@@ -1301,7 +1020,7 @@
                           viewBox="0 0 24 24"
                         >
                           <path
-                            stroke-linecap="round"
+                            strokecap="round"
                             stroke-linejoin="round"
                             stroke-width="2"
                             d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
@@ -1317,7 +1036,7 @@
                           viewBox="0 0 24 24"
                         >
                           <path
-                            stroke-linecap="round"
+                            strokecap="round"
                             stroke-linejoin="round"
                             stroke-width="2"
                             d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
@@ -1329,28 +1048,21 @@
                       </div>
                     </div>
 
-                    <!-- Observaciones si existen -->
-                    {#if item.observaciones}
-                      <div
-                        class="text-[10px] p-1.5 rounded"
-                        style="background-color: {styles.inputBg}; color: {styles.label};"
-                      >
-                        <div class="flex items-start">
-                          <svg
-                            class="w-3 h-3 mr-1 mt-0.5 flex-shrink-0 opacity-60"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                            />
-                          </svg>
-                          <span class="line-clamp-1">{item.observaciones}</span>
-                        </div>
+                    <!-- Anotación -->
+                    <div class="mb-2">
+                      <p class="text-xs font-medium mb-1" style="color: {styles.label};">Anotación:</p>
+                      <p class="text-xs" style="color: {styles.text};" title={item.anotacion}>
+                        {formatearAnotacion(item.anotacion, 150)}
+                      </p>
+                    </div>
+
+                    <!-- Observación si existe -->
+                    {#if item.observacion}
+                      <div>
+                        <p class="text-xs font-medium mb-1" style="color: {styles.label};">Observación:</p>
+                        <p class="text-xs" style="color: {styles.text};" title={item.observacion}>
+                          {formatearAnotacion(item.observacion, 150)}
+                        </p>
                       </div>
                     {/if}
                   </div>

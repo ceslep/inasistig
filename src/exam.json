@@ -1,246 +1,3648 @@
 {
-  "Estrategias de Enseñanza-Aprendizaje": [
-    "Magistral, participación alta, motivación alta, actitud alta, actividad alta, clima positivo, evaluación excelente, sin dificultades",
-    "Magistral, participación media, motivación media, actitud mediana, actividad mediana, clima neutro, evaluación aceptable, falta de tiempo",
-    "Magistral, participación baja, motivación baja, actitud básica, actividad básica, clima tenso, evaluación deficiente, indisciplina",
-    "Taller práctico, participación alta, motivación alta, actitud alta, actividad alta, clima muy positivo, evaluación excelente, sin dificultades",
-    "Taller práctico, participación media, motivación alta, actitud alta, actividad mediana, clima positivo, evaluación buena, problemas técnicos",
-    "Taller práctico, participación baja, motivación baja, actitud básica, actividad básica, clima conflictivo, evaluación deficiente, falta de recursos",
-    "Trabajo en grupo, participación alta, motivación alta, actitud alta, actividad alta, clima positivo, evaluación buena, sin dificultades",
-    "Trabajo en grupo, participación media, motivación media, actitud mediana, actividad mediana, clima neutro, evaluación aceptable, dificultades de comprensión",
-    "Trabajo en grupo, participación baja, motivación baja, actitud básica, actividad básica, clima tenso, evaluación deficiente, indisciplina",
-    "Clase invertida, participación alta, motivación alta, actitud alta, actividad alta, clima positivo, evaluación excelente, sin dificultades",
-    "Clase invertida, participación media, motivación media, actitud mediana, actividad mediana, clima positivo, evaluación buena, falta de tiempo",
-    "Clase invertida, participación baja, motivación baja, actitud básica, actividad básica, clima tenso, evaluación deficiente, indisciplina",
-    "Lluvia de ideas, participación alta, motivación media, actitud propositiva, actividad oral, clima creativo, evaluación formativa, construcción conceptos previos",
-    "Mapa mental grupal, participación media, motivación alta, actitud creativa, actividad gráfica, clima colaborativo, evaluación buena, síntesis visual información",
-    "Lectura en voz alta, participación media, motivación media, actitud atenta, actividad verbal, clima respetuoso, evaluación aceptable, fluidez lectora técnica",
-    "Dictado de código, participación baja, motivación baja, actitud concentrada, actividad escritura, clima silencioso, evaluación buena, precisión sintaxis",
-    "Video tutorial guiado, participación alta, motivación alta, actitud autónoma, actividad práctica, clima silencioso, evaluación buena, paso a paso técnico",
-    "Seminario investigativo, participación media, motivación alta, actitud indagadora, actividad debate, clima académico, evaluación excelente, profundidad argumentativa",
-    "Estudio de caso, participación alta, motivación media, actitud analítica, actividad lectura, clima reflexivo, evaluación buena, conexión teoría-práctica",
-    "Juego de roles, participación muy alta, motivación alta, actitud empática, actividad simulación, clima divertido, evaluación buena, comprensión perspectivas",
-    "Aprendizaje entre pares, participación alta, motivación alta, actitud solidaria, actividad tutoría, clima de confianza, evaluación excelente, nivelación conocimientos",
-    "Micro-learning, participación media, motivación media, actitud receptiva, actividad breve, clima dinámico, evaluación aceptable, cápsulas de conocimiento",
-    "Debate socrático, participación alta, motivación media, actitud crítica, actividad dialógica, clima tenso, evaluación excelente, mayéutica digital",
-    "Salida de campo virtual, participación media, motivación alta, actitud curiosa, actividad exploración, clima relajado, evaluación buena, reporte de observación",
-    "Mesa redonda, participación media, motivación media, actitud respetuosa, actividad oral, clima democrático, evaluación aceptable, intercambio opiniones",
-    "Aprendizaje basado en retos, participación alta, motivación muy alta, actitud competitiva, actividad práctica, clima eufórico, evaluación excelente, solución innovadora"
-  ],
-  "Evaluación y Verificación de Saberes": [
-    "Evaluación escrita tipo Saber, participación total, motivación media, actitud seria, actividad individual, clima tenso, evaluación diagnóstica, simulacro componentes TIC",
-    "Quiz rápido conceptos, participación alta, motivación alta, actitud competitiva, actividad breve, clima expectante, evaluación buena, validación saberes previos",
-    "Prueba escrita abierta, participación media, motivación media, actitud pensativa, actividad media, clima silencioso, evaluación aceptable, argumentación teórica",
-    "Evaluación recuperación, participación baja, motivación baja, actitud resignada, actividad individual, clima pesado, evaluación deficiente, plan mejoramiento",
-    "Sustentación oral proyecto, participación media, motivación alta, actitud nerviosa, actividad individual, clima respetuoso, evaluación buena, defensa código propio",
-    "Evaluación oral grupal, participación alta, motivación media, actitud colaborativa, actividad oral, clima dinámico, evaluación excelente, dominio tema técnico",
-    "Autoevaluación rúbrica, participación alta, motivación media, actitud honesta, actividad individual, clima silencioso, evaluación reflexiva, portafolio digital",
-    "Coevaluación proyectos, participación media, motivación media, actitud justa, actividad grupal, clima crítico, evaluación constructiva, feedback compañeros",
-    "Revisión de cuaderno, participación media, motivación media, actitud responsable, actividad individual, clima ordenado, evaluación formativa, registro evidencias",
-    "Revisión de tareas, participación media, motivación media, actitud responsable, actividad individual, clima ordenado, evaluación formativa, cumplimiento compromisos",
-    "Corrección cruzada, participación media, motivación media, actitud honesta, actividad analítica, clima justo, evaluación buena, retroalimentación compañera",
-    "Portafolio de evidencias, participación alta, motivación alta, actitud organizada, actividad compilación, clima tranquilo, evaluación excelente, progreso semestral",
-    "Boleto de salida, participación media, motivación media, actitud reflexiva, actividad escrita, clima rápido, evaluación formativa, metacognición final",
-    "Observación directa, participación n\/a, motivación variable, actitud natural, actividad rutinaria, clima normal, evaluación cualitativa, lista de chequeo",
-    "Entrevista personal, participación baja, motivación media, actitud nerviosa, actividad diálogo, clima privado, evaluación profunda, retroalimentación individual",
-    "Kahoot evaluativo, participación total, motivación muy alta, actitud lúdica, actividad digital, clima ruidoso, evaluación cuantitativa, ranking conocimientos",
-    "Examen práctico PC, participación alta, motivación media, actitud enfocada, actividad técnica, clima silencioso, evaluación objetiva, funcionalidad entregable",
-    "Mapa conceptual evaluativo, participación media, motivación media, actitud sintética, actividad gráfica, clima concentrado, evaluación buena, jerarquización conceptos",
-    "Ensayo argumentativo, participación media, motivación baja, actitud crítica, actividad redacción, clima serio, evaluación buena, postura ética tecnología",
-    "Heteroevaluación final, participación n\/a, motivación expectante, actitud receptiva, actividad cierre, clima formal, evaluación sumativa, nota definitiva",
-    "Validación de prototipo, participación alta, motivación alta, actitud ingenieril, actividad prueba, clima técnico, evaluación excelente, funcionamiento real",
-    "Defensa de tesis escolar, participación media, motivación alta, actitud solemne, actividad oral, clima académico, evaluación excelente, grado de profundización",
-    "Prueba de velocidad, participación alta, motivación alta, actitud ágil, actividad motriz, clima intenso, evaluación cuantitativa, palabras por minuto",
-    "Auditoría de código, participación media, motivación media, actitud detallista, actividad revisión, clima analítico, evaluación buena, limpieza sintaxis",
-    "Bitácora de seguimiento, participación media, motivación media, actitud constante, actividad registro, clima personal, evaluación formativa, evolución proceso"
-  ],
-  "Enfoque STEM+ y Contexto Rural": [
-    "ABP Agroindustrial, participación alta, motivación alta, actitud propositiva, actividad alta, clima laboral, evaluación excelente, prototipo sensor humedad café",
-    "Ruta turística digital, participación media, motivación alta, actitud creativa, actividad media, clima dinámico, evaluación buena, mapa interactivo veredal",
-    "Laboratorio STEM, participación alta, motivación media, actitud curiosa, actividad alta, clima experimental, evaluación excelente, automatización riego casero",
-    "Emprendimiento rural, participación media, motivación alta, actitud líder, actividad media, clima cooperativo, evaluación buena, plan negocio tienda escolar",
-    "Hackathon veredal, participación alta, motivación muy alta, actitud resiliente, actividad intensa, clima competitivo, evaluación excelente, app gestión residuos",
-    "Huerta escolar tech, participación alta, motivación alta, actitud cuidadora, actividad física, clima vital, evaluación excelente, monitoreo cultivo",
-    "Soberanía alimentaria TIC, participación media, motivación alta, actitud reivindicativa, actividad media, clima comprometido, evaluación excelente, app mercado campesino",
-    "Análisis Big Data local, participación media, motivación media, actitud curiosa, actividad media, clima analítico, evaluación buena, estadísticas producción café",
-    "Cartografía social, participación alta, motivación media, actitud crítica, actividad campo, clima exploratorio, evaluación excelente, mapeo riesgos vereda",
-    "Estación meteorológica, participación alta, motivación alta, actitud científica, actividad montaje, clima exterior, evaluación excelente, registro datos clima",
-    "Secador solar automatizado, participación media, motivación alta, actitud maker, actividad construcción, clima colaborativo, evaluación buena, control temperatura Arduino",
-    "Catálogo flora local, participación media, motivación media, actitud observadora, actividad fotografía, clima natural, evaluación buena, base de datos biológica",
-    "Podcast historias veredales, participación alta, motivación alta, actitud narrativa, actividad grabación, clima emotivo, evaluación excelente, rescate tradición oral",
-    "Diseño empaque café, participación media, motivación alta, actitud creativa, actividad diseño, clima artístico, evaluación buena, identidad marca local",
-    "Georreferenciación fincas, participación baja, motivación media, actitud técnica, actividad GPS, clima campo, evaluación aceptable, uso Google Earth",
-    "Compostaje inteligente, participación media, motivación media, actitud ecológica, actividad monitoreo, clima sucio, evaluación buena, sensores pH",
-    "Red comunitaria internet, participación alta, motivación muy alta, actitud solidaria, actividad infraestructura, clima técnico, evaluación excelente, conectividad rural",
-    "Turismo avistamiento aves, participación media, motivación alta, actitud paciente, actividad app, clima silencioso, evaluación buena, registro ornitológico",
-    "Recetas ancestrales blog, participación alta, motivación alta, actitud cultural, actividad web, clima culinario, evaluación excelente, digitalización patrimonio",
-    "Feria empresarial rural, participación muy alta, motivación muy alta, actitud vendedora, actividad stand, clima festivo, evaluación final, proyecto productivo",
-    "Energías limpias aula, participación media, motivación media, actitud experimental, actividad maqueta, clima soleado, evaluación buena, panel solar demostrativo",
-    "Tratamiento aguas TIC, participación alta, motivación media, actitud ambiental, actividad prototipo, clima húmedo, evaluación buena, filtro automatizado",
-    "Control plagas bio, participación media, motivación baja, actitud investigativa, actividad análisis, clima serio, evaluación aceptable, identificación insectos app",
-    "Mercadeo digital campesino, participación alta, motivación alta, actitud estratégica, actividad redes, clima social, evaluación excelente, venta productos reales",
-    "Puente hídrico maqueta, participación media, motivación media, actitud constructiva, actividad ingeniería, clima concentrado, evaluación buena, principios física"
-  ],
-  "Prácticas de Laboratorio y Mantenimiento": [
-    "Mantenimiento preventivo PC, participación alta, motivación alta, actitud servicial, actividad manual, clima cooperativo, evaluación excelente, limpieza hardware sala",
-    "Ensamble componentes, participación media, motivación alta, actitud curiosa, actividad práctica, clima cuidadoso, evaluación buena, reconocimiento partes",
-    "Organización cableado sala, participación baja, motivación media, actitud colaborativa, actividad física, clima ordenado, evaluación aceptable, gestión espacio físico",
-    "Taller cableado red, participación alta, motivación muy alta, actitud técnica, actividad manual, clima enfocado, evaluación excelente, cable directo funcional",
-    "Práctica ensamble PC, participación muy alta, motivación alta, actitud cuidadosa, actividad motriz, clima tenso, evaluación buena, reconocimiento hardware",
-    "Instalación S.O., participación media, motivación alta, actitud paciente, actividad técnica, clima expectante, evaluación excelente, configuración inicial",
-    "Limpieza virus USB, participación alta, motivación alta, actitud preventiva, actividad técnica, clima cuidadoso, evaluación buena, rescate archivos ocultos",
-    "Inventario hardware sala, participación media, motivación media, actitud ordenada, actividad logística, clima colaborativo, evaluación formativa, registro periféricos",
-    "Desarme RAEE, participación muy alta, motivación alta, actitud exploradora, actividad manual, clima sucio, evaluación buena, reciclaje electrónico",
-    "Jornada de aseo sala, participación media, motivación media, actitud colaborativa, actividad física, clima organizado, evaluación actitudinal, sentido de pertenencia",
-    "Cambio pasta térmica, participación media, motivación alta, actitud delicada, actividad manual, clima silencioso, evaluación excelente, control temperatura CPU",
-    "Configuración BIOS, participación baja, motivación media, actitud atenta, actividad lógica, clima técnico, evaluación buena, secuencia arranque",
-    "Particionamiento disco, participación media, motivación media, actitud analítica, actividad riesgo, clima tenso, evaluación aceptable, gestión almacenamiento",
-    "Instalación drivers, participación media, motivación baja, actitud paciente, actividad software, clima monótono, evaluación buena, periféricos funcionales",
-    "Diagnóstico fallos, participación alta, motivación alta, actitud detective, actividad análisis, clima intrigante, evaluación excelente, hallazgo error RAM",
-    "Ponchado cable cruzado, participación media, motivación media, actitud precisa, actividad manual, clima enfocado, evaluación aceptable, testeo conectividad",
-    "Configuración Router, participación alta, motivación alta, actitud admin, actividad red, clima técnico, evaluación buena, seguridad Wifi aula",
-    "Recuperación datos, participación media, motivación alta, actitud esperanzada, actividad software, clima lento, evaluación buena, backup archivos",
-    "Limpieza teclado\/mouse, participación baja, motivación baja, actitud higiene, actividad manual, clima relajado, evaluación aceptable, salubridad equipos",
-    "Gestión residuos tecno, participación media, motivación media, actitud responsable, actividad clasificación, clima ecológico, evaluación buena, separación RAEE",
-    "Soldadura básica, participación alta, motivación alta, actitud cuidadosa, actividad riesgo, clima cauteloso, evaluación excelente, reparación circuito",
-    "Uso multímetro, participación media, motivación media, actitud científica, actividad medición, clima exacto, evaluación buena, voltaje fuente poder",
-    "Virtualización S.O., participación alta, motivación alta, actitud curiosa, actividad software, clima moderno, evaluación excelente, máquina virtual Linux",
-    "Clonación discos, participación media, motivación media, actitud técnica, actividad réplica, clima pasivo, evaluación buena, imagen sistema aula",
-    "Actualización antivirus, participación baja, motivación baja, actitud preventiva, actividad rutina, clima tranquilo, evaluación aceptable, base datos firmas"
-  ],
-  "Ciudadanía Digital y Ética": [
-    "Foro privacidad datos, participación media, motivación media, actitud crítica, actividad baja, clima reflexivo, evaluación buena, decálogo seguridad digital",
-    "Simulación juicio IA, participación alta, motivación alta, actitud argumentativa, actividad alta, clima tenso, evaluación excelente, ética algoritmos",
-    "Campaña ciberacoso, participación media, motivación baja, actitud empática, actividad media, clima sensible, evaluación aceptable, protocolo convivencia digital",
-    "Taller huella digital, participación alta, motivación media, actitud consciente, actividad media, clima seguro, evaluación buena, auditoría redes sociales",
-    "Seguridad informática, participación alta, motivación media, actitud preventiva, actividad alta, clima alerta, evaluación excelente, protección datos personales",
-    "Derechos de autor, participación baja, motivación media, actitud ética, actividad básica, clima legal, evaluación aceptable, uso licencias Creative Commons",
-    "Simulacro phishing, participación alta, motivación media, actitud alerta, actividad análisis, clima sospecha, evaluación excelente, detección fraude correo",
-    "Debate dilema ético, participación alta, motivación media, actitud argumentativa, actividad oral, clima polémico, evaluación buena, pensamiento crítico IA",
-    "Redacción correo formal, participación baja, motivación media, actitud profesional, actividad escritura, clima serio, evaluación aceptable, etiqueta digital",
-    "Prevención sexting, participación media, motivación media, actitud madura, actividad charla, clima serio, evaluación formativa, riesgos compartición íntima",
-    "Análisis Fake News, participación alta, motivación alta, actitud escéptica, actividad verificación, clima debate, evaluación excelente, fuentes confiables",
-    "Uso responsable celular, participación media, motivación baja, actitud normativa, actividad acuerdo, clima negociado, evaluación buena, pacto desconexión",
-    "Salud y ergonomía, participación alta, motivación media, actitud corporal, actividad pausas, clima activo, evaluación buena, prevención túnel carpiano",
-    "Identidad digital, participación media, motivación alta, actitud personal, actividad perfil, clima reflexivo, evaluación buena, marca personal positiva",
-    "Ciberdependencia, participación media, motivación media, actitud autocrítica, actividad test, clima silencioso, evaluación aceptable, control tiempo pantalla",
-    "Grooming alerta, participación alta, motivación media, actitud preventiva, actividad caso, clima seguro, evaluación excelente, identificación perfiles falsos",
-    "Brecha digital, participación baja, motivación media, actitud social, actividad discusión, clima consciente, evaluación buena, acceso desigual TIC",
-    "Basura electrónica, participación media, motivación media, actitud ecológica, actividad campaña, clima verde, evaluación buena, consumo responsable",
-    "Netiqueta redes, participación alta, motivación media, actitud respetuosa, actividad rol, clima amable, evaluación excelente, comunicación asertiva",
-    "Compras seguras, participación media, motivación alta, actitud práctica, actividad simulación, clima atento, evaluación buena, pasarelas pago y candado",
-    "Contraseñas robustas, participación alta, motivación alta, actitud creativa, actividad generador, clima divertido, evaluación excelente, entropía claves",
-    "Ingeniería social, participación media, motivación media, actitud astuta, actividad análisis, clima intrigante, evaluación buena, manipulación psicológica",
-    "Derecho al olvido, participación baja, motivación media, actitud legal, actividad lectura, clima denso, evaluación aceptable, borrado historial",
-    "Cultura libre, participación media, motivación alta, actitud colaborativa, actividad descarga, clima abierto, evaluación buena, software open source",
-    "Mediación digital, participación media, motivación media, actitud conciliadora, actividad chat, clima pacífico, evaluación buena, resolución conflictos online"
-  ],
-  "Pensamiento Computacional y Programación": [
-    "Programación desconectada, participación alta, motivación alta, actitud lúdica, actividad física, clima divertido, evaluación excelente, algoritmos en patio",
-    "Lógica computacional, participación media, motivación media, actitud analítica, actividad media, clima concentrado, evaluación buena, diagramas flujo procesos",
-    "Debugging colaborativo, participación alta, motivación baja, actitud perseverante, actividad alta, clima apoyo, evaluación buena, corrección errores pares",
-    "Pensamiento algorítmico, participación media, motivación alta, actitud lógica, actividad media, clima ordenado, evaluación excelente, optimización ruta escolar",
-    "Robótica reciclada, participación alta, motivación muy alta, actitud creativa, actividad manual, clima caótico, evaluación buena, autómata materiales locales",
-    "Prueba de escritorio, participación media, motivación baja, actitud lógica, actividad mental, clima silencioso, evaluación aceptable, seguimiento algoritmo papel",
-    "Diseño 3D básico, participación alta, motivación alta, actitud espacial, actividad alta, clima concentrado, evaluación excelente, modelado piezas repuesto",
-    "Variables y constantes, participación media, motivación media, actitud abstracta, actividad código, clima silencioso, evaluación buena, asignación valores",
-    "Condicionales SI-INO, participación alta, motivación alta, actitud decisiva, actividad juego, clima dinámico, evaluación excelente, lógica ramificada",
-    "Ciclos repetitivos, participación media, motivación baja, actitud perseverante, actividad bucles, clima repetitivo, evaluación aceptable, optimización código",
-    "Funciones y métodos, participación media, motivación media, actitud modular, actividad bloque, clima ordenado, evaluación buena, reutilización código",
-    "Arreglos y listas, participación baja, motivación media, actitud compleja, actividad datos, clima denso, evaluación aceptable, estructuras datos",
-    "Programación por bloques, participación muy alta, motivación muy alta, actitud visual, actividad MakeCode, clima colorido, evaluación excelente, lógica inicial",
-    "Python básico, participación media, motivación alta, actitud retadora, actividad sintaxis, clima serio, evaluación buena, primer Hola Mundo",
-    "Desarrollo web HTML, participación alta, motivación alta, actitud constructiva, actividad etiquetas, clima visual, evaluación excelente, estructura página",
-    "Estilos CSS, participación alta, motivación alta, actitud estética, actividad diseño, clima creativo, evaluación buena, colores y formas",
-    "JavaScript interacción, participación media, motivación media, actitud lógica, actividad dinámica, clima difícil, evaluación aceptable, eventos web",
-    "Base de datos simple, participación baja, motivación media, actitud organizada, actividad tablas, clima estructurado, evaluación buena, relaciones datos",
-    "Inteligencia Artificial uso, participación muy alta, motivación muy alta, actitud sorprendida, actividad prompt, clima futurista, evaluación excelente, generación contenidos",
-    "Micro:bit práctica, participación alta, motivación alta, actitud maker, actividad hardware, clima experimental, evaluación excelente, sensor temperatura",
-    "Arduino básico, participación media, motivación alta, actitud electrónica, actividad circuito, clima cuidadoso, evaluación buena, led intermitente",
-    "Scratch animación, participación alta, motivación alta, actitud narrativa, actividad historia, clima lúdico, evaluación excelente, cuentos interactivos",
-    "App Inventor móvil, participación alta, motivación muy alta, actitud funcional, actividad celular, clima activo, evaluación buena, apk instalada",
-    "Refactorización código, participación media, motivación baja, actitud perfeccionista, actividad limpieza, clima crítico, evaluación buena, código limpio",
-    "Pair programming, participación alta, motivación alta, actitud comunicativa, actividad parejas, clima ruidoso, evaluación excelente, codificación a cuatro manos"
-  ],
-  "Recursos Analógicos y Contingencias": [
-    "Taller fotocopias, participación alta, motivación media, actitud laboriosa, actividad individual, clima concentrado, evaluación buena, desarrollo guía lógica",
-    "Lectura guía impresa, participación media, motivación baja, actitud dispersa, actividad baja, clima ruidoso, evaluación deficiente, comprensión lectora técnica",
-    "Clase sin internet, participación alta, motivación media, actitud resiliente, actividad desconectada, clima solidario, evaluación buena, trabajo offline local",
-    "Fallo fluido eléctrico, participación media, motivación baja, actitud paciente, actividad oral, clima caluroso, evaluación pendiente, discusión improvisada",
-    "Lectura manual usuario, participación baja, motivación baja, actitud técnica, actividad lectura, clima silencioso, evaluación aceptable, especificaciones técnicas",
-    "Diagramación lógica papel, participación media, motivación media, actitud pensativa, actividad gráfica, clima silencioso, evaluación buena, estructura algoritmo",
-    "Manejo material impreso, participación baja, motivación baja, actitud desinteresada, actividad básica, clima desordenado, evaluación aceptable, pérdida de copias",
-    "Dibujo técnico a mano, participación media, motivación media, actitud precisa, actividad trazos, clima tranquilo, evaluación buena, boceto interfaz",
-    "Sopa de letras TIC, participación alta, motivación alta, actitud relajada, actividad lúdica, clima suave, evaluación recreativa, vocabulario técnico",
-    "Crucigrama conceptos, participación media, motivación media, actitud retadora, actividad mental, clima silencioso, evaluación buena, repaso definiciones",
-    "Mesa redonda sin luz, participación alta, motivación media, actitud adaptativa, actividad oral, clima íntimo, evaluación buena, debate opiniones",
-    "Juego de mesa lógico, participación muy alta, motivación alta, actitud estratégica, actividad lúdica, clima competitivo, evaluación excelente, pensamiento crítico",
-    "Organización física aula, participación media, motivación baja, actitud colaborativa, actividad orden, clima movido, evaluación actitudinal, espacio aprendizaje",
-    "Inventario manual, participación media, motivación media, actitud contable, actividad conteo, clima ordenado, evaluación buena, control bienes",
-    "Lectura libro texto, participación baja, motivación baja, actitud tradicional, actividad lectura, clima aburrido, evaluación aceptable, resumen capítulo",
-    "Cartelera física, participación alta, motivación alta, actitud artística, actividad recorte, clima creativo, evaluación excelente, exposición mural",
-    "Teatro de improvisación, participación media, motivación media, actitud espontánea, actividad expresión, clima divertido, evaluación buena, roles tecnológicos",
-    "Debate a viva voz, participación alta, motivación media, actitud sonora, actividad argumentación, clima ruidoso, evaluación buena, oratoria sin micro",
-    "Escritura ensayo mano, participación baja, motivación baja, actitud cansada, actividad caligrafía, clima silencioso, evaluación aceptable, producción textual",
-    "Pixel art papel cuadriculado, participación alta, motivación alta, actitud detallista, actividad dibujo, clima concentrado, evaluación excelente, arte digital análogo",
-    "Codificación en tablero, participación media, motivación media, actitud expositiva, actividad marcador, clima atento, evaluación buena, sintaxis colectiva",
-    "Trabajo de campo patio, participación alta, motivación alta, actitud libre, actividad movimiento, clima fresco, evaluación buena, recolección datos",
-    "Entrevistas presenciales, participación media, motivación media, actitud social, actividad diálogo, clima ruidoso, evaluación buena, investigación cualitativa",
-    "Diseño maqueta cartón, participación alta, motivación alta, actitud constructora, actividad manual, clima sucio, evaluación excelente, prototipo baja fidelidad",
-    "Guía de nivelación física, participación baja, motivación media, actitud recuperación, actividad refuerzo, clima individual, evaluación sumativa, segunda oportunidad"
-  ],
-  "Ofimática y Competencias Productivas": [
-    "Taller Excel contable, participación media, motivación media, actitud analítica, actividad numérica, clima concentrado, evaluación buena, uso fórmulas básicas",
-    "Redacción normas APA, participación baja, motivación baja, actitud resistente, actividad escritura, clima pesado, evaluación aceptable, formato documento Word",
-    "Diseño diapositivas, participación alta, motivación alta, actitud creativa, actividad visual, clima relajado, evaluación excelente, síntesis y estética",
-    "Competencia mecanografía, participación alta, motivación alta, actitud competitiva, actividad motriz, clima eufórico, evaluación buena, velocidad y precisión",
-    "Edición video celular, participación muy alta, motivación muy alta, actitud entusiasta, actividad producción, clima ruidoso, evaluación excelente, clip promocional colegio",
-    "Digitalización documentos, participación media, motivación baja, actitud repetitiva, actividad técnica, clima tranquilo, evaluación aceptable, uso escáner",
-    "Búsqueda información web, participación alta, motivación alta, actitud exploradora, actividad digital, clima activo, evaluación buena, curaduría contenidos",
-    "Compresión archivos, participación media, motivación media, actitud práctica, actividad digital, clima ordenado, evaluación buena, gestión espacio disco",
-    "Creación hoja vida, participación alta, motivación alta, actitud profesional, actividad redacción, clima serio, evaluación excelente, perfil laboral futuro",
-    "Presupuesto familiar Excel, participación media, motivación alta, actitud realista, actividad cálculo, clima reflexivo, evaluación buena, educación financiera",
-    "Combinación correspondencia, participación baja, motivación baja, actitud técnica, actividad proceso, clima confuso, evaluación aceptable, cartas masivas",
-    "Gráficos estadísticos, participación media, motivación media, actitud visual, actividad análisis, clima analítico, evaluación buena, interpretación datos",
-    "Infografía digital, participación alta, motivación alta, actitud diseño, actividad síntesis, clima creativo, evaluación excelente, Canva educativo",
-    "Trabajo colaborativo Drive, participación alta, motivación media, actitud equipo, actividad nube, clima conectado, evaluación buena, edición simultánea",
-    "Formularios encuestas, participación media, motivación alta, actitud investigadora, actividad recolección, clima curioso, evaluación excelente, Google Forms",
-    "Organización carpetas, participación baja, motivación baja, actitud orden, actividad gestión, clima aburrido, evaluación aceptable, taxonomía archivos",
-    "Conversión formatos, participación media, motivación media, actitud práctica, actividad herramienta, clima rápido, evaluación buena, PDF a Word",
-    "Atajos de teclado, participación media, motivación alta, actitud ágil, actividad memoria, clima dinámico, evaluación buena, productividad PC",
-    "Edición audio podcast, participación alta, motivación alta, actitud oyente, actividad mezcla, clima silencioso, evaluación excelente, Audacity básico",
-    "Retoque fotográfico, participación alta, motivación alta, actitud artística, actividad imagen, clima divertido, evaluación buena, corrección color",
-    "Mapa mental software, participación media, motivación media, actitud estructura, actividad nodo, clima visual, evaluación buena, organización ideas",
-    "Línea de tiempo digital, participación media, motivación media, actitud histórica, actividad secuencia, clima ordenado, evaluación buena, cronología eventos",
-    "Boletín escolar publisher, participación baja, motivación media, actitud editorial, actividad maquetación, clima detallista, evaluación aceptable, periódico mural",
-    "Nube almacenamiento, participación media, motivación media, actitud backup, actividad subida, clima seguro, evaluación buena, Drive y OneDrive",
-    "Transcripción audio, participación baja, motivación baja, actitud escucha, actividad escritura, clima tedioso, evaluación aceptable, digitación textos"
-  ],
-  "Gestión Administrativa y Proyectos Transversales": [
-    "Dirección de grupo, participación media, motivación media, actitud receptiva, actividad diálogo, clima familiar, evaluación formativa, seguimiento observador alumno",
-    "Elección Gobierno Escolar, participación media, motivación alta, actitud democrática, actividad votación, clima cívico, evaluación no aplica, ejercicio ciudadanía",
-    "Simulacro evacuación, participación total, motivación media, actitud ordenada, actividad seguridad, clima alerta, evaluación excelente, tiempos respuesta",
-    "Izada de bandera virtual, participación media, motivación alta, actitud respetuosa, actividad cívica, clima solemne, evaluación no aplica, himnos patrios",
-    "Comité de convivencia aula, participación media, motivación media, actitud conciliadora, actividad reunión, clima tenso, evaluación resolutiva, acta compromisos",
-    "Actualización datos SIMAT, participación baja, motivación baja, actitud burocrática, actividad administrativa, clima tranquilo, evaluación no aplica, gestión secretaría",
-    "Encuesta satisfacción, participación media, motivación media, actitud honesta, actividad formulario, clima silencioso, evaluación diagnóstica, calidad educativa",
-    "Escuela de padres TIC, participación baja, motivación alta, actitud interesada, actividad charla, clima respetuoso, evaluación buena, pautas crianza digital",
-    "Jornada pedagógica, participación nula, motivación media, actitud profesional, actividad planeación, clima colaborativo, evaluación institucional, ajustes curriculares",
-    "Registro de asistencia, participación total, motivación media, actitud atenta, actividad rutina, clima ordenado, evaluación no aplica, control ausentismo",
-    "Entrega de boletines, participación media, motivación alta, actitud expectante, actividad reunión, clima formal, evaluación sumativa, informe padres",
-    "Proyecto PRAE reciclaje, participación alta, motivación alta, actitud ecológica, actividad recolección, clima verde, evaluación formativa, conciencia ambiental",
-    "Proyecto PESCC charla, participación media, motivación media, actitud tímida, actividad escucha, clima respetuoso, evaluación reflexiva, sexualidad responsable",
-    "Proyecto Democracia, participación media, motivación media, actitud ciudadana, actividad debate, clima político, evaluación buena, derechos deberes",
-    "Proyecto Tiempo Libre, participación muy alta, motivación muy alta, actitud recreativa, actividad juego, clima festivo, evaluación no aplica, descanso activo",
-    "Reunión mediación, participación baja, motivación media, actitud solución, actividad diálogo, clima privado, evaluación positiva, resolución conflicto",
-    "Lectura manual convivencia, participación baja, motivación baja, actitud normativa, actividad lectura, clima serio, evaluación aceptable, normas institucionales",
-    "Celebración día maestro, participación alta, motivación alta, actitud agradecida, actividad homenaje, clima emotivo, evaluación no aplica, integración comunidad",
-    "Día de la familia, participación media, motivación alta, actitud unión, actividad compartir, clima alegre, evaluación excelente, vínculo hogar escuela",
-    "Feria universitaria, participación media, motivación alta, actitud futuro, actividad stand, clima exploratorio, evaluación informativa, orientación vocacional",
-    "Servicio social estudiantil, participación alta, motivación alta, actitud servicio, actividad apoyo, clima solidario, evaluación cumplimiento, horas constitucionales",
-    "Capacitación docente, participación nula, motivación media, actitud aprendizaje, actividad curso, clima académico, evaluación certificación, cualificación profesional",
-    "Inventario bibliobanco, participación media, motivación media, actitud orden, actividad libros, clima silencioso, evaluación buena, gestión recursos",
-    "Consejo de aula, participación media, motivación media, actitud líder, actividad vocería, clima democrático, evaluación representativa, voz estudiantil",
-    "Pacto de aula, participación alta, motivación media, actitud acuerdo, actividad firma, clima comprometido, evaluación normativa, reglas juego inicio año"
+  "success": true,
+  "records": [
+    {
+      "rowIndex": 1,
+      "values": [
+        "Marca temporal",
+        "Docente",
+        "Fecha",
+        "Horas de Inasistencia",
+        "Asignatura",
+        "Tipo de registro",
+        "Grupo",
+        "Estudiante",
+        "Observaciones"
+      ]
+    },
+    {
+      "rowIndex": 2,
+      "values": [
+        "2026-01-27T01:54:09.782Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-26",
+        "1",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "1102",
+        "AGUDELO CRUZ ESTEFANY PAOLA"
+      ]
+    },
+    {
+      "rowIndex": 3,
+      "values": [
+        "2026-01-27T12:02:19.297Z",
+        "CARLOS ARMANDO R\u00cdOS \u00c1LVAREZ",
+        "2026-01-27",
+        "4",
+        "DIRECCION DE GRUPO",
+        "Sin excusa",
+        "701",
+        "MENDOZA MAIKOL STIVEN"
+      ]
+    },
+    {
+      "rowIndex": 4,
+      "values": [
+        "2026-01-27T12:44:41.053Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "0",
+        "F\u00cdSICA",
+        "Sin excusa",
+        "1102",
+        "AGUDELO CRUZ ESTEFANY PAOLA",
+        "Uniformes "
+      ]
+    },
+    {
+      "rowIndex": 5,
+      "values": [
+        "2026-01-27T12:44:41.053Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "0",
+        "F\u00cdSICA",
+        "Pacto de Aula",
+        "1102",
+        "BALLESTEROS HEREDIA JHON ALEX",
+        "Uniformes "
+      ]
+    },
+    {
+      "rowIndex": 6,
+      "values": [
+        "2026-01-27T12:44:41.053Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "0",
+        "F\u00cdSICA",
+        "Pacto de Aula",
+        "1102",
+        "BUITRAGO RAMIREZ MIGUEL ANGEL",
+        "Uniformes "
+      ]
+    },
+    {
+      "rowIndex": 7,
+      "values": [
+        "2026-01-27T12:44:41.053Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "0",
+        "F\u00cdSICA",
+        "Pacto de Aula",
+        "1102",
+        "CARVAJAL ALZATE EDWIN ANTONIO",
+        "Uniformes "
+      ]
+    },
+    {
+      "rowIndex": 8,
+      "values": [
+        "2026-01-27T12:44:41.053Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "0",
+        "F\u00cdSICA",
+        "Pacto de Aula",
+        "1102",
+        "CASTRO HERNANDEZ JERONIMO",
+        "Uniformes "
+      ]
+    },
+    {
+      "rowIndex": 9,
+      "values": [
+        "2026-01-27T12:44:41.053Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "0",
+        "F\u00cdSICA",
+        "Pacto de Aula",
+        "1102",
+        "GIL GUERRERO JUAN JOSE",
+        "Uniformes "
+      ]
+    },
+    {
+      "rowIndex": 10,
+      "values": [
+        "2026-01-27T12:44:41.053Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "0",
+        "F\u00cdSICA",
+        "Pacto de Aula",
+        "1102",
+        "MONTOYA MARIN JUAN ESTEBAN",
+        "Uniformes "
+      ]
+    },
+    {
+      "rowIndex": 11,
+      "values": [
+        "2026-01-27T12:44:41.053Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "0",
+        "F\u00cdSICA",
+        "Pacto de Aula",
+        "1102",
+        "MURILLO COLORADO ESTEBAN ALEJANDRO",
+        "Uniformes "
+      ]
+    },
+    {
+      "rowIndex": 12,
+      "values": [
+        "2026-01-27T12:44:41.053Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "0",
+        "F\u00cdSICA",
+        "Pacto de Aula",
+        "1102",
+        "RAMIREZ VELASQUEZ ASHLEE STEFANIA",
+        "Uniformes "
+      ]
+    },
+    {
+      "rowIndex": 13,
+      "values": [
+        "2026-01-27T12:44:41.053Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "0",
+        "F\u00cdSICA",
+        "Pacto de Aula",
+        "1102",
+        "RODRIGUEZ GRAJALES JOSE MANUEL",
+        "Uniformes "
+      ]
+    },
+    {
+      "rowIndex": 14,
+      "values": [
+        "2026-01-27T12:44:41.053Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "0",
+        "F\u00cdSICA",
+        "Pacto de Aula",
+        "1102",
+        "SALAZAR HURTADO TALIANA",
+        "Uniformes "
+      ]
+    },
+    {
+      "rowIndex": 15,
+      "values": [
+        "2026-01-27T12:44:41.053Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "0",
+        "F\u00cdSICA",
+        "Pacto de Aula",
+        "1102",
+        "URAN RAMIREZ CRISTIAN DAVID",
+        "Uniformes "
+      ]
+    },
+    {
+      "rowIndex": 16,
+      "values": [
+        "2026-01-27T12:44:41.053Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "0",
+        "F\u00cdSICA",
+        "Pacto de Aula",
+        "1102",
+        "VELASQUEZ JARAMILLO SANTIAGO",
+        "Uniformes "
+      ]
+    },
+    {
+      "rowIndex": 17,
+      "values": [
+        "2026-01-27T12:44:41.053Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "0",
+        "F\u00cdSICA",
+        "Pacto de Aula",
+        "1102",
+        "VELEZ ROMERO LUCIANA",
+        "Uniformes "
+      ]
+    },
+    {
+      "rowIndex": 18,
+      "values": [
+        "2026-01-27T13:04:41.335Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-01-27",
+        "2",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "901",
+        "CANO MEDINA VERONICA"
+      ]
+    },
+    {
+      "rowIndex": 19,
+      "values": [
+        "2026-01-27T13:04:41.335Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-01-27",
+        "2",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "901",
+        "RAMIREZ GALLEGO JUAN MANUEL"
+      ]
+    },
+    {
+      "rowIndex": 20,
+      "values": [
+        "2026-01-27T13:10:22.826Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-27",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Excusa",
+        "1001",
+        "ARENAS MARTINEZ SALOME"
+      ]
+    },
+    {
+      "rowIndex": 21,
+      "values": [
+        "2026-01-27T13:10:22.826Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-27",
+        "0",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "LLegada Tarde",
+        "1001",
+        "CARDONA HIGUITA TALIANA"
+      ]
+    },
+    {
+      "rowIndex": 22,
+      "values": [
+        "2026-01-27T13:10:22.826Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-27",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Incapacidad",
+        "1001",
+        "CHAMORRO CONTRERAS GERM\u00c1N UBALDO"
+      ]
+    },
+    {
+      "rowIndex": 23,
+      "values": [
+        "2026-01-27T13:10:22.826Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-27",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Excusa",
+        "1001",
+        "GUAPACHA ALOMIA JOHAN ALFONSO"
+      ]
+    },
+    {
+      "rowIndex": 24,
+      "values": [
+        "2026-01-27T13:10:22.826Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-27",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Excusa",
+        "1001",
+        "HENAO MEDINA SERGIO"
+      ]
+    },
+    {
+      "rowIndex": 25,
+      "values": [
+        "2026-01-27T13:10:22.826Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-27",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Excusa",
+        "1001",
+        "MURILLO AGUDELO LAURA VALENTINA"
+      ]
+    },
+    {
+      "rowIndex": 26,
+      "values": [
+        "2026-01-27T13:10:22.826Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-27",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Excusa",
+        "1001",
+        "ROMERO RAMIREZ HECTOR FELIPE"
+      ]
+    },
+    {
+      "rowIndex": 27,
+      "values": [
+        "2026-01-27T13:26:03.233Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-27",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "701",
+        "MENDOZA MAIKOL STIVEN"
+      ]
+    },
+    {
+      "rowIndex": 28,
+      "values": [
+        "2026-01-27T13:26:03.233Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-27",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "701",
+        "RUDAS PUERTA SEBASTIAN"
+      ]
+    },
+    {
+      "rowIndex": 29,
+      "values": [
+        "2026-01-27T13:26:03.233Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-27",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "701",
+        "SERNA MARTINEZ DAYNER ESTEBAN"
+      ]
+    },
+    {
+      "rowIndex": 30,
+      "values": [
+        "2026-01-27T13:26:03.233Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-27",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "701",
+        "YARCE CALVO VALERIA ISOLINA"
+      ]
+    },
+    {
+      "rowIndex": 31,
+      "values": [
+        "2026-01-27T13:45:59.178Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-27",
+        "1",
+        "QU\u00cdMICA",
+        "Excusa",
+        "1001",
+        "ARENAS MARTINEZ SALOME",
+        "Estudiante nuevo Joan Manuel Ramirez Parra "
+      ]
+    },
+    {
+      "rowIndex": 32,
+      "values": [
+        "2026-01-27T13:45:59.178Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-27",
+        "1",
+        "QU\u00cdMICA",
+        "Incapacidad",
+        "1001",
+        "CHAMORRO CONTRERAS GERM\u00c1N UBALDO",
+        "Estudiante nuevo Joan Manuel Ramirez Parra "
+      ]
+    },
+    {
+      "rowIndex": 33,
+      "values": [
+        "2026-01-27T13:45:59.178Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-27",
+        "1",
+        "QU\u00cdMICA",
+        "Excusa",
+        "1001",
+        "GUAPACHA ALOMIA JOHAN ALFONSO",
+        "Estudiante nuevo Joan Manuel Ramirez Parra "
+      ]
+    },
+    {
+      "rowIndex": 34,
+      "values": [
+        "2026-01-27T13:45:59.178Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-27",
+        "1",
+        "QU\u00cdMICA",
+        "Excusa",
+        "1001",
+        "HENAO MEDINA SERGIO",
+        "Estudiante nuevo Joan Manuel Ramirez Parra "
+      ]
+    },
+    {
+      "rowIndex": 35,
+      "values": [
+        "2026-01-27T13:45:59.178Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-27",
+        "1",
+        "QU\u00cdMICA",
+        "Sin excusa",
+        "1001",
+        "LOPEZ HERNANDEZ SARA MANUELA",
+        "Estudiante nuevo Joan Manuel Ramirez Parra "
+      ]
+    },
+    {
+      "rowIndex": 36,
+      "values": [
+        "2026-01-27T13:45:59.178Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-27",
+        "1",
+        "QU\u00cdMICA",
+        "Excusa",
+        "1001",
+        "MURILLO AGUDELO LAURA VALENTINA",
+        "Estudiante nuevo Joan Manuel Ramirez Parra "
+      ]
+    },
+    {
+      "rowIndex": 37,
+      "values": [
+        "2026-01-27T13:45:59.178Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-27",
+        "1",
+        "QU\u00cdMICA",
+        "Excusa",
+        "1001",
+        "ROMERO RAMIREZ HECTOR FELIPE",
+        "Estudiante nuevo Joan Manuel Ramirez Parra "
+      ]
+    },
+    {
+      "rowIndex": 38,
+      "values": [
+        "2026-01-27T14:07:43.943Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-27",
+        "2",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Sin excusa",
+        "1101",
+        "MORENO MARIN YODALI"
+      ]
+    },
+    {
+      "rowIndex": 39,
+      "values": [
+        "2026-01-27T14:07:43.943Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-27",
+        "2",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Sin excusa",
+        "1101",
+        "TABA HOLGUIN LUIS MATEO"
+      ]
+    },
+    {
+      "rowIndex": 40,
+      "values": [
+        "2026-01-27T14:10:29.103Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "2",
+        "F\u00cdSICA",
+        "Sin excusa",
+        "1102",
+        "AGUDELO CRUZ ESTEFANY PAOLA"
+      ]
+    },
+    {
+      "rowIndex": 41,
+      "values": [
+        "2026-01-27T14:17:26.834Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-27",
+        "1",
+        "QU\u00cdMICA",
+        "Excusa",
+        "901",
+        "CANO MEDINA VERONICA"
+      ]
+    },
+    {
+      "rowIndex": 42,
+      "values": [
+        "2026-01-27T14:17:26.834Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-27",
+        "1",
+        "QU\u00cdMICA",
+        "Fuga",
+        "901",
+        "CARMONA RESTREPO SINDY JULIANA"
+      ]
+    },
+    {
+      "rowIndex": 43,
+      "values": [
+        "2026-01-27T14:17:26.834Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-27",
+        "1",
+        "QU\u00cdMICA",
+        "LLegada Tarde",
+        "901",
+        "CASTA\u00d1EDA RAMIREZ SALOME"
+      ]
+    },
+    {
+      "rowIndex": 44,
+      "values": [
+        "2026-01-27T14:17:26.834Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-27",
+        "1",
+        "QU\u00cdMICA",
+        "Sin excusa",
+        "901",
+        "RAMIREZ GALLEGO JUAN MANUEL"
+      ]
+    },
+    {
+      "rowIndex": 45,
+      "values": [
+        "2026-01-27T14:19:13.712Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-27",
+        "2",
+        "EDUCACI\u00d3N F\u00cdSICA, RECREACI\u00d3N Y DEPORTES",
+        "Sin excusa",
+        "702",
+        "GARCIA JARAMILLO GABY"
+      ]
+    },
+    {
+      "rowIndex": 46,
+      "values": [
+        "2026-01-27T14:31:59.436Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-27",
+        "1",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "1102",
+        "AGUDELO CRUZ ESTEFANY PAOLA"
+      ]
+    },
+    {
+      "rowIndex": 47,
+      "values": [
+        "2026-01-27T15:12:35.365Z",
+        "ANA SOFIA CARDENAS PETUMA",
+        "2026-01-27",
+        "2",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "801",
+        "MORENO MARIN YENCI"
+      ]
+    },
+    {
+      "rowIndex": 48,
+      "values": [
+        "2026-01-27T15:12:35.365Z",
+        "ANA SOFIA CARDENAS PETUMA",
+        "2026-01-27",
+        "2",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "801",
+        "HENAO PUERTA KATERINE"
+      ]
+    },
+    {
+      "rowIndex": 49,
+      "values": [
+        "2026-01-27T15:12:35.365Z",
+        "ANA SOFIA CARDENAS PETUMA",
+        "2026-01-27",
+        "2",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "801",
+        "RAMIREZ CARDONA ERIK"
+      ]
+    },
+    {
+      "rowIndex": 50,
+      "values": [
+        "2026-01-27T15:14:37.650Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-27",
+        "1",
+        "QU\u00cdMICA",
+        "Transporte Escolar",
+        "701",
+        "MENDOZA MAIKOL STIVEN"
+      ]
+    },
+    {
+      "rowIndex": 51,
+      "values": [
+        "2026-01-27T15:14:37.650Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-27",
+        "1",
+        "QU\u00cdMICA",
+        "Transporte Escolar",
+        "701",
+        "RUDAS PUERTA SEBASTIAN"
+      ]
+    },
+    {
+      "rowIndex": 52,
+      "values": [
+        "2026-01-27T15:14:37.650Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-27",
+        "1",
+        "QU\u00cdMICA",
+        "Transporte Escolar",
+        "701",
+        "SERNA MARTINEZ DAYNER ESTEBAN"
+      ]
+    },
+    {
+      "rowIndex": 53,
+      "values": [
+        "2026-01-27T15:14:37.650Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-27",
+        "1",
+        "QU\u00cdMICA",
+        "Transporte Escolar",
+        "701",
+        "YARCE CALVO VALERIA ISOLINA"
+      ]
+    },
+    {
+      "rowIndex": 54,
+      "values": [
+        "2026-01-27T15:17:01.169Z",
+        "PABLO REINOSO HENAO",
+        "2026-01-27",
+        "2",
+        "INGL\u00c9S",
+        "Sin excusa",
+        "802",
+        "GUAPACHA ALOMIAS DEYVI ALEJANDRO"
+      ]
+    },
+    {
+      "rowIndex": 55,
+      "values": [
+        "2026-01-27T15:17:01.169Z",
+        "PABLO REINOSO HENAO",
+        "2026-01-27",
+        "2",
+        "INGL\u00c9S",
+        "Sin excusa",
+        "802",
+        "MARIN HOYOS VIOLETA"
+      ]
+    },
+    {
+      "rowIndex": 56,
+      "values": [
+        "2026-01-27T15:17:01.169Z",
+        "PABLO REINOSO HENAO",
+        "2026-01-27",
+        "2",
+        "INGL\u00c9S",
+        "Sin excusa",
+        "802",
+        "PEREZ BERNAL JOSUE"
+      ]
+    },
+    {
+      "rowIndex": 57,
+      "values": [
+        "2026-01-27T15:17:01.169Z",
+        "PABLO REINOSO HENAO",
+        "2026-01-27",
+        "2",
+        "INGL\u00c9S",
+        "Transporte Escolar",
+        "802",
+        "SANABRIA CASTA\u00d1EDA DAVID SANTIAGO"
+      ]
+    },
+    {
+      "rowIndex": 58,
+      "values": [
+        "2026-01-27T15:38:36.462Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-27",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Sin excusa",
+        "802",
+        "GUAPACHA ALOMIAS DEYVI ALEJANDRO"
+      ]
+    },
+    {
+      "rowIndex": 59,
+      "values": [
+        "2026-01-27T15:38:36.462Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-27",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Sin excusa",
+        "802",
+        "MARIN HOYOS VIOLETA"
+      ]
+    },
+    {
+      "rowIndex": 60,
+      "values": [
+        "2026-01-27T15:38:36.462Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-27",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Sin excusa",
+        "802",
+        "PEREZ BERNAL JOSUE"
+      ]
+    },
+    {
+      "rowIndex": 61,
+      "values": [
+        "2026-01-27T15:38:36.462Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-27",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Sin excusa",
+        "802",
+        "SANABRIA CASTA\u00d1EDA DAVID SANTIAGO"
+      ]
+    },
+    {
+      "rowIndex": 62,
+      "values": [
+        "2026-01-27T15:48:06.612Z",
+        "ILDORY JARAMILLO",
+        "2026-01-27",
+        "2",
+        "FILOSOF\u00cdA Y CIENCIAS SOCIALES (CIENCIAS",
+        "Sin excusa",
+        "602",
+        "HOLGUIN ROMERO MATH\u00cdAS"
+      ]
+    },
+    {
+      "rowIndex": 63,
+      "values": [
+        "2026-01-27T15:49:51.051Z",
+        "ILDORY JARAMILLO",
+        "2026-01-27",
+        "2",
+        "FILOSOF\u00cdA Y CIENCIAS SOCIALES (CIENCIAS",
+        "Sin excusa",
+        "601",
+        "HOLGUIN VILADA BRAHIAN ANDRES"
+      ]
+    },
+    {
+      "rowIndex": 64,
+      "values": [
+        "2026-01-27T15:50:10.116Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "1",
+        "F\u00cdSICA",
+        "Sin excusa",
+        "801",
+        "HENAO PUERTA KATERINE"
+      ]
+    },
+    {
+      "rowIndex": 65,
+      "values": [
+        "2026-01-27T15:50:10.116Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "1",
+        "F\u00cdSICA",
+        "Sin excusa",
+        "801",
+        "MORENO MARIN YENCI"
+      ]
+    },
+    {
+      "rowIndex": 66,
+      "values": [
+        "2026-01-27T15:50:42.041Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "1",
+        "F\u00cdSICA",
+        "Sin excusa",
+        "801",
+        "RAMIREZ CARDONA ERIK"
+      ]
+    },
+    {
+      "rowIndex": 67,
+      "values": [
+        "2026-01-27T15:51:19.679Z",
+        "ILDORY JARAMILLO",
+        "2026-01-27",
+        "2",
+        "FILOSOF\u00cdA Y CIENCIAS SOCIALES (CIENCIAS",
+        "Sin excusa",
+        "602",
+        "HOLGUIN ROMERO MATH\u00cdAS"
+      ]
+    },
+    {
+      "rowIndex": 68,
+      "values": [
+        "2026-01-27T15:53:33.788Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-27",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Sin excusa",
+        "802",
+        "GUAPACHA ALOMIAS DEYVI ALEJANDRO"
+      ]
+    },
+    {
+      "rowIndex": 69,
+      "values": [
+        "2026-01-27T15:53:33.788Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-27",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Sin excusa",
+        "802",
+        "MARIN HOYOS VIOLETA"
+      ]
+    },
+    {
+      "rowIndex": 70,
+      "values": [
+        "2026-01-27T15:53:33.788Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-27",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Sin excusa",
+        "802",
+        "PEREZ BERNAL JOSUE"
+      ]
+    },
+    {
+      "rowIndex": 71,
+      "values": [
+        "2026-01-27T15:53:33.788Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-27",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Sin excusa",
+        "802",
+        "SANABRIA CASTA\u00d1EDA DAVID SANTIAGO"
+      ]
+    },
+    {
+      "rowIndex": 72,
+      "values": [
+        "2026-01-27T15:54:35.511Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "0",
+        "F\u00cdSICA",
+        "No portar\/sin uniforme",
+        "801",
+        "ORTIZ ARENAS LEIDY ISABELA"
+      ]
+    },
+    {
+      "rowIndex": 73,
+      "values": [
+        "2026-01-27T15:54:35.511Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "0",
+        "F\u00cdSICA",
+        "No portar\/sin uniforme",
+        "801",
+        "REGALADO HERNANDEZ FABIOLA VALENTINA"
+      ]
+    },
+    {
+      "rowIndex": 74,
+      "values": [
+        "2026-01-27T16:28:44.078Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-27",
+        "1",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "1001",
+        "ARENAS MARTINEZ SALOME"
+      ]
+    },
+    {
+      "rowIndex": 75,
+      "values": [
+        "2026-01-27T16:28:44.078Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-27",
+        "1",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Incapacidad",
+        "1001",
+        "CHAMORRO CONTRERAS GERM\u00c1N UBALDO"
+      ]
+    },
+    {
+      "rowIndex": 76,
+      "values": [
+        "2026-01-27T16:28:44.078Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-27",
+        "1",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "1001",
+        "GUAPACHA ALOMIA JOHAN ALFONSO"
+      ]
+    },
+    {
+      "rowIndex": 77,
+      "values": [
+        "2026-01-27T16:28:44.078Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-27",
+        "1",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Excusa",
+        "1001",
+        "HENAO MEDINA SERGIO"
+      ]
+    },
+    {
+      "rowIndex": 78,
+      "values": [
+        "2026-01-27T16:28:44.078Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-27",
+        "1",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "1001",
+        "MURILLO AGUDELO LAURA VALENTINA"
+      ]
+    },
+    {
+      "rowIndex": 79,
+      "values": [
+        "2026-01-27T16:28:44.078Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-27",
+        "1",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Excusa",
+        "1001",
+        "ROMERO RAMIREZ HECTOR FELIPE"
+      ]
+    },
+    {
+      "rowIndex": 80,
+      "values": [
+        "2026-01-27T16:50:20.931Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-27",
+        "1",
+        "ESTAD\u00cdSTICA",
+        "Sin excusa",
+        "1101",
+        "GONZALEZ ROMERO SANTIAGO"
+      ]
+    },
+    {
+      "rowIndex": 81,
+      "values": [
+        "2026-01-27T16:50:20.931Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-27",
+        "1",
+        "ESTAD\u00cdSTICA",
+        "Sin excusa",
+        "1101",
+        "MORENO MARIN YODALI"
+      ]
+    },
+    {
+      "rowIndex": 82,
+      "values": [
+        "2026-01-27T16:50:20.931Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-27",
+        "1",
+        "ESTAD\u00cdSTICA",
+        "Sin excusa",
+        "1101",
+        "TABA HOLGUIN LUIS MATEO"
+      ]
+    },
+    {
+      "rowIndex": 83,
+      "values": [
+        "2026-01-27T17:07:47.971Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "0",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "No portar\/sin uniforme",
+        "601",
+        "MEJIA SAN MARTIN ANTHONY"
+      ]
+    },
+    {
+      "rowIndex": 84,
+      "values": [
+        "2026-01-27T17:07:47.971Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "0",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "No portar\/sin uniforme",
+        "601",
+        "TORO SOTO NICOL DAHIANA"
+      ]
+    },
+    {
+      "rowIndex": 85,
+      "values": [
+        "2026-01-27T17:17:13.738Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-27",
+        "2",
+        "QU\u00cdMICA",
+        "Sin excusa",
+        "1101",
+        "GONZALEZ ROMERO SANTIAGO"
+      ]
+    },
+    {
+      "rowIndex": 86,
+      "values": [
+        "2026-01-27T17:17:13.738Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-27",
+        "2",
+        "QU\u00cdMICA",
+        "Sin excusa",
+        "1101",
+        "MORENO MARIN YODALI"
+      ]
+    },
+    {
+      "rowIndex": 87,
+      "values": [
+        "2026-01-27T17:17:13.738Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-27",
+        "2",
+        "QU\u00cdMICA",
+        "Sin excusa",
+        "1101",
+        "TABA HOLGUIN LUIS MATEO"
+      ]
+    },
+    {
+      "rowIndex": 88,
+      "values": [
+        "2026-01-27T17:17:50.915Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-01-27",
+        "1",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "1001",
+        "ARENAS MARTINEZ SALOME"
+      ]
+    },
+    {
+      "rowIndex": 89,
+      "values": [
+        "2026-01-27T17:17:50.915Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-01-27",
+        "1",
+        "LENGUA CASTELLANA",
+        "Excusa",
+        "1001",
+        "CHAMORRO CONTRERAS GERM\u00c1N UBALDO"
+      ]
+    },
+    {
+      "rowIndex": 90,
+      "values": [
+        "2026-01-27T17:17:50.915Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-01-27",
+        "1",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "1001",
+        "GUAPACHA ALOMIA JOHAN ALFONSO"
+      ]
+    },
+    {
+      "rowIndex": 91,
+      "values": [
+        "2026-01-27T17:17:50.915Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-01-27",
+        "1",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "1001",
+        "HENAO MEDINA SERGIO"
+      ]
+    },
+    {
+      "rowIndex": 92,
+      "values": [
+        "2026-01-27T17:17:50.915Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-01-27",
+        "1",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "1001",
+        "LOPEZ HERNANDEZ SARA MANUELA"
+      ]
+    },
+    {
+      "rowIndex": 93,
+      "values": [
+        "2026-01-27T17:17:50.915Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-01-27",
+        "1",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "1001",
+        "MURILLO AGUDELO LAURA VALENTINA"
+      ]
+    },
+    {
+      "rowIndex": 94,
+      "values": [
+        "2026-01-27T17:17:50.915Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-01-27",
+        "1",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "1001",
+        "ROMERO RAMIREZ HECTOR FELIPE"
+      ]
+    },
+    {
+      "rowIndex": 95,
+      "values": [
+        "2026-01-27T17:17:50.915Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-01-27",
+        "1",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "1001",
+        "SERNA CORRALES JHON ANDERSON DE JES\u00daS"
+      ]
+    },
+    {
+      "rowIndex": 96,
+      "values": [
+        "2026-01-27T17:40:54.728Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-27",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Excusa",
+        "902",
+        "GUAPACHA GARCIA FABIANA"
+      ]
+    },
+    {
+      "rowIndex": 97,
+      "values": [
+        "2026-01-27T17:54:13.799Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "701",
+        "MENDOZA MAIKOL STIVEN"
+      ]
+    },
+    {
+      "rowIndex": 98,
+      "values": [
+        "2026-01-27T17:54:13.799Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "701",
+        "RUDAS PUERTA SEBASTIAN"
+      ]
+    },
+    {
+      "rowIndex": 99,
+      "values": [
+        "2026-01-27T17:54:13.799Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "701",
+        "YARCE CALVO VALERIA ISOLINA"
+      ]
+    },
+    {
+      "rowIndex": 100,
+      "values": [
+        "2026-01-27T17:54:13.799Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-27",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "701",
+        "SERNA MARTINEZ DAYNER ESTEBAN"
+      ]
+    },
+    {
+      "rowIndex": 101,
+      "values": [
+        "2026-01-27T17:54:59.893Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-27",
+        "1",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Sin excusa",
+        "1001",
+        "ARENAS MARTINEZ SALOME"
+      ]
+    },
+    {
+      "rowIndex": 102,
+      "values": [
+        "2026-01-27T17:54:59.893Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-27",
+        "1",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Incapacidad",
+        "1001",
+        "CHAMORRO CONTRERAS GERM\u00c1N UBALDO"
+      ]
+    },
+    {
+      "rowIndex": 103,
+      "values": [
+        "2026-01-27T17:54:59.893Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-27",
+        "1",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Sin excusa",
+        "1001",
+        "GUAPACHA ALOMIA JOHAN ALFONSO"
+      ]
+    },
+    {
+      "rowIndex": 104,
+      "values": [
+        "2026-01-27T17:54:59.893Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-27",
+        "1",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Sin excusa",
+        "1001",
+        "HENAO MEDINA SERGIO"
+      ]
+    },
+    {
+      "rowIndex": 105,
+      "values": [
+        "2026-01-27T17:54:59.893Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-27",
+        "1",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Sin excusa",
+        "1001",
+        "MURILLO AGUDELO LAURA VALENTINA"
+      ]
+    },
+    {
+      "rowIndex": 106,
+      "values": [
+        "2026-01-27T17:54:59.893Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-27",
+        "1",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Excusa",
+        "1001",
+        "ROMERO RAMIREZ HECTOR FELIPE"
+      ]
+    },
+    {
+      "rowIndex": 107,
+      "values": [
+        "2026-01-27T19:02:25.596Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-27",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Sin excusa",
+        "801",
+        "MORENO MARIN YENCI"
+      ]
+    },
+    {
+      "rowIndex": 108,
+      "values": [
+        "2026-01-27T19:02:25.596Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-27",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Sin excusa",
+        "801",
+        "RAMIREZ CARDONA ERIK"
+      ]
+    },
+    {
+      "rowIndex": 109,
+      "values": [
+        "2026-01-27T19:02:25.596Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-27",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Sin excusa",
+        "801",
+        "HENAO PUERTA KATERINE"
+      ]
+    },
+    {
+      "rowIndex": 110,
+      "values": [
+        "2026-01-27T22:45:41.681Z",
+        "CARLOS ARMANDO R\u00cdOS \u00c1LVAREZ",
+        "2026-01-27",
+        "2",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "1102",
+        "AGUDELO CRUZ ESTEFANY PAOLA"
+      ]
+    },
+    {
+      "rowIndex": 111,
+      "values": [
+        "2026-01-28T00:27:57.158Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-01-28",
+        "2",
+        "INGL\u00c9S",
+        "Sin excusa",
+        "1102",
+        "AGUDELO CRUZ ESTEFANY PAOLA"
+      ]
+    },
+    {
+      "rowIndex": 112,
+      "values": [
+        "2026-01-28T12:36:38.098Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-28",
+        "1",
+        "F\u00cdSICA",
+        "LLegada Tarde",
+        "1101",
+        "BALLESTEROS TAPASCO YIMY LEANDRO"
+      ]
+    },
+    {
+      "rowIndex": 113,
+      "values": [
+        "2026-01-28T12:36:38.098Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-28",
+        "2",
+        "F\u00cdSICA",
+        "Sin excusa",
+        "1101",
+        "TAPASCO HERNANDEZ VALERIE CAMILA"
+      ]
+    },
+    {
+      "rowIndex": 114,
+      "values": [
+        "2026-01-28T12:36:38.098Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-28",
+        "2",
+        "F\u00cdSICA",
+        "Sin excusa",
+        "1101",
+        "RAMIREZ GUTIERREZ LAURA JIMENA"
+      ]
+    },
+    {
+      "rowIndex": 115,
+      "values": [
+        "2026-01-28T12:36:38.098Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-28",
+        "1",
+        "F\u00cdSICA",
+        "LLegada Tarde",
+        "1101",
+        "OROZCO CARDONA OSCAR ADOLFO"
+      ]
+    },
+    {
+      "rowIndex": 116,
+      "values": [
+        "2026-01-28T12:37:32.898Z",
+        "ILDORY JARAMILLO",
+        "2026-01-28",
+        "1",
+        "C\u00c1TEDRA DE LA PAZ",
+        "Sin excusa",
+        "801",
+        "JARAMILLO BERMUDEZ EMMANUEL"
+      ]
+    },
+    {
+      "rowIndex": 117,
+      "values": [
+        "2026-01-28T12:37:32.898Z",
+        "ILDORY JARAMILLO",
+        "2026-01-28",
+        "1",
+        "C\u00c1TEDRA DE LA PAZ",
+        "Excusa",
+        "801",
+        "HENAO PUERTA KATERINE"
+      ]
+    },
+    {
+      "rowIndex": 118,
+      "values": [
+        "2026-01-28T12:37:32.898Z",
+        "ILDORY JARAMILLO",
+        "2026-01-28",
+        "1",
+        "C\u00c1TEDRA DE LA PAZ",
+        "Sin excusa",
+        "801",
+        "USA MEJIA SILVANA"
+      ]
+    },
+    {
+      "rowIndex": 119,
+      "values": [
+        "2026-01-28T12:37:47.331Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-28",
+        "0",
+        "F\u00cdSICA",
+        "No portar\/sin uniforme",
+        "1101",
+        "BALLESTEROS TAPASCO YIMY LEANDRO"
+      ]
+    },
+    {
+      "rowIndex": 120,
+      "values": [
+        "2026-01-28T12:37:47.331Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-28",
+        "0",
+        "F\u00cdSICA",
+        "No portar\/sin uniforme",
+        "1101",
+        "PUERTA BERMUDEZ CRISTIAN FELIPE"
+      ]
+    },
+    {
+      "rowIndex": 121,
+      "values": [
+        "2026-01-28T12:37:47.331Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-28",
+        "0",
+        "F\u00cdSICA",
+        "No portar\/sin uniforme",
+        "1101",
+        "TABA HOLGUIN LUIS MATEO"
+      ]
+    },
+    {
+      "rowIndex": 122,
+      "values": [
+        "2026-01-28T12:46:04.541Z",
+        "PABLO REINOSO HENAO",
+        "2026-01-28",
+        "2",
+        "INGL\u00c9S",
+        "Permiso",
+        "602",
+        "CASTA\u00d1O GARCIA GABRIELA",
+        "Gabriela Casta\u00f1o Garcia pertenece al grado 601."
+      ]
+    },
+    {
+      "rowIndex": 123,
+      "values": [
+        "2026-01-28T12:46:36.719Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-28",
+        "2",
+        "EDUCACI\u00d3N F\u00cdSICA, RECREACI\u00d3N Y DEPORTES",
+        "Transporte Escolar",
+        "1001",
+        "ARENAS MARTINEZ SALOME"
+      ]
+    },
+    {
+      "rowIndex": 124,
+      "values": [
+        "2026-01-28T12:46:36.719Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-28",
+        "2",
+        "EDUCACI\u00d3N F\u00cdSICA, RECREACI\u00d3N Y DEPORTES",
+        "Excusa",
+        "1001",
+        "GUAPACHA ALOMIA JOHAN ALFONSO"
+      ]
+    },
+    {
+      "rowIndex": 125,
+      "values": [
+        "2026-01-28T12:46:36.719Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-28",
+        "2",
+        "EDUCACI\u00d3N F\u00cdSICA, RECREACI\u00d3N Y DEPORTES",
+        "Excusa",
+        "1001",
+        "CHAMORRO CONTRERAS GERM\u00c1N UBALDO"
+      ]
+    },
+    {
+      "rowIndex": 126,
+      "values": [
+        "2026-01-28T12:46:36.719Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-28",
+        "2",
+        "EDUCACI\u00d3N F\u00cdSICA, RECREACI\u00d3N Y DEPORTES",
+        "Transporte Escolar",
+        "1001",
+        "CARDONA HIGUITA TALIANA"
+      ]
+    },
+    {
+      "rowIndex": 127,
+      "values": [
+        "2026-01-28T12:46:36.719Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-28",
+        "2",
+        "EDUCACI\u00d3N F\u00cdSICA, RECREACI\u00d3N Y DEPORTES",
+        "Sin excusa",
+        "1001",
+        "LOPEZ HERNANDEZ SARA MANUELA"
+      ]
+    },
+    {
+      "rowIndex": 128,
+      "values": [
+        "2026-01-28T12:46:36.719Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-28",
+        "2",
+        "EDUCACI\u00d3N F\u00cdSICA, RECREACI\u00d3N Y DEPORTES",
+        "Transporte Escolar",
+        "1001",
+        "MURILLO AGUDELO LAURA VALENTINA"
+      ]
+    },
+    {
+      "rowIndex": 129,
+      "values": [
+        "2026-01-28T12:46:36.719Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-28",
+        "2",
+        "EDUCACI\u00d3N F\u00cdSICA, RECREACI\u00d3N Y DEPORTES",
+        "Transporte Escolar",
+        "1001",
+        "HEREDIA BEDOYA JULIO CESAR"
+      ]
+    },
+    {
+      "rowIndex": 130,
+      "values": [
+        "2026-01-28T13:03:57.943Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-28",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Excusa",
+        "901",
+        "CANO MEDINA VERONICA"
+      ]
+    },
+    {
+      "rowIndex": 131,
+      "values": [
+        "2026-01-28T13:22:20.914Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-01-28",
+        "2",
+        "INGL\u00c9S",
+        "Sin excusa",
+        "1102",
+        "AGUDELO CRUZ ESTEFANY PAOLA"
+      ]
+    },
+    {
+      "rowIndex": 132,
+      "values": [
+        "2026-01-28T13:22:20.914Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-01-28",
+        "2",
+        "INGL\u00c9S",
+        "Sin excusa",
+        "1102",
+        "MONTOYA MARIN JUAN ESTEBAN"
+      ]
+    },
+    {
+      "rowIndex": 133,
+      "values": [
+        "2026-01-28T14:06:29.057Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-28",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Transporte Escolar",
+        "802",
+        "FLOREZ RIVERA JULIAN ANDRES"
+      ]
+    },
+    {
+      "rowIndex": 134,
+      "values": [
+        "2026-01-28T14:06:29.057Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-28",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Sin excusa",
+        "802",
+        "MARIN HOYOS VIOLETA"
+      ]
+    },
+    {
+      "rowIndex": 135,
+      "values": [
+        "2026-01-28T14:06:29.057Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-28",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Sin excusa",
+        "802",
+        "PEREZ BERNAL JOSUE"
+      ]
+    },
+    {
+      "rowIndex": 136,
+      "values": [
+        "2026-01-28T14:06:29.057Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-28",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Transporte Escolar",
+        "802",
+        "SANABRIA CASTA\u00d1EDA DAVID SANTIAGO"
+      ]
+    },
+    {
+      "rowIndex": 137,
+      "values": [
+        "2026-01-28T14:08:26.099Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-28",
+        "2",
+        "F\u00cdSICA",
+        "Transporte Escolar",
+        "1001",
+        "ARENAS MARTINEZ SALOME"
+      ]
+    },
+    {
+      "rowIndex": 138,
+      "values": [
+        "2026-01-28T14:08:26.099Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-28",
+        "2",
+        "F\u00cdSICA",
+        "Incapacidad",
+        "1001",
+        "CHAMORRO CONTRERAS GERM\u00c1N UBALDO"
+      ]
+    },
+    {
+      "rowIndex": 139,
+      "values": [
+        "2026-01-28T14:08:26.099Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-28",
+        "2",
+        "F\u00cdSICA",
+        "Transporte Escolar",
+        "1001",
+        "MURILLO AGUDELO LAURA VALENTINA"
+      ]
+    },
+    {
+      "rowIndex": 140,
+      "values": [
+        "2026-01-28T14:09:48.748Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-28",
+        "0",
+        "F\u00cdSICA",
+        "No portar\/sin uniforme",
+        "1001",
+        "ARENAS MORALES JUAN PABLO"
+      ]
+    },
+    {
+      "rowIndex": 141,
+      "values": [
+        "2026-01-28T14:09:48.748Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-28",
+        "0",
+        "F\u00cdSICA",
+        "No portar\/sin uniforme",
+        "1001",
+        "BEDOYA RIOS JULIANA"
+      ]
+    },
+    {
+      "rowIndex": 142,
+      "values": [
+        "2026-01-28T14:09:48.748Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-28",
+        "0",
+        "F\u00cdSICA",
+        "No portar\/sin uniforme",
+        "1001",
+        "CARDONA HIGUITA TALIANA"
+      ]
+    },
+    {
+      "rowIndex": 143,
+      "values": [
+        "2026-01-28T14:09:48.748Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-28",
+        "0",
+        "F\u00cdSICA",
+        "No portar\/sin uniforme",
+        "1001",
+        "GARCIA RODRIGUEZ JUAN ANDRES"
+      ]
+    },
+    {
+      "rowIndex": 144,
+      "values": [
+        "2026-01-28T14:09:48.748Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-28",
+        "0",
+        "F\u00cdSICA",
+        "No portar\/sin uniforme",
+        "1001",
+        "PELAEZ ALZATE EMANUEL"
+      ]
+    },
+    {
+      "rowIndex": 145,
+      "values": [
+        "2026-01-28T14:09:48.748Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-28",
+        "0",
+        "F\u00cdSICA",
+        "No portar\/sin uniforme",
+        "1001",
+        "PIEDRAHITA RAMIREZ KARLA MARIELLY"
+      ]
+    },
+    {
+      "rowIndex": 146,
+      "values": [
+        "2026-01-28T14:09:48.748Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-28",
+        "0",
+        "F\u00cdSICA",
+        "No portar\/sin uniforme",
+        "1001",
+        "SEPULVEDA JIMENEZ JUAN FELIPE"
+      ]
+    },
+    {
+      "rowIndex": 147,
+      "values": [
+        "2026-01-28T14:09:48.748Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-28",
+        "0",
+        "F\u00cdSICA",
+        "No portar\/sin uniforme",
+        "1001",
+        "ROMERO RAMIREZ HECTOR FELIPE"
+      ]
+    },
+    {
+      "rowIndex": 148,
+      "values": [
+        "2026-01-28T14:17:39.547Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-28",
+        "1",
+        "QU\u00cdMICA",
+        "Sin excusa",
+        "1102",
+        "AGUDELO CRUZ ESTEFANY PAOLA"
+      ]
+    },
+    {
+      "rowIndex": 149,
+      "values": [
+        "2026-01-28T14:17:39.547Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-28",
+        "1",
+        "QU\u00cdMICA",
+        "Sin excusa",
+        "1102",
+        "MONTOYA MARIN JUAN ESTEBAN"
+      ]
+    },
+    {
+      "rowIndex": 150,
+      "values": [
+        "2026-01-28T14:31:25.599Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-01-28",
+        "2",
+        "INGL\u00c9S",
+        "Sin excusa",
+        "1101",
+        "RAMIREZ GUTIERREZ LAURA JIMENA"
+      ]
+    },
+    {
+      "rowIndex": 151,
+      "values": [
+        "2026-01-28T14:31:25.599Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-01-28",
+        "2",
+        "INGL\u00c9S",
+        "Sin excusa",
+        "1101",
+        "TAPASCO HERNANDEZ VALERIE CAMILA"
+      ]
+    },
+    {
+      "rowIndex": 152,
+      "values": [
+        "2026-01-28T15:04:13.046Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-28",
+        "1",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Sin excusa",
+        "1102",
+        "AGUDELO CRUZ ESTEFANY PAOLA"
+      ]
+    },
+    {
+      "rowIndex": 153,
+      "values": [
+        "2026-01-28T15:04:13.046Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-28",
+        "1",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Sin excusa",
+        "1102",
+        "MONTOYA MARIN JUAN ESTEBAN"
+      ]
+    },
+    {
+      "rowIndex": 154,
+      "values": [
+        "2026-01-28T15:37:43.020Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-01-28",
+        "2",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "901",
+        "CANO MEDINA VERONICA"
+      ]
+    },
+    {
+      "rowIndex": 155,
+      "values": [
+        "2026-01-28T17:14:29.367Z",
+        "PABLO REINOSO HENAO",
+        "2026-01-28",
+        "2",
+        "INGL\u00c9S",
+        "Transporte Escolar",
+        "801",
+        "HENAO PUERTA KATERINE"
+      ]
+    },
+    {
+      "rowIndex": 156,
+      "values": [
+        "2026-01-28T17:14:29.367Z",
+        "PABLO REINOSO HENAO",
+        "2026-01-28",
+        "2",
+        "INGL\u00c9S",
+        "Excusa",
+        "801",
+        "USA MEJIA SILVANA"
+      ]
+    },
+    {
+      "rowIndex": 157,
+      "values": [
+        "2026-01-28T17:53:33.887Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-28",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Excusa",
+        "1101",
+        "RAMIREZ GUTIERREZ LAURA JIMENA"
+      ]
+    },
+    {
+      "rowIndex": 158,
+      "values": [
+        "2026-01-28T17:53:33.887Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-28",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Sin excusa",
+        "1101",
+        "TAPASCO HERNANDEZ VALERIE CAMILA"
+      ]
+    },
+    {
+      "rowIndex": 159,
+      "values": [
+        "2026-01-28T17:54:11.290Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-28",
+        "0",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "No realizaci\u00f3n de Aseo",
+        "702",
+        "RIVERA GOMEZ SANTIAGO",
+        "BASURA EN CLASE DENTRO DEL PUESTO"
+      ]
+    },
+    {
+      "rowIndex": 160,
+      "values": [
+        "2026-01-28T18:05:29.328Z",
+        "CARLOS ARMANDO R\u00cdOS \u00c1LVAREZ",
+        "2026-01-28",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "1001",
+        "ARENAS MARTINEZ SALOME"
+      ]
+    },
+    {
+      "rowIndex": 161,
+      "values": [
+        "2026-01-28T18:05:29.328Z",
+        "CARLOS ARMANDO R\u00cdOS \u00c1LVAREZ",
+        "2026-01-28",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "1001",
+        "CHAMORRO CONTRERAS GERM\u00c1N UBALDO"
+      ]
+    },
+    {
+      "rowIndex": 162,
+      "values": [
+        "2026-01-28T18:05:29.328Z",
+        "CARLOS ARMANDO R\u00cdOS \u00c1LVAREZ",
+        "2026-01-28",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "1001",
+        "HEREDIA BEDOYA JULIO CESAR"
+      ]
+    },
+    {
+      "rowIndex": 163,
+      "values": [
+        "2026-01-28T18:05:29.328Z",
+        "CARLOS ARMANDO R\u00cdOS \u00c1LVAREZ",
+        "2026-01-28",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "1001",
+        "LOPEZ HERNANDEZ SARA MANUELA"
+      ]
+    },
+    {
+      "rowIndex": 164,
+      "values": [
+        "2026-01-28T18:13:38.721Z",
+        "CARLOS ALBERTO AGUIRRE GONZ\u00c1LEZ",
+        "2026-01-28",
+        "2",
+        "CIENCIAS SOCIALES (HISTORIA, GEOGRAF\u00cdA Y",
+        "Sin excusa",
+        "1102",
+        "AGUDELO CRUZ ESTEFANY PAOLA"
+      ]
+    },
+    {
+      "rowIndex": 165,
+      "values": [
+        "2026-01-28T18:13:38.721Z",
+        "CARLOS ALBERTO AGUIRRE GONZ\u00c1LEZ",
+        "2026-01-28",
+        "2",
+        "CIENCIAS SOCIALES (HISTORIA, GEOGRAF\u00cdA Y",
+        "Sin excusa",
+        "1102",
+        "MONTOYA MARIN JUAN ESTEBAN"
+      ]
+    },
+    {
+      "rowIndex": 166,
+      "values": [
+        "2026-01-28T18:20:23.283Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-28",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Transporte Escolar",
+        "901",
+        "CANO MEDINA VERONICA"
+      ]
+    },
+    {
+      "rowIndex": 167,
+      "values": [
+        "2026-01-29T12:42:30.840Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-29",
+        "2",
+        "EDUCACI\u00d3N F\u00cdSICA, RECREACI\u00d3N Y DEPORTES",
+        "Transporte Escolar",
+        "801",
+        "HENAO PUERTA KATERINE"
+      ]
+    },
+    {
+      "rowIndex": 168,
+      "values": [
+        "2026-01-29T12:42:30.840Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-29",
+        "2",
+        "EDUCACI\u00d3N F\u00cdSICA, RECREACI\u00d3N Y DEPORTES",
+        "Sin excusa",
+        "801",
+        "REGALADO HERNANDEZ FABIOLA VALENTINA"
+      ]
+    },
+    {
+      "rowIndex": 169,
+      "values": [
+        "2026-01-29T12:43:14.237Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-29",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "902",
+        "CASTA\u00d1O ROBLES DAYELEN"
+      ]
+    },
+    {
+      "rowIndex": 170,
+      "values": [
+        "2026-01-29T12:43:14.237Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-29",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "902",
+        "HERNANDEZ ROMAN SILVANA"
+      ]
+    },
+    {
+      "rowIndex": 171,
+      "values": [
+        "2026-01-29T12:43:14.237Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-29",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "902",
+        "MAYA SOTO EDUAR ALEXIS"
+      ]
+    },
+    {
+      "rowIndex": 172,
+      "values": [
+        "2026-01-29T12:44:00.043Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-29",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Sin excusa",
+        "602",
+        "CASTA\u00d1EDA GOMEZ ANGIE LIZETH"
+      ]
+    },
+    {
+      "rowIndex": 173,
+      "values": [
+        "2026-01-29T12:53:55.004Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-29",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Transporte Escolar",
+        "902",
+        "CASTA\u00d1O ROBLES DAYELEN"
+      ]
+    },
+    {
+      "rowIndex": 174,
+      "values": [
+        "2026-01-29T12:54:07.052Z",
+        "CARLOS ALBERTO AGUIRRE GONZ\u00c1LEZ",
+        "2026-01-29",
+        "2",
+        "CIENCIAS SOCIALES (HISTORIA, GEOGRAF\u00cdA Y",
+        "Sin excusa",
+        "1102",
+        "AGUDELO CRUZ ESTEFANY PAOLA"
+      ]
+    },
+    {
+      "rowIndex": 175,
+      "values": [
+        "2026-01-29T12:54:07.052Z",
+        "CARLOS ALBERTO AGUIRRE GONZ\u00c1LEZ",
+        "2026-01-29",
+        "2",
+        "CIENCIAS SOCIALES (HISTORIA, GEOGRAF\u00cdA Y",
+        "Excusa",
+        "1102",
+        "GUAPACHA RIOS DANNA"
+      ]
+    },
+    {
+      "rowIndex": 176,
+      "values": [
+        "2026-01-29T12:54:07.052Z",
+        "CARLOS ALBERTO AGUIRRE GONZ\u00c1LEZ",
+        "2026-01-29",
+        "2",
+        "CIENCIAS SOCIALES (HISTORIA, GEOGRAF\u00cdA Y",
+        "LLegada Tarde",
+        "1102",
+        "MURILLO COLORADO ESTEBAN ALEJANDRO"
+      ]
+    },
+    {
+      "rowIndex": 177,
+      "values": [
+        "2026-01-29T12:54:07.052Z",
+        "CARLOS ALBERTO AGUIRRE GONZ\u00c1LEZ",
+        "2026-01-29",
+        "2",
+        "CIENCIAS SOCIALES (HISTORIA, GEOGRAF\u00cdA Y",
+        "LLegada Tarde",
+        "1102",
+        "RODRIGUEZ GRAJALES JOSE MANUEL"
+      ]
+    },
+    {
+      "rowIndex": 178,
+      "values": [
+        "2026-01-29T12:54:07.052Z",
+        "CARLOS ALBERTO AGUIRRE GONZ\u00c1LEZ",
+        "2026-01-29",
+        "2",
+        "CIENCIAS SOCIALES (HISTORIA, GEOGRAF\u00cdA Y",
+        "LLegada Tarde",
+        "1102",
+        "V\u00c9LEZ OSSA JUAN DIEGO"
+      ]
+    },
+    {
+      "rowIndex": 179,
+      "values": [
+        "2026-01-29T13:03:09.013Z",
+        "PABLO REINOSO HENAO",
+        "2026-01-29",
+        "2",
+        "INGL\u00c9S",
+        "Excusa",
+        "701",
+        "FLOREZ VILLADA ANDRES FELIPE"
+      ]
+    },
+    {
+      "rowIndex": 180,
+      "values": [
+        "2026-01-29T13:03:09.013Z",
+        "PABLO REINOSO HENAO",
+        "2026-01-29",
+        "2",
+        "INGL\u00c9S",
+        "Transporte Escolar",
+        "701",
+        "MENDOZA MAIKOL STIVEN"
+      ]
+    },
+    {
+      "rowIndex": 181,
+      "values": [
+        "2026-01-29T13:03:09.013Z",
+        "PABLO REINOSO HENAO",
+        "2026-01-29",
+        "2",
+        "INGL\u00c9S",
+        "Transporte Escolar",
+        "701",
+        "RAMIREZ SUAZA JUAN DAVID"
+      ]
+    },
+    {
+      "rowIndex": 182,
+      "values": [
+        "2026-01-29T13:03:09.013Z",
+        "PABLO REINOSO HENAO",
+        "2026-01-29",
+        "2",
+        "INGL\u00c9S",
+        "Transporte Escolar",
+        "701",
+        "RUDAS PUERTA SEBASTIAN"
+      ]
+    },
+    {
+      "rowIndex": 183,
+      "values": [
+        "2026-01-29T13:03:09.013Z",
+        "PABLO REINOSO HENAO",
+        "2026-01-29",
+        "2",
+        "INGL\u00c9S",
+        "Transporte Escolar",
+        "701",
+        "YARCE CALVO VALERIA ISOLINA"
+      ]
+    },
+    {
+      "rowIndex": 184,
+      "values": [
+        "2026-01-29T13:22:40.212Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-29",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "802",
+        "PEREZ BERNAL JOSUE",
+        "Algunos estudiantes faltan debido a la falta del transporte escolar"
+      ]
+    },
+    {
+      "rowIndex": 185,
+      "values": [
+        "2026-01-29T13:22:40.212Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-29",
+        "1",
+        "EMPRENDIMIENTO",
+        "Transporte Escolar",
+        "802",
+        "SANABRIA CASTA\u00d1EDA DAVID SANTIAGO",
+        "Algunos estudiantes faltan debido a la falta del transporte escolar"
+      ]
+    },
+    {
+      "rowIndex": 186,
+      "values": [
+        "2026-01-29T13:31:22.708Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-29",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Sin excusa",
+        "602",
+        "AGUDELO OSPINA YOLEISON"
+      ]
+    },
+    {
+      "rowIndex": 187,
+      "values": [
+        "2026-01-29T13:35:32.740Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-01-29",
+        "2",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "1101",
+        "GONZALEZ ROMERO SANTIAGO"
+      ]
+    },
+    {
+      "rowIndex": 188,
+      "values": [
+        "2026-01-29T13:35:32.740Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-01-29",
+        "2",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "1101",
+        "GUAPACHA MOTATO ESTEFANIA"
+      ]
+    },
+    {
+      "rowIndex": 189,
+      "values": [
+        "2026-01-29T13:35:32.740Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-01-29",
+        "2",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "1101",
+        "MEJIA SAN MARTIN YUDICEL DAHIANA"
+      ]
+    },
+    {
+      "rowIndex": 190,
+      "values": [
+        "2026-01-29T13:35:32.740Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-01-29",
+        "2",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "1101",
+        "OROZCO CARDONA OSCAR ADOLFO"
+      ]
+    },
+    {
+      "rowIndex": 191,
+      "values": [
+        "2026-01-29T13:35:32.740Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-01-29",
+        "2",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "1101",
+        "RAMIREZ BEDOYA YONATAN ESTIVEN"
+      ]
+    },
+    {
+      "rowIndex": 192,
+      "values": [
+        "2026-01-29T13:35:32.740Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-01-29",
+        "2",
+        "LENGUA CASTELLANA",
+        "Excusa",
+        "1101",
+        "RAMIREZ GUTIERREZ LAURA JIMENA"
+      ]
+    },
+    {
+      "rowIndex": 193,
+      "values": [
+        "2026-01-29T13:56:24.948Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-29",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "601",
+        "GRANADA GUTIERREZ SAMANTHA"
+      ]
+    },
+    {
+      "rowIndex": 194,
+      "values": [
+        "2026-01-29T14:09:31.586Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-29",
+        "2",
+        "EDUCACI\u00d3N F\u00cdSICA, RECREACI\u00d3N Y DEPORTES",
+        "Sin excusa",
+        "1101",
+        "GONZALEZ ROMERO SANTIAGO"
+      ]
+    },
+    {
+      "rowIndex": 195,
+      "values": [
+        "2026-01-29T14:09:31.586Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-29",
+        "2",
+        "EDUCACI\u00d3N F\u00cdSICA, RECREACI\u00d3N Y DEPORTES",
+        "Sin excusa",
+        "1101",
+        "GUAPACHA MOTATO ESTEFANIA"
+      ]
+    },
+    {
+      "rowIndex": 196,
+      "values": [
+        "2026-01-29T14:09:31.586Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-29",
+        "2",
+        "EDUCACI\u00d3N F\u00cdSICA, RECREACI\u00d3N Y DEPORTES",
+        "Sin excusa",
+        "1101",
+        "MEJIA SAN MARTIN YUDICEL DAHIANA"
+      ]
+    },
+    {
+      "rowIndex": 197,
+      "values": [
+        "2026-01-29T14:09:31.586Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-29",
+        "2",
+        "EDUCACI\u00d3N F\u00cdSICA, RECREACI\u00d3N Y DEPORTES",
+        "Sin excusa",
+        "1101",
+        "OROZCO CARDONA OSCAR ADOLFO"
+      ]
+    },
+    {
+      "rowIndex": 198,
+      "values": [
+        "2026-01-29T14:09:31.586Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-29",
+        "2",
+        "EDUCACI\u00d3N F\u00cdSICA, RECREACI\u00d3N Y DEPORTES",
+        "Transporte Escolar",
+        "1101",
+        "RAMIREZ BEDOYA YONATAN ESTIVEN"
+      ]
+    },
+    {
+      "rowIndex": 199,
+      "values": [
+        "2026-01-29T14:09:31.586Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-29",
+        "2",
+        "EDUCACI\u00d3N F\u00cdSICA, RECREACI\u00d3N Y DEPORTES",
+        "Sin excusa",
+        "1101",
+        "RAMIREZ GUTIERREZ LAURA JIMENA"
+      ]
+    },
+    {
+      "rowIndex": 200,
+      "values": [
+        "2026-01-29T14:13:30.517Z",
+        "ILDORY JARAMILLO",
+        "2026-01-29",
+        "2",
+        "FILOSOF\u00cdA Y CIENCIAS SOCIALES (CIENCIAS",
+        "Excusa",
+        "602",
+        "AGUDELO OSPINA YOLEISON"
+      ]
+    },
+    {
+      "rowIndex": 201,
+      "values": [
+        "2026-01-29T14:24:07.110Z",
+        "ANA SOFIA CARDENAS PETUMA",
+        "2026-01-29",
+        "1",
+        "LENGUA CASTELLANA",
+        "Excusa",
+        "701",
+        "FLOREZ VILLADA ANDRES FELIPE"
+      ]
+    },
+    {
+      "rowIndex": 202,
+      "values": [
+        "2026-01-29T14:28:33.751Z",
+        "ANA SOFIA CARDENAS PETUMA",
+        "2026-01-29",
+        "1",
+        "LENGUA CASTELLANA",
+        "Transporte Escolar",
+        "701",
+        "MENDOZA MAIKOL STIVEN"
+      ]
+    },
+    {
+      "rowIndex": 203,
+      "values": [
+        "2026-01-29T14:28:33.751Z",
+        "ANA SOFIA CARDENAS PETUMA",
+        "2026-01-29",
+        "1",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "701",
+        "RAMIREZ SUAZA JUAN DAVID"
+      ]
+    },
+    {
+      "rowIndex": 204,
+      "values": [
+        "2026-01-29T14:28:33.751Z",
+        "ANA SOFIA CARDENAS PETUMA",
+        "2026-01-29",
+        "1",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "701",
+        "SERNA MARTINEZ DAYNER ESTEBAN"
+      ]
+    },
+    {
+      "rowIndex": 205,
+      "values": [
+        "2026-01-29T14:28:33.751Z",
+        "ANA SOFIA CARDENAS PETUMA",
+        "2026-01-29",
+        "1",
+        "LENGUA CASTELLANA",
+        "Transporte Escolar",
+        "701",
+        "YARCE CALVO VALERIA ISOLINA"
+      ]
+    },
+    {
+      "rowIndex": 206,
+      "values": [
+        "2026-01-29T14:41:06.270Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-29",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Transporte Escolar",
+        "801",
+        "HENAO PUERTA KATERINE"
+      ]
+    },
+    {
+      "rowIndex": 207,
+      "values": [
+        "2026-01-29T14:41:06.270Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-29",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Excusa",
+        "801",
+        "MU\u00d1OZ GONZALEZ TOMAS EMILIO"
+      ]
+    },
+    {
+      "rowIndex": 208,
+      "values": [
+        "2026-01-29T14:41:06.270Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-29",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "801",
+        "REGALADO HERNANDEZ FABIOLA VALENTINA"
+      ]
+    },
+    {
+      "rowIndex": 209,
+      "values": [
+        "2026-01-29T14:49:42.495Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-29",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Transporte Escolar",
+        "901",
+        "CANO MEDINA VERONICA"
+      ]
+    },
+    {
+      "rowIndex": 210,
+      "values": [
+        "2026-01-29T14:49:42.495Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-29",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Transporte Escolar",
+        "901",
+        "MONTOYA CARVAJAL DANNA SOPHIA"
+      ]
+    },
+    {
+      "rowIndex": 211,
+      "values": [
+        "2026-01-29T14:49:42.495Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-29",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Transporte Escolar",
+        "901",
+        "TONUZCO MONTOYA LAURA XIMENA"
+      ]
+    },
+    {
+      "rowIndex": 212,
+      "values": [
+        "2026-01-29T14:53:13.479Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-29",
+        "0",
+        "F\u00cdSICA",
+        "No portar\/sin uniforme",
+        "1001",
+        "ARENAS MORALES JUAN PABLO"
+      ]
+    },
+    {
+      "rowIndex": 213,
+      "values": [
+        "2026-01-29T14:53:13.479Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-29",
+        "0",
+        "F\u00cdSICA",
+        "No portar\/sin uniforme",
+        "1001",
+        "GARCIA RODRIGUEZ JUAN ANDRES"
+      ]
+    },
+    {
+      "rowIndex": 214,
+      "values": [
+        "2026-01-29T14:53:13.479Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-29",
+        "0",
+        "F\u00cdSICA",
+        "No portar\/sin uniforme",
+        "1001",
+        "LARGO MONTOYA ANGI NATALIA"
+      ]
+    },
+    {
+      "rowIndex": 215,
+      "values": [
+        "2026-01-29T14:53:13.479Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-29",
+        "0",
+        "F\u00cdSICA",
+        "No portar\/sin uniforme",
+        "1001",
+        "SEPULVEDA JIMENEZ JUAN FELIPE"
+      ]
+    },
+    {
+      "rowIndex": 216,
+      "values": [
+        "2026-01-29T15:01:30.427Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-29",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Transporte Escolar",
+        "902",
+        "CASTA\u00d1O ROBLES DAYELEN"
+      ]
+    },
+    {
+      "rowIndex": 217,
+      "values": [
+        "2026-01-29T15:01:30.427Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-29",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Sin excusa",
+        "902",
+        "HERNANDEZ ROMAN SILVANA"
+      ]
+    },
+    {
+      "rowIndex": 218,
+      "values": [
+        "2026-01-29T15:01:30.427Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-29",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Transporte Escolar",
+        "902",
+        "MAYA SOTO EDUAR ALEXIS"
+      ]
+    },
+    {
+      "rowIndex": 219,
+      "values": [
+        "2026-01-29T15:06:37.611Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-29",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "701",
+        "FLOREZ VILLADA ANDRES FELIPE"
+      ]
+    },
+    {
+      "rowIndex": 220,
+      "values": [
+        "2026-01-29T15:06:37.611Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-29",
+        "1",
+        "EMPRENDIMIENTO",
+        "Transporte Escolar",
+        "701",
+        "MENDOZA MAIKOL STIVEN"
+      ]
+    },
+    {
+      "rowIndex": 221,
+      "values": [
+        "2026-01-29T15:06:37.611Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-29",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "701",
+        "RAMIREZ SUAZA JUAN DAVID"
+      ]
+    },
+    {
+      "rowIndex": 222,
+      "values": [
+        "2026-01-29T15:06:37.611Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-29",
+        "1",
+        "EMPRENDIMIENTO",
+        "Transporte Escolar",
+        "701",
+        "RUDAS PUERTA SEBASTIAN"
+      ]
+    },
+    {
+      "rowIndex": 223,
+      "values": [
+        "2026-01-29T15:06:37.611Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-29",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "701",
+        "SERNA MARTINEZ DAYNER ESTEBAN"
+      ]
+    },
+    {
+      "rowIndex": 224,
+      "values": [
+        "2026-01-29T15:06:37.611Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-29",
+        "1",
+        "EMPRENDIMIENTO",
+        "Transporte Escolar",
+        "701",
+        "YARCE CALVO VALERIA ISOLINA"
+      ]
+    },
+    {
+      "rowIndex": 225,
+      "values": [
+        "2026-01-29T15:14:14.124Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-01-28",
+        "2",
+        "INGL\u00c9S",
+        "Excusa",
+        "901",
+        "CANO MEDINA VERONICA"
+      ]
+    },
+    {
+      "rowIndex": 226,
+      "values": [
+        "2026-01-29T15:14:14.124Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-01-28",
+        "2",
+        "INGL\u00c9S",
+        "Excusa",
+        "901",
+        "TONUZCO MONTOYA LAURA XIMENA"
+      ]
+    },
+    {
+      "rowIndex": 227,
+      "values": [
+        "2026-01-29T15:14:14.124Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-01-28",
+        "2",
+        "INGL\u00c9S",
+        "Sin excusa",
+        "901",
+        "MONTOYA CARVAJAL DANNA SOPHIA"
+      ]
+    },
+    {
+      "rowIndex": 228,
+      "values": [
+        "2026-01-29T15:14:23.494Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-29",
+        "1",
+        "QU\u00cdMICA",
+        "Sin excusa",
+        "802",
+        "PEREZ BERNAL JOSUE"
+      ]
+    },
+    {
+      "rowIndex": 229,
+      "values": [
+        "2026-01-29T15:14:23.494Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-29",
+        "1",
+        "QU\u00cdMICA",
+        "Transporte Escolar",
+        "802",
+        "SANABRIA CASTA\u00d1EDA DAVID SANTIAGO"
+      ]
+    },
+    {
+      "rowIndex": 230,
+      "values": [
+        "2026-01-29T15:37:07.800Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-01-29",
+        "2",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "1102",
+        "AGUDELO CRUZ ESTEFANY PAOLA"
+      ]
+    },
+    {
+      "rowIndex": 231,
+      "values": [
+        "2026-01-29T15:37:07.800Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-01-29",
+        "2",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "1102",
+        "GUAPACHA RIOS DANNA"
+      ]
+    },
+    {
+      "rowIndex": 232,
+      "values": [
+        "2026-01-29T15:52:51.766Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-29",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Sin excusa",
+        "1102",
+        "AGUDELO CRUZ ESTEFANY PAOLA"
+      ]
+    },
+    {
+      "rowIndex": 233,
+      "values": [
+        "2026-01-29T15:52:51.766Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-29",
+        "0",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "No portar\/sin uniforme",
+        "1102",
+        "BALLESTEROS HEREDIA JHON ALEX",
+        "Dice que el lunes ya viene con el uniforme"
+      ]
+    },
+    {
+      "rowIndex": 234,
+      "values": [
+        "2026-01-29T15:52:51.766Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-29",
+        "0",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "No portar\/sin uniforme",
+        "1102",
+        "GRAJALES CARVAJAL ISABELLA",
+        "No porta bien el uniforme"
+      ]
+    },
+    {
+      "rowIndex": 235,
+      "values": [
+        "2026-01-29T15:52:51.766Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-29",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Sin excusa",
+        "1102",
+        "GUAPACHA RIOS DANNA"
+      ]
+    },
+    {
+      "rowIndex": 236,
+      "values": [
+        "2026-01-29T15:52:51.766Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-29",
+        "0",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "No portar\/sin uniforme",
+        "1102",
+        "URAN RAMIREZ CRISTIAN DAVID",
+        "NO porta bien el uniforme"
+      ]
+    },
+    {
+      "rowIndex": 237,
+      "values": [
+        "2026-01-29T15:54:52.393Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-29",
+        "2",
+        "EDUCACI\u00d3N F\u00cdSICA, RECREACI\u00d3N Y DEPORTES",
+        "Transporte Escolar",
+        "901",
+        "CANO MEDINA VERONICA"
+      ]
+    },
+    {
+      "rowIndex": 238,
+      "values": [
+        "2026-01-29T15:54:52.393Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-29",
+        "2",
+        "EDUCACI\u00d3N F\u00cdSICA, RECREACI\u00d3N Y DEPORTES",
+        "Sin excusa",
+        "901",
+        "MONTOYA CARVAJAL DANNA SOPHIA"
+      ]
+    },
+    {
+      "rowIndex": 239,
+      "values": [
+        "2026-01-29T15:58:23.338Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-29",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Transporte Escolar",
+        "901",
+        "CANO MEDINA VERONICA"
+      ]
+    },
+    {
+      "rowIndex": 240,
+      "values": [
+        "2026-01-29T15:58:23.338Z",
+        "DELCID DE JES\u00daS BUENO ARANDIA",
+        "2026-01-29",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Sin excusa",
+        "901",
+        "MONTOYA CARVAJAL DANNA SOPHIA"
+      ]
+    },
+    {
+      "rowIndex": 241,
+      "values": [
+        "2026-01-29T16:20:11.898Z",
+        "CARLOS ARMANDO R\u00cdOS \u00c1LVAREZ",
+        "2026-01-29",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "1001",
+        "ARENAS MARTINEZ SALOME"
+      ]
+    },
+    {
+      "rowIndex": 242,
+      "values": [
+        "2026-01-29T16:20:11.898Z",
+        "CARLOS ARMANDO R\u00cdOS \u00c1LVAREZ",
+        "2026-01-29",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "1001",
+        "CHAMORRO CONTRERAS GERM\u00c1N UBALDO"
+      ]
+    },
+    {
+      "rowIndex": 243,
+      "values": [
+        "2026-01-29T16:20:11.898Z",
+        "CARLOS ARMANDO R\u00cdOS \u00c1LVAREZ",
+        "2026-01-29",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "1001",
+        "HEREDIA BEDOYA JULIO CESAR"
+      ]
+    },
+    {
+      "rowIndex": 244,
+      "values": [
+        "2026-01-29T16:20:11.898Z",
+        "CARLOS ARMANDO R\u00cdOS \u00c1LVAREZ",
+        "2026-01-29",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "1001",
+        "LOPEZ HERNANDEZ SARA MANUELA"
+      ]
+    },
+    {
+      "rowIndex": 245,
+      "values": [
+        "2026-01-29T16:20:11.898Z",
+        "CARLOS ARMANDO R\u00cdOS \u00c1LVAREZ",
+        "2026-01-29",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "1001",
+        "MURILLO AGUDELO LAURA VALENTINA"
+      ]
+    },
+    {
+      "rowIndex": 246,
+      "values": [
+        "2026-01-29T16:20:11.898Z",
+        "CARLOS ARMANDO R\u00cdOS \u00c1LVAREZ",
+        "2026-01-29",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "1001",
+        "RAMIREZ PARRA JOAN MANUEL"
+      ]
+    },
+    {
+      "rowIndex": 247,
+      "values": [
+        "2026-01-29T16:20:11.898Z",
+        "CARLOS ARMANDO R\u00cdOS \u00c1LVAREZ",
+        "2026-01-29",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "1001",
+        "RAMIREZ SUAZA ANGELA YURANI"
+      ]
+    },
+    {
+      "rowIndex": 248,
+      "values": [
+        "2026-01-29T16:31:40.486Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-01-29",
+        "1",
+        "\u00c9TICA PROFESIONAL",
+        "Sin excusa",
+        "1101",
+        "GONZALEZ ROMERO SANTIAGO"
+      ]
+    },
+    {
+      "rowIndex": 249,
+      "values": [
+        "2026-01-29T16:45:22.614Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-29",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Sin excusa",
+        "701",
+        "FLOREZ VILLADA ANDRES FELIPE"
+      ]
+    },
+    {
+      "rowIndex": 250,
+      "values": [
+        "2026-01-29T16:45:22.614Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-29",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Transporte Escolar",
+        "701",
+        "MENDOZA MAIKOL STIVEN"
+      ]
+    },
+    {
+      "rowIndex": 251,
+      "values": [
+        "2026-01-29T16:45:22.614Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-29",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Sin excusa",
+        "701",
+        "RAMIREZ SUAZA JUAN DAVID"
+      ]
+    },
+    {
+      "rowIndex": 252,
+      "values": [
+        "2026-01-29T16:45:22.614Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-29",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Transporte Escolar",
+        "701",
+        "RUDAS PUERTA SEBASTIAN"
+      ]
+    },
+    {
+      "rowIndex": 253,
+      "values": [
+        "2026-01-29T16:45:22.614Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-29",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Transporte Escolar",
+        "701",
+        "SERNA MARTINEZ DAYNER ESTEBAN"
+      ]
+    },
+    {
+      "rowIndex": 254,
+      "values": [
+        "2026-01-29T16:45:22.614Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-29",
+        "1",
+        "EDUCACI\u00d3N ART\u00cdSTICA",
+        "Transporte Escolar",
+        "701",
+        "YARCE CALVO VALERIA ISOLINA"
+      ]
+    },
+    {
+      "rowIndex": 255,
+      "values": [
+        "2026-01-29T16:55:15.647Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-29",
+        "1",
+        "EDUCACI\u00d3N RELIGIOSA, \u00c9TICA Y V. HUMANOS",
+        "Excusa",
+        "802",
+        "PEREZ BERNAL JOSUE"
+      ]
+    },
+    {
+      "rowIndex": 256,
+      "values": [
+        "2026-01-29T16:55:15.647Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-29",
+        "1",
+        "EDUCACI\u00d3N RELIGIOSA, \u00c9TICA Y V. HUMANOS",
+        "Transporte Escolar",
+        "802",
+        "SANABRIA CASTA\u00d1EDA DAVID SANTIAGO"
+      ]
+    },
+    {
+      "rowIndex": 257,
+      "values": [
+        "2026-01-29T17:05:39.718Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-01-29",
+        "1",
+        "EMPRENDIMIENTO",
+        "Transporte Escolar",
+        "602",
+        "AGUDELO OSPINA YOLEISON"
+      ]
+    },
+    {
+      "rowIndex": 258,
+      "values": [
+        "2026-01-29T17:09:19.656Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-29",
+        "2",
+        "F\u00cdSICA",
+        "Excusa",
+        "1101",
+        "GONZALEZ ROMERO SANTIAGO"
+      ]
+    },
+    {
+      "rowIndex": 259,
+      "values": [
+        "2026-01-29T17:09:19.656Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-29",
+        "2",
+        "F\u00cdSICA",
+        "Transporte Escolar",
+        "1101",
+        "GUAPACHA MOTATO ESTEFANIA"
+      ]
+    },
+    {
+      "rowIndex": 260,
+      "values": [
+        "2026-01-29T17:09:19.656Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-29",
+        "2",
+        "F\u00cdSICA",
+        "Excusa",
+        "1101",
+        "MEJIA SAN MARTIN YUDICEL DAHIANA"
+      ]
+    },
+    {
+      "rowIndex": 261,
+      "values": [
+        "2026-01-29T17:09:19.656Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-29",
+        "2",
+        "F\u00cdSICA",
+        "Sin excusa",
+        "1101",
+        "OROZCO CARDONA OSCAR ADOLFO"
+      ]
+    },
+    {
+      "rowIndex": 262,
+      "values": [
+        "2026-01-29T17:09:19.656Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-29",
+        "2",
+        "F\u00cdSICA",
+        "Transporte Escolar",
+        "1101",
+        "RAMIREZ BEDOYA YONATAN ESTIVEN"
+      ]
+    },
+    {
+      "rowIndex": 263,
+      "values": [
+        "2026-01-29T17:09:19.656Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-29",
+        "2",
+        "F\u00cdSICA",
+        "Sin excusa",
+        "1101",
+        "RAMIREZ GUTIERREZ LAURA JIMENA"
+      ]
+    },
+    {
+      "rowIndex": 264,
+      "values": [
+        "2026-01-29T17:09:19.656Z",
+        "JOHN EDWIN ARBOLEDA ACEVEDO",
+        "2026-01-29",
+        "1",
+        "F\u00cdSICA",
+        "LLegada Tarde",
+        "1101",
+        "TABA HOLGUIN LUIS MATEO"
+      ]
+    },
+    {
+      "rowIndex": 265,
+      "values": [
+        "2026-01-29T17:18:25.366Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-29",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Excusa",
+        "802",
+        "PEREZ BERNAL JOSUE"
+      ]
+    },
+    {
+      "rowIndex": 266,
+      "values": [
+        "2026-01-29T17:18:25.366Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-01-29",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Transporte Escolar",
+        "802",
+        "SANABRIA CASTA\u00d1EDA DAVID SANTIAGO"
+      ]
+    },
+    {
+      "rowIndex": 267,
+      "values": [
+        "2026-01-29T17:24:35.192Z",
+        "PABLO REINOSO HENAO",
+        "2026-01-29",
+        "2",
+        "INGL\u00c9S",
+        "Excusa",
+        "601",
+        "GRANADA GUTIERREZ SAMANTHA"
+      ]
+    },
+    {
+      "rowIndex": 268,
+      "values": [
+        "2026-01-29T17:24:35.192Z",
+        "PABLO REINOSO HENAO",
+        "2026-01-29",
+        "2",
+        "INGL\u00c9S",
+        "Excusa",
+        "601",
+        "TORO SOTO NICOL DAHIANA"
+      ]
+    },
+    {
+      "rowIndex": 269,
+      "values": [
+        "2026-01-29T17:26:36.094Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-28",
+        "0",
+        "QU\u00cdMICA",
+        "Uso del celular",
+        "1001",
+        "PIEDRAHITA RAMIREZ KARLA MARIELLY"
+      ]
+    },
+    {
+      "rowIndex": 270,
+      "values": [
+        "2026-01-29T17:28:13.757Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-01-29",
+        "0",
+        "QU\u00cdMICA",
+        "Pacto de Aula",
+        "1001",
+        "SEPULVEDA JIMENEZ JUAN FELIPE"
+      ]
+    },
+    {
+      "rowIndex": 271,
+      "values": [
+        "2026-01-29T17:55:38.495Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-01-29",
+        "1",
+        "\u00c9TICA PROFESIONAL",
+        "Excusa",
+        "1001",
+        "ARENAS MARTINEZ SALOME"
+      ]
+    },
+    {
+      "rowIndex": 272,
+      "values": [
+        "2026-01-29T17:55:38.495Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-01-29",
+        "1",
+        "\u00c9TICA PROFESIONAL",
+        "Excusa",
+        "1001",
+        "MURILLO AGUDELO LAURA VALENTINA"
+      ]
+    },
+    {
+      "rowIndex": 273,
+      "values": [
+        "2026-01-29T17:55:38.495Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-01-29",
+        "1",
+        "\u00c9TICA PROFESIONAL",
+        "Excusa",
+        "1001",
+        "RAMIREZ SUAZA ANGELA YURANI"
+      ]
+    },
+    {
+      "rowIndex": 274,
+      "values": [
+        "2026-01-29T17:55:38.495Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-01-29",
+        "1",
+        "\u00c9TICA PROFESIONAL",
+        "Excusa",
+        "1001",
+        "CHAMORRO CONTRERAS GERM\u00c1N UBALDO"
+      ]
+    },
+    {
+      "rowIndex": 275,
+      "values": [
+        "2026-01-29T18:43:55.123Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-29",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Sin excusa",
+        "801",
+        "HENAO PUERTA KATERINE"
+      ]
+    },
+    {
+      "rowIndex": 276,
+      "values": [
+        "2026-01-29T18:43:55.123Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-29",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Transporte Escolar",
+        "801",
+        "REGALADO HERNANDEZ FABIOLA VALENTINA"
+      ]
+    },
+    {
+      "rowIndex": 277,
+      "values": [
+        "2026-01-29T18:48:02.463Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-29",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Transporte Escolar",
+        "801",
+        "HENAO PUERTA KATERINE"
+      ]
+    },
+    {
+      "rowIndex": 278,
+      "values": [
+        "2026-01-29T18:48:02.463Z",
+        "JAVIER DE JES\u00daS AGUDELO CARVAJAL",
+        "2026-01-29",
+        "2",
+        "MATEM\u00c1TICAS",
+        "Excusa",
+        "801",
+        "REGALADO HERNANDEZ FABIOLA VALENTINA"
+      ]
+    }
   ]
 }
