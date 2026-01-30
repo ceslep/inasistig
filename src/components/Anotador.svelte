@@ -17,6 +17,7 @@
   import AnotadorFilter from "./AnotadorFilter.svelte";
   import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
+  import { slide } from 'svelte/transition';
 
   export let onBack: () => void;
 
@@ -46,6 +47,13 @@
   let isLoadingOpciones = false;
 
   let anotacionGrupos: Record<string, OpcionAnotacion[]> = {};
+  let expandedCategories: Record<string, boolean> = {}; // New state for accordion
+  
+  const toggleCategory = (category: string) => {
+    expandedCategories[category] = !expandedCategories[category];
+    // This line is needed to trigger reactivity when updating an object property
+    expandedCategories = expandedCategories;
+  };
 
   const getCategoryColor = (cat: string) => {
     const colors: Record<string, string> = {
@@ -243,12 +251,15 @@
 
       // Transformar opciones a objetos editables
       const transformed: Record<string, OpcionAnotacion[]> = {};
+      const initialExpandedState: Record<string, boolean> = {}; // Initialize expanded state
       for (const [cat, items] of Object.entries(
         opcionesData as Record<string, string[]>,
       )) {
         transformed[cat] = items.map((text) => ({ text, selected: false }));
+        initialExpandedState[cat] = false; // All categories start minimized
       }
       anotacionGrupos = transformed;
+      expandedCategories = initialExpandedState;
     } catch (error) {
       console.error("Error cargando datos iniciales:", error);
     } finally {
@@ -823,77 +834,96 @@
             {#each Object.entries(anotacionGrupos) as [categoria, opciones]}
               {@const catColor = getCategoryColor(categoria)}
               <div class="space-y-4">
-                <div class="flex items-center gap-3">
+                <button
+                  on:click={() => toggleCategory(categoria)}
+                  class="flex items-center gap-3 w-full text-left cursor-pointer group focus:outline-none"
+                >
                   <h3
-                    class="text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full text-white"
+                    class="text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full text-white flex-shrink-0 transition-all duration-300 group-hover:shadow-md"
                     style="background-color: {catColor};"
                   >
                     {categoria}
                   </h3>
                   <div
-                    class="h-px flex-1"
+                    class="h-px flex-1 transition-all duration-300 group-hover:opacity-50"
                     style="background-color: {catColor}; opacity: 0.2;"
                   ></div>
-                </div>
+                  <svg
+                    class="w-5 h-5 text-gray-500 transform transition-transform duration-200 flex-shrink-0"
+                    class:rotate-180={expandedCategories[categoria]}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {#each opciones as opcion}
-                    <div
-                      class="relative group flex flex-col p-0 rounded-2xl border transition-all duration-200 shadow-sm hover:shadow-md"
-                      style="
-                        background-color: {opcion.selected
-                        ? `${catColor}10`
-                        : styles.inputBg};
-                        border-color: {opcion.selected
-                        ? catColor
-                        : styles.border};
-                      "
-                    >
-                      <div class="flex items-start gap-1 p-4">
-                        <label class="flex-shrink-0 cursor-pointer p-1 mt-1">
-                          <input
-                            type="checkbox"
-                            bind:checked={opcion.selected}
-                            class="hidden"
-                          />
-                          <div
-                            class="w-5 h-5 rounded border flex items-center justify-center transition-colors"
-                            style="
-                              border-color: {opcion.selected
-                              ? catColor
-                              : styles.border};
-                              background-color: {opcion.selected
-                              ? catColor
-                              : 'transparent'};
-                            "
-                          >
-                            {#if opcion.selected}
-                              <svg
-                                class="w-3 h-3 text-white"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                              >
-                                <path
-                                  fill-rule="evenodd"
-                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                  clip-rule="evenodd"
-                                />
-                              </svg>
-                            {/if}
-                          </div>
-                        </label>
+                {#if expandedCategories[categoria]}
+                  <div transition:slide class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {#each opciones as opcion}
+                      <div
+                        class="relative group flex flex-col p-0 rounded-2xl border transition-all duration-200 shadow-sm hover:shadow-md"
+                        style="
+                          background-color: {opcion.selected
+                          ? `${catColor}10`
+                          : styles.inputBg};
+                          border-color: {opcion.selected
+                          ? catColor
+                          : styles.border};
+                        "
+                      >
+                        <div class="flex items-start gap-1 p-4">
+                          <label class="flex-shrink-0 cursor-pointer p-1 mt-1">
+                            <input
+                              type="checkbox"
+                              bind:checked={opcion.selected}
+                              class="hidden"
+                            />
+                            <div
+                              class="w-5 h-5 rounded border flex items-center justify-center transition-colors"
+                              style="
+                                border-color: {opcion.selected
+                                ? catColor
+                                : styles.border};
+                                background-color: {opcion.selected
+                                ? catColor
+                                : 'transparent'};
+                              "
+                            >
+                              {#if opcion.selected}
+                                <svg
+                                  class="w-3 h-3 text-white"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path
+                                    fill-rule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clip-rule="evenodd"
+                                  />
+                                </svg>
+                              {/if}
+                            </div>
+                          </label>
 
-                        <textarea
-                          bind:value={opcion.text}
-                          rows="8"
-                          class="w-full bg-transparent border-none focus:ring-0 text-base font-medium leading-relaxed resize-none p-1 transition-colors min-h-[180px] pb-6"
-                          style="color: {styles.text};"
-                          placeholder="Escriba aquí..."
-                        ></textarea>
+                          <textarea
+                            bind:value={opcion.text}
+                            rows="8"
+                            class="w-full bg-transparent border-none focus:ring-0 text-base font-medium leading-relaxed resize-none p-1 transition-colors min-h-[180px] pb-6"
+                            style="color: {styles.text};"
+                            placeholder="Escriba aquí..."
+                          ></textarea>
+                        </div>
                       </div>
-                    </div>
-                  {/each}
-                </div>
+                    {/each}
+                  </div>
+                {/if}
               </div>
             {/each}
           {/if}
