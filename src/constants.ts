@@ -30,3 +30,35 @@ export const INFO_ANOTADOR =
 
 export const URL_LOCKER_STUDIO =
   "https://lookerstudio.google.com/reporting/be2efb22-dc5f-4f21-9dfc-0253e763e19f";
+
+
+// Periodos
+
+interface Periodo {
+  nombre: string;
+  fecha_inicio: Date;
+  fecha_fin: Date;
+}
+
+export const periodos: Periodo[] = [
+  {
+    nombre: "UNO",
+    fecha_inicio: new Date("2026-01-26"),
+    fecha_fin: new Date("2026-03-27")
+  },
+  {
+    nombre: "DOS",
+    fecha_inicio: new Date("2026-03-30"),
+    fecha_fin: new Date("2026-06-12")
+  },
+  {
+    nombre: "TRES",
+    fecha_inicio: new Date("2026-07-07"),
+    fecha_fin: new Date("2026-09-11")
+  },
+  {
+    nombre: "CUATRO",
+    fecha_inicio: new Date("2026-09-14"),
+    fecha_fin: new Date("2026-11-20")
+  }
+]
