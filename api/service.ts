@@ -178,3 +178,71 @@ export const saveAnotador = async (payload: AnotadorPayload) => {
     throw error;
   }
 };
+
+export interface RegistroPayload {
+  id_grupo: number;
+  id_docente: number;
+  id_materia: number;
+  fecha_inicio?: string;
+  fecha_fin?: string;
+}
+
+export interface Estudiante {
+  id: number;
+  nombre: string;
+  grado: string;
+}
+
+export interface Registro {
+  id_estudiante: number;
+  fecha: string;
+  presente: boolean;
+  motivo?: string;
+}
+
+export interface ReportData {
+  estudiantes: Estudiante[];
+  registros: Registro[];
+}
+
+export const getRegistrosReporte = async (payload: RegistroPayload): Promise<ReportData> => {
+  try {
+    const response = await fetch(`${API_URL_GS}/get_registros_reporte.php`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error HTTP: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data || typeof data !== 'object') {
+      throw new Error('Respuesta inválida del servidor');
+    }
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    if (!data.estudiantes || !Array.isArray(data.estudiantes)) {
+      throw new Error('No se encontraron datos de estudiantes');
+    }
+
+    if (!data.registros || !Array.isArray(data.registros)) {
+      data.registros = [];
+    }
+
+    return data as ReportData;
+  } catch (error) {
+    console.error("Error fetching registros reporte:", error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Error desconocido al obtener datos del reporte');
+  }
+};

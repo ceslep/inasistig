@@ -18,6 +18,7 @@
   import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
   import InasistenciaFilter from "./InasistenciaFilter.svelte";
+  import ReportGenerator from "./ReportGenerator.svelte";
 
   export let onBack: () => void;
 
@@ -71,6 +72,9 @@
   const closeFilters = () => {
     showFilter = false;
   };
+
+  // --- Estado para Report Generator ---
+  let reportGeneratorLoading = false;
 
   // --- Alertas Dismissibles ---
   let showInfoAlert =
@@ -644,6 +648,17 @@
           <span class="text-sm font-medium hidden lg:inline">Looker Studio</span
           >
         </button>
+
+        <!-- Report Generator -->
+        <ReportGenerator
+          id_grupo={formData.grado ? parseInt(formData.grado.toString()) : 0}
+          id_docente={0}
+          id_materia={0}
+          nombre_grupo={formData.grado ? `Grado ${formData.grado}`.replace(/0(\d)$/, '°$1').replace(/(\d{1,2})0(\d)/, '$1°$2') : ''}
+          nombre_docente={formData.docente || ''}
+          nombre_materia={formData.materia || ''}
+          on:loading={(e) => reportGeneratorLoading = e.detail}
+        />
 
         <!-- Botón de Dashboard -->
         <button
