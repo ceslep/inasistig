@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test ReportGenerator - CESAR LEANDRO PATIÑO VELEZ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-900 mb-8">🧪 Test ReportGenerator</h1>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Test Data -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">📋 Datos de Prueba</h2>
+                <div class="space-y-3">
+                    <div class="bg-blue-50 p-3 rounded">
+                        <p><strong>👨‍🏫 Docente:</strong> CESAR LEANDRO PATIÑO VELEZ</p>
+                    </div>
+                    <div class="bg-green-50 p-3 rounded">
+                        <p><strong>📚 Materia:</strong> EMPRENDIMIENTO</p>
+                    </div>
+                    <div class="bg-purple-50 p-3 rounded">
+                        <p><strong>👥 Grado:</strong> 602</p>
+                    </div>
+                </div>
+
+                <h3 class="text-lg font-semibold mt-6 mb-3">📊 Registros Simulados (Basado en JSON real)</h3>
+                <div class="text-sm space-y-2">
+                    <div class="border-l-4 border-red-500 pl-3">
+                        <p><strong>2026-01-27:</strong> HOLGUIN ROMERO MATHÍAS - Sin excusa (1h)</p>
+                    </div>
+                    <div class="border-l-4 border-yellow-500 pl-3">
+                        <p><strong>2026-01-27:</strong> MEJIA SAN MARTIN ANTHONY - Excusa (2h)</p>
+                    </div>
+                    <div class="border-l-4 border-blue-500 pl-3">
+                        <p><strong>2026-01-28:</strong> TORO SOTO NICOL DAHIANA - Transporte Escolar (1h)</p>
+                    </div>
+                    <div class="border-l-4 border-orange-500 pl-3">
+                        <p><strong>2026-01-29:</strong> HOLGUIN VILADA BRAHIAN ANDRES - LLegada Tarde (1h)</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 p-4 bg-gray-100 rounded">
+                    <h4 class="font-semibold mb-2">✅ Resultados Esperados:</h4>
+                    <ul class="text-sm space-y-1">
+                        <li>• 4 estudiantes únicos en el grado 602</li>
+                        <li>• 3 fechas diferentes de inasistencias</li>
+                        <li>• 4 registros totales de inasistencias</li>
+                        <li>• Excel generado con formato profesional</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Component Test -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">🎮 Componente ReportGenerator</h2>
+                <div class="border-2 border-dashed border-gray-300 p-4 rounded-lg">
+                    <div id="test-component" class="text-center py-8">
+                        <p class="text-gray-500 mb-4">Componente Svelte cargado aquí</p>
+                        <p class="text-sm text-gray-400">Para ver el componente real, ejecute:</p>
+                        <code class="bg-gray-100 px-2 py-1 rounded text-xs">npm run dev</code>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <button onclick="simulateExcelGeneration()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-3 rounded-lg transition-colors">
+                        📥 Simular Generación Excel
+                    </button>
+                </div>
+
+                <div id="test-results" class="mt-4 space-y-2"></div>
+            </div>
+        </div>
+
+        <!-- Manual Test Instructions -->
+        <div class="mt-8 bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">🔧 Instrucciones para Test Manual</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-blue-50 p-4 rounded">
+                    <h3 class="font-semibold text-blue-800 mb-2">1️⃣ Ejecutar App</h3>
+                    <p class="text-sm">Inicie la aplicación con <code class="bg-blue-100 px-1 rounded">npm run dev</code></p>
+                </div>
+                <div class="bg-green-50 p-4 rounded">
+                    <h3 class="font-semibold text-green-800 mb-2">2️⃣ Navegar</h3>
+                    <p class="text-sm">Vaya a <strong>Registrar Inasistencias</strong></p>
+                </div>
+                <div class="bg-purple-50 p-4 rounded">
+                    <h3 class="font-semibold text-purple-800 mb-2">3️⃣ Seleccionar</h3>
+                    <p class="text-sm">Docente: CESAR LEANDRO PATIÑO VELEZ<br>Materia: EMPRENDIMIENTO<br>Grado: 602</p>
+                </div>
+            </div>
+            <div class="mt-4 bg-yellow-50 p-4 rounded">
+                <h3 class="font-semibold text-yellow-800 mb-2">4️⃣ Probar</h3>
+                <p class="text-sm">Haga clic en <strong>"Generar Reporte Excel"</strong> y verifique:</p>
+                <ul class="text-sm mt-2 ml-4 list-disc">
+                    <li>Botón se habilita solo con los 3 campos seleccionados</li>
+                    <li>Se muestra loading durante la generación</li>
+                    <li>Excel se descarga con nombre correcto</li>
+                    <li>Excel contiene 4 estudiantes y sus inasistencias</li>
+                    <li>Formato: Columna A (nombres), Columnas B-E (fechas), Última columna (totales)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simulación de la lógica del componente
+        function simulateExcelGeneration() {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '';
+
+            const results = [
+                { status: 'success', message: '✅ Validación: Todos los campos requeridos están seleccionados' },
+                { status: 'success', message: '📡 API: Conexión exitosa a get_inasistencias.php' },
+                { status: 'success', message: '🔍 Filtrado: Encontrados 4 estudiantes para grado 602' },
+                { status: 'success', message: '📊 Procesamiento: 4 registros de inasistencias procesados' },
+                { status: 'success', message: '📈 Excel: Reporte generado con formato profesional' },
+                { status: 'success', message: '💾 Descarga: Archivo "Reporte_Inasistencias_602_EMPRENDIMIENTO_2026-02-01.xlsx" descargado' }
+            ];
+
+            results.forEach((result, index) => {
+                setTimeout(() => {
+                    const div = document.createElement('div');
+                    div.className = `p-3 rounded text-sm ${
+                        result.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`;
+                    div.textContent = result.message;
+                    resultsDiv.appendChild(div);
+                }, index * 500);
+            });
+        }
+
+        // Datos de prueba para referencia
+        const testData = {
+            docente: "CESAR LEANDRO PATIÑO VELEZ",
+            materia: "EMPRENDIMIENTO", 
+            grado: "602",
+            periodo: "UNO",
+            expectedStudents: 4,
+            expectedDates: 3,
+            expectedRecords: 4
+        };
+
+        console.log('🧪 Test Data:', testData);
+    </script>
+</body>
+</html>
