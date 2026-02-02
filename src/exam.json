@@ -5205,6 +5205,539 @@
         "702",
         "LOAIZA CALLE JUAN PABLO"
       ]
+    },
+    {
+      "rowIndex": 399,
+      "values": [
+        "2026-02-02T12:38:54.134Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-02-02",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "LLegada Tarde",
+        "602",
+        "BRI\u00d1EZ MUSICUE SHANTALL SOFIA"
+      ]
+    },
+    {
+      "rowIndex": 400,
+      "values": [
+        "2026-02-02T12:38:54.134Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-02-02",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "602",
+        "CANO ORTIZ MARIA SALOME"
+      ]
+    },
+    {
+      "rowIndex": 401,
+      "values": [
+        "2026-02-02T12:39:29.720Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-02-02",
+        "2",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Sin excusa",
+        "1001",
+        "ARENAS MARTINEZ SALOME"
+      ]
+    },
+    {
+      "rowIndex": 402,
+      "values": [
+        "2026-02-02T12:39:29.720Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-02-02",
+        "2",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Sin excusa",
+        "1001",
+        "ARENAS MORALES JUAN PABLO"
+      ]
+    },
+    {
+      "rowIndex": 403,
+      "values": [
+        "2026-02-02T12:39:29.720Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-02-02",
+        "2",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Sin excusa",
+        "1001",
+        "BEDOYA RIOS JULIANA"
+      ]
+    },
+    {
+      "rowIndex": 404,
+      "values": [
+        "2026-02-02T12:39:29.720Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-02-02",
+        "2",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Incapacidad",
+        "1001",
+        "CHAMORRO CONTRERAS GERM\u00c1N UBALDO"
+      ]
+    },
+    {
+      "rowIndex": 405,
+      "values": [
+        "2026-02-02T12:39:29.720Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-02-02",
+        "2",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Sin excusa",
+        "1001",
+        "GARCIA RODRIGUEZ JUAN ANDRES"
+      ]
+    },
+    {
+      "rowIndex": 406,
+      "values": [
+        "2026-02-02T12:39:29.720Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-02-02",
+        "2",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Sin excusa",
+        "1001",
+        "HENAO MEDINA SERGIO"
+      ]
+    },
+    {
+      "rowIndex": 407,
+      "values": [
+        "2026-02-02T12:39:29.720Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-02-02",
+        "2",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Sin excusa",
+        "1001",
+        "HEREDIA BEDOYA JULIO CESAR"
+      ]
+    },
+    {
+      "rowIndex": 408,
+      "values": [
+        "2026-02-02T12:39:29.720Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-02-02",
+        "2",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Excusa",
+        "1001",
+        "JARAMILLO CASTA\u00d1EDA YOSMAN"
+      ]
+    },
+    {
+      "rowIndex": 409,
+      "values": [
+        "2026-02-02T12:39:29.720Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-02-02",
+        "2",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Sin excusa",
+        "1001",
+        "PIEDRAHITA RAMIREZ KARLA MARIELLY"
+      ]
+    },
+    {
+      "rowIndex": 410,
+      "values": [
+        "2026-02-02T12:39:29.720Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-02-02",
+        "2",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Sin excusa",
+        "1001",
+        "RAMIREZ PARRA JOAN MANUEL"
+      ]
+    },
+    {
+      "rowIndex": 411,
+      "values": [
+        "2026-02-02T12:39:29.720Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-02-02",
+        "2",
+        "TECNOLOG\u00cdA E INFORM\u00c1TICA",
+        "Sin excusa",
+        "1001",
+        "SERNA SUAZA VALERIA"
+      ]
+    },
+    {
+      "rowIndex": 412,
+      "values": [
+        "2026-02-02T12:44:21.424Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-02-02",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "801",
+        "OROZCO MURILLO BRAHYAN"
+      ]
+    },
+    {
+      "rowIndex": 413,
+      "values": [
+        "2026-02-02T12:44:21.424Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-02-02",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "801",
+        "RAMIREZ MU\u00d1OZ ESTEFANIA"
+      ]
+    },
+    {
+      "rowIndex": 414,
+      "values": [
+        "2026-02-02T13:57:58.074Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-02-02",
+        "2",
+        "INGL\u00c9S",
+        "Sin excusa",
+        "902",
+        "RESTREPO SUAZA KAREN YULIANA"
+      ]
+    },
+    {
+      "rowIndex": 415,
+      "values": [
+        "2026-02-02T13:58:35.991Z",
+        "CARLOS ALBERTO AGUIRRE GONZ\u00c1LEZ",
+        "2026-02-02",
+        "2",
+        "CIENCIAS SOCIALES (HISTORIA, GEOGRAF\u00cdA Y",
+        "Sin excusa",
+        "901",
+        "CASTA\u00d1EDA RAMIREZ SALOME"
+      ]
+    },
+    {
+      "rowIndex": 416,
+      "values": [
+        "2026-02-02T13:58:35.991Z",
+        "CARLOS ALBERTO AGUIRRE GONZ\u00c1LEZ",
+        "2026-02-02",
+        "2",
+        "CIENCIAS SOCIALES (HISTORIA, GEOGRAF\u00cdA Y",
+        "Sin excusa",
+        "901",
+        "MONTOYA CARVAJAL DANNA SOPHIA"
+      ]
+    },
+    {
+      "rowIndex": 417,
+      "values": [
+        "2026-02-02T14:45:31.066Z",
+        "CARLOS ALBERTO AGUIRRE GONZ\u00c1LEZ",
+        "2026-02-02",
+        "1",
+        "C\u00c1TEDRA DE LA PAZ",
+        "Sin excusa",
+        "601",
+        "MAPURA HOLGUIN JUAN JOSE"
+      ]
+    },
+    {
+      "rowIndex": 418,
+      "values": [
+        "2026-02-02T14:48:29.543Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-02-02",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "901",
+        "CASTA\u00d1EDA RAMIREZ SALOME"
+      ]
+    },
+    {
+      "rowIndex": 419,
+      "values": [
+        "2026-02-02T14:48:29.543Z",
+        "CESAR LEANDRO PATI\u00d1O VELEZ",
+        "2026-02-02",
+        "1",
+        "EMPRENDIMIENTO",
+        "Sin excusa",
+        "901",
+        "LEON MAYA SAMUEL SANTIAGO"
+      ]
+    },
+    {
+      "rowIndex": 420,
+      "values": [
+        "2026-02-02T14:49:52.295Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-02-02",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "701",
+        "FLOREZ VILLADA ANDRES FELIPE"
+      ]
+    },
+    {
+      "rowIndex": 421,
+      "values": [
+        "2026-02-02T14:49:52.295Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-02-02",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "701",
+        "GOMEZ TUSARMA EDWIN ESMILER"
+      ]
+    },
+    {
+      "rowIndex": 422,
+      "values": [
+        "2026-02-02T14:49:52.295Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-02-02",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "701",
+        "HERNANDEZ MEJIA MARIA CAMILA"
+      ]
+    },
+    {
+      "rowIndex": 423,
+      "values": [
+        "2026-02-02T14:49:52.295Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-02-02",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "701",
+        "MAPURA HOLGUIN DEIBID NEIMAR"
+      ]
+    },
+    {
+      "rowIndex": 424,
+      "values": [
+        "2026-02-02T14:49:52.295Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-02-02",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "701",
+        "MEJ\u00cdA CAMBINDO JUAN CAMILO"
+      ]
+    },
+    {
+      "rowIndex": 425,
+      "values": [
+        "2026-02-02T14:49:52.295Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-02-02",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "701",
+        "MENDOZA MAIKOL STIVEN"
+      ]
+    },
+    {
+      "rowIndex": 426,
+      "values": [
+        "2026-02-02T14:49:52.295Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-02-02",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "701",
+        "SERNA MARTINEZ DAYNER ESTEBAN"
+      ]
+    },
+    {
+      "rowIndex": 427,
+      "values": [
+        "2026-02-02T14:49:52.295Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-02-02",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "701",
+        "SERNA MAYA JULIANA"
+      ]
+    },
+    {
+      "rowIndex": 428,
+      "values": [
+        "2026-02-02T14:49:52.295Z",
+        "JHON JAIRO V\u00c9LEZ TEJADA",
+        "2026-02-02",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "701",
+        "YARCE CALVO VALERIA ISOLINA"
+      ]
+    },
+    {
+      "rowIndex": 429,
+      "values": [
+        "2026-02-02T15:13:45.419Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-02-02",
+        "2",
+        "INGL\u00c9S",
+        "Sin excusa",
+        "1101",
+        "BALLESTEROS TAPASCO YIMY LEANDRO"
+      ]
+    },
+    {
+      "rowIndex": 430,
+      "values": [
+        "2026-02-02T15:13:45.419Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-02-02",
+        "2",
+        "INGL\u00c9S",
+        "Sin excusa",
+        "1101",
+        "CARDONA MORALES MARIA JOSE"
+      ]
+    },
+    {
+      "rowIndex": 431,
+      "values": [
+        "2026-02-02T15:13:45.419Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-02-02",
+        "2",
+        "INGL\u00c9S",
+        "Sin excusa",
+        "1101",
+        "CASTRO VALENCIA JHORDIN"
+      ]
+    },
+    {
+      "rowIndex": 432,
+      "values": [
+        "2026-02-02T15:13:45.419Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-02-02",
+        "2",
+        "INGL\u00c9S",
+        "Sin excusa",
+        "1101",
+        "RIOS SUAREZ SARA"
+      ]
+    },
+    {
+      "rowIndex": 433,
+      "values": [
+        "2026-02-02T15:13:45.419Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-02-02",
+        "2",
+        "INGL\u00c9S",
+        "Sin excusa",
+        "1101",
+        "SERNA HOLGUIN NEYIRETH DAHIANA"
+      ]
+    },
+    {
+      "rowIndex": 434,
+      "values": [
+        "2026-02-02T15:13:45.419Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-02-02",
+        "2",
+        "INGL\u00c9S",
+        "Sin excusa",
+        "1101",
+        "TABA HOLGUIN LUIS MATEO"
+      ]
+    },
+    {
+      "rowIndex": 435,
+      "values": [
+        "2026-02-02T15:13:45.419Z",
+        "JON JAMES VASCO RODR\u00cdGUEZ",
+        "2026-02-02",
+        "2",
+        "INGL\u00c9S",
+        "Sin excusa",
+        "1101",
+        "TAPASCO HERNANDEZ VALERIE CAMILA"
+      ]
+    },
+    {
+      "rowIndex": 436,
+      "values": [
+        "2026-02-02T15:16:18.311Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-02-02",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "601",
+        "MAPURA HOLGUIN JUAN JOSE"
+      ]
+    },
+    {
+      "rowIndex": 437,
+      "values": [
+        "2026-02-02T15:16:18.311Z",
+        "BLANCA NELLY MAR\u00cdN GIRALDO",
+        "2026-02-02",
+        "2",
+        "CIENCIAS NATURALES Y EDUCACION AMBIENTAL",
+        "Sin excusa",
+        "601",
+        "VELASQUEZ HOYOS SARA CAMILA"
+      ]
+    },
+    {
+      "rowIndex": 438,
+      "values": [
+        "2026-02-02T15:17:23.679Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-02-02",
+        "1",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "901",
+        "CASTA\u00d1EDA RAMIREZ SALOME"
+      ]
+    },
+    {
+      "rowIndex": 439,
+      "values": [
+        "2026-02-02T15:17:23.679Z",
+        "DERLY JOANNA PUERTAS",
+        "2026-02-02",
+        "1",
+        "LENGUA CASTELLANA",
+        "Sin excusa",
+        "901",
+        "LEON MAYA SAMUEL SANTIAGO"
+      ]
     }
   ]
 }

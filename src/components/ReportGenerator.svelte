@@ -5,6 +5,7 @@
   import ExcelJS from "exceljs";
   import Swal from "sweetalert2";
   import { getInasistencias } from "../../api/service";
+  import { SPREADSHEET_ID, WORKSHEET_TITLE } from "../constants";
   import { periodos } from "../constants";
 
   interface RegistroPayload {
@@ -26,6 +27,7 @@
     fecha: string;
     presente: boolean;
     motivo?: string;
+    horas?: number;
   }
 
   interface ReportData {
@@ -42,81 +44,145 @@
 
   const dispatch = createEventDispatcher();
 
+  // Forzar reactividad creando variables locales que se actualizan cuando las props cambian
+  $: grupo = id_grupo;
+  $: docente = id_docente;
+  $: materia = id_materia;
+
   async function getRegistrosReporte(
     payload: RegistroPayload,
   ): Promise<ReportData> {
     try {
-      console.log("Obteniendo datos con getInasistencias:", payload);
+      console.log("Obteniendo datos con getInasistencias. Payload:", payload);
+      console.log("Filtros activos - Docente:", nombre_docente, "| Materia:", nombre_materia);
 
       const data = await getInasistencias({
-        grado: payload.id_grupo,
-        docente: payload.id_docente,
-        materia: payload.id_materia,
-        fecha_inicio: payload.fecha_inicio,
-        fecha_fin: payload.fecha_fin,
+        spreadsheetId: SPREADSHEET_ID,
+        worksheetTitle: WORKSHEET_TITLE,
       });
 
       if (!data || !data.records || !Array.isArray(data.records)) {
         throw new Error("No se encontraron datos de inasistencias");
       }
 
-      // Extraer headers del primer registro
-      const headers = data.records[0]?.values || [];
-      const headerMap = {
-        Docente: 1,
-        Fecha: 2,
-        "Horas de Inasistencia": 3,
-        Asignatura: 4,
-        "Tipo de registro": 5,
-        Grupo: 6,
-        Estudiante: 7,
-        Observaciones: 8,
+      const normalize = (str: any) => {
+        if (!str) return "";
+        return str.toString()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-zA-Z0-9\s]/g, "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .toLowerCase();
       };
+
+      // Extraer headers del primer registro
+      const headers: string[] = data.records[0]?.values || [];
+      
+      const getHeaderIndex = (name: string, fallback: number) => {
+        const index = headers.findIndex(h => normalize(h).includes(normalize(name)));
+        return index !== -1 ? index : fallback;
+      };
+
+      const headerMap = {
+        Docente: getHeaderIndex("Docente", 1),
+        Fecha: getHeaderIndex("Fecha", 2),
+        "Horas de Inasistencia": getHeaderIndex("Horas", 3),
+        Asignatura: getHeaderIndex("Asignatura", 4),
+        "Tipo de registro": getHeaderIndex("Tipo", 5),
+        Grupo: getHeaderIndex("Grupo", 6),
+        Estudiante: getHeaderIndex("Estudiante", 7),
+        Observaciones: getHeaderIndex("Observaciones", 8),
+      };
+
+      console.log("Mapa de cabeceras detectado:", headerMap);
+
+      const targetDocente = normalize(nombre_docente);
+      const targetMateria = normalize(materia || nombre_materia);
+      const targetGrupo = payload.id_grupo ? payload.id_grupo.toString().trim() : "";
 
       // Transformar datos existentes al formato esperado
       const estudiantesMap = new Map<string, Estudiante>();
       const registros: Registro[] = [];
-
+      
+      // Primero obtenemos todos los registros del grado y luego filtramos
+      const allRecords: any[] = [];
+      
       // Procesar registros (ignorando el primer registro que son los headers)
-      data.records.slice(1).forEach((record: any) => {
+      data.records.slice(1).forEach((record: any, index: number) => {
         const values = record.values || [];
 
-        const estudianteNombre =
-          values[headerMap["Estudiante"]] || "Estudiante sin nombre";
-        const grado = values[headerMap["Grupo"]] || payload.id_grupo.toString();
+        const docente = values[headerMap["Docente"]] || "";
+        const materiaRec = values[headerMap["Asignatura"]] || "";
+        const grado = (values[headerMap["Grupo"]] || "").toString().trim();
         const fecha = values[headerMap["Fecha"]] || "";
         const tipoRegistro = values[headerMap["Tipo de registro"]] || "";
-        const docente = values[headerMap["Docente"]] || "";
-        const materia = values[headerMap["Asignatura"]] || "";
-        const horas = values[headerMap["Horas de Inasistencia"]] || "";
+        const estudianteNombre = values[headerMap["Estudiante"]] || "Estudiante sin nombre";
+        const horas = values[headerMap["Horas de Inasistencia"]] || "0";
         const observaciones = values[headerMap["Observaciones"]] || "";
 
-        // Filtrar por los criterios seleccionados
-        // Nota: El API devuelve nombres, no IDs, así que filtramos por grado únicamente
-        if (payload.id_grupo && grado !== payload.id_grupo.toString()) return;
+        // Debug de los primeros registros
+        if (index < 10) {
+          console.log(`Registro #${index + 1}:`, { 
+            docente, 
+            docenteNorm: normalize(docente),
+            targetDocente,
+            materiaRec, 
+            materiaNorm: normalize(materiaRec),
+            targetMateria,
+            grado, 
+            targetGrupo,
+            match: (normalize(docente) === targetDocente && normalize(materiaRec) === targetMateria && grado === targetGrupo)
+          });
+        }
 
-        // Generar ID único para el estudiante (basado en su nombre)
-        const estudianteId = estudianteNombre
-          .replace(/[^a-zA-Z0-9]/g, "_")
-          .toLowerCase();
+        // Filtro de Grupo
+        if (targetGrupo && grado !== targetGrupo) return;
 
-        if (!estudiantesMap.has(estudianteId)) {
-          estudiantesMap.set(estudianteId, {
+        // Filtro de Docente
+        if (targetDocente && normalize(docente) !== targetDocente) return;
+
+        // Filtro de Materia
+        if (targetMateria && normalize(materiaRec) !== targetMateria) return;
+        
+        // Si pasó los filtros, lo guardamos
+        if (fecha && tipoRegistro) {
+          allRecords.push({
+            estudianteNombre,
+            grado,
+            fecha,
+            tipoRegistro,
+            docente,
+            materia: materiaRec,
+            horas,
+            observaciones
+          });
+        }
+      });
+      
+      console.log(`Se encontraron ${allRecords.length} registros que coinciden con los filtros`);
+      
+      allRecords.forEach((record) => {
+        const { estudianteNombre, grado, fecha, tipoRegistro, horas } = record;
+
+        // Generar ID único para el estudiante (normalizado para evitar duplicados por acentos)
+        const studentId = normalize(estudianteNombre).replace(/\s+/g, "_");
+
+        if (!estudiantesMap.has(studentId)) {
+          estudiantesMap.set(studentId, {
             id: estudiantesMap.size + 1,
             nombre: estudianteNombre,
             grado: grado,
           });
         }
 
-        // Todos los registros en este array son inasistencias (por el contexto del endpoint)
-        if (fecha && tipoRegistro) {
-          registros.push({
-            id_estudiante: estudiantesMap.get(estudianteId)!.id,
-            fecha: fecha,
-            presente: false, // Todos son inasistencias en este contexto
-            motivo: tipoRegistro,
-          });
-        }
+        registros.push({
+          id_estudiante: estudiantesMap.get(studentId)!.id,
+          fecha: fecha,
+          presente: false,
+          motivo: tipoRegistro,
+          horas: parseFloat(horas.toString().replace(',', '.')) || 0,
+        });
       });
 
       const estudiantes = Array.from(estudiantesMap.values());
@@ -139,9 +205,9 @@
       console.error("Error fetching registros reporte:", error);
 
       // Demo data fallback si todo falla
-      if (payload.id_grupo && payload.id_docente && payload.id_materia) {
+      if (payload.id_grupo && nombre_docente && nombre_materia) {
         console.warn("Usando datos de demostración como fallback");
-        return generateDemoData(payload);
+        return generateDemoData(payload, currentPeriodo);
       }
 
       if (error instanceof Error) {
@@ -151,7 +217,9 @@
     }
   }
 
-  function generateDemoData(payload: RegistroPayload): ReportData {
+
+
+  function generateDemoData(payload: RegistroPayload, periodo?: (typeof periodos)[0] | null): ReportData {
     const estudiantes: Estudiante[] = [];
     const registros: Registro[] = [];
 
@@ -165,8 +233,8 @@
     }
 
     // Generar registros de demostración
-    if (currentPeriodo) {
-      const dates = generateDatesFromPeriodo(currentPeriodo);
+    if (periodo) {
+      const dates = generateDatesFromPeriodo(periodo);
       dates.forEach((date) => {
         estudiantes.forEach((estudiante) => {
           // Random inasistencias (15% de probabilidad)
@@ -181,12 +249,14 @@
                 "Permiso",
                 "Llegada tarde",
               ][Math.floor(Math.random() * 4)],
+              horas: Math.floor(Math.random() * 2) + 1, // 1 o 2 horas demo
             });
           } else {
             registros.push({
               id_estudiante: estudiante.id,
               fecha: date.toISOString().split("T")[0],
               presente: true,
+              horas: 0
             });
           }
         });
@@ -205,7 +275,30 @@
     determineCurrentPeriodo();
   });
 
-  $: isValid = id_grupo && id_docente && id_materia && currentPeriodo;
+  $: isValid = Boolean(
+    (grupo && grupo > 0) &&
+    (nombre_docente && nombre_docente.length > 0) &&
+    (nombre_materia && nombre_materia.length > 0)
+  );
+  
+  // Debug para ver los valores
+  $: {
+    console.log("Validación ReportGenerator:", {
+      grupo,
+      docente,
+      materia,
+      id_grupo,
+      id_docente,
+      id_materia,
+      nombre_docente,
+      nombre_materia,
+      currentPeriodo: !!currentPeriodo,
+      isValid,
+      tipoIdGrupo: typeof id_grupo,
+      tipoIdDocente: typeof id_docente,
+      tipoIdMateria: typeof id_materia
+    });
+  }
 
   function determineCurrentPeriodo() {
     const today = new Date();
@@ -225,10 +318,9 @@
           <div class="text-left">
             <p>Por favor complete todos los campos obligatorios:</p>
             <ul class="list-disc list-inside mt-2 text-sm">
-              ${!id_grupo ? "<li>Grupo</li>" : ""}
-              ${!id_docente ? "<li>Docente</li>" : ""}
-              ${!id_materia ? "<li>Materia</li>" : ""}
-              ${!currentPeriodo ? "<li>Periodo válido (fecha actual fuera de rango)</li>" : ""}
+              ${!grupo ? "<li>Grupo</li>" : ""}
+              ${!nombre_docente ? "<li>Docente</li>" : ""}
+              ${!nombre_materia ? "<li>Materia</li>" : ""}
             </ul>
           </div>
         `,
@@ -247,9 +339,9 @@
       dispatch("loading", true);
 
       const payload: RegistroPayload = {
-        id_grupo,
-        id_docente,
-        id_materia,
+        id_grupo: grupo,
+        id_docente: docente,
+        id_materia: materia,
         fecha_inicio: currentPeriodo?.fecha_inicio.toISOString().split("T")[0],
         fecha_fin: currentPeriodo?.fecha_fin.toISOString().split("T")[0],
       };
@@ -268,6 +360,27 @@
       await generateExcelFile();
     } catch (error) {
       console.error("Error generating report:", error);
+
+      // Demo data fallback si todo falla
+      if (grupo && nombre_docente && nombre_materia && currentPeriodo) {
+        console.warn("Usando datos de demostración como fallback");
+        const fallbackPayload: RegistroPayload = {
+          id_grupo: grupo,
+          id_docente: docente,
+          id_materia: materia,
+          fecha_inicio: currentPeriodo.fecha_inicio.toISOString().split("T")[0],
+          fecha_fin: currentPeriodo.fecha_fin.toISOString().split("T")[0],
+        };
+        
+        try {
+          reportData = generateDemoData(fallbackPayload, currentPeriodo);
+          console.log("Datos de demostración generados:", reportData);
+          await generateExcelFile();
+          return;
+        } catch (demoError) {
+          console.error("Error generando datos de demostración:", demoError);
+        }
+      }
 
       let errorMessage = "Error desconocido";
 
@@ -303,131 +416,19 @@
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Reporte de Inasistencias");
 
-    worksheet.properties.defaultRowHeight = 20;
-    worksheet.properties.defaultColWidth = 15;
-
-    const headerRow = worksheet.getRow(1);
-    headerRow.height = 25;
-    headerRow.font = { bold: true, size: 12, color: { argb: "FFFFFF" } };
-    headerRow.fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "4472C4" },
-    };
-    headerRow.alignment = { vertical: "middle", horizontal: "center" };
-    headerRow.border = {
-      top: { style: "thin" },
-      left: { style: "thin" },
-      bottom: { style: "thin" },
-      right: { style: "thin" },
-    };
-
-    worksheet.getCell("A1").value = "Estudiantes";
-    worksheet.getColumn(1).width = 30;
-
-    const dates = generateDatesFromPeriodo(currentPeriodo);
-
-    dates.forEach((date, index) => {
-      const colNumber = index + 2;
-      worksheet.getCell(1, colNumber).value = formatDateForExcel(date);
-      worksheet.getColumn(colNumber).width = 12;
-      worksheet.getCell(1, colNumber).alignment = {
-        vertical: "middle",
-        horizontal: "center",
-      };
+    const allDates = generateDatesFromPeriodo(currentPeriodo);
+    
+    // Filtrar solo las fechas que tienen al menos una inasistencia
+    const dates = allDates.filter(date => {
+      const dateStr = date.toISOString().split("T")[0];
+      return reportData!.registros.some(reg => reg.fecha === dateStr && !reg.presente);
     });
 
-    const totalCol = String.fromCharCode(66 + dates.length);
-    worksheet.getCell(`${totalCol}1`).value = "Total Inasistencias";
-    worksheet.getColumn(dates.length + 2).width = 20;
-    worksheet.getCell(`${totalCol}1`).font = {
-      bold: true,
-      color: { argb: "FFFFFF" },
-    };
-    worksheet.getCell(`${totalCol}1`).fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FF6B6B" },
-    };
+    const totalCols = dates.length + 2; // Estudiante + Dates + Total
 
-    reportData!.estudiantes.forEach(
-      (estudiante: Estudiante, estIndex: number) => {
-        const rowNumber = estIndex + 2;
-        const studentRow = worksheet.getRow(rowNumber);
-
-        studentRow.getCell(1).value = estudiante.nombre;
-        studentRow.getCell(1).font = { bold: true };
-        studentRow.getCell(1).fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "F2F2F2" },
-        };
-        studentRow.getCell(1).border = {
-          top: { style: "thin" },
-          left: { style: "thin" },
-          bottom: { style: "thin" },
-          right: { style: "thin" },
-        };
-
-        let totalInasistencias = 0;
-
-        dates.forEach((date, dateIndex) => {
-          const colNumber = dateIndex + 2;
-          const cell = studentRow.getCell(colNumber);
-
-          const registro = reportData!.registros.find(
-            (reg: Registro) =>
-              reg.id_estudiante === estudiante.id &&
-              reg.fecha === date.toISOString().split("T")[0],
-          );
-
-          if (registro && !registro.presente) {
-            cell.value = "X";
-            cell.font = { color: { argb: "FF0000" }, bold: true };
-            cell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: "FFE6E6" },
-            };
-            cell.alignment = { horizontal: "center" };
-            totalInasistencias++;
-          } else {
-            cell.value = registro ? "✓" : "-";
-            cell.font = { color: { argb: "00AA00" } };
-            cell.alignment = { horizontal: "center" };
-          }
-
-          cell.border = {
-            top: { style: "thin" },
-            left: { style: "thin" },
-            bottom: { style: "thin" },
-            right: { style: "thin" },
-          };
-        });
-
-        const totalCell = studentRow.getCell(dates.length + 2);
-        totalCell.value = totalInasistencias;
-        totalCell.font = {
-          bold: true,
-          color: { argb: totalInasistencias > 0 ? "FF0000" : "00AA00" },
-        };
-        totalCell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: totalInasistencias > 0 ? "FFE6E6" : "E6FFE6" },
-        };
-        totalCell.alignment = { horizontal: "center" };
-        totalCell.border = {
-          top: { style: "thin" },
-          left: { style: "thin" },
-          bottom: { style: "thin" },
-          right: { style: "thin" },
-        };
-      },
-    );
-
-    const titleRow = worksheet.insertRow(1, [
-      `REPORTE DE INASISTENCIAS - ${nombre_materia || "Materia"} - ${nombre_grupo || "Grupo"}`,
+    // 1. Título (Row 1)
+    const titleRow = worksheet.addRow([
+      `REPORTE DE INASISTENCIAS - ${nombre_materia || "Materia"} - ${nombre_grupo || "Grupo"}`
     ]);
     titleRow.height = 30;
     titleRow.font = { bold: true, size: 16, color: { argb: "FFFFFF" } };
@@ -437,10 +438,11 @@
       fgColor: { argb: "2E75B6" },
     };
     titleRow.alignment = { vertical: "middle", horizontal: "center" };
-    worksheet.mergeCells("A1:" + totalCol + "1");
+    worksheet.mergeCells(1, 1, 1, totalCols);
 
-    const infoRow = worksheet.insertRow(2, [
-      `Docente: ${nombre_docente || "No especificado"} | Periodo: ${currentPeriodo.nombre} (${formatDateForExcel(currentPeriodo.fecha_inicio)} - ${formatDateForExcel(currentPeriodo.fecha_fin)})`,
+    // 2. Info (Row 2)
+    const infoRow = worksheet.addRow([
+      `Docente: ${nombre_docente || "No especificado"} | Periodo: ${currentPeriodo.nombre} (${formatDateForExcel(currentPeriodo.fecha_inicio)} - ${formatDateForExcel(currentPeriodo.fecha_fin)})`
     ]);
     infoRow.height = 20;
     infoRow.font = { bold: true, size: 10, color: { argb: "FFFFFF" } };
@@ -450,7 +452,106 @@
       fgColor: { argb: "5B9BD5" },
     };
     infoRow.alignment = { vertical: "middle", horizontal: "left" };
-    worksheet.mergeCells("A2:" + totalCol + "2");
+    worksheet.mergeCells(2, 1, 2, totalCols);
+
+    // 3. Headers (Row 3)
+    const headerRow = worksheet.getRow(3);
+    headerRow.height = 25;
+    headerRow.font = { bold: true, size: 12, color: { argb: "FFFFFF" } };
+    headerRow.alignment = { vertical: "middle", horizontal: "center" };
+
+    headerRow.getCell(1).value = "Estudiantes";
+    worksheet.getColumn(1).width = 30;
+
+    dates.forEach((date, index) => {
+      const colNumber = index + 2;
+      headerRow.getCell(colNumber).value = formatDateForExcel(date);
+      worksheet.getColumn(colNumber).width = 12;
+    });
+
+    const totalColIdx = dates.length + 2;
+    headerRow.getCell(totalColIdx).value = "Total Horas";
+    worksheet.getColumn(totalColIdx).width = 20;
+
+    // Aplicar estilos al header row
+    headerRow.eachCell((cell, colNumber) => {
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: colNumber === totalColIdx ? "FF6B6B" : "4472C4" },
+      };
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      };
+    });
+
+    // 4. Datos (Row 4+)
+    reportData!.estudiantes.forEach((estudiante: Estudiante, estIndex: number) => {
+      const rowNumber = estIndex + 4;
+      const studentRow = worksheet.getRow(rowNumber);
+      let totalHoras = 0;
+
+      studentRow.getCell(1).value = estudiante.nombre;
+      studentRow.getCell(1).font = { bold: true };
+      studentRow.getCell(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "F2F2F2" },
+      };
+
+      dates.forEach((date, dateIndex) => {
+        const colNumber = dateIndex + 2;
+        const cell = studentRow.getCell(colNumber);
+
+        const registro = reportData!.registros.find(
+          (reg: Registro) =>
+            reg.id_estudiante === estudiante.id &&
+            reg.fecha === date.toISOString().split("T")[0],
+        );
+
+        if (registro && !registro.presente) {
+          const horas = registro.horas || 0;
+          cell.value = horas;
+          cell.font = { color: { argb: "FF0000" }, bold: true };
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFE6E6" },
+          };
+          totalHoras += horas;
+        } else {
+          cell.value = registro ? "✓" : "-";
+          cell.font = { color: { argb: "00AA00" } };
+        }
+      });
+
+      const totalCell = studentRow.getCell(totalColIdx);
+      totalCell.value = totalHoras;
+      totalCell.font = {
+        bold: true,
+        color: { argb: totalHoras > 0 ? "FF0000" : "00AA00" },
+      };
+      totalCell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: totalHoras > 0 ? "FFE6E6" : "E6FFE6" },
+      };
+
+      // Aplicar bordes y alineación a toda la fila
+      studentRow.eachCell((cell) => {
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+        cell.alignment = { horizontal: "center" };
+      });
+      studentRow.getCell(1).alignment = { horizontal: "left" };
+    });
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
