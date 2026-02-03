@@ -640,6 +640,7 @@
 </script>
 
 <button
+  id="report-button-target"
   on:click={validateAndGenerateReport}
   disabled={loading || !isValid}
   class="relative inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transform hover:scale-105 active:scale-95 min-w-[160px] h-[44px]"

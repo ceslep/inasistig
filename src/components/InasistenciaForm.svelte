@@ -13,12 +13,16 @@
     INFO_INASISTENCIA,
     URL_LOCKER_STUDIO,
   } from "../constants";
-  
+
   const FEATURE_MESSAGE = "¡Nueva función de filtrado avanzado disponible!";
+  const FEATURE_MESSAGE_REPORT =
+    "¡Nueva función de reporte en Excel disponible!";
+
   import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
   import InasistenciaFilter from "./InasistenciaFilter.svelte";
   import ReportGenerator from "./ReportGenerator.svelte";
+  import FeaturePopup from "./FeaturePopup.svelte";
 
   export let onBack: () => void;
 
@@ -81,28 +85,30 @@
     INFO_INASISTENCIA &&
     localStorage.getItem("dismissedInfoInasistenciaContent") !==
       INFO_INASISTENCIA;
-  
-  let showFeatureAlert = true; // Control inmediato del popup
-  
-  function checkFeatureAlertVisibility() {
+
+  let showFeatureAlert = true; // Control inmediato del popup for filters
+  let showFeatureAlertReport = true; // Control inmediato del popup for report
+
+  function shouldShowFeatureAlert(featureKey: string) {
     // FORZAR MOSTRAR PARA DESARROLLO - Cambiar a false en producción
     const DEBUG_FORCE_SHOW = true;
-    
+
     if (DEBUG_FORCE_SHOW) {
       return true;
     }
-    
-    const dismissed = localStorage.getItem("dismissedFeatureAlert");
-    
+
+    const dismissed = localStorage.getItem(`dismissed${featureKey}Alert`);
+
     // Si nunca fue descartado, mostrar siempre
     if (!dismissed) {
       return true;
     }
-    
+
     const dismissedDate = new Date(dismissed);
     const now = new Date();
-    const daysSinceDismissed = (now.getTime() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
-    
+    const daysSinceDismissed =
+      (now.getTime() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
+
     // Mostrar si han pasado más de 5 días desde que se descartó
     return daysSinceDismissed > 5;
   }
@@ -113,37 +119,46 @@
   };
 
   const dismissFeatureAlert = () => {
-    localStorage.setItem("dismissedFeatureAlert", new Date().toISOString());
+    localStorage.setItem(
+      "dismissedFeatureAlertFilters",
+      new Date().toISOString(),
+    );
     showFeatureAlert = false; // Cerrar el popup inmediatamente
   };
 
   const tryFeatureNow = () => {
     // Cerrar el popup
-    localStorage.setItem("dismissedFeatureAlert", new Date().toISOString());
+    localStorage.setItem(
+      "dismissedFeatureAlertFilters",
+      new Date().toISOString(),
+    );
     // Abrir el panel de filtros
     openFilters();
   };
 
-  // Forzar reset del mensaje para desarrollo (comentar en producción)
-  const resetFeatureAlert = () => {
-    localStorage.removeItem("dismissedFeatureAlert");
+  const dismissFeatureAlertReport = () => {
+    localStorage.setItem(
+      "dismissedFeatureAlertReport",
+      new Date().toISOString(),
+    );
+    showFeatureAlertReport = false;
   };
 
-  // Posición del popup relativa al botón de filtros
-  let popupPosition = { top: 0, left: 0, arrowDirection: 'down' };
-  
-  const updatePopupPosition = () => {
-    if (typeof window !== 'undefined') {
-      const filterButton = document.querySelector('#filter-button-target');
-      if (filterButton) {
-        const rect = filterButton.getBoundingClientRect();
-        popupPosition = {
-          top: rect.bottom + 10,
-          left: rect.left + rect.width / 2,
-          arrowDirection: 'down'
-        };
-      }
-    }
+  const tryFeatureNowReport = () => {
+    // Cerrar el popup
+    localStorage.setItem(
+      "dismissedFeatureAlertReport",
+      new Date().toISOString(),
+    );
+    // No specific action for now, maybe highlight the button?
+    // For now, just dismiss.
+    showFeatureAlertReport = false;
+  };
+
+  // Forzar reset del mensaje para desarrollo (comentar en producción)
+  const resetFeatureAlert = () => {
+    localStorage.removeItem("dismissedFeatureAlertFilters");
+    localStorage.removeItem("dismissedFeatureAlertReport");
   };
 
   // --- Persistencia de Materias por Docente ---
@@ -221,6 +236,7 @@
       darkBgColor: "dark:bg-red-950",
       darkBorderColor: "dark:border-red-800",
       darkTextColor: "dark:text-red-300",
+      obligaHoras: true,
     },
     {
       value: "Excusa",
@@ -232,6 +248,7 @@
       darkBgColor: "dark:bg-blue-950",
       darkBorderColor: "dark:border-blue-800",
       darkTextColor: "dark:text-blue-300",
+      obligaHoras: true,
     },
     {
       value: "LLegada Tarde",
@@ -243,6 +260,7 @@
       darkBgColor: "dark:bg-indigo-950",
       darkBorderColor: "dark:border-indigo-800",
       darkTextColor: "dark:text-indigo-300",
+      obligaHoras: false,
     },
     {
       value: "Transporte Escolar",
@@ -254,6 +272,7 @@
       darkBgColor: "dark:bg-red-950",
       darkBorderColor: "dark:border-red-800",
       darkTextColor: "dark:text-red-300",
+      obligaHoras: true,
     },
     {
       value: "Permiso",
@@ -265,6 +284,7 @@
       darkBgColor: "dark:bg-green-950",
       darkBorderColor: "dark:border-green-800",
       darkTextColor: "dark:text-green-300",
+      obligaHoras: true,
     },
     {
       value: "No portar/sin uniforme",
@@ -276,6 +296,7 @@
       darkBgColor: "dark:bg-cyan-950",
       darkBorderColor: "dark:border-cyan-800",
       darkTextColor: "dark:text-cyan-300",
+      obligaHoras: false,
     },
     {
       value: "Pacto de Aula",
@@ -287,6 +308,7 @@
       darkBgColor: "dark:bg-purple-950",
       darkBorderColor: "dark:border-purple-800",
       darkTextColor: "dark:text-purple-300",
+      obligaHoras: false,
     },
     {
       value: "Uso del celular",
@@ -298,6 +320,7 @@
       darkBgColor: "dark:bg-orange-950",
       darkBorderColor: "dark:border-orange-800",
       darkTextColor: "dark:text-orange-300",
+      obligaHoras: false,
     },
     {
       value: "Desorden en Clase",
@@ -309,6 +332,7 @@
       darkBgColor: "dark:bg-yellow-950",
       darkBorderColor: "dark:border-yellow-800",
       darkTextColor: "dark:text-yellow-300",
+      obligaHoras: false,
     },
     {
       value: "Fuga",
@@ -320,6 +344,7 @@
       darkBgColor: "dark:bg-red-950",
       darkBorderColor: "dark:border-red-800",
       darkTextColor: "dark:text-red-300",
+      obligaHoras: true,
     },
     {
       value: "No realización de Aseo",
@@ -331,6 +356,7 @@
       darkBgColor: "dark:bg-teal-950",
       darkBorderColor: "dark:border-teal-800",
       darkTextColor: "dark:text-teal-300",
+      obligaHoras: false,
     },
     {
       value: "Licencia por salud",
@@ -342,6 +368,7 @@
       darkBgColor: "dark:bg-cyan-950",
       darkBorderColor: "dark:border-cyan-800",
       darkTextColor: "dark:text-cyan-300",
+      obligaHoras: true,
     },
     {
       value: "Incapacidad",
@@ -353,6 +380,7 @@
       darkBgColor: "dark:bg-pink-950",
       darkBorderColor: "dark:border-pink-800",
       darkTextColor: "dark:text-pink-300",
+      obligaHoras: true,
     },
     {
       value: "Reunión interna",
@@ -364,6 +392,7 @@
       darkBgColor: "dark:bg-zinc-950",
       darkBorderColor: "dark:border-zinc-800",
       darkTextColor: "dark:text-zinc-300",
+      obligaHoras: false,
     },
     {
       value: "Ignorar",
@@ -375,6 +404,7 @@
       darkBgColor: "dark:bg-zinc-950",
       darkBorderColor: "dark:border-zinc-800",
       darkTextColor: "dark:text-zinc-300",
+      obligaHoras: false,
     },
     {
       value: "Psicoorientación",
@@ -386,6 +416,7 @@
       darkBgColor: "dark:bg-green-950",
       darkBorderColor: "dark:border-green-800",
       darkTextColor: "dark:text-green-300",
+      obligaHoras: false,
     },
   ];
 
@@ -429,8 +460,12 @@
     nuevaHora?: string,
   ) => {
     const index = inasistencias.findIndex((i) => i.nombre === estudianteNombre);
-    const hourToUse =
-      nuevaHora || individualHours[estudianteNombre] || formData.horas;
+    const selectedMotivo = motivos.find(m => m.value === nuevoMotivo);
+    
+    let hourToUse = nuevaHora || individualHours[estudianteNombre] || formData.horas;
+    if (selectedMotivo && !selectedMotivo.obligaHoras) {
+      hourToUse = "0";
+    }
 
     if (nuevoMotivo === "" || nuevoMotivo === "Ignorar") {
       if (index >= 0) {
@@ -546,14 +581,9 @@
 
   onMount(() => {
     loadData();
-    updatePopupPosition();
     // Inicializar el estado del popup de feature
-    showFeatureAlert = checkFeatureAlertVisibility();
-    // Actualizar posición cuando cambia el tamaño de ventana
-    if (typeof window !== 'undefined') {
-      window.addEventListener('resize', updatePopupPosition);
-      return () => window.removeEventListener('resize', updatePopupPosition);
-    }
+    showFeatureAlert = shouldShowFeatureAlert("FeatureAlertFilters");
+    showFeatureAlertReport = shouldShowFeatureAlert("FeatureAlertReport");
   });
 </script>
 
@@ -620,8 +650,12 @@
           </svg>
           <span class="text-sm font-medium hidden lg:inline">Filtros</span>
           {#if showFeatureAlert}
-            <div class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
-            <div class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+            <div
+              class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping"
+            ></div>
+            <div
+              class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"
+            ></div>
           {/if}
         </button>
 
@@ -650,15 +684,21 @@
         </button>
 
         <!-- Report Generator -->
-        <ReportGenerator
-          id_grupo={formData.grado ? parseInt(formData.grado.toString()) : 0}
-          id_docente={0}
-          id_materia={0}
-          nombre_grupo={formData.grado ? `Grado ${formData.grado}`.replace(/0(\d)$/, '°$1').replace(/(\d{1,2})0(\d)/, '$1°$2') : ''}
-          nombre_docente={formData.docente || ''}
-          nombre_materia={formData.materia || ''}
-          on:loading={(e) => reportGeneratorLoading = e.detail}
-        />
+        <div class="relative">
+          <ReportGenerator
+            id_grupo={formData.grado ? parseInt(formData.grado.toString()) : 0}
+            id_docente={0}
+            id_materia={0}
+            nombre_grupo={formData.grado ? `Grado ${formData.grado}`.replace(/0(\d)$/, '°$1').replace(/(\d{1,2})0(\d)/, '$1°$2') : ''}
+            nombre_docente={formData.docente || ''}
+            nombre_materia={formData.materia || ''}
+            on:loading={(e) => reportGeneratorLoading = e.detail}
+          />
+          {#if showFeatureAlertReport}
+            <div class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
+            <div class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+          {/if}
+        </div>
 
         <!-- Botón de Dashboard -->
         <button
@@ -803,97 +843,27 @@
         </div>
       {/if}
 
-      {#if showFeatureAlert}
-        <!-- Overlay oscuro para destacar el botón -->
-        <div class="fixed inset-0 bg-black/30 z-40" style="pointer-events: none;"></div>
-        
-        <!-- Popup que señala al botón de filtros -->
-        <div 
-          class="fixed z-50 animate-bounce-in"
-          style="top: {popupPosition.top}px; left: {popupPosition.left}px; transform: translateX(-50%);"
-        >
-          <!-- Flecha apuntando hacia abajo (al botón) -->
-          <div class="relative">
-            <div 
-              class="absolute w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-blue-600 dark:border-t-blue-400"
-              style="top: -8px; left: 50%; transform: translateX(-50%);"
-            ></div>
-            
-            <!-- Contenido del popup -->
-            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 text-white p-4 rounded-xl shadow-2xl border border-blue-400 dark:border-blue-500 min-w-[280px] max-w-[calc(100vw-20px)] md:max-w-[320px]">
-              <!-- Header con ícono y texto NUEVO -->
-              <div class="flex items-center gap-2 mb-3">
-                <div class="p-1.5 bg-white/20 rounded-lg">
-                  <svg
-                    class="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                    />
-                  </svg>
-                </div>
-                <span class="inline-block px-2 py-0.5 text-xs font-bold rounded-full bg-white/25 animate-pulse">
-                  ¡NUEVO!
-                </span>
-              </div>
-              
-              <!-- Mensaje principal -->
-              <h3 class="font-bold text-base mb-2">
-                {FEATURE_MESSAGE}
-              </h3>
-              
-              <!-- Descripción -->
-              <p class="text-sm text-blue-100 mb-3">
-                Ahora puedes filtrar tus datos de forma avanzada. ¡Pruébalo!
-              </p>
-              
-              <!-- Botones de acción -->
-              <div class="flex gap-2">
-                <button
-                  on:click={tryFeatureNow}
-                  class="px-3 py-2 rounded-lg text-sm bg-white text-blue-600 font-semibold hover:bg-blue-50 transition-colors"
-                >
-                  Probar ahora
-                </button>
-                <button
-                  on:click={dismissFeatureAlert}
-                  class="px-3 py-2 rounded-lg text-sm hover:bg-white/20 transition-colors"
-                  aria-label="Cerrar popup"
-                >
-                  Más tarde
-                </button>
-              </div>
-              
-              <!-- Botón cerrar -->
-              <button
-                on:click={dismissFeatureAlert}
-                class="absolute top-2 right-2 p-1 rounded-lg hover:bg-white/20 transition-colors"
-                aria-label="Cerrar notificación"
-              >
-                <svg
-                  class="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      {/if}
+      <!-- Feature Popup Component -->
+      <FeaturePopup
+        featureMessage={FEATURE_MESSAGE}
+        description="Ahora puedes filtrar tus datos de forma avanzada. ¡Pruébalo!"
+        onTryNow={tryFeatureNow}
+        onDismiss={dismissFeatureAlert}
+        targetSelector="#filter-button-target"
+        showPopup={showFeatureAlert}
+        colorTheme="blue"
+      />
+
+      <!-- Feature Popup for Report Generator -->
+      <FeaturePopup
+        featureMessage={FEATURE_MESSAGE_REPORT}
+        description="Ahora puedes generar reportes de inasistencias en formato Excel. ¡Descarga y analiza tus datos!"
+        onTryNow={tryFeatureNowReport}
+        onDismiss={dismissFeatureAlertReport}
+        targetSelector="#report-button-target"
+        showPopup={showFeatureAlertReport}
+        colorTheme="green"
+      />
 
       <form on:submit={handleSubmit} class="space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1328,9 +1298,10 @@
   .animate-fade-in {
     animation: fade-in 0.3s ease-out forwards;
   }
-  
+
   @keyframes pulse-slow {
-    0%, 100% {
+    0%,
+    100% {
       opacity: 1;
       transform: scale(1);
     }
@@ -1342,25 +1313,7 @@
   .animate-pulse-slow {
     animation: pulse-slow 3s ease-in-out infinite;
   }
-  
-  @keyframes bounce-in {
-    0% {
-      opacity: 0;
-      transform: translateX(-50%) translateY(-20px) scale(0.9);
-    }
-    60% {
-      opacity: 1;
-      transform: translateX(-50%) translateY(2px) scale(1.02);
-    }
-    100% {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0) scale(1);
-    }
-  }
-  .animate-bounce-in {
-    animation: bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
-  }
-  
+
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
   }

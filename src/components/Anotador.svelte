@@ -18,6 +18,7 @@
   import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
   import { slide } from 'svelte/transition';
+  import FeaturePopup from "./FeaturePopup.svelte";
 
   export let onBack: () => void;
 
@@ -172,22 +173,7 @@
     openFilters();
   };
 
-  // Posición del popup relativa al botón de filtros
-  let popupPosition = { top: 0, left: 0, arrowDirection: 'down' };
-  
-  const updatePopupPosition = () => {
-    if (typeof window !== 'undefined') {
-      const filterButton = document.querySelector('#filter-button-target');
-      if (filterButton) {
-        const rect = filterButton.getBoundingClientRect();
-        popupPosition = {
-          top: rect.bottom + 10,
-          left: rect.left + rect.width / 2,
-          arrowDirection: 'down'
-        };
-      }
-    }
-  };
+
 
   const getSheetsUrl = () => {
     return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID_ANOTADOR}`;
@@ -385,14 +371,8 @@
 
   onMount(() => {
     loadData();
-    updatePopupPosition();
     // Inicializar el estado del popup de feature
     showFeatureAlert = checkFeatureAlertVisibility();
-    // Actualizar posición cuando cambia el tamaño de ventana
-    if (typeof window !== 'undefined') {
-      window.addEventListener('resize', updatePopupPosition);
-      return () => window.removeEventListener('resize', updatePopupPosition);
-    }
   });
 </script>
 
@@ -603,97 +583,16 @@
         </div>
       {/if}
 
-      {#if showFeatureAlert}
-        <!-- Overlay oscuro para destacar el botón -->
-        <div class="fixed inset-0 bg-black/30 z-40" style="pointer-events: none;"></div>
-        
-        <!-- Popup que señala al botón de filtros -->
-        <div 
-          class="fixed z-50 animate-bounce-in"
-          style="top: {popupPosition.top}px; left: {popupPosition.left}px; transform: translateX(-50%);"
-        >
-          <!-- Flecha apuntando hacia abajo (al botón) -->
-          <div class="relative">
-            <div 
-              class="absolute w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-blue-600 dark:border-t-blue-400"
-              style="top: -8px; left: 50%; transform: translateX(-50%);"
-            ></div>
-            
-            <!-- Contenido del popup -->
-            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 text-white p-4 rounded-xl shadow-2xl border border-blue-400 dark:border-blue-500 min-w-[280px] max-w-[calc(100vw-20px)] md:max-w-[320px]">
-              <!-- Header con ícono y texto NUEVO -->
-              <div class="flex items-center gap-2 mb-3">
-                <div class="p-1.5 bg-white/20 rounded-lg">
-                  <svg
-                    class="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                    />
-                  </svg>
-                </div>
-                <span class="inline-block px-2 py-0.5 text-xs font-bold rounded-full bg-white/25 animate-pulse">
-                  ¡NUEVO!
-                </span>
-              </div>
-              
-              <!-- Mensaje principal -->
-              <h3 class="font-bold text-base mb-2">
-                {FEATURE_MESSAGE}
-              </h3>
-              
-              <!-- Descripción -->
-              <p class="text-sm text-blue-100 mb-3">
-                Ahora puedes filtrar tus anotaciones de forma avanzada. ¡Pruébalo!
-              </p>
-              
-              <!-- Botones de acción -->
-              <div class="flex gap-2">
-                <button
-                  on:click={tryFeatureNow}
-                  class="px-3 py-2 rounded-lg text-sm bg-white text-blue-600 font-semibold hover:bg-blue-50 transition-colors"
-                >
-                  Probar ahora
-                </button>
-                <button
-                  on:click={dismissFeatureAlert}
-                  class="px-3 py-2 rounded-lg text-sm hover:bg-white/20 transition-colors"
-                  aria-label="Cerrar popup"
-                >
-                  Más tarde
-                </button>
-              </div>
-              
-              <!-- Botón cerrar -->
-              <button
-                on:click={dismissFeatureAlert}
-                class="absolute top-2 right-2 p-1 rounded-lg hover:bg-white/20 transition-colors"
-                aria-label="Cerrar notificación"
-              >
-                <svg
-                  class="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      {/if}
+      <!-- Feature Popup Component -->
+      <FeaturePopup
+        featureMessage={FEATURE_MESSAGE}
+        description="Ahora puedes filtrar tus anotaciones de forma avanzada. ¡Pruébalo!"
+        onTryNow={tryFeatureNow}
+        onDismiss={dismissFeatureAlert}
+        targetSelector="#filter-button-target"
+        showPopup={showFeatureAlert}
+        colorTheme="purple"
+      />
  
       <form on:submit={handleSubmit} class="space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -835,6 +734,7 @@
               {@const catColor = getCategoryColor(categoria)}
               <div class="space-y-4">
                 <button
+                  type="button"
                   on:click={() => toggleCategory(categoria)}
                   class="flex items-center gap-3 w-full text-left cursor-pointer group focus:outline-none"
                 >
@@ -1020,21 +920,5 @@
     animation: fade-in 0.3s ease-out forwards;
   }
   
-  @keyframes bounce-in {
-    0% {
-      opacity: 0;
-      transform: translateX(-50%) translateY(-20px) scale(0.9);
-    }
-    60% {
-      opacity: 1;
-      transform: translateX(-50%) translateY(2px) scale(1.02);
-    }
-    100% {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0) scale(1);
-    }
-  }
-  .animate-bounce-in {
-    animation: bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
-  }
+
 </style>
