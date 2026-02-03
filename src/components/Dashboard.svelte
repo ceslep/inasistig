@@ -7,13 +7,55 @@
   import diarioHero from "../assets/diario_hero.png";
   import logoEie from "../assets/eie.png";
   import { theme, type Theme } from "../lib/themeStore";
+  import FeaturePopup from "./FeaturePopup.svelte"; // Re-import FeaturePopup
 
   export let onSelect: (view: string) => void;
 
   let mounted = false;
 
+  // --- Feature Alert for Diario ---
+  let showFeatureAlertDiario = true; // Initial control for the popup
+  const FEATURE_MESSAGE_DIARIO = "¡Nueva forma de anotar el Diario de Campo!";
+  const FEATURE_DESCRIPTION_DIARIO = "Ahora el Diario de Campo permite seleccionar y personalizar anotaciones predefinidas. ¡Explóralo!";
+
+  function checkFeatureAlertDiarioVisibility() {
+    // FORZAR MOSTRAR PARA DESARROLLO - Cambiar a false en producción
+    const DEBUG_FORCE_SHOW = false; // Set to false for production
+    
+    if (DEBUG_FORCE_SHOW) {
+      return true;
+    }
+    
+    const dismissed = localStorage.getItem("dismissedFeatureAlertDashboardDiario");
+    
+    // If never dismissed, show
+    if (!dismissed) {
+      return true;
+    }
+    
+    const dismissedDate = new Date(dismissed);
+    const now = new Date();
+    const daysSinceDismissed = (now.getTime() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
+    
+    // Show if more than 5 days passed since last dismissal (e.g., to remind users)
+    return daysSinceDismissed > 5;
+  }
+
+  const dismissFeatureAlertDiario = () => {
+    localStorage.setItem("dismissedFeatureAlertDashboardDiario", new Date().toISOString());
+    showFeatureAlertDiario = false; // Close the popup immediately
+  };
+
+  const tryFeatureNowDiario = () => {
+    // Close the popup
+    localStorage.setItem("dismissedFeatureAlertDashboardDiario", new Date().toISOString());
+    showFeatureAlertDiario = false; // Dismiss popup
+    onSelect("diario"); // Navigate to Diario module
+  };
+
   onMount(() => {
     mounted = true;
+    showFeatureAlertDiario = checkFeatureAlertDiarioVisibility(); // Initialize feature alert visibility
   });
 
   const toggleTheme = () => {
@@ -172,6 +214,7 @@
     >
       {#each modules as module, i}
         <button
+          id="diario-module-target"
           on:click={() => onSelect(module.id)}
           class="group relative flex flex-col justify-between overflow-hidden rounded-[2.5rem] border border-[rgb(var(--card-border))] bg-[rgb(var(--card-bg))] backdrop-blur-xl transition-all duration-500 hover:border-[rgb(var(--accent-primary))]/30 hover:bg-[rgb(var(--bg-secondary))] p-1"
           in:fly={{ y: 40, duration: 800, delay: 200 + i * 150 }}
@@ -301,6 +344,19 @@
     </footer>
   {/if}
 </div>
+
+<!-- Feature Popup for Diario -->
+<FeaturePopup
+  featureMessage={FEATURE_MESSAGE_DIARIO}
+  description={FEATURE_DESCRIPTION_DIARIO}
+  onTryNow={tryFeatureNowDiario}
+  onDismiss={dismissFeatureAlertDiario}
+  targetSelector="#diario-module-target"
+  showPopup={showFeatureAlertDiario}
+  colorTheme="emerald"
+/>
+
+
 
 <style>
   :global(body) {

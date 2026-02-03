@@ -5,6 +5,8 @@
     "target": "ES2022",
     "useDefineForClassFields": true,
     "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowArbitraryExtensions": true,
     "types": ["svelte", "vite/client"],
     "noEmit": true,
     /**

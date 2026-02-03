@@ -8,6 +8,8 @@ import {
   ANOTADOR2_URL,
   SAVE_INASISTENCIAS_URL,
   SAVE_ANOTADOR_URL,
+  SAVE_DIARIO_URL,
+  DIARIO_OPTIONS_URL,
 } from "../src/constants";
 
 export interface InasistenciaPayload {
@@ -19,6 +21,35 @@ export interface AnotadorPayload {
   worksheetTitle: string;
   datos: any[][];
 }
+
+export interface DiarioPayload {
+  spreadsheetId: string;
+  worksheetTitle: string;
+  datos: any[][];
+}
+
+export interface DiarioOption {
+  id: string;
+  categoria: string;
+  titulo: string;
+  descripcion: string;
+  impacto: number;
+  tiempo_estimado: number;
+}
+
+export const getDiarioOptions = async (): Promise<DiarioOption[]> => {
+  try {
+    const response = await fetch(`${DIARIO_OPTIONS_URL}`);
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching diario options:", error);
+    throw error;
+  }
+};
 
 export const getInasistencias = async (payload: InasistenciaPayload = {}) => {
   try {
@@ -41,7 +72,6 @@ export const getInasistencias = async (payload: InasistenciaPayload = {}) => {
     throw error;
   }
 };
-
 
 export const getAnotador = async (payload: InasistenciaPayload = {}) => {
   try {
@@ -179,6 +209,28 @@ export const saveAnotador = async (payload: AnotadorPayload) => {
   }
 };
 
+export const saveDiario = async (payload: DiarioPayload) => {
+  try {
+    const response = await fetch(`${SAVE_DIARIO_URL}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error saving inasistencias:", error);
+    throw error;
+  }
+};
+
 export interface RegistroPayload {
   id_grupo: number;
   id_docente: number;
@@ -205,7 +257,9 @@ export interface ReportData {
   registros: Registro[];
 }
 
-export const getRegistrosReporte = async (payload: RegistroPayload): Promise<ReportData> => {
+export const getRegistrosReporte = async (
+  payload: RegistroPayload,
+): Promise<ReportData> => {
   try {
     const response = await fetch(`${API_URL_GS}/get_registros_reporte.php`, {
       method: "POST",
@@ -220,9 +274,9 @@ export const getRegistrosReporte = async (payload: RegistroPayload): Promise<Rep
     }
 
     const data = await response.json();
-    
-    if (!data || typeof data !== 'object') {
-      throw new Error('Respuesta inválida del servidor');
+
+    if (!data || typeof data !== "object") {
+      throw new Error("Respuesta inválida del servidor");
     }
 
     if (data.error) {
@@ -230,7 +284,7 @@ export const getRegistrosReporte = async (payload: RegistroPayload): Promise<Rep
     }
 
     if (!data.estudiantes || !Array.isArray(data.estudiantes)) {
-      throw new Error('No se encontraron datos de estudiantes');
+      throw new Error("No se encontraron datos de estudiantes");
     }
 
     if (!data.registros || !Array.isArray(data.registros)) {
@@ -243,6 +297,6 @@ export const getRegistrosReporte = async (payload: RegistroPayload): Promise<Rep
     if (error instanceof Error) {
       throw error;
     }
-    throw new Error('Error desconocido al obtener datos del reporte');
+    throw new Error("Error desconocido al obtener datos del reporte");
   }
 };
