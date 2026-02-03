@@ -65,6 +65,12 @@
         throw new Error("No se encontraron datos de inasistencias");
       }
 
+      console.log(`Total de registros recibidos del API: ${data.records.length}`);
+      if (data.records.length > 0) {
+        console.log("Primer registro (headers):", data.records[0]);
+        console.log("Último registro:", data.records[data.records.length - 1]);
+      }
+
       const normalize = (str: any) => {
         if (!str) return "";
         return str.toString()
@@ -101,12 +107,11 @@
       const targetMateria = normalize(materia || nombre_materia);
       const targetGrupo = payload.id_grupo ? payload.id_grupo.toString().trim() : "";
 
+      console.log("Normalizados - Docente:", targetDocente, "| Materia:", targetMateria, "| Grupo:", targetGrupo);
+
       // Transformar datos existentes al formato esperado
       const estudiantesMap = new Map<string, Estudiante>();
-      const registros: Registro[] = [];
-      
-      // Primero obtenemos todos los registros del grado y luego filtramos
-      const allRecords: any[] = [];
+      const registrosMap = new Map<string, Registro>();
       
       // Procesar registros (ignorando el primer registro que son los headers)
       data.records.slice(1).forEach((record: any, index: number) => {
@@ -118,74 +123,81 @@
         const fecha = values[headerMap["Fecha"]] || "";
         const tipoRegistro = values[headerMap["Tipo de registro"]] || "";
         const estudianteNombre = values[headerMap["Estudiante"]] || "Estudiante sin nombre";
-        const horas = values[headerMap["Horas de Inasistencia"]] || "0";
+        const horasRaw = values[headerMap["Horas de Inasistencia"]] || "0";
         const observaciones = values[headerMap["Observaciones"]] || "";
 
-        // Debug de los primeros registros
-        if (index < 10) {
-          console.log(`Registro #${index + 1}:`, { 
-            docente, 
-            docenteNorm: normalize(docente),
-            targetDocente,
-            materiaRec, 
-            materiaNorm: normalize(materiaRec),
-            targetMateria,
-            grado, 
-            targetGrupo,
-            match: (normalize(docente) === targetDocente && normalize(materiaRec) === targetMateria && grado === targetGrupo)
-          });
-        }
-
-        // Filtro de Grupo
-        if (targetGrupo && grado !== targetGrupo) return;
-
-        // Filtro de Docente
-        if (targetDocente && normalize(docente) !== targetDocente) return;
-
-        // Filtro de Materia
-        if (targetMateria && normalize(materiaRec) !== targetMateria) return;
+        const normDocente = normalize(docente);
+        const normMateria = normalize(materiaRec);
         
-        // Si pasó los filtros, lo guardamos
-        if (fecha && tipoRegistro) {
-          allRecords.push({
-            estudianteNombre,
-            grado,
-            fecha,
-            tipoRegistro,
-            docente,
-            materia: materiaRec,
-            horas,
-            observaciones
-          });
+        // Filtrar por rango de fechas si se especifica
+        let dentroDeRango = true;
+        if (payload.fecha_inicio && payload.fecha_fin) {
+          const fechaRegistro = new Date(fecha);
+          const fechaInicio = new Date(payload.fecha_inicio);
+          const fechaFin = new Date(payload.fecha_fin);
+          dentroDeRango = fechaRegistro >= fechaInicio && fechaRegistro <= fechaFin;
         }
-      });
-      
-      console.log(`Se encontraron ${allRecords.length} registros que coinciden con los filtros`);
-      
-      allRecords.forEach((record) => {
-        const { estudianteNombre, grado, fecha, tipoRegistro, horas } = record;
 
-        // Generar ID único para el estudiante (normalizado para evitar duplicados por acentos)
-        const studentId = normalize(estudianteNombre).replace(/\s+/g, "_");
+        // Debug para registros del docente y fecha solicitados para ver por qué podrían fallar
+        if (fecha === "2026-02-03" && normDocente.includes("cesar")) {
+           console.log(`Registro Feb 3 para Cesar (#${index + 1}):`, {
+             materia: materiaRec,
+             normMateria,
+             targetMateria,
+             grado,
+             targetGrupo,
+             matchMateria: normMateria.includes(targetMateria) || targetMateria.includes(normMateria),
+             matchGrupo: !targetGrupo || grado === targetGrupo
+           });
+        }
 
-        if (!estudiantesMap.has(studentId)) {
-          estudiantesMap.set(studentId, {
+        // Filtros principales (más flexibles con includes para subject/docente)
+        if (targetGrupo && grado !== targetGrupo) return;
+        if (targetDocente && !normDocente.includes(targetDocente) && !targetDocente.includes(normDocente)) return;
+        if (targetMateria && !normMateria.includes(targetMateria) && !targetMateria.includes(normMateria)) return;
+        if (!fecha || !tipoRegistro || !estudianteNombre || !dentroDeRango) return;
+
+        // Generar ID único para el estudiante
+        const studentIdKey = normalize(estudianteNombre).replace(/\s+/g, "_");
+
+        if (!estudiantesMap.has(studentIdKey)) {
+          estudiantesMap.set(studentIdKey, {
             id: estudiantesMap.size + 1,
             nombre: estudianteNombre,
             grado: grado,
           });
         }
 
-        registros.push({
-          id_estudiante: estudiantesMap.get(studentId)!.id,
-          fecha: fecha,
-          presente: false,
-          motivo: tipoRegistro,
-          horas: parseFloat(horas.toString().replace(',', '.')) || 0,
-        });
+        const estId = estudiantesMap.get(studentIdKey)!.id;
+        const recordKey = `${estId}_${fecha}`;
+        const h = parseFloat(horasRaw.toString().replace(',', '.')) || 0;
+        
+        const isPres = h === 0 && (
+          normalize(tipoRegistro).includes("uniforme") || 
+          normalize(tipoRegistro).includes("pacto") ||
+          normalize(observaciones).includes("uniforme")
+        );
+
+        if (registrosMap.has(recordKey)) {
+          const existing = registrosMap.get(recordKey)!;
+          existing.horas = (existing.horas || 0) + h;
+          if (tipoRegistro && !existing.motivo?.includes(tipoRegistro)) {
+            existing.motivo += `, ${tipoRegistro}`;
+          }
+          if (!isPres) existing.presente = false;
+        } else {
+          registrosMap.set(recordKey, {
+            id_estudiante: estId,
+            fecha: fecha,
+            presente: isPres,
+            motivo: tipoRegistro,
+            horas: h,
+          });
+        }
       });
 
       const estudiantes = Array.from(estudiantesMap.values());
+      const registros = Array.from(registrosMap.values());
 
       if (estudiantes.length === 0) {
         throw new Error(
@@ -194,7 +206,7 @@
       }
 
       console.log(
-        `Procesados ${estudiantes.length} estudiantes y ${registros.length} registros`,
+        `Procesados ${estudiantes.length} estudiantes y ${registros.length} registros consolidados`,
       );
 
       return {
@@ -338,12 +350,18 @@
     try {
       dispatch("loading", true);
 
+      console.log("currentPeriodo:", currentPeriodo);
+      if (!currentPeriodo) {
+        console.error("No se encontró período actual");
+        throw new Error("No se encontró período académico actual");
+      }
+
       const payload: RegistroPayload = {
         id_grupo: grupo,
         id_docente: docente,
         id_materia: materia,
-        fecha_inicio: currentPeriodo?.fecha_inicio.toISOString().split("T")[0],
-        fecha_fin: currentPeriodo?.fecha_fin.toISOString().split("T")[0],
+        fecha_inicio: currentPeriodo.fecha_inicio.toISOString().split("T")[0],
+        fecha_fin: currentPeriodo.fecha_fin.toISOString().split("T")[0],
       };
 
       console.log("Obteniendo datos con payload:", payload);
@@ -418,11 +436,22 @@
 
     const allDates = generateDatesFromPeriodo(currentPeriodo);
     
-    // Filtrar solo las fechas que tienen al menos una inasistencia
+    // Filtrar fechas para incluir solo las que tienen al menos un registro
     const dates = allDates.filter(date => {
       const dateStr = date.toISOString().split("T")[0];
-      return reportData!.registros.some(reg => reg.fecha === dateStr && !reg.presente);
+      return reportData!.registros.some(reg => reg.fecha === dateStr);
     });
+
+    // Si no hay ninguna fecha con registros (raro si llegó aquí), mostrar al menos el periodo
+    if (dates.length === 0) {
+      await Swal.fire({
+        icon: "info",
+        title: "Reporte Vacío",
+        text: "No hay inasistencias registradas en este periodo para los filtros seleccionados.",
+        confirmButtonColor: "#3b82f6",
+      });
+      return;
+    }
 
     const totalCols = dates.length + 2; // Estudiante + Dates + Total
 
@@ -512,19 +541,24 @@
             reg.fecha === date.toISOString().split("T")[0],
         );
 
-        if (registro && !registro.presente) {
-          const horas = registro.horas || 0;
-          cell.value = horas;
-          cell.font = { color: { argb: "FF0000" }, bold: true };
-          cell.fill = {
-            type: "pattern",
-            pattern: "solid",
-            fgColor: { argb: "FFE6E6" },
-          };
-          totalHoras += horas;
+        if (registro) {
+          if (!registro.presente) {
+            const horas = registro.horas || 0;
+            cell.value = horas > 0 ? horas : registro.motivo || "Inasistencia";
+            cell.font = { color: { argb: "FF0000" }, bold: true };
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFE6E6" },
+            };
+            totalHoras += horas;
+          } else {
+            cell.value = "✓";
+            cell.font = { color: { argb: "00AA00" } };
+          }
         } else {
-          cell.value = registro ? "✓" : "-";
-          cell.font = { color: { argb: "00AA00" } };
+          cell.value = "-";
+          cell.font = { color: { argb: "888888" } };
         }
       });
 
@@ -576,11 +610,11 @@
     const end = new Date(periodo.fecha_fin);
 
     while (current <= end) {
-      const dayOfWeek = current.getDay();
+      const dayOfWeek = current.getUTCDay();
       if (dayOfWeek >= 1 && dayOfWeek <= 6) {
         dates.push(new Date(current));
       }
-      current.setDate(current.getDate() + 1);
+      current.setUTCDate(current.getUTCDate() + 1);
     }
 
     return dates;
@@ -601,7 +635,7 @@
       "Nov",
       "Dic",
     ];
-    return `${date.getDate()}/${months[date.getMonth()]}/${date.getFullYear().toString().substr(2)}`;
+    return `${date.getUTCDate()}/${months[date.getUTCMonth()]}/${date.getUTCFullYear().toString().substr(2)}`;
   }
 </script>
 
