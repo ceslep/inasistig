@@ -229,162 +229,181 @@
     filteredData = [];
   };
 
-  const generatePDF = () => {
+  const generatePDF = async () => {
     if (filteredData.length === 0) {
       alert("No hay datos para generar el PDF");
       return;
     }
 
-    const doc = new jsPDF();
+    const pdf = new jsPDF({ format: 'letter' });
+    const reportTitle = "Anotador de Clases";
+    const reportFilters = [];
+    if (selectedDocente) reportFilters.push(`Docente: ${selectedDocente}`);
+    if (selectedMateria) reportFilters.push(`Asignatura: ${selectedMateria}`);
+    if (selectedGrado) reportFilters.push(`Grado: ${selectedGrado}`);
 
-    const title = "Anotador de Clases";
-    const filters = [];
-    if (selectedDocente) filters.push(`Docente: ${selectedDocente}`);
-    if (selectedMateria) filters.push(`Asignatura: ${selectedMateria}`);
-    if (selectedGrado) filters.push(`Grado: ${selectedGrado}`);
+    let yPosition = 20;
 
-    // Encabezado con logo e institución
-    let yPosition = 15;
-
-    // Logo EIE - intento con diferentes métodos
+    // Logo EIE con fallback robusto
     try {
-      // Método 1: Intentar con la ruta del logo
-      console.log("Intentando agregar logo...");
+      console.log("🖼️ Intentando agregar logo EIE al PDF...");
 
-      // Método 2: Si falla el logo, usar texto alternativo grande
-      doc.setFontSize(24);
-      doc.setTextColor(99, 102, 241); // Color indigo como en la app
-      doc.text("EIE", 105, yPosition, { align: "center" });
-      yPosition += 12;
+      // Intento 1: Usar la imagen importada directamente
+      pdf.setTextColor(99, 102, 241);
+      pdf.setFontSize(28);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("EIE", pdf.internal.pageSize.getWidth() / 2, yPosition, {
+        align: "center",
+      });
+      yPosition += 15;
+
+      console.log("✅ Logo EIE (texto) agregado correctamente");
     } catch (error) {
-      console.log("Error en el logo:", error);
-      doc.setFontSize(16);
-      doc.text("EIE", 105, yPosition, { align: "center" });
-      yPosition += 10;
+      console.log("❌ Error con logo EIE, usando fallback:", error);
+
+      // Fallback simple
+      pdf.setTextColor(99, 102, 241);
+      pdf.setFontSize(24);
+      pdf.text("EIE", pdf.internal.pageSize.getWidth() / 2, yPosition, {
+        align: "center",
+      });
+      yPosition += 15;
     }
 
     // Título del reporte
-    doc.setTextColor(0, 0, 0); // Negro para el título
-    doc.setFontSize(16);
-    doc.text(title, 105, yPosition, { align: "center" });
-    yPosition += 8;
-
-    // Nombre de la institución
-    doc.setFontSize(11);
-    doc.text("Institución Educativa Instituto Guática", 105, yPosition, {
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFontSize(18);
+    pdf.setFont("helvetica", "bold");
+    pdf.text(reportTitle, pdf.internal.pageSize.getWidth() / 2, yPosition, {
       align: "center",
     });
-    yPosition += 8;
+    yPosition += 12;
 
-    // Línea separadora
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.5);
-    doc.line(20, yPosition, 190, yPosition);
-    yPosition += 10;
-
-    // Fecha de generación
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(
-      `Fecha de generación: ${new Date().toLocaleDateString()}`,
-      105,
+    // Nombre de la institución
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFontSize(12);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(
+      "Institución Educativa Instituto Guática",
+      pdf.internal.pageSize.getWidth() / 2,
       yPosition,
       { align: "center" },
     );
-    yPosition += 8;
+    yPosition += 10;
+
+    // Fecha de generación
+    pdf.setTextColor(60, 60, 60);
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(
+      `Fecha de generación: ${new Date().toLocaleDateString()}`,
+      pdf.internal.pageSize.getWidth() / 2,
+      yPosition,
+      { align: "center" },
+    );
+    yPosition += 15;
+
+    // Línea decorativa
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(1);
+    pdf.line(20, yPosition, pdf.internal.pageSize.getWidth() - 20, yPosition);
+    yPosition += 15;
 
     // Filtros aplicados
-    if (filters.length > 0) {
-      doc.setTextColor(80, 80, 80);
-      filters.forEach((filter) => {
-        doc.text(filter, 20, yPosition);
+    if (reportFilters.length > 0) {
+      pdf.setTextColor(80, 80, 80);
+      pdf.setFontSize(9);
+      pdf.setFont("helvetica", "normal");
+      reportFilters.forEach((filter) => {
+        pdf.text(filter, 20, yPosition, { align: "left" });
         yPosition += 6;
       });
-      yPosition += 8; // Espacio extra antes de la tabla
+      yPosition += 10;
     }
 
+    // Preparar datos de la tabla (sin docente, asignatura ni grado)
     const tableData = filteredData.map((item) => [
       item["Fecha"] || "",
-      item["Docente"] || "",
-      item["Asignatura"] || "",
-      item["Grado"] || "",
       item["Horas"] || "",
       item["Anotación"] || "",
-      "", // Observación no existe en la hoja
     ]);
 
     // Agregar fila de totales
     const totalRow = [
-      "",
-      "",
-      "",
       "TOTAL",
-      totalHoras.toFixed(1), // Mostrar con 1 decimal
-      `${filteredData.length} registros`,
+      totalHoras.toFixed(1),
       "",
     ];
     tableData.push(totalRow);
 
-    console.log("📊 Totales calculados:", {
+    console.log("📊 Generando PDF con:", {
       totalHoras,
       registros: filteredData.length,
-      totalRow,
+      filasTabla: tableData.length,
     });
 
-    autoTable(doc, {
-      head: [["Fecha", "Docente", "Asignatura", "Grado", "Horas", "Anotación"]],
+    // Generar tabla con autoTable
+    autoTable(pdf, {
+      head: [["Fecha", "Horas", "Anotación"]],
       body: tableData,
-      startY: filters.length > 0 ? yPosition + 10 : yPosition,
-      // Estilo especial para la fila de totales
-      didParseCell: (data) => {
-        if (data.row.index === tableData.length - 1) {
-          // Última fila (totales)
-          data.cell.styles.fillColor = [240, 240, 240];
-          data.cell.styles.fontStyle = "bold";
-          data.cell.styles.textColor = [0, 0, 0];
-          // Alineación especial para las celdas de totales
-          if (data.column.index === 1) {
-            // Columna "TOTAL"
-            data.cell.styles.halign = "center";
-          }
-          if (data.column.index === 3) {
-            // Columna de horas totales
-            data.cell.styles.halign = "center";
-            data.cell.styles.fillColor = [230, 230, 230];
-          }
-          if (data.column.index === 4) {
-            // Columna de registros totales
-            data.cell.styles.halign = "center";
-            data.cell.styles.fillColor = [230, 230, 230];
-          }
-        }
-      },
+      startY: yPosition,
       styles: {
         fontSize: 8,
-        cellPadding: 3,
+        cellPadding: 2,
+        cellWidth: "wrap", // Permitir que el texto se ajuste
+        valign: "top", // Alinear texto hacia arriba
+        overflow: "linebreak", // Romper líneas largas
       },
       headStyles: {
         fillColor: [99, 102, 241],
         textColor: 255,
         fontSize: 9,
         fontStyle: "bold",
+        halign: 'center', // Center align header text
+      },
+      bodyStyles: {
+        fillColor: [255, 255, 255],
+        textColor: [0, 0, 0],
       },
       alternateRowStyles: {
         fillColor: [248, 250, 252],
       },
       columnStyles: {
-        0: { cellWidth: 20 }, // Fecha
-        1: { cellWidth: 30 }, // Docente
-        2: { cellWidth: 30 }, // Asignatura
-        3: { cellWidth: 15 }, // Grado
-        4: { cellWidth: 15 }, // Horas
-        5: { cellWidth: 60 }, // Anotación
+        0: { cellWidth: 60, minCellHeight: 8, halign: 'center' }, // Fecha
+        1: { cellWidth: 30, minCellHeight: 8, halign: 'center' }, // Horas
+        2: { cellWidth: 'auto', minCellHeight: 12 }, // Anotación con altura mínima
       },
-      margin: { top: 20, right: 20, bottom: 20, left: 20 },
+      margin: { top: 15, right: 15, bottom: 15, left: 15 },
+      tableWidth: "auto", // Calcular ancho automáticamente
+            didParseCell: (data) => {
+
+      
+              // Estilo especial para la fila de totales
+              if (data.row.index === tableData.length - 1) {
+                data.cell.styles.fillColor = [240, 240, 240];
+                data.cell.styles.fontStyle = "bold";
+                data.cell.styles.textColor = [0, 0, 0];
+      
+                if (data.column.index === 0) { // "TOTAL"
+                  data.cell.styles.halign = "center";
+                  data.cell.styles.fillColor = [230, 230, 230];
+                }
+                if (data.column.index === 1) { // totalHoras.toFixed(1)
+                  data.cell.styles.halign = "center";
+                  data.cell.styles.fillColor = [220, 220, 220];
+                }
+                if (data.column.index === 2) { // `${filteredData.length} registros` for Anotación
+                  data.cell.styles.halign = "center";
+                  data.cell.styles.fillColor = [220, 220, 220];
+                }
+              }
+            },
     });
 
+    // Guardar PDF
     const fileName = `reporte_anotaciones_${selectedDocente || "todos"}_${selectedMateria || "todas"}_${selectedGrado || "todos"}_${new Date().toISOString().split("T")[0]}.pdf`;
-    doc.save(fileName);
+    pdf.save(fileName);
+    console.log("💾 PDF guardado exitosamente:", fileName);
   };
 
   // Calcular totales y materias destacadas
@@ -716,24 +735,6 @@
                   class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
                   style="color: {styles.label};"
                 >
-                  Docente
-                </th>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
-                  style="color: {styles.label};"
-                >
-                  Asignatura
-                </th>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
-                  style="color: {styles.label};"
-                >
-                  Grado
-                </th>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
-                  style="color: {styles.label};"
-                >
                   Horas
                 </th>
                 <th
@@ -751,11 +752,8 @@
                   style="border-color: {styles.border};"
                 >
                   <td class="px-4 py-3 text-sm">{item["Fecha"] || "-"}</td>
-                  <td class="px-4 py-3 text-sm">{item["Docente"] || "-"}</td>
-                  <td class="px-4 py-3 text-sm">{item["Asignatura"] || "-"}</td>
-                  <td class="px-4 py-3 text-sm">{item["Grado"] || "-"}</td>
                   <td class="px-4 py-3 text-sm">{item["Horas"] || "-"}</td>
-                  <td class="px-4 py-3 text-sm max-w-xs">
+                  <td class="px-4 py-3 text-sm">
                     <div class="truncate" title={item["Anotación"]}>
                       {item["Anotación"] || "-"}
                     </div>
@@ -768,12 +766,12 @@
                   class="border-t-2 font-bold bg-gray-100 dark:bg-gray-800"
                   style="border-color: {styles.border}; border-top-width: 2px;"
                 >
-                  <td class="px-4 py-3 text-sm" colspan="3"></td>
-                  <td class="px-4 py-3 text-sm font-bold"
-                    >{totalHoras.toFixed(0)}</td
-                  >
-                  <td class="px-4 py-3 text-sm max-w-xs">
-                    {filteredData.length} totalHoras
+                  <td class="px-4 py-3 text-sm font-bold">TOTAL</td>
+                  <td class="px-4 py-3 text-sm font-bold text-center">
+                    {totalHoras.toFixed(1)}
+                  </td>
+                  <td class="px-4 py-3 text-sm font-bold text-center">
+                    {filteredData.length} registros
                   </td>
                 </tr>
               {/if}

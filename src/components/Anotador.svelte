@@ -13,12 +13,12 @@
     WORKSHEET_TITLE_ANOTADOR,
     INFO_ANOTADOR,
   } from "../constants";
-import Loader from "./Loader.svelte";
+  import Loader from "./Loader.svelte";
   import AnotadorFilter from "./AnotadorFilter.svelte";
   import ReportGenerator from "./ReportGenerator.svelte";
   import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
-  import { slide } from 'svelte/transition';
+  import { slide } from "svelte/transition";
   import FeaturePopup from "./FeaturePopup.svelte";
 
   export let onBack: () => void;
@@ -50,15 +50,15 @@ import Loader from "./Loader.svelte";
 
   let anotacionGrupos: Record<string, OpcionAnotacion[]> = {};
   let expandedCategories: Record<string, boolean> = {}; // New state for accordion
-  
+
   // Estado para búsqueda
   let searchTerm = "";
   let filteredAnotacionGrupos: Record<string, OpcionAnotacion[]> = {};
   let sortedFilteredEntries: [string, OpcionAnotacion[]][] = [];
   let highlightedCategory = "";
   let lastSelectedMateria = "";
-  
-const toggleCategory = (category: string) => {
+
+  const toggleCategory = (category: string) => {
     expandedCategories[category] = !expandedCategories[category];
     // This line is needed to trigger reactivity when updating an object property
     expandedCategories = expandedCategories;
@@ -67,16 +67,33 @@ const toggleCategory = (category: string) => {
   // Función helper para actualizar selección de anotación y forzar reactividad
   const toggleAnotacionSeleccion = (categoria: string, index: number) => {
     if (anotacionGrupos[categoria] && anotacionGrupos[categoria][index]) {
-      anotacionGrupos[categoria][index].selected = !anotacionGrupos[categoria][index].selected;
-      // Forzar reactividad completa
-      anotacionGrupos = { ...anotacionGrupos };
-      
-      console.log('🔄 Anotación toggle:', {
+      // Create a new option object with the toggled selected state
+      const updatedOption = {
+        ...anotacionGrupos[categoria][index],
+        selected: !anotacionGrupos[categoria][index].selected,
+      };
+
+      // Create a new array for the category with the updated option
+      const updatedCategoryOptions = [
+        ...anotacionGrupos[categoria].slice(0, index),
+        updatedOption,
+        ...anotacionGrupos[categoria].slice(index + 1),
+      ];
+
+      // Create a new anotacionGrupos object with the updated category array
+      anotacionGrupos = {
+        ...anotacionGrupos,
+        [categoria]: updatedCategoryOptions,
+      };
+
+      console.log("🔄 Anotación toggle:", {
         categoria,
         index,
         texto: anotacionGrupos[categoria][index].text,
         nuevoEstado: anotacionGrupos[categoria][index].selected,
-        totalSeleccionadas: Object.values(anotacionGrupos).flat().filter(o => o.selected).length
+        totalSeleccionadas: Object.values(anotacionGrupos)
+          .flat()
+          .filter((o) => o.selected).length,
       });
     }
   };
@@ -91,18 +108,18 @@ const toggleCategory = (category: string) => {
       "EDUCACIÓN ARTÍSTICA": "#f43f5e", // Rose
       "EDUCACIÓN FÍSICA, RECREACIÓN Y DEPORTES": "#ef4444", // Red
       "EDUCACIÓN RELIGIOSA, ÉTICA Y V. HUMANOS": "#8b5cf6", // Violet
-      "EMPRENDIMIENTO": "#f97316", // Orange
-      "ESTADÍSTICA": "#06b6d4", // Cyan
+      EMPRENDIMIENTO: "#f97316", // Orange
+      ESTADÍSTICA: "#06b6d4", // Cyan
       "FILOSOFÍA Y CIENCIAS SOCIALES (CIENCIAS": "#6366f1", // Indigo
-      "FÍSICA": "#3b82f6", // Blue
-      "INGLÉS": "#14b8a6", // Teal
+      FÍSICA: "#3b82f6", // Blue
+      INGLÉS: "#14b8a6", // Teal
       "LENGUA CASTELLANA": "#10b981", // Emerald
-      "MATEMÁTICAS": "#3b82f6", // Blue
+      MATEMÁTICAS: "#3b82f6", // Blue
       "PROYECTO Y EMPRENDIMIENTO": "#f97316", // Orange
-      "QUÍMICA": "#06b6d4", // Cyan
+      QUÍMICA: "#06b6d4", // Cyan
       "TECNOLOGÍA E INFORMÁTICA": "#6366f1", // Indigo
       "ÉTICA PROFESIONAL": "#8b5cf6", // Violet
-      
+
       // Categorías anteriores (mantener por compatibilidad)
       "Estrategias de Enseñanza-Aprendizaje": "#6366f1", // Indigo
       "Evaluación y Verificación de Saberes": "#10b981", // Emerald
@@ -119,43 +136,49 @@ const toggleCategory = (category: string) => {
 
   // Mapeo de materias a categorías correspondientes (con nombres exactos del JSON)
   const materiaToCategory: Record<string, string> = {
-    "MATEMÁTICAS": "MATEMÁTICAS",
-    "LENGUA CASTELLANA": "LENGUA CASTELLANA", 
-    "INGLÉS": "INGLÉS",
-    "CIENCIAS NATURALES Y EDUCACIÓN AMBIENTAL": "CIENCIAS NATURALES Y EDUCACIÓN AMBIENTAL",
+    MATEMÁTICAS: "MATEMÁTICAS",
+    "LENGUA CASTELLANA": "LENGUA CASTELLANA",
+    INGLÉS: "INGLÉS",
+    "CIENCIAS NATURALES Y EDUCACIÓN AMBIENTAL":
+      "CIENCIAS NATURALES Y EDUCACIÓN AMBIENTAL",
     "CIENCIAS NATURALES": "CIENCIAS NATURALES Y EDUCACIÓN AMBIENTAL",
-    "CIENCIAS SOCIALES (HISTORIA, GEOGRAFÍA Y": "CIENCIAS SOCIALES (HISTORIA, GEOGRAFÍA Y",
+    "CIENCIAS SOCIALES (HISTORIA, GEOGRAFÍA Y":
+      "CIENCIAS SOCIALES (HISTORIA, GEOGRAFÍA Y",
     "CIENCIAS SOCIALES": "CIENCIAS SOCIALES (HISTORIA, GEOGRAFÍA Y",
-    "FÍSICA": "FÍSICA",
-    "QUÍMICA": "QUÍMICA",
+    FÍSICA: "FÍSICA",
+    QUÍMICA: "QUÍMICA",
     "EDUCACIÓN ARTÍSTICA": "EDUCACIÓN ARTÍSTICA",
-    "EDUCACIÓN FÍSICA, RECREACIÓN Y DEPORTES": "EDUCACIÓN FÍSICA, RECREACIÓN Y DEPORTES",
+    "EDUCACIÓN FÍSICA, RECREACIÓN Y DEPORTES":
+      "EDUCACIÓN FÍSICA, RECREACIÓN Y DEPORTES",
     "EDUCACIÓN FÍSICA": "EDUCACIÓN FÍSICA, RECREACIÓN Y DEPORTES",
     "TECNOLOGÍA E INFORMÁTICA": "TECNOLOGÍA E INFORMÁTICA",
-    "TECNOLOGÍA": "TECNOLOGÍA E INFORMÁTICA",
-    "INFORMÁTICA": "TECNOLOGÍA E INFORMÁTICA",
-    "EMPRENDIMIENTO": "EMPRENDIMIENTO",
-    "FILOSOFÍA Y CIENCIAS SOCIALES (CIENCIAS": "FILOSOFÍA Y CIENCIAS SOCIALES (CIENCIAS",
-    "FILOSOFÍA": "FILOSOFÍA Y CIENCIAS SOCIALES (CIENCIAS",
-    "ESTADÍSTICA": "ESTADÍSTICA",
-    "EDUCACIÓN RELIGIOSA, ÉTICA Y V. HUMANOS": "EDUCACIÓN RELIGIOSA, ÉTICA Y V. HUMANOS",
-    "ÉTICA": "EDUCACIÓN RELIGIOSA, ÉTICA Y V. HUMANOS",
+    TECNOLOGÍA: "TECNOLOGÍA E INFORMÁTICA",
+    INFORMÁTICA: "TECNOLOGÍA E INFORMÁTICA",
+    EMPRENDIMIENTO: "EMPRENDIMIENTO",
+    "FILOSOFÍA Y CIENCIAS SOCIALES (CIENCIAS":
+      "FILOSOFÍA Y CIENCIAS SOCIALES (CIENCIAS",
+    FILOSOFÍA: "FILOSOFÍA Y CIENCIAS SOCIALES (CIENCIAS",
+    ESTADÍSTICA: "ESTADÍSTICA",
+    "EDUCACIÓN RELIGIOSA, ÉTICA Y V. HUMANOS":
+      "EDUCACIÓN RELIGIOSA, ÉTICA Y V. HUMANOS",
+    ÉTICA: "EDUCACIÓN RELIGIOSA, ÉTICA Y V. HUMANOS",
     "DIRECCIÓN DE GRUPO": "DIRECCIÓN DE GRUPO",
     "PROYECTO Y EMPRENDIMIENTO": "PROYECTO Y EMPRENDIMIENTO",
-    "PROYECTO": "PROYECTO Y EMPRENDIMIENTO",
+    PROYECTO: "PROYECTO Y EMPRENDIMIENTO",
     "CÁTEDRA DE LA PAZ": "CÁTEDRA DE LA PAZ",
-    "ÉTICA PROFESIONAL": "ÉTICA PROFESIONAL"
+    "ÉTICA PROFESIONAL": "ÉTICA PROFESIONAL",
   };
 
   // Función para ordenar categorías según materia seleccionada
   const sortCategoriesByMateria = (entries: [string, OpcionAnotacion[]][]) => {
     if (!formData.materia) return entries;
-    
+
     // Buscar coincidencia exacta o parcial
-    let targetCategory = materiaToCategory[formData.materia.toUpperCase()] || 
-                       materiaToCategory[formData.materia] ||
-                       "";
-    
+    let targetCategory =
+      materiaToCategory[formData.materia.toUpperCase()] ||
+      materiaToCategory[formData.materia] ||
+      "";
+
     // Si no encuentra coincidencia exacta, buscar coincidencia parcial
     if (!targetCategory) {
       const materiaUpper = formData.materia.toUpperCase();
@@ -166,14 +189,19 @@ const toggleCategory = (category: string) => {
         }
       }
     }
-    
-    console.log('Materia seleccionada:', formData.materia, '→ Categoría:', targetCategory);
-    
+
+    console.log(
+      "Materia seleccionada:",
+      formData.materia,
+      "→ Categoría:",
+      targetCategory,
+    );
+
     return entries.sort(([catA], [catB]) => {
       // La categoría correspondiente va primero
       if (catA === targetCategory && catB !== targetCategory) return -1;
       if (catB === targetCategory && catA !== targetCategory) return 1;
-      
+
       // Mantener orden alfabético para el resto
       return catA.localeCompare(catB);
     });
@@ -182,12 +210,13 @@ const toggleCategory = (category: string) => {
   // Detectar cambios en la materia seleccionada
   $: if (formData.materia && formData.materia !== lastSelectedMateria) {
     lastSelectedMateria = formData.materia;
-    
+
     // Encontrar la categoría correspondiente
-    let targetCategory = materiaToCategory[formData.materia.toUpperCase()] || 
-                       materiaToCategory[formData.materia] ||
-                       "";
-    
+    let targetCategory =
+      materiaToCategory[formData.materia.toUpperCase()] ||
+      materiaToCategory[formData.materia] ||
+      "";
+
     // Buscar coincidencia parcial si no encuentra exacta
     if (!targetCategory) {
       const materiaUpper = formData.materia.toUpperCase();
@@ -198,11 +227,11 @@ const toggleCategory = (category: string) => {
         }
       }
     }
-    
+
     if (targetCategory) {
       highlightedCategory = targetCategory;
-      console.log('✨ Categoria destacada:', targetCategory);
-      
+      console.log("✨ Categoria destacada:", targetCategory);
+
       // Remover el highlight después de 3 segundos
       setTimeout(() => {
         highlightedCategory = "";
@@ -212,35 +241,49 @@ const toggleCategory = (category: string) => {
 
   // Reactividad para forzar el reordenamiento
   $: {
-    console.log('🔄 Reactividad actualizada');
-    console.log('📚 Materias disponibles:', materias.map(m => m.materia));
-    console.log('✍️ Materia seleccionada:', formData.materia);
-    console.log('📊 Categorías disponibles:', Object.keys(anotacionGrupos));
-    console.log('🔍 Categorías filtradas:', Object.keys(filteredAnotacionGrupos));
-    sortedFilteredEntries = sortCategoriesByMateria(Object.entries(filteredAnotacionGrupos));
-    console.log('📋 Entradas ordenadas:', sortedFilteredEntries.map(([cat]) => cat));
+    console.log("🔄 Reactividad actualizada");
+    console.log(
+      "📚 Materias disponibles:",
+      materias.map((m) => m.materia),
+    );
+    console.log("✍️ Materia seleccionada:", formData.materia);
+    console.log("📊 Categorías disponibles:", Object.keys(anotacionGrupos));
+    console.log(
+      "🔍 Categorías filtradas:",
+      Object.keys(filteredAnotacionGrupos),
+    );
+    sortedFilteredEntries = sortCategoriesByMateria(
+      Object.entries(filteredAnotacionGrupos),
+    );
+    console.log(
+      "📋 Entradas ordenadas:",
+      sortedFilteredEntries.map(([cat]) => cat),
+    );
   }
 
   // Función de filtrado
-  $: filteredAnotacionGrupos = Object.entries(anotacionGrupos).reduce((acc, [categoria, opciones]) => {
-    if (!searchTerm.trim()) {
-      acc[categoria] = opciones;
+  $: filteredAnotacionGrupos = Object.entries(anotacionGrupos).reduce(
+    (acc, [categoria, opciones]) => {
+      if (!searchTerm.trim()) {
+        acc[categoria] = opciones;
+        return acc;
+      }
+
+      const term = searchTerm.toLowerCase().trim();
+      const filteredOpciones = opciones.filter((opcion) =>
+        opcion.text.toLowerCase().includes(term),
+      );
+
+      // Solo incluir la categoría si encuentra coincidencias en el texto de las opciones
+      if (filteredOpciones.length > 0) {
+        acc[categoria] = filteredOpciones;
+        // No auto-expandir categorías, el docente decide cuándo abrir
+      }
+
       return acc;
-    }
-
-    const term = searchTerm.toLowerCase().trim();
-    const filteredOpciones = opciones.filter(opcion => 
-      opcion.text.toLowerCase().includes(term)
-    );
-
-    // Solo incluir la categoría si encuentra coincidencias en el texto de las opciones
-    if (filteredOpciones.length > 0) {
-      acc[categoria] = filteredOpciones;
-      // No auto-expandir categorías, el docente decide cuándo abrir
-    }
-
-    return acc;
-  }, {} as Record<string, OpcionAnotacion[]>);
+    },
+    {} as Record<string, OpcionAnotacion[]>,
+  );
 
   // --- Formulario ---
   let formData = {
@@ -295,10 +338,10 @@ const toggleCategory = (category: string) => {
 
   let isLoading = false;
 
-// --- Filtros ---
+  // --- Filtros ---
   let showFilter = false;
   let showReportGenerator = false;
-  
+
   const openFilters = () => {
     showFilter = true;
   };
@@ -315,45 +358,50 @@ const toggleCategory = (category: string) => {
 
   // --- Alertas Dismissibles ---
   let showFeatureAlert = true; // Control inmediato del popup
-  
+
   const FEATURE_MESSAGE = "¡Nueva función de filtrado avanzado disponible!";
-  
+
   function checkFeatureAlertVisibility() {
     // FORZAR MOSTRAR PARA DESARROLLO - Cambiar a false en producción
     const DEBUG_FORCE_SHOW = true;
-    
+
     if (DEBUG_FORCE_SHOW) {
       return true;
     }
-    
+
     const dismissed = localStorage.getItem("dismissedFeatureAlertAnotador");
-    
+
     // Si nunca fue descartado, mostrar siempre
     if (!dismissed) {
       return true;
     }
-    
+
     const dismissedDate = new Date(dismissed);
     const now = new Date();
-    const daysSinceDismissed = (now.getTime() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
-    
+    const daysSinceDismissed =
+      (now.getTime() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
+
     // Mostrar si han pasado más de 5 días desde que se descartó
     return daysSinceDismissed > 5;
   }
 
   const dismissFeatureAlert = () => {
-    localStorage.setItem("dismissedFeatureAlertAnotador", new Date().toISOString());
+    localStorage.setItem(
+      "dismissedFeatureAlertAnotador",
+      new Date().toISOString(),
+    );
     showFeatureAlert = false; // Cerrar el popup inmediatamente
   };
 
   const tryFeatureNow = () => {
     // Cerrar el popup
-    localStorage.setItem("dismissedFeatureAlertAnotador", new Date().toISOString());
+    localStorage.setItem(
+      "dismissedFeatureAlertAnotador",
+      new Date().toISOString(),
+    );
     // Abrir el panel de filtros
     openFilters();
   };
-
-
 
   const getSheetsUrl = () => {
     return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID_ANOTADOR}`;
@@ -384,7 +432,7 @@ const toggleCategory = (category: string) => {
     });
   };
 
-// Validación de formulario
+  // Validación de formulario
   $: hasSelectedAnotacion = Object.values(anotacionGrupos)
     .flat()
     .some((o) => o.selected);
@@ -396,10 +444,10 @@ const toggleCategory = (category: string) => {
     formData.grado &&
     formData.horas &&
     hasSelectedAnotacion;
-    
+
   // Debug para validación del formulario
   $: {
-    console.log('🔍 Validación formulario:', {
+    console.log("🔍 Validación formulario:", {
       fecha: formData.fecha,
       docente: formData.docente,
       materia: formData.materia,
@@ -408,7 +456,9 @@ const toggleCategory = (category: string) => {
       hasSelectedAnotacion,
       isFormValid,
       totalAnotaciones: Object.values(anotacionGrupos).flat().length,
-      selectedCount: Object.values(anotacionGrupos).flat().filter(o => o.selected).length
+      selectedCount: Object.values(anotacionGrupos)
+        .flat()
+        .filter((o) => o.selected).length,
     });
   }
 
@@ -544,7 +594,7 @@ const toggleCategory = (category: string) => {
         observacion: "",
       };
 
-// Resetear selecciones
+      // Resetear selecciones
       for (const cat in anotacionGrupos) {
         anotacionGrupos[cat] = anotacionGrupos[cat].map((o) => ({
           ...o,
@@ -612,7 +662,7 @@ const toggleCategory = (category: string) => {
           >
         </button>
 
-<!-- Botón de Filtros -->
+        <!-- Botón de Filtros -->
         <button
           id="filter-button-target"
           on:click={openFilters}
@@ -635,8 +685,12 @@ const toggleCategory = (category: string) => {
           </svg>
           <span class="text-sm font-medium hidden lg:inline">Filtros</span>
           {#if showFeatureAlert}
-            <div class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
-            <div class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+            <div
+              class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping"
+            ></div>
+            <div
+              class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"
+            ></div>
           {/if}
         </button>
 
@@ -813,7 +867,7 @@ const toggleCategory = (category: string) => {
         showPopup={showFeatureAlert}
         colorTheme="purple"
       />
- 
+
       <form on:submit={handleSubmit} class="space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div class="space-y-2">
@@ -978,7 +1032,7 @@ const toggleCategory = (category: string) => {
             </svg>
             {#if searchTerm}
               <button
-                on:click={() => searchTerm = ''}
+                on:click={() => (searchTerm = "")}
                 class="absolute right-4 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 style="color: {styles.placeholder};"
                 title="Limpiar búsqueda"
@@ -1014,7 +1068,9 @@ const toggleCategory = (category: string) => {
                   d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                 />
               </svg>
-              <p class="text-sm">No se encontraron anotaciones para "{searchTerm}"</p>
+              <p class="text-sm">
+                No se encontraron anotaciones para "{searchTerm}"
+              </p>
             </div>
           {/if}
         </div>
@@ -1036,8 +1092,14 @@ const toggleCategory = (category: string) => {
                 >
                   <div class="flex items-center gap-3 flex-1">
                     <h3
-                      class="text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full text-white flex-shrink-0 transition-all duration-300 group-hover:shadow-md {categoria === highlightedCategory ? 'animate-glow ring-4 ring-opacity-50' : ''}"
-                      style="background-color: {catColor}; {categoria === highlightedCategory ? `box-shadow: 0 0 25px ${catColor}60, 0 0 50px ${catColor}30; ring-color: ${catColor}; border: 2px solid ${catColor};` : ''}"
+                      class="text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full text-white flex-shrink-0 transition-all duration-300 group-hover:shadow-md {categoria ===
+                      highlightedCategory
+                        ? 'animate-glow ring-4 ring-opacity-50'
+                        : ''}"
+                      style="background-color: {catColor}; {categoria ===
+                      highlightedCategory
+                        ? `box-shadow: 0 0 25px ${catColor}60, 0 0 50px ${catColor}30; ring-color: ${catColor}; border: 2px solid ${catColor};`
+                        : ''}"
                     >
                       {categoria}
                       {#if categoria === highlightedCategory}
@@ -1045,11 +1107,13 @@ const toggleCategory = (category: string) => {
                       {/if}
                     </h3>
                     {#if searchTerm}
-                      <span 
+                      <span
                         class="text-xs font-medium"
                         style="color: {catColor};"
                       >
-                        ({filteredCount} resultado{filteredCount !== 1 ? 's' : ''})
+                        ({filteredCount} resultado{filteredCount !== 1
+                          ? "s"
+                          : ""})
                       </span>
                     {/if}
                   </div>
@@ -1076,48 +1140,62 @@ const toggleCategory = (category: string) => {
                 </button>
 
                 {#if expandedCategories[categoria]}
-                  <div transition:slide class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div
+                    transition:slide
+                    class="grid grid-cols-1 md:grid-cols-2 gap-4"
+                  >
                     {#each opciones as opcion}
-                      {@const isHighlighted = searchTerm && opcion.text.toLowerCase().includes(searchTerm.toLowerCase())}
+                      {@const isHighlighted =
+                        searchTerm &&
+                        opcion.text
+                          .toLowerCase()
+                          .includes(searchTerm.toLowerCase())}
                       <div
                         class="relative group flex flex-col p-0 rounded-2xl border transition-all duration-200 shadow-sm hover:shadow-md"
                         style="
                           background-color: {opcion.selected
                           ? `${catColor}10`
                           : isHighlighted
-                          ? `${catColor}05`
-                          : styles.inputBg};
+                            ? `${catColor}05`
+                            : styles.inputBg};
                           border-color: {opcion.selected
                           ? catColor
                           : isHighlighted
-                          ? catColor
-                          : styles.border};
+                            ? catColor
+                            : styles.border};
                         "
                       >
                         <div class="flex items-start gap-1 p-4">
-<label class="flex-shrink-0 cursor-pointer p-1 mt-1">
+                          <label class="flex-shrink-0 cursor-pointer p-1 mt-1">
                             <input
                               type="checkbox"
                               checked={opcion.selected}
                               class="hidden"
                               on:change={(e) => {
-                                toggleAnotacionSeleccion(categoria, opciones.indexOf(opcion));
+                                toggleAnotacionSeleccion(
+                                  categoria,
+                                  opciones.indexOf(opcion),
+                                );
                               }}
                             />
-<div
-                            class="w-5 h-5 rounded border flex items-center justify-center transition-colors cursor-pointer"
-                            style="
+                            <!-- svelte-ignore a11y_click_events_have_key_events -->
+                            <div
+                              class="w-5 h-5 rounded border flex items-center justify-center transition-colors cursor-pointer"
+                              style="
                               border-color: {opcion.selected
-                              ? catColor
-                              : styles.border};
+                                ? catColor
+                                : styles.border};
                               background-color: {opcion.selected
-                              ? catColor
-                              : 'transparent'};
+                                ? catColor
+                                : 'transparent'};
                             "
-                            on:click={() => {
-                              toggleAnotacionSeleccion(categoria, opciones.indexOf(opcion));
-                            }}
-                          >
+                              on:click={() => {
+                                toggleAnotacionSeleccion(
+                                  categoria,
+                                  opciones.indexOf(opcion),
+                                );
+                              }}
+                            >
                               {#if opcion.selected}
                                 <svg
                                   class="w-3 h-3 text-white"
@@ -1221,14 +1299,14 @@ const toggleCategory = (category: string) => {
 </div>
 
 {#if showFilter}
-  <AnotadorFilter
-    onClose={closeFilters}
-    selectedDocente={formData.docente}
-  />
+  <AnotadorFilter onClose={closeFilters} selectedDocente={formData.docente} />
 {/if}
 
 {#if showReportGenerator}
-  <ReportGenerator onClose={closeReportGenerator} initialDocente={formData.docente} />
+  <ReportGenerator
+    onClose={closeReportGenerator}
+    initialDocente={formData.docente}
+  />
 {/if}
 
 <style>
@@ -1247,16 +1325,21 @@ const toggleCategory = (category: string) => {
   }
 
   @keyframes glow-pulse {
-    0%, 100% {
-      box-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+    0%,
+    100% {
+      box-shadow:
+        0 0 10px currentColor,
+        0 0 20px currentColor;
       transform: scale(1);
     }
     50% {
-      box-shadow: 0 0 20px currentColor, 0 0 40px currentColor;
+      box-shadow:
+        0 0 20px currentColor,
+        0 0 40px currentColor;
       transform: scale(1.05);
     }
   }
-  
+
   .animate-glow {
     animation: glow-pulse 2s ease-in-out 3;
   }
