@@ -696,30 +696,7 @@
           >
         </button>
 
-        <!-- Report Generator -->
-        <div class="relative">
-          <ReportGenerator
-            id_grupo={formData.grado ? parseInt(formData.grado.toString()) : 0}
-            id_docente={0}
-            id_materia={0}
-            nombre_grupo={formData.grado
-              ? `Grado ${formData.grado}`
-                  .replace(/0(\d)$/, "°$1")
-                  .replace(/(\d{1,2})0(\d)/, "$1°$2")
-              : ""}
-            nombre_docente={formData.docente || ""}
-            nombre_materia={formData.materia || ""}
-            on:loading={(e) => (reportGeneratorLoading = e.detail)}
-          />
-          {#if showFeatureAlertReport}
-            <div
-              class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping"
-            ></div>
-            <div
-              class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"
-            ></div>
-          {/if}
-        </div>
+
 
         <!-- Botón de Dashboard -->
         <button

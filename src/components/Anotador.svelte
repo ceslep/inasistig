@@ -13,8 +13,9 @@
     WORKSHEET_TITLE_ANOTADOR,
     INFO_ANOTADOR,
   } from "../constants";
-  import Loader from "./Loader.svelte";
+import Loader from "./Loader.svelte";
   import AnotadorFilter from "./AnotadorFilter.svelte";
+  import ReportGenerator from "./ReportGenerator.svelte";
   import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
   import { slide } from 'svelte/transition';
@@ -57,10 +58,27 @@
   let highlightedCategory = "";
   let lastSelectedMateria = "";
   
-  const toggleCategory = (category: string) => {
+const toggleCategory = (category: string) => {
     expandedCategories[category] = !expandedCategories[category];
     // This line is needed to trigger reactivity when updating an object property
     expandedCategories = expandedCategories;
+  };
+
+  // Función helper para actualizar selección de anotación y forzar reactividad
+  const toggleAnotacionSeleccion = (categoria: string, index: number) => {
+    if (anotacionGrupos[categoria] && anotacionGrupos[categoria][index]) {
+      anotacionGrupos[categoria][index].selected = !anotacionGrupos[categoria][index].selected;
+      // Forzar reactividad completa
+      anotacionGrupos = { ...anotacionGrupos };
+      
+      console.log('🔄 Anotación toggle:', {
+        categoria,
+        index,
+        texto: anotacionGrupos[categoria][index].text,
+        nuevoEstado: anotacionGrupos[categoria][index].selected,
+        totalSeleccionadas: Object.values(anotacionGrupos).flat().filter(o => o.selected).length
+      });
+    }
   };
 
   const getCategoryColor = (cat: string) => {
@@ -277,13 +295,22 @@
 
   let isLoading = false;
 
-  // --- Filtros ---
+// --- Filtros ---
   let showFilter = false;
+  let showReportGenerator = false;
+  
   const openFilters = () => {
     showFilter = true;
   };
   const closeFilters = () => {
     showFilter = false;
+  };
+
+  const openReportGenerator = () => {
+    showReportGenerator = true;
+  };
+  const closeReportGenerator = () => {
+    showReportGenerator = false;
   };
 
   // --- Alertas Dismissibles ---
@@ -357,7 +384,7 @@
     });
   };
 
-  // Validación de formulario
+// Validación de formulario
   $: hasSelectedAnotacion = Object.values(anotacionGrupos)
     .flat()
     .some((o) => o.selected);
@@ -369,6 +396,21 @@
     formData.grado &&
     formData.horas &&
     hasSelectedAnotacion;
+    
+  // Debug para validación del formulario
+  $: {
+    console.log('🔍 Validación formulario:', {
+      fecha: formData.fecha,
+      docente: formData.docente,
+      materia: formData.materia,
+      grado: formData.grado,
+      horas: formData.horas,
+      hasSelectedAnotacion,
+      isFormValid,
+      totalAnotaciones: Object.values(anotacionGrupos).flat().length,
+      selectedCount: Object.values(anotacionGrupos).flat().filter(o => o.selected).length
+    });
+  }
 
   const loadData = async () => {
     isLoadingDocentes = true;
@@ -502,13 +544,15 @@
         observacion: "",
       };
 
-      // Resetear selecciones
+// Resetear selecciones
       for (const cat in anotacionGrupos) {
         anotacionGrupos[cat] = anotacionGrupos[cat].map((o) => ({
           ...o,
           selected: false,
         }));
       }
+      // Forzar reactividad completa
+      anotacionGrupos = { ...anotacionGrupos };
     } catch (error) {
       console.error("Error enviando:", error);
       await Swal.fire({
@@ -568,7 +612,7 @@
           >
         </button>
 
-        <!-- Botón de Filtros -->
+<!-- Botón de Filtros -->
         <button
           id="filter-button-target"
           on:click={openFilters}
@@ -594,6 +638,29 @@
             <div class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
             <div class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
           {/if}
+        </button>
+
+        <!-- Botón de Reportes PDF -->
+        <button
+          on:click={openReportGenerator}
+          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+          title="Generar reportes PDF"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+            />
+          </svg>
+          <span class="text-sm font-medium hidden lg:inline">Reportes PDF</span>
         </button>
 
         <button
@@ -1028,23 +1095,29 @@
                         "
                       >
                         <div class="flex items-start gap-1 p-4">
-                          <label class="flex-shrink-0 cursor-pointer p-1 mt-1">
+<label class="flex-shrink-0 cursor-pointer p-1 mt-1">
                             <input
                               type="checkbox"
-                              bind:checked={opcion.selected}
+                              checked={opcion.selected}
                               class="hidden"
+                              on:change={(e) => {
+                                toggleAnotacionSeleccion(categoria, opciones.indexOf(opcion));
+                              }}
                             />
-                            <div
-                              class="w-5 h-5 rounded border flex items-center justify-center transition-colors"
-                              style="
-                                border-color: {opcion.selected
-                                ? catColor
-                                : styles.border};
-                                background-color: {opcion.selected
-                                ? catColor
-                                : 'transparent'};
-                              "
-                            >
+<div
+                            class="w-5 h-5 rounded border flex items-center justify-center transition-colors cursor-pointer"
+                            style="
+                              border-color: {opcion.selected
+                              ? catColor
+                              : styles.border};
+                              background-color: {opcion.selected
+                              ? catColor
+                              : 'transparent'};
+                            "
+                            on:click={() => {
+                              toggleAnotacionSeleccion(categoria, opciones.indexOf(opcion));
+                            }}
+                          >
                               {#if opcion.selected}
                                 <svg
                                   class="w-3 h-3 text-white"
@@ -1152,6 +1225,10 @@
     onClose={closeFilters}
     selectedDocente={formData.docente}
   />
+{/if}
+
+{#if showReportGenerator}
+  <ReportGenerator onClose={closeReportGenerator} initialDocente={formData.docente} />
 {/if}
 
 <style>

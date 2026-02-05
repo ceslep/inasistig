@@ -1,706 +1,786 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
   import { onMount } from "svelte";
-  import { saveAs } from "file-saver";
-  import ExcelJS from "exceljs";
-  import Swal from "sweetalert2";
-  import { getInasistencias } from "../../api/service";
-  import { SPREADSHEET_ID, WORKSHEET_TITLE } from "../constants";
-  import { periodos } from "../constants";
+  import {
+    getDocentes,
+    getMaterias,
+    getEstudiantes,
+    getAnotador,
+  } from "../../api/service";
+  import { jsPDF } from "jspdf";
+  import autoTable from "jspdf-autotable";
+  import Loader from "./Loader.svelte";
+  import { theme } from "../lib/themeStore";
+  import {
+    SPREADSHEET_ID_ANOTADOR,
+    WORKSHEET_TITLE_ANOTADOR,
+  } from "../constants";
+  import eieLogo from "../assets/eie.png";
 
-  interface RegistroPayload {
-    id_grupo: number;
-    id_docente: number;
-    id_materia: number;
-    fecha_inicio?: string;
-    fecha_fin?: string;
+  export let onClose: () => void;
+  export let initialDocente: string = "";
+
+  interface AnotadorData {
+    "Marca Temporal": string;
+    Fecha: string;
+    Docente: string;
+    Asignatura: string;
+    Grado: string;
+    Horas: string;
+    Anotación: string;
   }
 
-  interface Estudiante {
-    id: number;
-    nombre: string;
-    grado: string;
-  }
+  let docentes: string[] = [];
+  let materias: { materia: string }[] = [];
+  let estudiantes: { nombre: string; grado: number | string }[] = [];
+  let anotadorData: AnotadorData[] = [];
+  let filteredData: AnotadorData[] = [];
 
-  interface Registro {
-    id_estudiante: number;
-    fecha: string;
-    presente: boolean;
-    motivo?: string;
-    horas?: number;
-  }
+  let isLoading = false;
+  let isLoadingData = false;
 
-  interface ReportData {
-    estudiantes: Estudiante[];
-    registros: Registro[];
-  }
+  let docenteMaterias: Record<string, string[]> = JSON.parse(
+    localStorage.getItem("docenteMaterias") || "{}",
+  );
 
-  export let id_grupo: number;
-  export let id_docente: number;
-  export let id_materia: number;
-  export let nombre_grupo: string = "";
-  export let nombre_docente: string = "";
-  export let nombre_materia: string = "";
+  let selectedDocente = "";
+  let selectedMateria = "";
+  let selectedGrado = "";
 
-  const dispatch = createEventDispatcher();
-
-  // Forzar reactividad creando variables locales que se actualizan cuando las props cambian
-  $: grupo = id_grupo;
-  $: docente = id_docente;
-  $: materia = id_materia;
-
-  async function getRegistrosReporte(
-    payload: RegistroPayload,
-  ): Promise<ReportData> {
-    try {
-      console.log("Obteniendo datos con getInasistencias. Payload:", payload);
-      console.log("Filtros activos - Docente:", nombre_docente, "| Materia:", nombre_materia);
-
-      const data = await getInasistencias({
-        spreadsheetId: SPREADSHEET_ID,
-        worksheetTitle: WORKSHEET_TITLE,
-      });
-
-      if (!data || !data.records || !Array.isArray(data.records)) {
-        throw new Error("No se encontraron datos de inasistencias");
-      }
-
-      console.log(`Total de registros recibidos del API: ${data.records.length}`);
-      if (data.records.length > 0) {
-        console.log("Primer registro (headers):", data.records[0]);
-        console.log("Último registro:", data.records[data.records.length - 1]);
-      }
-
-      const normalize = (str: any) => {
-        if (!str) return "";
-        return str.toString()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/[^a-zA-Z0-9\s]/g, "")
-          .replace(/\s+/g, " ")
-          .trim()
-          .toLowerCase();
-      };
-
-      // Extraer headers del primer registro
-      const headers: string[] = data.records[0]?.values || [];
-      
-      const getHeaderIndex = (name: string, fallback: number) => {
-        const index = headers.findIndex(h => normalize(h).includes(normalize(name)));
-        return index !== -1 ? index : fallback;
-      };
-
-      const headerMap = {
-        Docente: getHeaderIndex("Docente", 1),
-        Fecha: getHeaderIndex("Fecha", 2),
-        "Horas de Inasistencia": getHeaderIndex("Horas", 3),
-        Asignatura: getHeaderIndex("Asignatura", 4),
-        "Tipo de registro": getHeaderIndex("Tipo", 5),
-        Grupo: getHeaderIndex("Grupo", 6),
-        Estudiante: getHeaderIndex("Estudiante", 7),
-        Observaciones: getHeaderIndex("Observaciones", 8),
-      };
-
-      console.log("Mapa de cabeceras detectado:", headerMap);
-
-      const targetDocente = normalize(nombre_docente);
-      const targetMateria = normalize(materia || nombre_materia);
-      const targetGrupo = payload.id_grupo ? payload.id_grupo.toString().trim() : "";
-
-      console.log("Normalizados - Docente:", targetDocente, "| Materia:", targetMateria, "| Grupo:", targetGrupo);
-
-      // Transformar datos existentes al formato esperado
-      const estudiantesMap = new Map<string, Estudiante>();
-      const registrosMap = new Map<string, Registro>();
-      
-      // Procesar registros (ignorando el primer registro que son los headers)
-      data.records.slice(1).forEach((record: any, index: number) => {
-        const values = record.values || [];
-
-        const docente = values[headerMap["Docente"]] || "";
-        const materiaRec = values[headerMap["Asignatura"]] || "";
-        const grado = (values[headerMap["Grupo"]] || "").toString().trim();
-        const fecha = values[headerMap["Fecha"]] || "";
-        const tipoRegistro = values[headerMap["Tipo de registro"]] || "";
-        const estudianteNombre = values[headerMap["Estudiante"]] || "Estudiante sin nombre";
-        const horasRaw = values[headerMap["Horas de Inasistencia"]] || "0";
-        const observaciones = values[headerMap["Observaciones"]] || "";
-
-        const normDocente = normalize(docente);
-        const normMateria = normalize(materiaRec);
-        
-        // Filtrar por rango de fechas si se especifica
-        let dentroDeRango = true;
-        if (payload.fecha_inicio && payload.fecha_fin) {
-          const fechaRegistro = new Date(fecha);
-          const fechaInicio = new Date(payload.fecha_inicio);
-          const fechaFin = new Date(payload.fecha_fin);
-          dentroDeRango = fechaRegistro >= fechaInicio && fechaRegistro <= fechaFin;
-        }
-
-        // Debug para registros del docente y fecha solicitados para ver por qué podrían fallar
-        if (fecha === "2026-02-03" && normDocente.includes("cesar")) {
-           console.log(`Registro Feb 3 para Cesar (#${index + 1}):`, {
-             materia: materiaRec,
-             normMateria,
-             targetMateria,
-             grado,
-             targetGrupo,
-             matchMateria: normMateria.includes(targetMateria) || targetMateria.includes(normMateria),
-             matchGrupo: !targetGrupo || grado === targetGrupo
-           });
-        }
-
-        // Filtros principales (más flexibles con includes para subject/docente)
-        if (targetGrupo && grado !== targetGrupo) return;
-        if (targetDocente && !normDocente.includes(targetDocente) && !targetDocente.includes(normDocente)) return;
-        if (targetMateria && !normMateria.includes(targetMateria) && !targetMateria.includes(normMateria)) return;
-        if (!fecha || !tipoRegistro || !estudianteNombre || !dentroDeRango) return;
-
-        // Generar ID único para el estudiante
-        const studentIdKey = normalize(estudianteNombre).replace(/\s+/g, "_");
-
-        if (!estudiantesMap.has(studentIdKey)) {
-          estudiantesMap.set(studentIdKey, {
-            id: estudiantesMap.size + 1,
-            nombre: estudianteNombre,
-            grado: grado,
-          });
-        }
-
-        const estId = estudiantesMap.get(studentIdKey)!.id;
-        const recordKey = `${estId}_${fecha}`;
-        const h = parseFloat(horasRaw.toString().replace(',', '.')) || 0;
-        
-        const isPres = h === 0 && (
-          normalize(tipoRegistro).includes("uniforme") || 
-          normalize(tipoRegistro).includes("pacto") ||
-          normalize(observaciones).includes("uniforme")
-        );
-
-        if (registrosMap.has(recordKey)) {
-          const existing = registrosMap.get(recordKey)!;
-          existing.horas = (existing.horas || 0) + h;
-          if (tipoRegistro && !existing.motivo?.includes(tipoRegistro)) {
-            existing.motivo += `, ${tipoRegistro}`;
-          }
-          if (!isPres) existing.presente = false;
-        } else {
-          registrosMap.set(recordKey, {
-            id_estudiante: estId,
-            fecha: fecha,
-            presente: isPres,
-            motivo: tipoRegistro,
-            horas: h,
-          });
-        }
-      });
-
-      const estudiantes = Array.from(estudiantesMap.values());
-      const registros = Array.from(registrosMap.values());
-
-      if (estudiantes.length === 0) {
-        throw new Error(
-          "No se encontraron estudiantes para los filtros seleccionados",
-        );
-      }
-
-      console.log(
-        `Procesados ${estudiantes.length} estudiantes y ${registros.length} registros consolidados`,
-      );
-
-      return {
-        estudiantes,
-        registros,
-      };
-    } catch (error) {
-      console.error("Error fetching registros reporte:", error);
-
-      // Demo data fallback si todo falla
-      if (payload.id_grupo && nombre_docente && nombre_materia) {
-        console.warn("Usando datos de demostración como fallback");
-        return generateDemoData(payload, currentPeriodo);
-      }
-
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error("Error desconocido al obtener datos del reporte");
-    }
-  }
-
-
-
-  function generateDemoData(payload: RegistroPayload, periodo?: (typeof periodos)[0] | null): ReportData {
-    const estudiantes: Estudiante[] = [];
-    const registros: Registro[] = [];
-
-    // Generar estudiantes de demostración
-    for (let i = 1; i <= 10; i++) {
-      estudiantes.push({
-        id: i,
-        nombre: `Estudiante Demo ${i}`,
-        grado: payload.id_grupo.toString(),
-      });
-    }
-
-    // Generar registros de demostración
-    if (periodo) {
-      const dates = generateDatesFromPeriodo(periodo);
-      dates.forEach((date) => {
-        estudiantes.forEach((estudiante) => {
-          // Random inasistencias (15% de probabilidad)
-          if (Math.random() < 0.15) {
-            registros.push({
-              id_estudiante: estudiante.id,
-              fecha: date.toISOString().split("T")[0],
-              presente: false,
-              motivo: [
-                "Sin excusa",
-                "Excusa médica",
-                "Permiso",
-                "Llegada tarde",
-              ][Math.floor(Math.random() * 4)],
-              horas: Math.floor(Math.random() * 2) + 1, // 1 o 2 horas demo
-            });
-          } else {
-            registros.push({
-              id_estudiante: estudiante.id,
-              fecha: date.toISOString().split("T")[0],
-              presente: true,
-              horas: 0
-            });
-          }
-        });
-      });
-    }
-
-    return { estudiantes, registros };
-  }
-
-  let loading = false;
-  let validating = false;
-  let reportData: ReportData | null = null;
-  let currentPeriodo: (typeof periodos)[0] | null = null;
-
+  // Inicializar con el docente pasado desde Anotador.svelte
   onMount(() => {
-    determineCurrentPeriodo();
+    if (initialDocente) {
+      selectedDocente = initialDocente;
+    }
   });
 
-  $: isValid = Boolean(
-    (grupo && grupo > 0) &&
-    (nombre_docente && nombre_docente.length > 0) &&
-    (nombre_materia && nombre_materia.length > 0)
-  );
-  
-  // Debug para ver los valores
-  $: {
-    console.log("Validación ReportGenerator:", {
-      grupo,
-      docente,
-      materia,
-      id_grupo,
-      id_docente,
-      id_materia,
-      nombre_docente,
-      nombre_materia,
-      currentPeriodo: !!currentPeriodo,
-      isValid,
-      tipoIdGrupo: typeof id_grupo,
-      tipoIdDocente: typeof id_docente,
-      tipoIdMateria: typeof id_materia
-    });
-  }
+  onMount(async () => {
+    console.log("🚀 ReportGenerator montado");
+    await loadInitialData();
+  });
 
-  function determineCurrentPeriodo() {
-    const today = new Date();
-    currentPeriodo =
-      periodos.find(
-        (periodo: (typeof periodos)[0]) =>
-          today >= periodo.fecha_inicio && today <= periodo.fecha_fin,
-      ) || null;
-  }
-
-  async function validateAndGenerateReport() {
-    if (!isValid) {
-      await Swal.fire({
-        icon: "warning",
-        title: "Validación Requerida",
-        html: `
-          <div class="text-left">
-            <p>Por favor complete todos los campos obligatorios:</p>
-            <ul class="list-disc list-inside mt-2 text-sm">
-              ${!grupo ? "<li>Grupo</li>" : ""}
-              ${!nombre_docente ? "<li>Docente</li>" : ""}
-              ${!nombre_materia ? "<li>Materia</li>" : ""}
-            </ul>
-          </div>
-        `,
-        confirmButtonColor: "#3b82f6",
-      });
-      return;
-    }
-
-    await generateReport();
-  }
-
-  async function generateReport() {
-    loading = true;
-
+  const loadInitialData = async () => {
+    isLoading = true;
     try {
-      dispatch("loading", true);
+      const [docentesData, materiasData, estudiantesData] = await Promise.all([
+        getDocentes(),
+        getMaterias(),
+        getEstudiantes(),
+      ]);
+      docentes = docentesData;
+      materias = materiasData;
+      estudiantes = estudiantesData;
 
-      console.log("currentPeriodo:", currentPeriodo);
-      if (!currentPeriodo) {
-        console.error("No se encontró período actual");
-        throw new Error("No se encontró período académico actual");
-      }
-
-      const payload: RegistroPayload = {
-        id_grupo: grupo,
-        id_docente: docente,
-        id_materia: materia,
-        fecha_inicio: currentPeriodo.fecha_inicio.toISOString().split("T")[0],
-        fecha_fin: currentPeriodo.fecha_fin.toISOString().split("T")[0],
-      };
-
-      console.log("Obteniendo datos con payload:", payload);
-
-      reportData = await getRegistrosReporte(payload);
-
-      if (!reportData.estudiantes || reportData.estudiantes.length === 0) {
-        throw new Error(
-          "No se encontraron estudiantes para el grupo seleccionado",
-        );
-      }
-
-      console.log("Datos obtenidos:", reportData);
-      await generateExcelFile();
+      // Cargar materias guardadas para docentes desde localStorage
+      docenteMaterias = JSON.parse(
+        localStorage.getItem("docenteMaterias") || "{}",
+      );
     } catch (error) {
-      console.error("Error generating report:", error);
-
-      // Demo data fallback si todo falla
-      if (grupo && nombre_docente && nombre_materia && currentPeriodo) {
-        console.warn("Usando datos de demostración como fallback");
-        const fallbackPayload: RegistroPayload = {
-          id_grupo: grupo,
-          id_docente: docente,
-          id_materia: materia,
-          fecha_inicio: currentPeriodo.fecha_inicio.toISOString().split("T")[0],
-          fecha_fin: currentPeriodo.fecha_fin.toISOString().split("T")[0],
-        };
-        
-        try {
-          reportData = generateDemoData(fallbackPayload, currentPeriodo);
-          console.log("Datos de demostración generados:", reportData);
-          await generateExcelFile();
-          return;
-        } catch (demoError) {
-          console.error("Error generando datos de demostración:", demoError);
-        }
-      }
-
-      let errorMessage = "Error desconocido";
-
-      if (error instanceof Error) {
-        if (error.message.includes("fetch")) {
-          errorMessage =
-            "Error de conexión al servidor. Verifique su conexión a internet.";
-        } else if (error.message.includes("timeout")) {
-          errorMessage =
-            "La operación tardó demasiado tiempo. Intente nuevamente.";
-        } else if (error.message.includes("JSON")) {
-          errorMessage = "Error en el formato de datos del servidor.";
-        } else {
-          errorMessage = error.message;
-        }
-      }
-
-      await Swal.fire({
-        icon: "error",
-        title: "Error al Generar Reporte",
-        text: errorMessage,
-        confirmButtonColor: "#ef4444",
-      });
+      console.error("Error cargando datos iniciales:", error);
     } finally {
-      loading = false;
-      dispatch("loading", false);
+      isLoading = false;
     }
-  }
+  };
 
-  async function generateExcelFile() {
-    if (!reportData || !currentPeriodo) return;
+  const loadAnotadorData = async () => {
+    isLoadingData = true;
+    try {
+      const payload: any = {
+        spreadsheetId: SPREADSHEET_ID_ANOTADOR,
+        worksheetTitle: WORKSHEET_TITLE_ANOTADOR,
+      };
+      if (selectedDocente) payload.docente = selectedDocente;
+      if (selectedMateria) payload.materia = selectedMateria;
+      if (selectedGrado) payload.grado = selectedGrado;
 
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Reporte de Inasistencias");
+      console.log("🔍 Enviando payload a getAnotador:", payload);
+      const response = await getAnotador(payload);
+      console.log("📊 Respuesta de getAnotador:", response);
 
-    const allDates = generateDatesFromPeriodo(currentPeriodo);
-    
-    // Filtrar fechas para incluir solo las que tienen al menos un registro
-    const dates = allDates.filter(date => {
-      const dateStr = date.toISOString().split("T")[0];
-      return reportData!.registros.some(reg => reg.fecha === dateStr);
+      // Intentar extraer datos de diferentes formatos posibles
+      let rawData = response;
+      if (response && typeof response === "object") {
+        if (response.data) {
+          rawData = response.data;
+        } else if (response.records) {
+          rawData = response.records;
+        } else if (Array.isArray(response)) {
+          rawData = response;
+        }
+      }
+
+      // Asegurarnos de que sea un array
+      anotadorData = Array.isArray(rawData) ? rawData : [];
+      console.log("✅ Datos procesados:", anotadorData.length, "registros");
+      console.log("📋 Primer registro:", anotadorData[0]);
+      console.log(
+        "🔍 Keys del primer registro:",
+        anotadorData[0] ? Object.keys(anotadorData[0]) : "No hay registros",
+      );
+
+      // Si los datos vienen con formato .values, transformarlos
+      if (anotadorData.length > 0 && (anotadorData[0] as any).values) {
+        console.log("🔄 Transformando datos desde formato .values");
+        const headers = [
+          "Marca Temporal",
+          "Fecha",
+          "Docente",
+          "Asignatura",
+          "Grado",
+          "Horas",
+          "Anotación",
+        ];
+        anotadorData = anotadorData.map((row: any) => {
+          const obj: any = {};
+          headers.forEach((header, index) => {
+            obj[header] = row.values?.[index] || "";
+          });
+          return obj;
+        });
+        console.log(
+          "📊 Datos transformados:",
+          anotadorData.length,
+          "registros",
+        );
+        console.log("📋 Primer registro transformado:", anotadorData[0]);
+      }
+
+      applyFilters();
+    } catch (error: any) {
+      console.error("❌ Error cargando datos del anotador:", error);
+      console.error("📋 Error details:", error?.message);
+      if (error?.response) {
+        console.error("🌐 Response status:", error.response.status);
+        console.error("🌐 Response data:", error.response.data);
+      }
+      anotadorData = [];
+      filteredData = [];
+    } finally {
+      isLoadingData = false;
+    }
+  };
+
+  const applyFilters = () => {
+    console.log("🔍 Aplicando filtros locales:", {
+      totalRegistros: anotadorData.length,
+      isArray: Array.isArray(anotadorData),
+      docente: selectedDocente,
+      materia: selectedMateria,
+      grado: selectedGrado,
     });
 
-    // Si no hay ninguna fecha con registros (raro si llegó aquí), mostrar al menos el periodo
-    if (dates.length === 0) {
-      await Swal.fire({
-        icon: "info",
-        title: "Reporte Vacío",
-        text: "No hay inasistencias registradas en este periodo para los filtros seleccionados.",
-        confirmButtonColor: "#3b82f6",
-      });
+    if (!Array.isArray(anotadorData)) {
+      console.error(
+        "❌ anotadorData no es un array:",
+        typeof anotadorData,
+        anotadorData,
+      );
+      filteredData = [];
       return;
     }
 
-    const totalCols = dates.length + 2; // Estudiante + Dates + Total
-
-    // 1. Título (Row 1)
-    const titleRow = worksheet.addRow([
-      `REPORTE DE INASISTENCIAS - ${nombre_materia || "Materia"} - ${nombre_grupo || "Grupo"}`
-    ]);
-    titleRow.height = 30;
-    titleRow.font = { bold: true, size: 16, color: { argb: "FFFFFF" } };
-    titleRow.fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "2E75B6" },
-    };
-    titleRow.alignment = { vertical: "middle", horizontal: "center" };
-    worksheet.mergeCells(1, 1, 1, totalCols);
-
-    // 2. Info (Row 2)
-    const infoRow = worksheet.addRow([
-      `Docente: ${nombre_docente || "No especificado"} | Periodo: ${currentPeriodo.nombre} (${formatDateForExcel(currentPeriodo.fecha_inicio)} - ${formatDateForExcel(currentPeriodo.fecha_fin)})`
-    ]);
-    infoRow.height = 20;
-    infoRow.font = { bold: true, size: 10, color: { argb: "FFFFFF" } };
-    infoRow.fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "5B9BD5" },
-    };
-    infoRow.alignment = { vertical: "middle", horizontal: "left" };
-    worksheet.mergeCells(2, 1, 2, totalCols);
-
-    // 3. Headers (Row 3)
-    const headerRow = worksheet.getRow(3);
-    headerRow.height = 25;
-    headerRow.font = { bold: true, size: 12, color: { argb: "FFFFFF" } };
-    headerRow.alignment = { vertical: "middle", horizontal: "center" };
-
-    headerRow.getCell(1).value = "Estudiantes";
-    worksheet.getColumn(1).width = 30;
-
-    dates.forEach((date, index) => {
-      const colNumber = index + 2;
-      headerRow.getCell(colNumber).value = formatDateForExcel(date);
-      worksheet.getColumn(colNumber).width = 12;
-    });
-
-    const totalColIdx = dates.length + 2;
-    headerRow.getCell(totalColIdx).value = "Total Horas";
-    worksheet.getColumn(totalColIdx).width = 20;
-
-    // Aplicar estilos al header row
-    headerRow.eachCell((cell, colNumber) => {
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: colNumber === totalColIdx ? "FF6B6B" : "4472C4" },
-      };
-      cell.border = {
-        top: { style: "thin" },
-        left: { style: "thin" },
-        bottom: { style: "thin" },
-        right: { style: "thin" },
-      };
-    });
-
-    // 4. Datos (Row 4+)
-    reportData!.estudiantes.forEach((estudiante: Estudiante, estIndex: number) => {
-      const rowNumber = estIndex + 4;
-      const studentRow = worksheet.getRow(rowNumber);
-      let totalHoras = 0;
-
-      studentRow.getCell(1).value = estudiante.nombre;
-      studentRow.getCell(1).font = { bold: true };
-      studentRow.getCell(1).fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "F2F2F2" },
-      };
-
-      dates.forEach((date, dateIndex) => {
-        const colNumber = dateIndex + 2;
-        const cell = studentRow.getCell(colNumber);
-
-        const registro = reportData!.registros.find(
-          (reg: Registro) =>
-            reg.id_estudiante === estudiante.id &&
-            reg.fecha === date.toISOString().split("T")[0],
-        );
-
-        if (registro) {
-          if (!registro.presente) {
-            const horas = registro.horas || 0;
-            cell.value = horas > 0 ? horas : registro.motivo || "Inasistencia";
-            cell.font = { color: { argb: "FF0000" }, bold: true };
-            cell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: "FFE6E6" },
-            };
-            totalHoras += horas;
-          } else {
-            cell.value = "✓";
-            cell.font = { color: { argb: "00AA00" } };
-          }
-        } else {
-          cell.value = "-";
-          cell.font = { color: { argb: "888888" } };
-        }
-      });
-
-      const totalCell = studentRow.getCell(totalColIdx);
-      totalCell.value = totalHoras;
-      totalCell.font = {
-        bold: true,
-        color: { argb: totalHoras > 0 ? "FF0000" : "00AA00" },
-      };
-      totalCell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: totalHoras > 0 ? "FFE6E6" : "E6FFE6" },
-      };
-
-      // Aplicar bordes y alineación a toda la fila
-      studentRow.eachCell((cell) => {
-        cell.border = {
-          top: { style: "thin" },
-          left: { style: "thin" },
-          bottom: { style: "thin" },
-          right: { style: "thin" },
-        };
-        cell.alignment = { horizontal: "center" };
-      });
-      studentRow.getCell(1).alignment = { horizontal: "left" };
-    });
-
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-
-    const fileName = `Reporte_Inasistencias_${nombre_grupo || "Grupo"}_${nombre_materia || "Materia"}_${new Date().toISOString().split("T")[0]}.xlsx`;
-
-    saveAs(blob, fileName);
-
-    await Swal.fire({
-      icon: "success",
-      title: "Reporte Generado",
-      text: `Se ha generado el reporte con ${reportData!.estudiantes.length} estudiantes`,
-      confirmButtonColor: "#10b981",
-    });
-  }
-
-  function generateDatesFromPeriodo(periodo: (typeof periodos)[0]): Date[] {
-    const dates: Date[] = [];
-    const current = new Date(periodo.fecha_inicio);
-    const end = new Date(periodo.fecha_fin);
-
-    while (current <= end) {
-      const dayOfWeek = current.getUTCDay();
-      if (dayOfWeek >= 1 && dayOfWeek <= 6) {
-        dates.push(new Date(current));
+    filteredData = anotadorData.filter((item) => {
+      // Validar que el item tenga la estructura esperada
+      if (!item || typeof item !== "object") {
+        console.log("⚠️ Registro inválido:", item);
+        return false;
       }
-      current.setUTCDate(current.getUTCDate() + 1);
+
+      const matchesDocente =
+        !selectedDocente || item["Docente"] === selectedDocente;
+      const matchesMateria =
+        !selectedMateria || item["Asignatura"] === selectedMateria;
+      const matchesGrado = !selectedGrado || item["Grado"] === selectedGrado;
+
+      // Debug para ver por qué un registro podría no coincidir
+      if (!matchesDocente && selectedDocente) {
+        console.log("❌ No coincide docente:", {
+          expected: selectedDocente,
+          actual: item["Docente"],
+        });
+      }
+      if (!matchesMateria && selectedMateria) {
+        console.log("❌ No coincide materia:", {
+          expected: selectedMateria,
+          actual: item["Asignatura"],
+        });
+      }
+      if (!matchesGrado && selectedGrado) {
+        console.log("❌ No coincide grado:", {
+          expected: selectedGrado,
+          actual: item["Grado"],
+        });
+      }
+
+      return matchesDocente && matchesMateria && matchesGrado;
+    });
+
+    console.log("✅ Registros filtrados:", filteredData.length);
+  };
+
+  const handleFilter = () => {
+    loadAnotadorData();
+  };
+
+  const handleClearFilters = () => {
+    selectedDocente = "";
+    selectedMateria = "";
+    selectedGrado = "";
+    anotadorData = [];
+    filteredData = [];
+  };
+
+  const generatePDF = () => {
+    if (filteredData.length === 0) {
+      alert("No hay datos para generar el PDF");
+      return;
     }
 
-    return dates;
-  }
+    const doc = new jsPDF();
 
-  function formatDateForExcel(date: Date): string {
-    const months = [
-      "Ene",
-      "Feb",
-      "Mar",
-      "Abr",
-      "May",
-      "Jun",
-      "Jul",
-      "Ago",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dic",
+    const title = "Anotador de Clases";
+    const filters = [];
+    if (selectedDocente) filters.push(`Docente: ${selectedDocente}`);
+    if (selectedMateria) filters.push(`Asignatura: ${selectedMateria}`);
+    if (selectedGrado) filters.push(`Grado: ${selectedGrado}`);
+
+    // Encabezado con logo e institución
+    let yPosition = 15;
+
+    // Logo EIE - intento con diferentes métodos
+    try {
+      // Método 1: Intentar con la ruta del logo
+      console.log("Intentando agregar logo...");
+
+      // Método 2: Si falla el logo, usar texto alternativo grande
+      doc.setFontSize(24);
+      doc.setTextColor(99, 102, 241); // Color indigo como en la app
+      doc.text("EIE", 105, yPosition, { align: "center" });
+      yPosition += 12;
+    } catch (error) {
+      console.log("Error en el logo:", error);
+      doc.setFontSize(16);
+      doc.text("EIE", 105, yPosition, { align: "center" });
+      yPosition += 10;
+    }
+
+    // Título del reporte
+    doc.setTextColor(0, 0, 0); // Negro para el título
+    doc.setFontSize(16);
+    doc.text(title, 105, yPosition, { align: "center" });
+    yPosition += 8;
+
+    // Nombre de la institución
+    doc.setFontSize(11);
+    doc.text("Institución Educativa Instituto Guática", 105, yPosition, {
+      align: "center",
+    });
+    yPosition += 8;
+
+    // Línea separadora
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.5);
+    doc.line(20, yPosition, 190, yPosition);
+    yPosition += 10;
+
+    // Fecha de generación
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(
+      `Fecha de generación: ${new Date().toLocaleDateString()}`,
+      105,
+      yPosition,
+      { align: "center" },
+    );
+    yPosition += 8;
+
+    // Filtros aplicados
+    if (filters.length > 0) {
+      doc.setTextColor(80, 80, 80);
+      filters.forEach((filter) => {
+        doc.text(filter, 20, yPosition);
+        yPosition += 6;
+      });
+      yPosition += 8; // Espacio extra antes de la tabla
+    }
+
+    const tableData = filteredData.map((item) => [
+      item["Fecha"] || "",
+      item["Docente"] || "",
+      item["Asignatura"] || "",
+      item["Grado"] || "",
+      item["Horas"] || "",
+      item["Anotación"] || "",
+      "", // Observación no existe en la hoja
+    ]);
+
+    // Agregar fila de totales
+    const totalRow = [
+      "",
+      "",
+      "",
+      "TOTAL",
+      totalHoras.toFixed(1), // Mostrar con 1 decimal
+      `${filteredData.length} registros`,
+      "",
     ];
-    return `${date.getUTCDate()}/${months[date.getUTCMonth()]}/${date.getUTCFullYear().toString().substr(2)}`;
-  }
+    tableData.push(totalRow);
+
+    console.log("📊 Totales calculados:", {
+      totalHoras,
+      registros: filteredData.length,
+      totalRow,
+    });
+
+    autoTable(doc, {
+      head: [["Fecha", "Docente", "Asignatura", "Grado", "Horas", "Anotación"]],
+      body: tableData,
+      startY: filters.length > 0 ? yPosition + 10 : yPosition,
+      // Estilo especial para la fila de totales
+      didParseCell: (data) => {
+        if (data.row.index === tableData.length - 1) {
+          // Última fila (totales)
+          data.cell.styles.fillColor = [240, 240, 240];
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.textColor = [0, 0, 0];
+          // Alineación especial para las celdas de totales
+          if (data.column.index === 1) {
+            // Columna "TOTAL"
+            data.cell.styles.halign = "center";
+          }
+          if (data.column.index === 3) {
+            // Columna de horas totales
+            data.cell.styles.halign = "center";
+            data.cell.styles.fillColor = [230, 230, 230];
+          }
+          if (data.column.index === 4) {
+            // Columna de registros totales
+            data.cell.styles.halign = "center";
+            data.cell.styles.fillColor = [230, 230, 230];
+          }
+        }
+      },
+      styles: {
+        fontSize: 8,
+        cellPadding: 3,
+      },
+      headStyles: {
+        fillColor: [99, 102, 241],
+        textColor: 255,
+        fontSize: 9,
+        fontStyle: "bold",
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252],
+      },
+      columnStyles: {
+        0: { cellWidth: 20 }, // Fecha
+        1: { cellWidth: 30 }, // Docente
+        2: { cellWidth: 30 }, // Asignatura
+        3: { cellWidth: 15 }, // Grado
+        4: { cellWidth: 15 }, // Horas
+        5: { cellWidth: 60 }, // Anotación
+      },
+      margin: { top: 20, right: 20, bottom: 20, left: 20 },
+    });
+
+    const fileName = `reporte_anotaciones_${selectedDocente || "todos"}_${selectedMateria || "todas"}_${selectedGrado || "todos"}_${new Date().toISOString().split("T")[0]}.pdf`;
+    doc.save(fileName);
+  };
+
+  // Calcular totales y materias destacadas
+  $: totalHoras = filteredData.reduce((sum, item) => {
+    const horas = parseFloat(item["Horas"] || "0");
+    return sum + (isNaN(horas) ? 0 : horas);
+  }, 0);
+
+  $: sortedMaterias = selectedDocente
+    ? [...materias].sort((a, b) => {
+        const aSaved = docenteMaterias[selectedDocente]?.includes(a.materia);
+        const bSaved = docenteMaterias[selectedDocente]?.includes(b.materia);
+        if (aSaved && !bSaved) return -1;
+        if (!aSaved && bSaved) return 1;
+        return a.materia.localeCompare(b.materia);
+      })
+    : materias;
+
+  $: styles = {
+    bg: "rgb(var(--bg-primary))",
+    text: "rgb(var(--text-primary))",
+    label: "rgb(var(--text-secondary))",
+    border: "rgb(var(--border-primary))",
+    placeholder: "rgb(var(--text-muted))",
+    cardBg: "rgb(var(--card-bg))",
+    cardBorder: "rgb(var(--card-border))",
+    inputBg: "rgb(var(--bg-secondary))",
+  };
 </script>
 
-<button
-  id="report-button-target"
-  on:click={validateAndGenerateReport}
-  disabled={loading || !isValid}
-  class="relative inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transform hover:scale-105 active:scale-95 min-w-[160px] h-[44px]"
-  title="Generar reporte Excel de inasistencias"
-  aria-label="Generar reporte Excel de inasistencias"
+<div
+  class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="modal-title"
+  tabindex="-1"
+  on:click|self={onClose}
+  on:keydown={(e) => e.key === "Escape" && onClose()}
 >
-  {#if loading}
-    <svg
-      class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
+  <div
+    class="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-2xl"
+    style="background-color: {styles.cardBg}; color: {styles.text};"
+    role="document"
+  >
+    <!-- Header -->
+    <div
+      class="flex items-center justify-between p-6 border-b"
+      style="border-color: {styles.cardBorder};"
     >
-      <circle
-        class="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        stroke-width="4"
-      ></circle>
-      <path
-        class="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-      ></path>
-    </svg>
-    <span class="font-medium">Generando...</span>
-  {:else}
-    <svg
-      class="w-5 h-5 mr-2"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M9 17v1a3 3 0 003 3h0a3 3 0 003-3v-1m3-10V4a2 2 0 00-2-2H8a2 2 0 00-2 2v3m3 2h6l-1 7h-4l-1-7z"
-      ></path>
-    </svg>
-    <span class="font-medium">Generar Reporte Excel</span>
-  {/if}
-</button>
+      <div class="flex items-center gap-3">
+        <div
+          class="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200"
+        >
+          <svg
+            class="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 17v2a2 2 0 002 2h6a2 2 0 002-2v-2M9 17H5a2 2 0 01-2-2v-6a2 2 0 012-2h4M9 7V5a2 2 0 012-2h6a2 2 0 012 2v2M9 7h10a2 2 0 012 2v6a2 2 0 01-2 2H9M9 7V17m0 0h10"
+            />
+          </svg>
+        </div>
+        <div>
+          <h2 id="modal-title" class="text-xl font-bold">
+            Generador de Reportes PDF
+          </h2>
+          <p class="text-sm opacity-75">
+            Filtre y genere reportes de anotaciones
+          </p>
+        </div>
+      </div>
+      <button
+        on:click={onClose}
+        class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        aria-label="Cerrar ventana de reportes"
+        title="Cerrar"
+      >
+        <svg
+          class="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18L18 6M6 6l12 12"
+          />
+        </svg>
+      </button>
+    </div>
 
-<style>
-  @keyframes spin {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
-  }
+    <!-- Content -->
+    <div class="p-6 overflow-y-auto" style="max-height: calc(90vh - 140px);">
+      <!-- Filters -->
+      <div
+        class="mb-6 p-4 rounded-xl border"
+        style="background-color: {styles.inputBg}; border-color: {styles.border};"
+      >
+        <h3 class="text-lg font-semibold mb-4">Filtros</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="space-y-2">
+            <label
+              for="docente-filter"
+              class="block text-sm font-medium"
+              style="color: {styles.label};"
+            >
+              Docente
+            </label>
+            <select
+              id="docente-filter"
+              bind:value={selectedDocente}
+              class="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+              style="background-color: {styles.cardBg}; border-color: {styles.border}; color: {styles.text};"
+            >
+              <option value="">Todos los docentes</option>
+              {#each docentes as docente}
+                <option value={docente}>{docente}</option>
+              {/each}
+            </select>
+          </div>
 
-  .animate-spin {
-    animation: spin 1s linear infinite;
-  }
-</style>
+          <div class="space-y-2">
+            <label
+              for="materia-filter"
+              class="block text-sm font-medium"
+              style="color: {styles.label};"
+            >
+              Asignatura
+            </label>
+            <select
+              id="materia-filter"
+              bind:value={selectedMateria}
+              class="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+              style="background-color: {styles.cardBg}; border-color: {styles.border}; color: {styles.text};"
+            >
+              <option value="">Todas las asignaturas</option>
+              {#each sortedMaterias as materia}
+                {@const isSaved =
+                  selectedDocente &&
+                  docenteMaterias[selectedDocente]?.includes(materia.materia)}
+                <option
+                  value={materia.materia}
+                  style={isSaved ? "color: #6366f1; font-weight: 600;" : ""}
+                >
+                  {isSaved ? "⭐ " : ""}{materia.materia}
+                </option>
+              {/each}
+            </select>
+          </div>
+
+          <div class="space-y-2">
+            <label
+              for="grado-filter"
+              class="block text-sm font-medium"
+              style="color: {styles.label};"
+            >
+              Grado
+            </label>
+            <select
+              id="grado-filter"
+              bind:value={selectedGrado}
+              class="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+              style="background-color: {styles.cardBg}; border-color: {styles.border}; color: {styles.text};"
+            >
+              <option value="">Todos los grados</option>
+              {#each [...new Set(estudiantes.map( (e) => e.grado.toString(), ))] as g}
+                <option value={g}
+                  >{g
+                    .replace(/0(\d)$/, "°$1")
+                    .replace(/(\d{1,2})0(\d)/, "$1°$2")}</option
+                >
+              {/each}
+            </select>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-4">
+          <button
+            on:click={handleFilter}
+            disabled={isLoadingData}
+            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            {#if isLoadingData}
+              <svg
+                class="animate-spin h-4 w-4"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              Cargando...
+            {:else}
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                />
+              </svg>
+              Aplicar Filtros
+            {/if}
+          </button>
+          <button
+            on:click={handleClearFilters}
+            class="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors flex items-center gap-2"
+            style="color: {styles.text};"
+          >
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+            Limpiar
+          </button>
+          <button
+            on:click={generatePDF}
+            disabled={filteredData.length === 0}
+            class="ml-auto px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition-colors flex items-center gap-2"
+          >
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            Generar PDF
+          </button>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div class="mb-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold">
+            Resultados ({filteredData.length} registros)
+          </h3>
+          {#if filteredData.length > 0}
+            <div class="text-sm opacity-75">
+              {selectedDocente && `Docente: ${selectedDocente}`}
+              {selectedMateria && ` | Asignatura: ${selectedMateria}`}
+              {selectedGrado && ` | Grado: ${selectedGrado}`}
+            </div>
+          {/if}
+        </div>
+      </div>
+
+      {#if isLoadingData}
+        <div class="flex items-center justify-center py-12">
+          <Loader message="Cargando datos del anotador..." />
+        </div>
+      {:else if filteredData.length === 0}
+        <div class="text-center py-12" style="color: {styles.placeholder};">
+          <svg
+            class="w-16 h-16 mx-auto mb-4 opacity-50"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 17v2a2 2 0 002 2h6a2 2 0 002-2v-2M9 17H5a2 2 0 01-2-2v-6a2 2 0 012-2h4M9 7V5a2 2 0 012-2h6a2 2 0 012 2v2M9 7h10a2 2 0 012 2v6a2 2 0 01-2 2H9M9 7V17m0 0h10"
+            />
+          </svg>
+          <p class="text-lg font-medium mb-2">No hay datos disponibles</p>
+          <p class="text-sm">
+            {selectedDocente || selectedMateria || selectedGrado
+              ? "No se encontraron registros con los filtros seleccionados. Intente con otros criterios."
+              : "Seleccione filtros y haga clic en 'Aplicar Filtros' para cargar los datos."}
+          </p>
+        </div>
+      {:else}
+        <div
+          class="overflow-x-auto rounded-lg border"
+          style="border-color: {styles.border};"
+        >
+          <table class="w-full">
+            <thead style="background-color: {styles.inputBg};">
+              <tr>
+                <th
+                  class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                  style="color: {styles.label};"
+                >
+                  Fecha
+                </th>
+                <th
+                  class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                  style="color: {styles.label};"
+                >
+                  Docente
+                </th>
+                <th
+                  class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                  style="color: {styles.label};"
+                >
+                  Asignatura
+                </th>
+                <th
+                  class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                  style="color: {styles.label};"
+                >
+                  Grado
+                </th>
+                <th
+                  class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                  style="color: {styles.label};"
+                >
+                  Horas
+                </th>
+                <th
+                  class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                  style="color: {styles.label};"
+                >
+                  Anotación
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each filteredData as item, index}
+                <tr
+                  class="border-t transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
+                  style="border-color: {styles.border};"
+                >
+                  <td class="px-4 py-3 text-sm">{item["Fecha"] || "-"}</td>
+                  <td class="px-4 py-3 text-sm">{item["Docente"] || "-"}</td>
+                  <td class="px-4 py-3 text-sm">{item["Asignatura"] || "-"}</td>
+                  <td class="px-4 py-3 text-sm">{item["Grado"] || "-"}</td>
+                  <td class="px-4 py-3 text-sm">{item["Horas"] || "-"}</td>
+                  <td class="px-4 py-3 text-sm max-w-xs">
+                    <div class="truncate" title={item["Anotación"]}>
+                      {item["Anotación"] || "-"}
+                    </div>
+                  </td>
+                </tr>
+              {/each}
+              <!-- Fila de totales -->
+              {#if filteredData.length > 0}
+                <tr
+                  class="border-t-2 font-bold bg-gray-100 dark:bg-gray-800"
+                  style="border-color: {styles.border}; border-top-width: 2px;"
+                >
+                  <td class="px-4 py-3 text-sm" colspan="3"></td>
+                  <td class="px-4 py-3 text-sm font-bold"
+                    >{totalHoras.toFixed(0)}</td
+                  >
+                  <td class="px-4 py-3 text-sm max-w-xs">
+                    {filteredData.length} totalHoras
+                  </td>
+                </tr>
+              {/if}
+            </tbody>
+          </table>
+        </div>
+      {/if}
+    </div>
+  </div>
+</div>
