@@ -37,7 +37,13 @@ export interface DiarioOption {
   tiempo_estimado: number;
 }
 
-export const getDiarioOptions = async (): Promise<DiarioOption[]> => {
+export interface DiarioOptionsResponse {
+  success: boolean;
+  situaciones: Record<string, DiarioOption[]>;
+  metadata?: any;
+}
+
+export const getDiarioOptions = async (): Promise<DiarioOptionsResponse> => {
   try {
     const response = await fetch(`${DIARIO_OPTIONS_URL}`);
     if (!response.ok) {

@@ -28,7 +28,9 @@ class SimuladorIncidentesEscolares
         'Infraestructura',
         'Salud',
         'Tecnológico',
-        'Comunicación'
+        'Comunicación',
+        'Disciplinario',
+        'Normalidad'
     ];
 
     /**
@@ -200,12 +202,34 @@ class SimuladorIncidentesEscolares
     }
 
     /**
-     * Exporta incidentes como JSON
+     * Exporta incidentes como JSON agrupado (Estructura exam.json)
      */
     public function exportarJSON(): string
     {
+        $agrupados = [];
+        foreach ($this->categorias as $cat) {
+            $agrupados[$cat] = [];
+        }
+
+        foreach ($this->incidentes as $incidente) {
+            $agrupados[$incidente['categoria']][] = $incidente;
+        }
+
+        $resultado = [
+            'success' => true,
+            'situaciones' => $agrupados,
+            'metadata' => [
+                'total_situaciones' => count($this->incidentes),
+                'categorias' => $this->categorias,
+                'version' => '3.0.0',
+                'contexto' => 'Bachillerato Colombiano - MEN - Lineamientos Curriculares',
+                'fecha_generacion' => date('Y-m-d H:i:s'),
+                'region' => 'Eje Cafetero - Colombia'
+            ]
+        ];
+
         return json_encode(
-            $this->incidentes,
+            $resultado,
             JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
         );
     }

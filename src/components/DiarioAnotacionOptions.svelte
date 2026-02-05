@@ -27,6 +27,8 @@
     selected: boolean;
     originalTitulo: string; // Keep original title for context
     categoria: string;
+    impacto: number;
+    tiempo_estimado: number;
   }
 
   // --- State ---
@@ -85,6 +87,8 @@
       "Salud": "#ec4899",         // Pink
       "Tecnológico": "#8b5cf6",   // Violet
       "Comunicación": "#3b82f6",  // Blue
+      "Disciplinario": "#64748b",  // Slate
+      "Normalidad": "#10b981",    // Emerald
     };
     return colors[cat] || "#6366f1"; // Default to Indigo
   };
@@ -93,31 +97,32 @@
   const loadOptions = async () => {
     isLoadingOptions = true;
     try {
-      const optionsData = await getDiarioOptions();
+      const response = await getDiarioOptions();
+      const situaciones = response.situaciones || {};
 
       const transformed: Record<string, DiarioOpcionAnotacion[]> = {};
       const initialExpandedState: Record<string, boolean> = {};
 
-      // Initialize categories and options
-      optionsData.forEach((option) => {
-        if (!transformed[option.categoria]) {
-          transformed[option.categoria] = [];
-          initialExpandedState[option.categoria] = false; // All categories start minimized
+      // Process grouped situations
+      Object.entries(situaciones).forEach(([categoria, items]) => {
+        if (items.length > 0) {
+          initialExpandedState[categoria] = false;
+          transformed[categoria] = items.map((option) => ({
+            id: option.id,
+            text: option.descripcion,
+            selected: false,
+            originalTitulo: option.titulo,
+            categoria: option.categoria,
+            impacto: option.impacto,
+            tiempo_estimado: option.tiempo_estimado
+          }));
         }
-        transformed[option.categoria].push({
-          id: option.id,
-          text: option.descripcion, // Use description as initial editable text
-          selected: false,
-          originalTitulo: option.titulo, // Keep original title for display context
-          categoria: option.categoria,
-        });
       });
 
       diarioOpcionesGrupos = transformed;
       expandedCategories = initialExpandedState;
     } catch (error) {
       console.error("Error cargando opciones de diario:", error);
-      // Optionally, show a user-friendly error message
     } finally {
       isLoadingOptions = false;
     }
@@ -182,48 +187,64 @@
                   : styles.border};
                 "
               >
-                <div class="flex items-start gap-1 p-4">
-                  <label class="flex-shrink-0 cursor-pointer p-1 mt-1">
-                    <input
-                      type="checkbox"
-                      bind:checked={opcion.selected}
-                      class="hidden"
-                      on:change={() => {
-                        // Trigger reactivity for selectedDiarioAnots after change
-                        diarioOpcionesGrupos = diarioOpcionesGrupos;
-                      }}
-                    />
-                    <div
-                      class="w-5 h-5 rounded border flex items-center justify-center transition-colors"
-                      style="
-                        border-color: {opcion.selected
-                        ? catColor
-                        : styles.border};
-                        background-color: {opcion.selected
-                        ? catColor
-                        : 'transparent'};
-                      "
-                    >
-                      {#if opcion.selected}
-                        <svg
-                          class="w-3 h-3 text-white"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
+                <div class="flex flex-col p-4 gap-3">
+                   <div class="flex items-start justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                      <label class="flex-shrink-0 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          bind:checked={opcion.selected}
+                          class="hidden"
+                          on:change={() => {
+                            // Trigger reactivity for selectedDiarioAnots after change
+                            diarioOpcionesGrupos = diarioOpcionesGrupos;
+                          }}
+                        />
+                        <div
+                          class="w-5 h-5 rounded border flex items-center justify-center transition-colors"
+                          style="
+                            border-color: {opcion.selected
+                            ? catColor
+                            : styles.border};
+                            background-color: {opcion.selected
+                            ? catColor
+                            : 'transparent'};
+                          "
                         >
-                          <path
-                            fill-rule="evenodd"
-                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                            clip-rule="evenodd"
-                          />
-                        </svg>
-                      {/if}
+                          {#if opcion.selected}
+                            <svg
+                              class="w-3 h-3 text-white"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                            >
+                              <path
+                                fill-rule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clip-rule="evenodd"
+                              />
+                            </svg>
+                          {/if}
+                        </div>
+                      </label>
+                      <span class="font-bold text-sm leading-tight" style="color: {styles.text};">
+                        {opcion.originalTitulo}
+                      </span>
                     </div>
-                  </label>
+
+                    <div class="flex gap-1.5 flex-shrink-0">
+                      <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 opacity-60" style="color: {styles.text};">
+                        IMP: {opcion.impacto}
+                      </span>
+                      <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 opacity-60" style="color: {styles.text};">
+                        {opcion.tiempo_estimado} MIN
+                      </span>
+                    </div>
+                  </div>
 
                   <textarea
                     bind:value={opcion.text}
-                    rows="8"
-                    class="w-full bg-transparent border-none focus:ring-0 text-base font-medium leading-relaxed resize-none p-1 transition-colors min-h-[180px] pb-6"
+                    rows="4"
+                    class="w-full bg-transparent border-none focus:ring-0 text-sm font-medium leading-relaxed resize-none p-0 transition-colors opacity-80"
                     style="color: {styles.text};"
                     placeholder="Escriba aquí..."
                     on:input={() => {
