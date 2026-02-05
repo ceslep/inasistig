@@ -15,6 +15,7 @@ export const SAVE_ANOTADOR_URL = `${API_URL_GS}/save_anotador.php`;
 // Anotador
 export const ANOTADOR_URL = `${BASE_URL}/getOpcionesAnotador.php`;
 export const ANOTADOR2_URL = `${BASE_URL}/getOpcionesAnotador2.php`;
+export const ANOTADOR3_URL = `${BASE_URL}/getOpcionesAnotador3.php`;
 
 //diario
 export const DIARIO_OPTIONS_URL = `${BASE_URL}/adiario.php`;

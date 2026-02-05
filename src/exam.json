@@ -1,1764 +1,668 @@
 {
-  "success": true,
-  "situaciones": {
-    "Administrativo": [
-      {
-        "id": "5624e832-f0d9-4289-8e06-029e45daa4b9",
-        "categoria": "Administrativo",
-        "titulo": "Padre solicita hablar con docente",
-        "descripcion": "Un padre de familia solicita conversar con el docente sin cita previa, interrumpiendo la clase en curso",
-        "impacto": 3,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "10975191-5817-436a-831b-b1cff5e0e228",
-        "categoria": "Administrativo",
-        "titulo": "Izada de bandera",
-        "descripcion": "Ceremonia cívica matutina con participación de toda la comunidad educativa, requiere logística especial",
-        "impacto": 2,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "59f8af2b-fa7e-4a9f-b9be-2f8f5c853af6",
-        "categoria": "Administrativo",
-        "titulo": "Reunión de padres inesperada",
-        "descripcion": "Convocatoria urgente de padres de familia por situación disciplinaria o académica",
-        "impacto": 4,
-        "tiempo_estimado": 40
-      },
-      {
-        "id": "8c5ed2e7-80f7-4ace-9e7e-ae638fec4b1f",
-        "categoria": "Administrativo",
-        "titulo": "Solicitud de documentos",
-        "descripcion": "Padre requiere certificados académicos con urgencia para trámite legal o traslado",
-        "impacto": 2,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "0ae183b7-32ae-4053-aab1-335fdf2cd9fc",
-        "categoria": "Administrativo",
-        "titulo": "Cambio de horario",
-        "descripcion": "Modificación repentina del cronograma escolar por evento institucional o festividad local",
-        "impacto": 3,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "30e654ba-9c31-48dc-850a-67489adccf93",
-        "categoria": "Administrativo",
-        "titulo": "Visita de inspectoría",
-        "descripcion": "Inspección educativa sorpresiva del MEN o Secretaría de Educación requiere documentación inmediata",
-        "impacto": 4,
-        "tiempo_estimado": 50
-      },
-      {
-        "id": "3bb559a9-1ce9-4e54-9395-6efab9a199f9",
-        "categoria": "Administrativo",
-        "titulo": "Matrícula extemporánea",
-        "descripcion": "Estudiante nuevo necesita incorporación urgente al sistema por traslado familiar",
-        "impacto": 2,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "361bd8fe-e705-46ed-a14a-dd7292536b37",
-        "categoria": "Administrativo",
-        "titulo": "Consejo académico extraordinario",
-        "descripcion": "Reunión urgente de docentes para evaluar casos críticos de estudiantes",
-        "impacto": 4,
-        "tiempo_estimado": 45
-      },
-      {
-        "id": "a5c0a01c-b4f9-4a8b-b45d-223792ce4003",
-        "categoria": "Administrativo",
-        "titulo": "Entrega de boletines",
-        "descripcion": "Distribución de informes de desempeño a padres de familia con firma de recibido",
-        "impacto": 3,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "8bf04a07-2aee-4269-bccb-09938304524c",
-        "categoria": "Administrativo",
-        "titulo": "Actualización de datos SIE",
-        "descripcion": "Registro y actualización de información en el Sistema Integrado de Educación",
-        "impacto": 2,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "cc5e6470-fffe-4dbe-a5d3-11d83a5eb64b",
-        "categoria": "Administrativo",
-        "titulo": "Solicitud de traslado",
-        "descripcion": "Familia solicita documento de traslado escolar por cambio de residencia",
-        "impacto": 2,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "26772b9d-151d-47f0-9f08-477986c74ea0",
-        "categoria": "Administrativo",
-        "titulo": "Justificación de inasistencia",
-        "descripcion": "Padre presenta excusa médica o justificativo de ausencia del estudiante",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "82d04215-e40d-47a0-9499-5d8ec4957b25",
-        "categoria": "Administrativo",
-        "titulo": "Autorización de salida",
-        "descripcion": "Permiso firmado por acudiente para retiro anticipado del estudiante",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "d7d24ff7-97e0-42eb-be49-4107cbc51668",
-        "categoria": "Administrativo",
-        "titulo": "Compromiso de convivencia",
-        "descripcion": "Firma de documento por incumplimiento del manual de convivencia",
-        "impacto": 3,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "011ed4bc-9faa-4805-9dd5-84263dd9d5b9",
-        "categoria": "Administrativo",
-        "titulo": "Solicitud de constancia",
-        "descripcion": "Requerimiento de documento para beneficios sociales o programas gubernamentales",
-        "impacto": 2,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "d4fb155e-c89b-4f7a-b2e5-baf486dd9b87",
-        "categoria": "Administrativo",
-        "titulo": "Revisión de matrícula",
-        "descripcion": "Verificación de documentos pendientes para formalizar inscripción",
-        "impacto": 2,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "e45111cc-5baa-44f6-83e2-3143b5332ca9",
-        "categoria": "Administrativo",
-        "titulo": "Actualización de acudiente",
-        "descripcion": "Cambio de información de responsable legal del estudiante",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "0b9ea85d-a7bc-4eeb-9e16-ff35faac5fd6",
-        "categoria": "Administrativo",
-        "titulo": "Solicitud de descuento",
-        "descripcion": "Trámite para beneficios económicos por situación socioeconómica",
-        "impacto": 3,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "25dd4fbc-4d80-4956-abce-e5af83ffe6ca",
-        "categoria": "Administrativo",
-        "titulo": "Compromiso de pago",
-        "descripcion": "Acuerdo para regularización de pagos pendientes con institución",
-        "impacto": 3,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "43d0e8ec-e317-4064-8811-5517b4048cc3",
-        "categoria": "Administrativo",
-        "titulo": "Autorización de actividades",
-        "descripcion": "Permiso para participación en eventos extracurriculares o salidas pedagógicas",
-        "impacto": 2,
-        "tiempo_estimado": 15
-      }
-    ],
-    "Emergencia": [
-      {
-        "id": "8c95cf04-38ce-4c74-8e5e-d4d8243cd476",
-        "categoria": "Emergencia",
-        "titulo": "Simulacro de desastres",
-        "descripcion": "Se activa protocolo de evacuación por simulacro de terremoto, requiriendo coordinación de todo el personal",
-        "impacto": 4,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "b0718ff0-3bf9-4acc-9494-81b7eb21326b",
-        "categoria": "Emergencia",
-        "titulo": "Estudiante con fiebre alta",
-        "descripcion": "Alumno presenta síntomas de enfermedad durante clase, requiere atención médica inmediata",
-        "impacto": 4,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "a6a62054-dc32-477d-89c1-74e8ba7a8c45",
-        "categoria": "Emergencia",
-        "titulo": "Fuga de gas",
-        "descripcion": "Alarma de seguridad por posible fuga en cocina escolar o laboratorio",
-        "impacto": 5,
-        "tiempo_estimado": 45
-      },
-      {
-        "id": "61a8c642-d824-4a40-ad12-b5238e1d8d8f",
-        "categoria": "Emergencia",
-        "titulo": "Incendio menor",
-        "descripcion": "Principio de incendio en laboratorio de química controlado rápidamente por brigada escolar",
-        "impacto": 5,
-        "tiempo_estimado": 40
-      },
-      {
-        "id": "b883d632-ae82-46d0-a9f1-edc9e062d3f7",
-        "categoria": "Emergencia",
-        "titulo": "Estudiante desmayado",
-        "descripcion": "Alumno pierde conocimiento durante actividad física o por condiciones de salud",
-        "impacto": 4,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "13107e1c-1b16-45cc-bdde-c7349f883ca7",
-        "categoria": "Emergencia",
-        "titulo": "Alerta de seguridad",
-        "descripcion": "Reporte de persona sospechosa en las instalaciones escolares",
-        "impacto": 5,
-        "tiempo_estimado": 35
-      },
-      {
-        "id": "ffa16b37-5929-49e6-b39a-5d1e610af52f",
-        "categoria": "Emergencia",
-        "titulo": "Lesión grave",
-        "descripcion": "Estudiante sufre fractura o herida que requiere traslado a centro médico",
-        "impacto": 5,
-        "tiempo_estimado": 45
-      },
-      {
-        "id": "b562cf6f-d68a-4b9a-ba71-473308c1b94d",
-        "categoria": "Emergencia",
-        "titulo": "Reacción alérgica severa",
-        "descripcion": "Estudiante presenta anafilaxia por alimento o picadura de insecto",
-        "impacto": 5,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "b7058e36-c166-42e4-af93-8b6406a58f29",
-        "categoria": "Emergencia",
-        "titulo": "Emergencia sísmica real",
-        "descripcion": "Sismo perceptible activa protocolo de evacuación real",
-        "impacto": 5,
-        "tiempo_estimado": 40
-      },
-      {
-        "id": "f6fdedf0-96f6-4df7-8da2-cd62e086bb22",
-        "categoria": "Emergencia",
-        "titulo": "Inundación",
-        "descripcion": "Crecimiento de quebrada o inundación afecta instalaciones escolares",
-        "impacto": 5,
-        "tiempo_estimado": 50
-      },
-      {
-        "id": "a3b2702a-89e6-46af-bb6d-a8214cb1a3c8",
-        "categoria": "Emergencia",
-        "titulo": "Incidente con arma blanca",
-        "descripcion": "Estudiante porta objeto punzocortante, requiere intervención inmediata",
-        "impacto": 5,
-        "tiempo_estimado": 35
-      },
-      {
-        "id": "e65dda60-4c2a-4e40-b7d2-d7c78b1c2ca5",
-        "categoria": "Emergencia",
-        "titulo": "Intento de autolesión",
-        "descripcion": "Estudiante presenta conductas de autoagresión o ideación suicida",
-        "impacto": 5,
-        "tiempo_estimado": 45
-      },
-      {
-        "id": "bf6f56dc-27c4-470a-9f4b-d1b77525f2e0",
-        "categoria": "Emergencia",
-        "titulo": "Emergencia médica colectiva",
-        "descripcion": "Varios estudiantes presentan síntomas similares (intoxicación, enfermedad)",
-        "impacto": 5,
-        "tiempo_estimado": 40
-      },
-      {
-        "id": "54ee182a-3b31-423a-a1b2-364417d89631",
-        "categoria": "Emergencia",
-        "titulo": "Incidente de seguridad vial",
-        "descripcion": "Accidente en las inmediaciones de la institución afecta acceso",
-        "impacto": 4,
-        "tiempo_estimado": 35
-      },
-      {
-        "id": "b1e62524-afeb-48f2-ac62-5aa5e3962b91",
-        "categoria": "Emergencia",
-        "titulo": "Desaparición de estudiante",
-        "descripcion": "Menor no se encuentra en instalaciones, se activa protocolo de búsqueda",
-        "impacto": 5,
-        "tiempo_estimado": 45
-      },
-      {
-        "id": "f6f4fbc5-8c95-435c-baa5-a89298cbd6eb",
-        "categoria": "Emergencia",
-        "titulo": "Amenaza de bomba",
-        "descripcion": "Comunicación telefónica o mensaje amenazante requiere evacuación",
-        "impacto": 5,
-        "tiempo_estimado": 50
-      },
-      {
-        "id": "11878eca-de39-4670-867c-eb8df0fbfeb7",
-        "categoria": "Emergencia",
-        "titulo": "Ataque de pánico masivo",
-        "descripcion": "Varios estudiantes presentan crisis de ansiedad simultánea",
-        "impacto": 4,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "4b0b5003-3f18-46e5-8b10-4ae02cd60aa8",
-        "categoria": "Emergencia",
-        "titulo": "Incidente con sustancias",
-        "descripcion": "Estudiante presenta síntomas de consumo de psicoactivos",
-        "impacto": 5,
-        "tiempo_estimado": 40
-      },
-      {
-        "id": "b8d282cd-c717-4d08-9314-de6629f5aeb6",
-        "categoria": "Emergencia",
-        "titulo": "Emergencia climática",
-        "descripcion": "Alerta roja por fenómenos naturales (vendaval, granizada, etc.)",
-        "impacto": 5,
-        "tiempo_estimado": 45
-      },
-      {
-        "id": "932ad329-ec56-487a-8dd1-9557d4c78015",
-        "categoria": "Emergencia",
-        "titulo": "Accidente de transporte",
-        "descripcion": "Vehículo escolar sufre incidente con estudiantes a bordo",
-        "impacto": 5,
-        "tiempo_estimado": 50
-      }
-    ],
-    "Académico": [
-      {
-        "id": "14107612-dba6-415b-bf2a-174fc5f9d5e9",
-        "categoria": "Académico",
-        "titulo": "Profesor ausente",
-        "descripcion": "Docente no asiste sin previo aviso, requiere sustitución inmediata",
-        "impacto": 4,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "32d900f6-37c3-47f3-8bb0-a355f86001ae",
-        "categoria": "Académico",
-        "titulo": "Material didáctico insuficiente",
-        "descripcion": "Falta de recursos para actividad práctica programada",
-        "impacto": 2,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "2f1f28dd-e049-4a39-9af4-a84d5c39aff3",
-        "categoria": "Académico",
-        "titulo": "Evaluación cancelada",
-        "descripcion": "Examen debe suspenderse por condiciones climáticas adversas o emergencia",
-        "impacto": 3,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "790bf040-a78a-492f-a362-40e130c6da96",
-        "categoria": "Académico",
-        "titulo": "Estudiante con dificultades",
-        "descripcion": "Alumno requiere atención especializada durante clase por NEE",
-        "impacto": 3,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "c14c27fc-3342-4d44-88e3-ba002702ee80",
-        "categoria": "Académico",
-        "titulo": "Proyecto grupal conflictivo",
-        "descripcion": "Disputas entre estudiantes afectan desarrollo de trabajo colaborativo",
-        "impacto": 3,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "f1210c78-f429-4854-8658-52feff11921b",
-        "categoria": "Académico",
-        "titulo": "Plagio detectado",
-        "descripcion": "Estudiante presenta trabajo con contenido copiado sin citación",
-        "impacto": 3,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "4fba1e67-055d-4d9e-bf8c-30400cee021d",
-        "categoria": "Académico",
-        "titulo": "Calificación impugnada",
-        "descripcion": "Padre o estudiante solicita revisión de nota por presunta injusticia",
-        "impacto": 3,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "c23a7629-0e49-4ca7-8cf8-6a244f1d651a",
-        "categoria": "Académico",
-        "titulo": "Recuperación pendiente",
-        "descripcion": "Estudiante debe realizar actividades de nivelación por bajo desempeño",
-        "impacto": 3,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "33168e35-b181-4904-ae19-61977213de56",
-        "categoria": "Académico",
-        "titulo": "Proyecto incompleto",
-        "descripcion": "Grupo no entrega trabajo en fecha establecida",
-        "impacto": 2,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "9e8e2249-c4fd-439a-8285-2ba52a1ee830",
-        "categoria": "Académico",
-        "titulo": "Dificultad con contenidos",
-        "descripcion": "Estudiantes no comprenden temas clave, requiere reforzamiento",
-        "impacto": 3,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "5c10d36c-67c5-4ca2-b016-8f6267d16c20",
-        "categoria": "Académico",
-        "titulo": "Falta de tareas",
-        "descripcion": "Varios estudiantes no presentan actividades asignadas",
-        "impacto": 2,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "2e9907c2-5741-408e-9bf9-7504c1c3a686",
-        "categoria": "Académico",
-        "titulo": "Evaluación fraudulenta",
-        "descripcion": "Estudiante intenta hacer trampa durante examen",
-        "impacto": 4,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "c1355b2f-6934-4f0a-b081-710350cef4c8",
-        "categoria": "Académico",
-        "titulo": "Proyecto destacado",
-        "descripcion": "Trabajo sobresaliente merece reconocimiento especial",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "52ef7fcb-40dc-437c-8009-a676cedc31eb",
-        "categoria": "Académico",
-        "titulo": "Participación insuficiente",
-        "descripcion": "Estudiante no contribuye en actividades grupales",
-        "impacto": 2,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "352755ec-6e59-446c-870f-52f6b3d3ea86",
-        "categoria": "Académico",
-        "titulo": "Avance satisfactorio",
-        "descripcion": "Estudiantes completan actividades según cronograma",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "090d15ab-73a2-4b17-864f-b4c34055dc1f",
-        "categoria": "Académico",
-        "titulo": "Dificultad tecnológica",
-        "descripcion": "Estudiantes no pueden acceder a plataforma virtual de aprendizaje",
-        "impacto": 3,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "cd1671e3-a544-4436-b534-255118e85ba3",
-        "categoria": "Académico",
-        "titulo": "Requerimiento de tutoría",
-        "descripcion": "Estudiante necesita acompañamiento adicional fuera de clase",
-        "impacto": 3,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "2b6b4b8a-382b-4951-8f1e-12f138523d01",
-        "categoria": "Académico",
-        "titulo": "Actualización curricular",
-        "descripcion": "Docente debe adaptar contenidos a nuevos estándares MEN",
-        "impacto": 3,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "971b11a9-3f3e-43c1-a294-11915c941702",
-        "categoria": "Académico",
-        "titulo": "Integración de saberes",
-        "descripcion": "Proyecto interdisciplinario requiere coordinación entre áreas",
-        "impacto": 3,
-        "tiempo_estimado": 35
-      },
-      {
-        "id": "1f4daf23-c7ad-49de-ab76-79d3cf25b9cc",
-        "categoria": "Académico",
-        "titulo": "Evaluación diferenciada",
-        "descripcion": "Estudiante con NEE requiere adaptación de instrumentos de valoración",
-        "impacto": 3,
-        "tiempo_estimado": 25
-      }
-    ],
-    "Convivencia": [
-      {
-        "id": "3861b530-5f68-428e-8a2b-509858589377",
-        "categoria": "Convivencia",
-        "titulo": "Bullying detectado",
-        "descripcion": "Situación de acoso escolar requiere intervención inmediata del comité",
-        "impacto": 5,
-        "tiempo_estimado": 45
-      },
-      {
-        "id": "d198c429-52cb-4831-b16a-f805e70c6788",
-        "categoria": "Convivencia",
-        "titulo": "Discusión entre estudiantes",
-        "descripcion": "Conflicto verbal escalando a nivel físico en patio escolar",
-        "impacto": 4,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "7978747c-2f2f-45b3-9da3-de9dd47c06e6",
-        "categoria": "Convivencia",
-        "titulo": "Robo de pertenencias",
-        "descripcion": "Denuncia de hurto de útiles escolares, celulares o dinero entre compañeros",
-        "impacto": 3,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "fce70851-0a6a-4a02-9af2-74bae1b4226a",
-        "categoria": "Convivencia",
-        "titulo": "Lenguaje inapropiado",
-        "descripcion": "Estudiante usa vocabulario ofensivo hacia docente o compañeros",
-        "impacto": 3,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "f4ad8c84-a0cf-4a2e-9b79-f3cd7836d9cc",
-        "categoria": "Convivencia",
-        "titulo": "Exclusión social",
-        "descripcion": "Grupo de estudiantes marginando a compañero nuevo o diferente",
-        "impacto": 3,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "a5ba427f-5131-4756-b5b7-cf7e443f1c4b",
-        "categoria": "Convivencia",
-        "titulo": "Chismografía",
-        "descripcion": "Difusión de rumores que afectan reputación de estudiantes o docentes",
-        "impacto": 3,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "fac57ee6-e26f-45b1-a368-06b0d79a1842",
-        "categoria": "Convivencia",
-        "titulo": "Discriminación",
-        "descripcion": "Comentarios o acciones que menosprecian por condición social, étnica o física",
-        "impacto": 4,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "c9ab8174-3882-4ce8-823b-a772bbf8717e",
-        "categoria": "Convivencia",
-        "titulo": "Conflicto cultural",
-        "descripcion": "Malentendidos por diferencias regionales o de costumbres",
-        "impacto": 3,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "368b555c-9583-4fc8-aad4-c171afbff521",
-        "categoria": "Convivencia",
-        "titulo": "Acoso cibernético",
-        "descripcion": "Uso de redes sociales para hostigar o humillar a compañeros",
-        "impacto": 4,
-        "tiempo_estimado": 35
-      },
-      {
-        "id": "effa166d-d836-49ac-9562-746885843449",
-        "categoria": "Convivencia",
-        "titulo": "Violencia verbal",
-        "descripcion": "Insultos, gritos o amenazas entre miembros de la comunidad educativa",
-        "impacto": 4,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "5e1d298f-6161-4ebe-8dbb-7803ef450f15",
-        "categoria": "Convivencia",
-        "titulo": "Mediación exitosa",
-        "descripcion": "Conflicto resuelto mediante diálogo guiado por comité de convivencia",
-        "impacto": 1,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "c8a9935d-1389-445c-9d4d-4caf02dfaefd",
-        "categoria": "Convivencia",
-        "titulo": "Reconciliación",
-        "descripcion": "Estudiantes involucrados en conflicto firman acta de paz",
-        "impacto": 1,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "1a75930e-9f91-4712-a88b-b58c7ebac697",
-        "categoria": "Convivencia",
-        "titulo": "Inclusión lograda",
-        "descripcion": "Estudiante marginado es integrado exitosamente al grupo",
-        "impacto": 1,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "d14fbaad-454c-4523-a1bb-0b249b76d15b",
-        "categoria": "Convivencia",
-        "titulo": "Resolución colaborativa",
-        "descripcion": "Estudiantes resuelven conflicto sin intervención adulta",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "3860b72c-bb71-4938-bffb-b78bc6171ac1",
-        "categoria": "Convivencia",
-        "titulo": "Apoyo entre pares",
-        "descripcion": "Estudiantes se ayudan mutuamente en situaciones difíciles",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "9a78dafd-8e2b-4fa9-8a48-88a17b1198c8",
-        "categoria": "Convivencia",
-        "titulo": "Celebración de diversidad",
-        "descripcion": "Actividad que reconoce y valora diferencias culturales",
-        "impacto": 1,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "e472d2b2-4ab2-4f1f-ad2e-301f9cdf1662",
-        "categoria": "Convivencia",
-        "titulo": "Comunicación asertiva",
-        "descripcion": "Estudiantes expresan necesidades sin agresividad",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "20d95c67-457f-451d-8073-4153371dd49e",
-        "categoria": "Convivencia",
-        "titulo": "Empatía demostrada",
-        "descripcion": "Estudiante muestra comprensión genuina hacia compañero en dificultad",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "d5e32a6a-ca9f-442e-94ce-cabcc9202ddb",
-        "categoria": "Convivencia",
-        "titulo": "Cooperación espontánea",
-        "descripcion": "Grupo colabora sin ser solicitado para resolver problema",
-        "impacto": 1,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "79e757b0-b055-459d-b831-ba98069129e1",
-        "categoria": "Convivencia",
-        "titulo": "Respeto por diferencias",
-        "descripcion": "Estudiantes aceptan y valoran opiniones distintas",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      }
-    ],
-    "Infraestructura": [
-      {
-        "id": "051be622-1efd-4339-832b-08f26fda85f6",
-        "categoria": "Infraestructura",
-        "titulo": "Falta de energía eléctrica",
-        "descripcion": "Corte de energía eléctrica durante examen, afectando equipos tecnológicos y condiciones de iluminación",
-        "impacto": 5,
-        "tiempo_estimado": 60
-      },
-      {
-        "id": "6318d3e9-15d6-434f-89cd-194e58ce7ec5",
-        "categoria": "Infraestructura",
-        "titulo": "Fuga de agua",
-        "descripcion": "Tubería rota en baños principales afectando áreas comunes y clases",
-        "impacto": 4,
-        "tiempo_estimado": 40
-      },
-      {
-        "id": "31247f2d-e5da-4722-8cf5-c34cf5836f46",
-        "categoria": "Infraestructura",
-        "titulo": "Vidrio roto",
-        "descripcion": "Ventana dañada en aula por accidente durante recreo o vandalismo",
-        "impacto": 3,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "79dcb5b4-b326-47e5-863a-17d362565a57",
-        "categoria": "Infraestructura",
-        "titulo": "Mantenimiento urgente",
-        "descripcion": "Sistema eléctrico presenta fallas intermitentes poniendo en riesgo seguridad",
-        "impacto": 4,
-        "tiempo_estimado": 50
-      },
-      {
-        "id": "c6f82f93-9648-4aab-a397-73894280609c",
-        "categoria": "Infraestructura",
-        "titulo": "Mobiliario deteriorado",
-        "descripcion": "Sillas y mesas en mal estado requieren reposición inmediata",
-        "impacto": 2,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "893e1864-d192-40e3-84f8-828c20fe455f",
-        "categoria": "Infraestructura",
-        "titulo": "Problema de climatización",
-        "descripcion": "Aire acondicionado fallando en día de alta temperatura",
-        "impacto": 3,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "481e28a8-f497-43ba-8811-5b9cc9c7aa2d",
-        "categoria": "Infraestructura",
-        "titulo": "Actividad en auditorio",
-        "descripcion": "Evento especial programado en auditorio principal, requiere preparación técnica",
-        "impacto": 3,
-        "tiempo_estimado": 45
-      },
-      {
-        "id": "67ee2002-9dfc-4d58-b0ce-0b0968fa57f3",
-        "categoria": "Infraestructura",
-        "titulo": "Baños inservibles",
-        "descripcion": "Sanitarios fuera de funcionamiento afectando higiene escolar",
-        "impacto": 4,
-        "tiempo_estimado": 35
-      },
-      {
-        "id": "c83c348a-b081-4b5b-a887-1441a80cd056",
-        "categoria": "Infraestructura",
-        "titulo": "Filtración de agua",
-        "descripcion": "Goteras en techo durante temporada de lluvias",
-        "impacto": 3,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "c4d4313c-95d0-4cd9-bad7-48a51675bd76",
-        "categoria": "Infraestructura",
-        "titulo": "Piso irregular",
-        "descripcion": "Baldosas levantadas o desniveles que representan riesgo de caída",
-        "impacto": 3,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "7b4a85f5-d31b-49eb-9239-24edbec29ef0",
-        "categoria": "Infraestructura",
-        "titulo": "Iluminación deficiente",
-        "descripcion": "Lámparas fundidas afectando visibilidad en aulas",
-        "impacto": 2,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "9973d8fc-2ff1-4780-ad84-42fd2f8657e9",
-        "categoria": "Infraestructura",
-        "titulo": "Paredes deterioradas",
-        "descripcion": "Humedad, grietas o pintura descascarada",
-        "impacto": 2,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "94bc5870-e67e-4e5e-980a-57ddcc724330",
-        "categoria": "Infraestructura",
-        "titulo": "Puertas atascadas",
-        "descripcion": "Acceso restringido por cerraduras o bisagras defectuosas",
-        "impacto": 3,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "d89e41b9-1357-40d4-a246-94fc163d8009",
-        "categoria": "Infraestructura",
-        "titulo": "Ventilación inadecuada",
-        "descripcion": "Aulas sin circulación de aire afectando concentración",
-        "impacto": 2,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "c136d5ef-04d4-4593-8d54-1b280fd8d725",
-        "categoria": "Infraestructura",
-        "titulo": "Espacio insuficiente",
-        "descripcion": "Sobrepoblación en aula afectando desarrollo de actividades",
-        "impacto": 3,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "152ae83f-b623-4013-9347-32377886d685",
-        "categoria": "Infraestructura",
-        "titulo": "Acceso no adecuado",
-        "descripcion": "Rampas o pasamanos deficientes para estudiantes con movilidad reducida",
-        "impacto": 4,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "e361a11c-f8cf-4b38-ba72-28c55ad7f735",
-        "categoria": "Infraestructura",
-        "titulo": "Señalización deficiente",
-        "descripcion": "Falta de indicadores de emergencia o rutas de evacuación",
-        "impacto": 3,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "d1361a16-d6ea-49ee-adc5-fe4554a92421",
-        "categoria": "Infraestructura",
-        "titulo": "Áreas recreativas dañadas",
-        "descripcion": "Canchas, juegos o zonas verdes en mal estado",
-        "impacto": 3,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "16f1bbfb-f309-40e2-8bf6-3ec46f6d0828",
-        "categoria": "Infraestructura",
-        "titulo": "Almacenamiento inadecuado",
-        "descripcion": "Falta de espacios para guardar materiales y equipos",
-        "impacto": 2,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "a1de3346-fa3a-46d0-aebf-244a1e27e0d1",
-        "categoria": "Infraestructura",
-        "titulo": "Mejora implementada",
-        "descripcion": "Reparación exitosa de infraestructura con mínimo impacto",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      }
-    ],
-    "Salud": [
-      {
-        "id": "c0507c15-13f8-48b6-955f-e2dd64596ffe",
-        "categoria": "Salud",
-        "titulo": "Reacción alérgica",
-        "descripcion": "Estudiante presenta alergia a alimento consumido en cafetería o ambiente",
-        "impacto": 5,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "9298e589-d205-4e9c-a0bc-02fdd43685f3",
-        "categoria": "Salud",
-        "titulo": "Lesión deportiva",
-        "descripcion": "Fractura, esguince o contusión durante clase de educación física",
-        "impacto": 4,
-        "tiempo_estimado": 40
-      },
-      {
-        "id": "975e39f5-0f1a-487e-a212-3bab5ce42eb8",
-        "categoria": "Salud",
-        "titulo": "Brotes de enfermedad",
-        "descripcion": "Varios estudiantes con síntomas gripales simultáneos",
-        "impacto": 4,
-        "tiempo_estimado": 35
-      },
-      {
-        "id": "7b1f9fe9-de3c-42ca-ac77-9bd1d1e11dd9",
-        "categoria": "Salud",
-        "titulo": "Medicamento olvidado",
-        "descripcion": "Padre no envía tratamiento médico necesario para condición crónica",
-        "impacto": 2,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "3f3919bc-a9ef-487c-aa00-c96301d72cb1",
-        "categoria": "Salud",
-        "titulo": "Crisis de ansiedad",
-        "descripcion": "Estudiante presenta ataque de pánico durante evaluación o evento",
-        "impacto": 3,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "0b8cb263-3a31-4bd0-b5b1-f007297ea3aa",
-        "categoria": "Salud",
-        "titulo": "Deshidratación",
-        "descripcion": "Estudiante presenta mareo por falta de ingesta de líquidos",
-        "impacto": 3,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "41e7ba73-967b-48ef-9bda-3612d8c7d9c6",
-        "categoria": "Salud",
-        "titulo": "Intoxicación alimentaria",
-        "descripcion": "Malestar gastrointestinal por consumo de alimentos en mal estado",
-        "impacto": 4,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "82449316-1e7f-49d3-b41c-7461fdb1e2c0",
-        "categoria": "Salud",
-        "titulo": "Picadura de insecto",
-        "descripcion": "Reacción alérgica o dolor por picadura de abeja, avispa u otro",
-        "impacto": 3,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "fd331bec-3714-44ae-a52b-30dd1c8e1537",
-        "categoria": "Salud",
-        "titulo": "Convulsión",
-        "descripcion": "Estudiante presenta crisis epiléptica requiriendo atención especializada",
-        "impacto": 5,
-        "tiempo_estimado": 35
-      },
-      {
-        "id": "2a108a81-acd0-490a-8acb-c9e693f63a4a",
-        "categoria": "Salud",
-        "titulo": "Dolor abdominal agudo",
-        "descripcion": "Estudiante requiere valoración médica por dolor intenso",
-        "impacto": 4,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "4f5df29e-902b-45cd-a0e5-19e0a289aedc",
-        "categoria": "Salud",
-        "titulo": "Hemorragia nasal",
-        "descripcion": "Sangrado abundante que requiere atención inmediata",
-        "impacto": 3,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "cf5db5b8-c246-4283-b1c3-6d1f2983f908",
-        "categoria": "Salud",
-        "titulo": "Corte profundo",
-        "descripcion": "Herida que requiere curación y posible puntos de sutura",
-        "impacto": 4,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "8aeee7be-55a4-43d9-9423-8abd19a6c96a",
-        "categoria": "Salud",
-        "titulo": "Quemadura menor",
-        "descripcion": "Lesión por contacto con superficie caliente o químicos",
-        "impacto": 3,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "df7499aa-bc88-4c89-9908-48f4cc8122d6",
-        "categoria": "Salud",
-        "titulo": "Mareo severo",
-        "descripcion": "Estudiante presenta vértigo o desorientación",
-        "impacto": 3,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "ea38cbd0-05f4-4f40-9787-81a0b879ffef",
-        "categoria": "Salud",
-        "titulo": "Dolor de cabeza intenso",
-        "descripcion": "Cefalea que impide desarrollo normal de actividades",
-        "impacto": 3,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "1709da11-4e59-4de8-87de-1d61d03005d8",
-        "categoria": "Salud",
-        "titulo": "Fatiga extrema",
-        "descripcion": "Estudiante muestra agotamiento físico o mental evidente",
-        "impacto": 2,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "57132dc7-0067-420f-bac0-5a04979ec3e8",
-        "categoria": "Salud",
-        "titulo": "Problema dental",
-        "descripcion": "Dolor agudo que requiere atención odontológica urgente",
-        "impacto": 3,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "17983b78-8463-424f-9ff2-27f6f177188d",
-        "categoria": "Salud",
-        "titulo": "Reacción a medicamento",
-        "descripcion": "Efectos secundarios adversos por tratamiento farmacológico",
-        "impacto": 4,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "3b6d163b-982f-4401-98b5-9bca1a327906",
-        "categoria": "Salud",
-        "titulo": "Desmayo recurrente",
-        "descripcion": "Estudiante presenta episodios repetidos de pérdida de conciencia",
-        "impacto": 5,
-        "tiempo_estimado": 35
-      },
-      {
-        "id": "c922fba6-f5c5-4ce8-9e95-afb16f9a7632",
-        "categoria": "Salud",
-        "titulo": "Bienestar general",
-        "descripcion": "Estudiantes muestran energía y disposición adecuadas",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      }
-    ],
-    "Tecnológico": [
-      {
-        "id": "c175d571-7373-4c97-b19b-c60a903c5670",
-        "categoria": "Tecnológico",
-        "titulo": "Internet caído",
-        "descripcion": "Falla en conexión afectando clases virtuales y recursos digitales",
-        "impacto": 4,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "3c756c8a-9087-48a5-982e-f9c119f098d6",
-        "categoria": "Tecnológico",
-        "titulo": "Proyector defectuoso",
-        "descripcion": "Equipo audiovisual fallando durante presentación importante",
-        "impacto": 3,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "48c25ec4-0759-41bf-8288-4b4a0f61881a",
-        "categoria": "Tecnológico",
-        "titulo": "Software educativo",
-        "descripcion": "Plataforma de aprendizaje presenta errores técnicos o caídas",
-        "impacto": 3,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "a8eec9fd-985f-4d77-bc0f-23cb1e2fe5b7",
-        "categoria": "Tecnológico",
-        "titulo": "Dispositivos perdidos",
-        "descripcion": "Tablets escolares no localizados después de actividad",
-        "impacto": 3,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "33f1f018-a129-470e-82b0-e5233cfaa5f0",
-        "categoria": "Tecnológico",
-        "titulo": "Seguridad informática",
-        "descripcion": "Intento de acceso no autorizado al sistema escolar",
-        "impacto": 5,
-        "tiempo_estimado": 45
-      },
-      {
-        "id": "0a8d8926-b91f-4911-81fe-eee02baf2339",
-        "categoria": "Tecnológico",
-        "titulo": "Computadores inoperables",
-        "descripcion": "Equipos de laboratorio con fallas de hardware o software",
-        "impacto": 4,
-        "tiempo_estimado": 35
-      },
-      {
-        "id": "e775352b-10ad-46c6-aea2-8e87a12e139a",
-        "categoria": "Tecnológico",
-        "titulo": "Plataforma caída",
-        "descripcion": "Sistema de gestión académica fuera de servicio",
-        "impacto": 4,
-        "tiempo_estimado": 40
-      },
-      {
-        "id": "f59888ab-5ffc-426c-b18b-432145fca006",
-        "categoria": "Tecnológico",
-        "titulo": "Archivos corruptos",
-        "descripcion": "Documentos importantes no se pueden abrir o recuperar",
-        "impacto": 3,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "39e8aeec-8c4c-408f-a20b-0018cf458c78",
-        "categoria": "Tecnológico",
-        "titulo": "Impresora defectuosa",
-        "descripcion": "Equipo de impresión fallando durante entrega de materiales",
-        "impacto": 2,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "ccb24d0e-b750-4009-a5b8-d40d04e22870",
-        "categoria": "Tecnológico",
-        "titulo": "Conexión lenta",
-        "descripcion": "Velocidad de internet insuficiente para actividades en línea",
-        "impacto": 3,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "5f639a2b-2acb-4737-bb51-4387ca359d7e",
-        "categoria": "Tecnológico",
-        "titulo": "Software desactualizado",
-        "descripcion": "Programas obsoletos incompatibles con nuevos formatos",
-        "impacto": 2,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "8f0d9f19-8385-4e0f-bff1-275d17fe3a7f",
-        "categoria": "Tecnológico",
-        "titulo": "Periféricos dañados",
-        "descripcion": "Teclados, mouse o monitores en mal estado",
-        "impacto": 2,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "1cc791e1-a31f-447e-add9-7d4223b5b872",
-        "categoria": "Tecnológico",
-        "titulo": "Red Wi-Fi inestable",
-        "descripcion": "Conexión intermitente afectando trabajo colaborativo",
-        "impacto": 3,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "13ba916e-084a-40a0-89dc-776c3f7c7bdb",
-        "categoria": "Tecnológico",
-        "titulo": "Licencias vencidas",
-        "descripcion": "Software educativo sin autorización de uso",
-        "impacto": 3,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "338d7f74-e796-47d5-8e3e-d80c2e93d337",
-        "categoria": "Tecnológico",
-        "titulo": "Almacenamiento insuficiente",
-        "descripcion": "Servidores o dispositivos sin espacio para nuevos archivos",
-        "impacto": 2,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "fe7aeeda-f61a-48a7-84fb-655d0f03181c",
-        "categoria": "Tecnológico",
-        "titulo": "Ciberacoso detectado",
-        "descripcion": "Uso indebido de plataformas digitales para hostigamiento",
-        "impacto": 4,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "98144225-a7e4-4703-9c90-4fc1c1df38d3",
-        "categoria": "Tecnológico",
-        "titulo": "Fallo en videoconferencia",
-        "descripcion": "Herramienta de comunicación remota presenta errores",
-        "impacto": 3,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "7c11e6be-a0d7-4fdb-8744-f7bd65d7ad29",
-        "categoria": "Tecnológico",
-        "titulo": "Backup fallido",
-        "descripcion": "Copia de seguridad de datos no se realizó correctamente",
-        "impacto": 4,
-        "tiempo_estimado": 35
-      },
-      {
-        "id": "0d5b0271-14a2-4a61-a55e-de69e8b58c86",
-        "categoria": "Tecnológico",
-        "titulo": "Virus informático",
-        "descripcion": "Malware afecta funcionamiento de equipos escolares",
-        "impacto": 4,
-        "tiempo_estimado": 40
-      },
-      {
-        "id": "bf459d6d-3212-4597-97fa-b50a8cd81546",
-        "categoria": "Tecnológico",
-        "titulo": "Tecnología integrada",
-        "descripcion": "Implementación exitosa de herramientas digitales en clase",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      }
-    ],
-    "Comunicación": [
-      {
-        "id": "285ac977-4002-49c5-ab19-04d5f5d6fe8b",
-        "categoria": "Comunicación",
-        "titulo": "Circular malinterpretada",
-        "descripcion": "Información enviada a padres genera confusión y quejas",
-        "impacto": 3,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "5c9ac76b-5a51-4c9b-917a-a6002307eade",
-        "categoria": "Comunicación",
-        "titulo": "Redes sociales",
-        "descripcion": "Publicación inapropiada de estudiante sobre institución",
-        "impacto": 4,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "60c49b2c-e68c-4823-a80a-244845ed41a7",
-        "categoria": "Comunicación",
-        "titulo": "Llamada amenazante",
-        "descripcion": "Comunicación telefónica con contenido intimidatorio",
-        "impacto": 5,
-        "tiempo_estimado": 40
-      },
-      {
-        "id": "b3f929ce-f3c1-4488-8787-f61702ba17e8",
-        "categoria": "Comunicación",
-        "titulo": "Traducción necesaria",
-        "descripcion": "Familia requiere servicios de intérprete para comunicación efectiva",
-        "impacto": 2,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "dbcf807b-5fe8-4bad-8304-7713611ad4a1",
-        "categoria": "Comunicación",
-        "titulo": "Rumor escolar",
-        "descripcion": "Información falsa circulando entre estudiantes",
-        "impacto": 3,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "f2336255-3c27-49d6-af97-16c9f2c8597b",
-        "categoria": "Comunicación",
-        "titulo": "Comunicado urgente",
-        "descripcion": "Notificación inmediata a padres por emergencia o cambio",
-        "impacto": 4,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "425f624a-8abd-406b-8043-44b6692e2d12",
-        "categoria": "Comunicación",
-        "titulo": "Reunión mal coordinada",
-        "descripcion": "Cita con padres programada incorrectamente causando conflictos",
-        "impacto": 2,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "27fc718f-1a65-4719-8bca-8f03e17f5feb",
-        "categoria": "Comunicación",
-        "titulo": "Información incompleta",
-        "descripcion": "Documentos o comunicaciones con datos faltantes",
-        "impacto": 2,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "7412eaee-1f05-4665-87b7-318fbc0fe477",
-        "categoria": "Comunicación",
-        "titulo": "Canal inadecuado",
-        "descripcion": "Uso de medio incorrecto para tipo de mensaje (urgente/no urgente)",
-        "impacto": 2,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "e187fd53-cced-497f-863b-4ddedf2acd1d",
-        "categoria": "Comunicación",
-        "titulo": "Respuesta tardía",
-        "descripcion": "Demora en contestar solicitudes de padres o estudiantes",
-        "impacto": 2,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "03c404b4-76fa-42de-9a15-a8b90739fcf0",
-        "categoria": "Comunicación",
-        "titulo": "Malentendido cultural",
-        "descripcion": "Diferencias en interpretación por contexto regional",
-        "impacto": 3,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "bcd7fa41-e958-43a2-aa64-3178bc42b8ff",
-        "categoria": "Comunicación",
-        "titulo": "Sobrecarga informativa",
-        "descripcion": "Demasiados comunicados generando saturación",
-        "impacto": 2,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "1ae685c1-db95-40ed-8caf-f693fa8dd5f1",
-        "categoria": "Comunicación",
-        "titulo": "Filtración de información",
-        "descripcion": "Datos confidenciales compartidos sin autorización",
-        "impacto": 4,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "84600802-ed01-4998-a6b4-e981fff5e696",
-        "categoria": "Comunicación",
-        "titulo": "Comunicación asertiva",
-        "descripcion": "Mensaje claro, respetuoso y efectivo entre partes",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "28ca23b2-316c-4c12-a202-984bf4c895b6",
-        "categoria": "Comunicación",
-        "titulo": "Feedback constructivo",
-        "descripcion": "Retroalimentación que promueve mejora sin desmotivar",
-        "impacto": 1,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "2a2d844c-6388-40bb-abaf-31aa4ba0d5cc",
-        "categoria": "Comunicación",
-        "titulo": "Escucha activa",
-        "descripcion": "Atención plena y comprensión genuina durante conversaciones",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "3c944a0a-ba1a-499a-bfae-80a13f654415",
-        "categoria": "Comunicación",
-        "titulo": "Diálogo abierto",
-        "descripcion": "Comunicación bidireccional que fomenta participación",
-        "impacto": 1,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "f1695c8c-6ff1-49bb-b1c9-a78cf2ce83c8",
-        "categoria": "Comunicación",
-        "titulo": "Claridad en instrucciones",
-        "descripcion": "Indicaciones precisas que evitan confusiones",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "e96d5d1e-8cca-4ab1-8f2d-4e1354864cee",
-        "categoria": "Comunicación",
-        "titulo": "Comunicación oportuna",
-        "descripcion": "Información entregada en momento adecuado",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "f0bced6b-6d00-4c01-8018-3932a566e4e7",
-        "categoria": "Comunicación",
-        "titulo": "Canal apropiado",
-        "descripcion": "Uso correcto de medio según tipo y urgencia del mensaje",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      }
-    ],
-    "Disciplinario": [
-      {
-        "id": "f29f30ef-5775-41af-9f00-2643d01c7b71",
-        "categoria": "Disciplinario",
-        "titulo": "Inasistencia reiterada",
-        "descripcion": "Estudiante acumula faltas injustificadas sin justificación",
-        "impacto": 4,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "7e6e1059-5997-4617-a90a-58ff8d87f812",
-        "categoria": "Disciplinario",
-        "titulo": "Uniforme incompleto",
-        "descripcion": "Incumplimiento reiterado del código de vestimenta escolar",
-        "impacto": 2,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "7add0c61-c246-4ca1-8b5f-1db05b8a09f1",
-        "categoria": "Disciplinario",
-        "titulo": "Uso de celular prohibido",
-        "descripcion": "Estudiante graba clase sin autorización del docente",
-        "impacto": 3,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "0d5406fb-90ef-43b5-b487-dedce55a01ba",
-        "categoria": "Disciplinario",
-        "titulo": "Salida no autorizada",
-        "descripcion": "Menor abandona instalaciones sin permiso del coordinador",
-        "impacto": 5,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "4410ad05-386c-43b6-b275-1bb99e205b42",
-        "categoria": "Disciplinario",
-        "titulo": "Agresión verbal",
-        "descripcion": "Estudiante insulta a compañero en público durante recreo",
-        "impacto": 4,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "269b38a4-65e5-42e4-848d-a91de1c1dcf4",
-        "categoria": "Disciplinario",
-        "titulo": "Desacato a autoridad",
-        "descripcion": "Estudiante desafía instrucciones directas del docente",
-        "impacto": 4,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "81ffe3d0-40fd-4a01-ac27-950dd85ade5a",
-        "categoria": "Disciplinario",
-        "titulo": "Consumo prohibido",
-        "descripcion": "Estudiante ingiere alimentos o sustancias no permitidas",
-        "impacto": 4,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "678ebfc8-5ff7-4c5a-901e-51450902141b",
-        "categoria": "Disciplinario",
-        "titulo": "Destrucción de propiedad",
-        "descripcion": "Daño intencional a mobiliario o equipos escolares",
-        "impacto": 5,
-        "tiempo_estimado": 35
-      },
-      {
-        "id": "838c02e0-3171-4a5f-ab2c-d1ddb4bafaaa",
-        "categoria": "Disciplinario",
-        "titulo": "Falsificación de documentos",
-        "descripcion": "Estudiante presenta excusa médica falsa",
-        "impacto": 4,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "1ad1fe22-6135-4374-b4ba-223f590868e0",
-        "categoria": "Disciplinario",
-        "titulo": "Acoso cibernético",
-        "descripcion": "Uso de redes sociales para hostigar a compañeros",
-        "impacto": 5,
-        "tiempo_estimado": 40
-      },
-      {
-        "id": "00b700fd-a196-4d2d-959c-09e0ab02e5dd",
-        "categoria": "Disciplinario",
-        "titulo": "Porte de objetos prohibidos",
-        "descripcion": "Estudiante lleva elementos no permitidos al colegio",
-        "impacto": 4,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "24a32c43-dde2-4770-9ac5-0d1d333a57ab",
-        "categoria": "Disciplinario",
-        "titulo": "Falta de respeto",
-        "descripcion": "Comportamiento irrespetuoso hacia personal administrativo",
-        "impacto": 3,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "e94afaed-ab6d-4de2-a811-751c39888dbb",
-        "categoria": "Disciplinario",
-        "titulo": "Trampa en evaluación",
-        "descripcion": "Estudiante intenta hacer trampa durante examen",
-        "impacto": 4,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "ce73e9f5-50d3-4de7-bf63-c2d7d6aa38f2",
-        "categoria": "Disciplinario",
-        "titulo": "Incumplimiento de normas",
-        "descripcion": "Estudiante viola reglamento escolar repetidamente",
-        "impacto": 3,
-        "tiempo_estimado": 25
-      },
-      {
-        "id": "406c36ea-14f8-42f5-a678-049707f4c275",
-        "categoria": "Disciplinario",
-        "titulo": "Alteración del orden",
-        "descripcion": "Estudiante interrumpe clase constantemente",
-        "impacto": 3,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "8eb02ebc-1fc5-4de6-96b3-574eee995516",
-        "categoria": "Disciplinario",
-        "titulo": "Vandalismo",
-        "descripcion": "Grafitis o daños a paredes y propiedades escolares",
-        "impacto": 4,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "9f8632ba-22e1-4e49-8b52-5d2dc3881758",
-        "categoria": "Disciplinario",
-        "titulo": "Tenencia de sustancias",
-        "descripcion": "Estudiante posee alcohol, tabaco o drogas en institución",
-        "impacto": 5,
-        "tiempo_estimado": 45
-      },
-      {
-        "id": "90fbffd4-b0d9-43eb-a254-3313cd2eabe4",
-        "categoria": "Disciplinario",
-        "titulo": "Amenazas",
-        "descripcion": "Comunicación intimidatoria hacia compañeros o docentes",
-        "impacto": 5,
-        "tiempo_estimado": 35
-      },
-      {
-        "id": "d36615f5-a73f-4e65-a63a-7396ceaf84a1",
-        "categoria": "Disciplinario",
-        "titulo": "Extorsión",
-        "descripcion": "Solicitud de dinero o bienes mediante coerción",
-        "impacto": 5,
-        "tiempo_estimado": 40
-      },
-      {
-        "id": "05c33a3c-2efc-483c-97bd-c6a3fcfbcfc9",
-        "categoria": "Disciplinario",
-        "titulo": "Robo",
-        "descripcion": "Hurto de pertenencias ajenas dentro de la institución",
-        "impacto": 4,
-        "tiempo_estimado": 35
-      },
-      {
-        "id": "6c6ba577-6ff6-4265-b921-3d94f09de8cf",
-        "categoria": "Disciplinario",
-        "titulo": "Discriminación activa",
-        "descripcion": "Acciones deliberadas para marginar por condición particular",
-        "impacto": 4,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "a7fb2394-f61f-44f1-a301-a2e1e9c63eee",
-        "categoria": "Disciplinario",
-        "titulo": "Incitación a la violencia",
-        "descripcion": "Promoción de conductas agresivas entre estudiantes",
-        "impacto": 5,
-        "tiempo_estimado": 35
-      },
-      {
-        "id": "8b6dcea3-0d0e-43bf-bd11-069064483d54",
-        "categoria": "Disciplinario",
-        "titulo": "Fuga escolar",
-        "descripcion": "Abandono reiterado de clases sin autorización",
-        "impacto": 4,
-        "tiempo_estimado": 30
-      },
-      {
-        "id": "e954c4e4-6533-49f3-a5b8-f4420a5751fe",
-        "categoria": "Disciplinario",
-        "titulo": "Comportamiento ejemplar",
-        "descripcion": "Estudiante demuestra conducta modelo consistentemente",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "d3f5dafd-0293-4929-8c7c-56b4d4c22105",
-        "categoria": "Disciplinario",
-        "titulo": "Autorregulación",
-        "descripcion": "Estudiante corrige conducta inapropiada sin intervención externa",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      }
-    ],
-    "Normalidad": [
-      {
-        "id": "2e290785-955a-4a22-8ca1-86f2ee555603",
-        "categoria": "Normalidad",
-        "titulo": "Actividad programada exitosa",
-        "descripcion": "La actividad pedagógica planificada se desarrolló sin contratiempos ni interrupciones",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "30327812-8127-4a77-8271-609010a475fa",
-        "categoria": "Normalidad",
-        "titulo": "Clase según cronograma",
-        "descripcion": "La sesión académica se ejecutó completamente según lo programado en el plan de estudios",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "9f57340f-994f-4bc6-b772-b26d164b050e",
-        "categoria": "Normalidad",
-        "titulo": "Evaluación sin incidentes",
-        "descripcion": "El examen o prueba se realizó en tiempo y forma sin novedades que afectaran el proceso",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "dd001aad-a929-42f4-bbf6-09f1dae992eb",
-        "categoria": "Normalidad",
-        "titulo": "Taller cumplido exitosamente",
-        "descripcion": "La actividad práctica o taller programado se completó en su totalidad sin dificultades",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "7eaaaab1-179d-48b2-97cc-9f5eadbff26b",
-        "categoria": "Normalidad",
-        "titulo": "Rutina escolar establecida",
-        "descripcion": "Todas las actividades del día se desarrollaron según la rutina establecida sin alteraciones",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "03f10731-ad42-4c5e-8988-baed527c1393",
-        "categoria": "Normalidad",
-        "titulo": "Llegada puntual",
-        "descripcion": "Estudiantes ingresan a clase a la hora programada sin retrasos",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "31842010-f90c-488b-8f57-1bac3cc465e1",
-        "categoria": "Normalidad",
-        "titulo": "Saludo matutino",
-        "descripcion": "Docente recibe estudiantes con protocolo de bienvenida establecido",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "71a9b137-8e5e-437d-a927-73e7cb6cdce0",
-        "categoria": "Normalidad",
-        "titulo": "Recreo ordenado",
-        "descripcion": "Estudiantes disfrutan tiempo libre sin incidentes ni conflictos",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "334297b0-cc76-4345-b29f-bde4bf8af1da",
-        "categoria": "Normalidad",
-        "titulo": "Entrega de tareas",
-        "descripcion": "Alumnos presentan trabajos asignados correctamente y a tiempo",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "9749c3bc-fed5-4722-8889-ed8ee0a2d7eb",
-        "categoria": "Normalidad",
-        "titulo": "Asistencia regular",
-        "descripcion": "Control de asistencia sin novedades ni ausencias",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "f46dc570-cbce-498c-9c3e-52eb13064613",
-        "categoria": "Normalidad",
-        "titulo": "Participación activa",
-        "descripcion": "Estudiantes responden preguntas y participan voluntariamente en clase",
-        "impacto": 1,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "918373c9-57cf-4d8a-89a9-795c59727084",
-        "categoria": "Normalidad",
-        "titulo": "Transición entre clases",
-        "descripcion": "Cambio de asignatura sin contratiempos ni demoras",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "4e6e2773-3042-47aa-9170-91ae2dcec40b",
-        "categoria": "Normalidad",
-        "titulo": "Recolección de materiales",
-        "descripcion": "Estudiantes devuelven recursos didácticos correctamente",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "280fcfc0-941c-48c9-941e-e196d5d1de94",
-        "categoria": "Normalidad",
-        "titulo": "Formación ordenada",
-        "descripcion": "Estudiantes se alinean para actividades sin problemas",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "11618f20-1c80-4bd5-919f-e62e201ca95d",
-        "categoria": "Normalidad",
-        "titulo": "Escucha atenta",
-        "descripcion": "Alumnos prestan atención durante explicaciones del docente",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "f2c80c8f-94c6-4435-84a5-a2dd0b1c62f0",
-        "categoria": "Normalidad",
-        "titulo": "Colaboración grupal",
-        "descripcion": "Trabajo en equipo desarrollado satisfactoriamente sin conflictos",
-        "impacto": 1,
-        "tiempo_estimado": 20
-      },
-      {
-        "id": "cb49ca0b-b0b8-4269-a2f2-b840710a7a7b",
-        "categoria": "Normalidad",
-        "titulo": "Respeto por turnos",
-        "descripcion": "Estudiantes esperan su turno para hablar o participar",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "64af7a36-fc2c-4b2b-ace1-ed4bf2dfe60b",
-        "categoria": "Normalidad",
-        "titulo": "Cuidado de útiles",
-        "descripcion": "Alumnos mantienen materiales personales y escolares en buen estado",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "4c76de49-3c1e-427f-a3be-23a69bbecd9b",
-        "categoria": "Normalidad",
-        "titulo": "Seguimiento de instrucciones",
-        "descripcion": "Estudiantes ejecutan tareas según indicaciones dadas",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "91195e06-4f36-40df-9a39-583989954b9e",
-        "categoria": "Normalidad",
-        "titulo": "Despedida diaria",
-        "descripcion": "Cierre de jornada con protocolo establecido y ordenado",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "9008632d-91ca-46f5-9bcd-fff7a737a4f1",
-        "categoria": "Normalidad",
-        "titulo": "Organización personal",
-        "descripcion": "Estudiantes mantienen pupitres y espacios personales ordenados",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "659e6b26-6cdf-4999-98be-2ee7a2c1491e",
-        "categoria": "Normalidad",
-        "titulo": "Compartir materiales",
-        "descripcion": "Alumnos colaboran prestando útiles escolares cuando es necesario",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "3f6399a2-6e89-4e47-91de-0ca96d2ee019",
-        "categoria": "Normalidad",
-        "titulo": "Silencio en biblioteca",
-        "descripcion": "Estudiantes respetan normas de espacio de estudio",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "b0dc236c-3e14-4459-9e47-0a6a376e4a61",
-        "categoria": "Normalidad",
-        "titulo": "Ayuda voluntaria",
-        "descripcion": "Alumnos colaboran espontáneamente con limpieza o organización",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "eb1c9eaa-3768-4487-94b6-4cd1225e072c",
-        "categoria": "Normalidad",
-        "titulo": "Celebración de logros",
-        "descripcion": "Reconocimiento positivo de avances académicos o personales",
-        "impacto": 1,
-        "tiempo_estimado": 15
-      },
-      {
-        "id": "df3a2f17-5972-4d2a-bdd8-b6c8fcc4760b",
-        "categoria": "Normalidad",
-        "titulo": "Puntualidad docente",
-        "descripcion": "Profesor inicia clase en horario establecido",
-        "impacto": 1,
-        "tiempo_estimado": 5
-      },
-      {
-        "id": "6c776d0e-0826-4a0f-a7ac-2dbbb66a918f",
-        "categoria": "Normalidad",
-        "titulo": "Ambiente positivo",
-        "descripcion": "Aula con clima emocional favorable para el aprendizaje",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "c3e1866d-f4f3-43a5-b162-babcedfb71f8",
-        "categoria": "Normalidad",
-        "titulo": "Resolución autónoma",
-        "descripcion": "Estudiantes solucionan pequeños problemas sin ayuda adulta",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "d2bfabb9-e02f-4c03-bec9-5e5f302ab81f",
-        "categoria": "Normalidad",
-        "titulo": "Motivación evidente",
-        "descripcion": "Estudiantes muestran interés genuino por aprender",
-        "impacto": 1,
-        "tiempo_estimado": 10
-      },
-      {
-        "id": "f63d3e97-336e-4e1d-afeb-e57d392130c9",
-        "categoria": "Normalidad",
-        "titulo": "Comunidad cohesionada",
-        "descripcion": "Grupo clase demuestra sentido de pertenencia y apoyo mutuo",
-        "impacto": 1,
-        "tiempo_estimado": 15
-      }
-    ]
-  },
-  "metadata": {
-    "total_situaciones": 215,
-    "categorias": [
-      "Administrativo",
-      "Emergencia",
-      "Académico",
-      "Convivencia",
-      "Infraestructura",
-      "Salud",
-      "Tecnológico",
-      "Comunicación",
-      "Disciplinario",
-      "Normalidad"
-    ],
-    "version": "3.0.0",
-    "contexto": "Bachillerato Colombiano - MEN - Lineamientos Curriculares",
-    "fecha_generacion": "2026-02-05 08:58:01",
-    "region": "Eje Cafetero - Colombia"
-  }
+  "CÁTEDRA DE LA PAZ": [
+    "Registro en el cuaderno de conflictos observados durante la semana",
+    "Elaboración de un 'mapa de paz' del aula en el tablero con aportes de todos",
+    "Lluvia de ideas en el tablero sobre formas de resolver peleas sin violencia",
+    "Redacción de una carta de perdón o reconciliación en el cuaderno personal",
+    "Dibujo en el cuaderno de una situación de conflicto y su solución pacífica",
+    "Socialización en parejas de experiencias personales de resolución de conflictos",
+    "Creación colectiva de un 'pacto de convivencia' escrito en cartelera del aula",
+    "Role-play en tríos: un mediador y dos en conflicto frente al grupo",
+    "Registro en el cuaderno de frases de paz de líderes mundiales",
+    "Visualización en la TV de cortometrajes sobre empatía y discusión grupal",
+    "Elaboración de un 'semáforo emocional' en el cuaderno para identificar estados de ánimo",
+    "Intercambio de cuadernos para escribir un mensaje positivo al compañero",
+    "Lectura en voz alta de cuentos sobre tolerancia desde el proyector",
+    "Creación de un 'rincón de la calma' con materiales del salón (cojines, carteles)",
+    "Ejercicio de escucha activa: uno habla 2 minutos, otro escucha sin interrumpir",
+    "Registro en el cuaderno de compromisos personales para mejorar la convivencia",
+    "Dinámica del círculo: cada estudiante comparte una cualidad positiva del compañero a su derecha",
+    "Elaboración de un mural colaborativo sobre 'Cómo quiero mi aula' en papelógrafo",
+    "Análisis de noticias sobre conflictos actuales proyectadas en TV y propuestas de solución",
+    "Juego de mesa creado por los estudiantes sobre toma de decisiones pacíficas",
+    "Escritura de un diario emocional semanal en el cuaderno con reflexiones personales",
+    "Creación de un 'banco de soluciones' en el tablero con ideas para conflictos comunes",
+    "Dramatización en grupos de situaciones cotidianas del aula y sus resoluciones",
+    "Registro fotográfico con celular de momentos de convivencia positiva para la cartelera",
+    "Elaboración de un decálogo de la paz escrito colectivamente en el tablero",
+    "Intercambio de 'tarjetas de agradecimiento' escritas a mano entre compañeros",
+    "Visualización de testimonios de víctimas del conflicto armado colombiano en YouTube",
+    "Creación de un 'termómetro de emociones' en el cuaderno para autoevaluación diaria",
+    "Debate guiado sobre justicia restaurativa vs. justicia punitiva",
+    "Elaboración de un plan de acción para un problema real del salón, escrito en el cuaderno",
+    "Juego de roles: simulación de un consejo de convivencia escolar",
+    "Registro en el cuaderno de acuerdos alcanzados en asambleas de grupo",
+    "Creación de un podcast grupal grabado con celular sobre experiencias de perdón",
+    "Lectura compartida de la Constitución colombiana sobre derechos y deberes",
+    "Elaboración de un 'kit de primeros auxilios emocionales' con frases del cuaderno"
+  ],
+  "CIENCIAS NATURALES Y EDUCACIÓN AMBIENTAL": [
+    "Registro en el cuaderno de observaciones diarias del clima durante un mes",
+    "Dibujo detallado en el cuaderno de plantas del patio escolar con sus nombres",
+    "Creación de un herbario con hojas recolectadas y pegadas en el cuaderno",
+    "Elaboración de un ciclo del agua en el tablero con participación de todo el grupo",
+    "Experimento en parejas: germinación de semillas en algodón y registro diario en el cuaderno",
+    "Clasificación de animales del entorno en el tablero según su hábitat",
+    "Visualización en la TV de documentales sobre ecosistemas colombianos y toma de apuntes",
+    "Construcción de una maqueta de ecosistema con materiales reciclados del salón",
+    "Registro en el cuaderno de la cadena alimentaria de un animal local",
+    "Búsqueda en internet con computadores sobre especies en peligro y presentación en diapositivas",
+    "Elaboración de un mapa conceptual en el cuaderno sobre los reinos de la naturaleza",
+    "Experimento grupal: separación de mezclas (agua-arena, agua-aceite) y registro en el cuaderno",
+    "Creación de un 'diario del científico' en el cuaderno con hipótesis y conclusiones",
+    "Observación con lupa de insectos del patio y dibujo en el cuaderno",
+    "Clasificación en el tablero de residuos según su tipo (orgánico, plástico, papel)",
+    "Elaboración de compostera escolar y registro semanal de cambios en el cuaderno",
+    "Presentación en PowerPoint por grupos sobre un ecosistema colombiano",
+    "Juego de memoria creado por estudiantes con imágenes de animales y sus nombres",
+    "Registro en el cuaderno de las partes de una planta con dibujos etiquetados",
+    "Experimento: fotosíntesis observando cambios en hojas y registro fotográfico",
+    "Creación de un mural en papelógrafo sobre la importancia de los bosques",
+    "Búsqueda en enciclopedias del rincón de lectura sobre temas naturales",
+    "Elaboración de un cuadro comparativo en el cuaderno entre animales vertebrados e invertebrados",
+    "Visualización de microorganismos con microscopio y dibujo en el cuaderno",
+    "Creación de un 'libro viajero' sobre cuidado del ambiente que pasa por todos los cuadernos",
+    "Registro en el cuaderno del consumo de agua y energía en el hogar durante una semana",
+    "Construcción de un modelo del sistema solar con materiales del salón",
+    "Elaboración de un periódico mural sobre contaminación local con recortes y dibujos",
+    "Experimento en tríos: estados del agua (sólido, líquido, gaseoso) y registro en el cuaderno",
+    "Presentación oral con apoyo del tablero sobre una especie del Eje Cafetero",
+    "Creación de un 'diccionario ilustrado' de términos científicos en el cuaderno",
+    "Juego de roles: cadena alimentaria representada por estudiantes en el salón",
+    "Elaboración de un plan de acción ambiental para la institución escrito en el cuaderno",
+    "Búsqueda en Google Earth de áreas naturales protegidas y captura de pantalla en el cuaderno digital",
+    "Registro de la biodiversidad del patio escolar en una tabla del cuaderno con conteos"
+  ],
+  "CIENCIAS SOCIALES (HISTORIA, GEOGRAFÍA Y": [
+    "Elaboración de una línea de tiempo histórica de Colombia en el cuaderno con dibujos",
+    "Localización en el mapa del salón de departamentos y capitales colombianas",
+    "Registro en el cuaderno de entrevistas a abuelos sobre cómo era la vida antes",
+    "Creación de un álbum de fotos familiares con descripciones escritas en el cuaderno",
+    "Dibujo del mapa de Colombia en el cuaderno con sus regiones naturales coloreadas",
+    "Presentación en PowerPoint sobre un personaje histórico colombiano por grupos",
+    "Elaboración de un árbol genealógico familiar en el cuaderno con fotos o dibujos",
+    "Búsqueda en Google Maps del municipio y captura de imagen en el cuaderno digital",
+    "Creación de un 'pasaporte cultural' en el cuaderno con sellos de cada región estudiada",
+    "Dramatización en grupos de un hecho histórico importante frente al salón",
+    "Elaboración de un mapa conceptual en el cuaderno sobre las civilizaciones precolombinas",
+    "Registro en el cuaderno de productos típicos de cada región colombiana con dibujos",
+    "Creación de un periódico histórico sobre la Independencia con titulares en el cuaderno",
+    "Localización en el atlas del salón de países de América del Sur y registro en el cuaderno",
+    "Elaboración de un 'diccionario de términos sociales' en el cuaderno con definiciones propias",
+    "Presentación oral con apoyo del tablero sobre un departamento colombiano",
+    "Creación de un collage con recortes de revistas sobre diversidad cultural en el cuaderno",
+    "Registro en el cuaderno de costumbres y tradiciones de la región cafetera",
+    "Elaboración de un cuestionario en el cuaderno para entrevistar a adultos mayores",
+    "Visualización en la TV de documentales históricos y toma de apuntes en el cuaderno",
+    "Creación de un 'museo de aula' con objetos antiguos traídos por estudiantes",
+    "Elaboración de un mapa mental en el cuaderno sobre los tres poderes del Estado",
+    "Juego de mesa creado por estudiantes sobre geografía colombiana",
+    "Registro en el cuaderno de derechos y deberes del niño colombiano",
+    "Creación de un 'diario de viaje' ficticio por Colombia en el cuaderno con descripciones",
+    "Elaboración de un cuadro comparativo en el cuaderno entre pasado y presente",
+    "Presentación en tríos sobre un héroe de la independencia con apoyo de diapositivas",
+    "Creación de un 'libro de firmas' donde cada compañero escribe una cualidad del país",
+    "Registro en el cuaderno de símbolos patrios con dibujos y explicaciones",
+    "Elaboración de un planisferio en el cuaderno con continentes y océanos etiquetados",
+    "Búsqueda en internet sobre patrimonio cultural colombiano y presentación en el tablero",
+    "Creación de un 'testigo viajero' que pasa de cuaderno en cuaderno con reflexiones históricas",
+    "Elaboración de un cuadro sinóptico en el cuaderno sobre las ramas del gobierno",
+    "Registro fotográfico con celular de lugares históricos del municipio para el cuaderno digital",
+    "Creación de un 'carnet de ciudadano' en el cuaderno con compromisos cívicos"
+  ],
+  "DIRECCIÓN DE GRUPO": [
+    "Registro en el cuaderno de metas personales y académicas para el periodo",
+    "Elaboración de un 'diario de emociones' diario en el cuaderno con dibujos o escritura",
+    "Círculo de la palabra: cada estudiante comparte algo bueno del día frente al grupo",
+    "Creación de un 'rincón de los logros' en el salón con trabajos destacados",
+    "Registro en el cuaderno de fortalezas y áreas de mejora personales",
+    "Juego de presentación: 'Yo soy...' donde cada estudiante se describe frente al grupo",
+    "Elaboración de un 'contrato de convivencia' firmado por todos en el cuaderno",
+    "Dinámica del espejo: en parejas, uno imita las emociones del otro",
+    "Creación de un 'álbum de reconocimientos' donde compañeros escriben cualidades positivas",
+    "Registro en el cuaderno de situaciones estresantes y estrategias de afrontamiento",
+    "Ejercicio de respiración guiada con música desde el parlante del salón",
+    "Elaboración de un 'mapa de apoyos' en el cuaderno: ¿a quién acudo cuando necesito ayuda?",
+    "Juego cooperativo en el patio: construcción de una torre humana en grupo",
+    "Creación de un 'banco de abrazos' simbólico en el salón con tarjetas de solicitud",
+    "Registro en el cuaderno de gratitudes diarias (3 cosas buenas del día)",
+    "Dinámica de confianza: caminar con ojos vendados guiado por un compañero",
+    "Elaboración de un 'kit de supervivencia emocional' en el cuaderno con frases motivadoras",
+    "Círculo de retroalimentación: cada estudiante recibe comentarios positivos de tres compañeros",
+    "Creación de un 'termómetro del aula' en el tablero para medir el clima emocional grupal",
+    "Registro en el cuaderno de sueños y aspiraciones personales con dibujos",
+    "Juego de roles: simulación de situaciones sociales difíciles y sus soluciones",
+    "Elaboración de un 'diccionario de emociones' en el cuaderno con caras y definiciones",
+    "Ejercicio de escucha activa: entrevista en parejas sobre intereses personales",
+    "Creación de un 'mural de los sueños' en papelógrafo con aportes de todos",
+    "Registro en el cuaderno de compromisos semanales de mejora personal",
+    "Dinámica del ovillo: lanzar una pelota de lana mientras se dice algo positivo",
+    "Elaboración de un 'plan de vida' en el cuaderno con metas a corto y largo plazo",
+    "Juego de integración: 'Busco a alguien que...' con tarjetas para moverse por el salón",
+    "Creación de un 'rincón de la calma' con cojines y materiales relajantes en el aula",
+    "Registro en el cuaderno de estrategias para manejar la ansiedad antes de evaluaciones",
+    "Ejercicio de visualización: cerrar ojos y imaginar un lugar seguro, luego dibujarlo",
+    "Elaboración de un 'carnet de buen compañero' con cualidades escritas en el cuaderno",
+    "Dinámica de equipos: resolver un rompecabezas gigante en grupo en el suelo del salón",
+    "Creación de un 'diario de grupo' donde cada día un estudiante escribe lo vivido",
+    "Registro en el cuaderno de aprendizajes obtenidos de errores o fracasos"
+  ],
+  "EDUCACIÓN ARTÍSTICA": [
+    "Elaboración de un autorretrato con témperas en hoja del cuaderno",
+    "Creación de un collage con recortes de revistas sobre un tema libre en el cuaderno",
+    "Dibujo libre diario durante 10 minutos al inicio de clase en el cuaderno",
+    "Plegado de origami siguiendo instrucciones proyectadas en la TV",
+    "Creación de un móvil con figuras geométricas colgadas del techo del salón",
+    "Pintura con dedos sobre papel en el cuaderno explorando texturas",
+    "Elaboración de un cómic de 4 viñetas sobre la vida escolar en el cuaderno",
+    "Construcción de instrumentos musicales con materiales reciclados del salón",
+    "Dibujo de la silueta de un compañero y decoración con patrones en el cuaderno",
+    "Creación de un mural colectivo en papelógrafo sobre la paz",
+    "Pintura con esponjas creando texturas en hojas del cuaderno",
+    "Elaboración de un 'libro de artista' con técnicas mixtas en el cuaderno",
+    "Modelado con plastilina de animales del entorno y fotografía para el cuaderno digital",
+    "Creación de un mandala personal con compás y colores en el cuaderno",
+    "Dibujo ciego: sin mirar el papel, dibujar un objeto y luego colorear",
+    "Elaboración de un exlibris (sello personal) para el cuaderno con sellos de goma",
+    "Pintura con salpicaduras (splatter) sobre papel en el cuaderno explorando el azar",
+    "Creación de una marioneta con calcetines viejos y presentación al grupo",
+    "Dibujo de memoria: observar un objeto 1 minuto y luego dibujarlo en el cuaderno",
+    "Elaboración de un 'diccionario visual' de emociones con caras en el cuaderno",
+    "Pintura con ceras y agua creando efectos de resistencia en el cuaderno",
+    "Creación de un móvil con siluetas de la fauna local colgado del techo",
+    "Dibujo con tiza sobre papel negro creando contrastes en el cuaderno",
+    "Elaboración de un 'cuaderno de texturas' recolectando materiales del entorno",
+    "Pintura con rodillos de cocina creando patrones repetitivos en el cuaderno",
+    "Creación de un títere de sombras con cartulina y presentación con linterna",
+    "Dibujo de observación directa de un objeto del salón (planta, silla) en el cuaderno",
+    "Elaboración de un 'libro de los colores' clasificando tonos en el cuaderno",
+    "Pintura con estampados de hojas y vegetales en el cuaderno",
+    "Creación de una instalación temporal con sillas del salón y presentación al grupo",
+    "Dibujo colaborativo: cada estudiante agrega un elemento a un mural en el tablero",
+    "Elaboración de un 'cuaderno de inspiración' con recortes y dibujos personales",
+    "Pintura con spray sobre plantillas (stencils) hechas por los estudiantes",
+    "Creación de un 'museo de aula' rotativo con las mejores obras en las paredes",
+    "Dibujo de un sueño o fantasía personal con técnicas mixtas en el cuaderno"
+  ],
+  "EDUCACIÓN FÍSICA, RECREACIÓN Y DEPORTES": [
+    "Registro en el cuaderno de rutinas de calentamiento aprendidas",
+    "Elaboración de un 'diario de actividad física' semanal en el cuaderno con dibujos",
+    "Juego de relevos en el patio con equipos formados por sorteo en el salón",
+    "Creación de un circuito de ejercicios con estaciones en el patio y registro en el cuaderno",
+    "Práctica de estiramientos guiados con música desde el parlante del salón",
+    "Juego tradicional 'Cazadores y venados' en el patio con roles rotativos",
+    "Elaboración de un cartel en el cuaderno sobre beneficios del ejercicio",
+    "Práctica de coordinación con pelotas de diferentes tamaños en el patio",
+    "Creación de una coreografía grupal en el salón con música del parlante",
+    "Juego de 'Luche libre' con reglas acordadas y turnos en el patio",
+    "Registro en el cuaderno de juegos tradicionales de sus abuelos",
+    "Práctica de equilibrio caminando sobre una línea imaginaria en el salón",
+    "Elaboración de un 'diccionario de movimientos' con dibujos en el cuaderno",
+    "Juego de 'Policías y ladrones' con zonas seguras delimitadas en el patio",
+    "Práctica de saltos en diferentes direcciones y registro en el cuaderno",
+    "Creación de un 'libro de juegos' con instrucciones escritas en el cuaderno",
+    "Juego de 'Escondite' con conteo en voz alta desde el árbol del patio",
+    "Práctica de lanzamiento a un blanco dibujado en el piso del patio",
+    "Elaboración de un plan de actividad física personal en el cuaderno",
+    "Juego de 'Cuerda' con equipos alternando roles en el patio",
+    "Práctica de giros y vueltas con seguimiento de movimientos en el cuaderno",
+    "Creación de un 'carnet deportivo' con logros alcanzados en el cuaderno",
+    "Juego de 'Balón prisionero' con reglas explicadas en el tablero",
+    "Práctica de desplazamientos (caminar, correr, saltar) y dibujo en el cuaderno",
+    "Elaboración de un mural sobre deportes olímpicos en papelógrafo",
+    "Juego de 'Trompo' con instrucciones proyectadas en la TV",
+    "Práctica de posturas de yoga con imágenes del tablero como guía",
+    "Creación de un 'diario de sensaciones' después de la actividad física en el cuaderno",
+    "Juego de 'Rayuela' dibujada con tiza en el patio y registro de puntajes",
+    "Práctica de coordinación óculo-manual con pelotas de trapo en el salón",
+    "Elaboración de un cuadro comparativo en el cuaderno entre deportes individuales y colectivos",
+    "Juego de 'Bolos' con botellas de plástico en el patio",
+    "Práctica de respiración diafragmática con seguimiento en el cuaderno",
+    "Creación de un 'plan de juego' para el recreo escrito en el cuaderno",
+    "Juego de 'La silla musical' con sillas del salón y música del parlante"
+  ],
+  "EDUCACIÓN RELIGIOSA, ÉTICA Y V. HUMANOS": [
+    "Registro en el cuaderno de valores familiares identificados en casa",
+    "Elaboración de un 'árbol de valores' en el cuaderno con raíces y frutos dibujados",
+    "Lectura compartida de textos sagrados proyectados en la TV y reflexión escrita",
+    "Creación de un 'diario de gratitud' diario en el cuaderno con tres agradecimientos",
+    "Dibujo en el cuaderno de una situación donde se practicó la honestidad",
+    "Discusión en círculo sobre dilemas morales presentados en el tablero",
+    "Elaboración de un 'código de honor personal' escrito en el cuaderno",
+    "Visualización en la TV de cortometrajes sobre solidaridad y debate grupal",
+    "Registro en el cuaderno de enseñanzas de sus abuelos sobre la vida",
+    "Creación de un 'mural de las buenas acciones' en papelógrafo con dibujos",
+    "Lectura en parejas de parábolas o cuentos con moraleja y registro en el cuaderno",
+    "Elaboración de un 'diccionario de virtudes' con definiciones propias en el cuaderno",
+    "Juego de roles: representación de situaciones éticas frente al grupo",
+    "Registro en el cuaderno de compromisos semanales de mejora personal",
+    "Creación de un 'collage de la felicidad' con recortes en el cuaderno",
+    "Discusión guiada sobre el respeto a las diferencias con apoyo del tablero",
+    "Elaboración de un 'plan de servicio' para ayudar en casa o la comunidad en el cuaderno",
+    "Visualización de obras de arte religioso en la TV y análisis en el cuaderno",
+    "Registro en el cuaderno de frases inspiradoras de líderes espirituales",
+    "Creación de un 'altar de la paz' simbólico en un rincón del salón",
+    "Lectura dramatizada de textos sobre fraternidad con participación de todos",
+    "Elaboración de un 'cuaderno de reflexiones' con preguntas existenciales",
+    "Juego de preguntas y respuestas sobre valores con tarjetas en el salón",
+    "Registro en el cuaderno de actos de bondad realizados durante la semana",
+    "Creación de un 'manifiesto ético del aula' escrito colectivamente en el tablero",
+    "Discusión sobre justicia y equidad con casos reales del entorno escolar",
+    "Elaboración de un 'libro de los sueños' sobre el mundo que quieren dejar en el cuaderno",
+    "Visualización de celebraciones religiosas diversas en la TV y comparación en el cuaderno",
+    "Registro en el cuaderno de tradiciones familiares y su significado",
+    "Creación de un 'rincón de la meditación' con música suave del parlante",
+    "Lectura silenciosa de textos sobre sabiduría ancestral y subrayado en el cuaderno",
+    "Elaboración de un 'testamento ético' con legados que quieren dejar en el cuaderno",
+    "Juego cooperativo: construcción de una torre con valores escritos en tarjetas",
+    "Registro en el cuaderno de aprendizajes de errores propios y ajenos",
+    "Creación de un 'certificado de bondad' para entregar a compañeros destacados"
+  ],
+  "EMPRENDIMIENTO": [
+    "Elaboración de un 'diario de ideas' en el cuaderno con problemas observados y posibles soluciones",
+    "Registro en el cuaderno de productos o servicios que ofrece su familia",
+    "Creación de un logo para un negocio imaginario dibujado en el cuaderno",
+    "Presentación en PowerPoint sobre un emprendimiento local visitado",
+    "Elaboración de un plan de negocio básico en el cuaderno con secciones",
+    "Juego de roles: simulación de una entrevista para conseguir financiación",
+    "Registro en el cuaderno de costos de materiales para un producto prototipo",
+    "Creación de un 'catálogo de productos' con dibujos y precios en el cuaderno",
+    "Presentación oral con apoyo del tablero sobre una idea de negocio",
+    "Elaboración de un cuestionario en el cuaderno para investigar necesidades del mercado",
+    "Registro fotográfico con celular de emprendimientos del municipio para el cuaderno digital",
+    "Creación de un 'mapa de aliados' en el cuaderno: ¿quiénes pueden ayudar?",
+    "Presentación en tríos sobre un caso de éxito emprendedor colombiano",
+    "Elaboración de un presupuesto simple en el cuaderno con ingresos y egresos",
+    "Registro en el cuaderno de fortalezas y debilidades personales como emprendedor",
+    "Creación de un 'pitch' de 60 segundos escrito y practicado en el cuaderno",
+    "Presentación con diapositivas sobre marketing digital básico",
+    "Elaboración de un 'diario de fracasos' en el cuaderno con aprendizajes obtenidos",
+    "Registro en el cuaderno de competidores y sus estrategias",
+    "Creación de un prototipo físico con materiales reciclados del salón",
+    "Presentación del prototipo al grupo con explicación de su funcionamiento",
+    "Elaboración de un plan de mercadeo simple en el cuaderno",
+    "Registro en el cuaderno de métricas de éxito para su emprendimiento",
+    "Creación de un 'tablero Kanban' en el cuaderno para organizar tareas",
+    "Presentación sobre crowdfunding y plataformas de financiación",
+    "Elaboración de un análisis FODA personal en el cuaderno",
+    "Registro en el cuaderno de contactos útiles para su proyecto",
+    "Creación de un 'nombre de marca' y eslogan para su negocio en el cuaderno",
+    "Presentación sobre propiedad intelectual y protección de ideas",
+    "Elaboración de un plan de expansión a futuro en el cuaderno",
+    "Registro en el cuaderno de lecciones aprendidas de emprendedores famosos",
+    "Creación de un 'video promocional' grabado con celular y editado",
+    "Presentación final del proyecto emprendedor ante un jurado simulado",
+    "Elaboración de un certificado de participación en el cuaderno",
+    "Registro en el cuaderno de próximos pasos para implementar su idea"
+  ],
+  "ESTADÍSTICA": [
+    "Registro en el cuaderno de datos personales de todos los compañeros (estatura, edad)",
+    "Elaboración de una tabla de frecuencias en el cuaderno con datos recolectados",
+    "Creación de un gráfico de barras a mano en el cuaderno sobre preferencias del grupo",
+    "Presentación en el tablero de resultados estadísticos con marcadores de colores",
+    "Elaboración de un pictograma en el cuaderno usando símbolos para representar datos",
+    "Registro en el cuaderno de encuestas realizadas a compañeros sobre temas de interés",
+    "Creación de un gráfico circular (torta) con compás en el cuaderno",
+    "Presentación en PowerPoint de análisis estadístico con gráficos digitales",
+    "Elaboración de un histograma en el cuaderno sobre rangos de datos",
+    "Registro en el cuaderno de cálculos de promedio, mediana y moda de datos del aula",
+    "Creación de un diagrama de tallo y hojas en el cuaderno para organizar datos",
+    "Presentación oral explicando los resultados de su análisis estadístico",
+    "Elaboración de un cuadro comparativo en el cuaderno entre diferentes tipos de gráficos",
+    "Registro en el cuaderno de interpretación de gráficos de periódicos o revistas",
+    "Creación de un 'diario estadístico' semanal con datos del entorno escolar",
+    "Presentación en tríos sobre un estudio estadístico famoso",
+    "Elaboración de un polígono de frecuencias en el cuaderno con regla y lápiz",
+    "Registro en el cuaderno de ventajas y desventajas de diferentes representaciones gráficas",
+    "Creación de un gráfico de líneas en el cuaderno mostrando cambios en el tiempo",
+    "Presentación sobre sesgos estadísticos y cómo evitarlos",
+    "Elaboración de un diagrama de dispersión en el cuaderno relacionando dos variables",
+    "Registro en el cuaderno de ejemplos de estadística en la vida cotidiana",
+    "Creación de un 'proyecto estadístico' completo desde la recolección hasta la presentación",
+    "Presentación con apoyo de Excel o Google Sheets mostrando gráficos digitales",
+    "Elaboración de un cuadro de contingencia en el cuaderno cruzando dos variables",
+    "Registro en el cuaderno de definiciones de términos estadísticos con ejemplos propios",
+    "Creación de un mapa conceptual en el cuaderno sobre conceptos estadísticos",
+    "Presentación sobre la importancia de la estadística en la toma de decisiones",
+    "Elaboración de un análisis de datos reales del municipio en el cuaderno",
+    "Registro en el cuaderno de errores comunes al interpretar estadísticas",
+    "Creación de un 'juego estadístico' con tarjetas para practicar conceptos",
+    "Presentación sobre estadística inferencial básica con ejemplos sencillos",
+    "Elaboración de un reporte final integrando todos los conceptos aprendidos",
+    "Registro en el cuaderno de aplicaciones de la estadística en diferentes profesiones",
+    "Creación de un 'diccionario estadístico ilustrado' en el cuaderno"
+  ],
+  "FILOSOFÍA Y CIENCIAS SOCIALES (CIENCIAS": [
+    "Registro en el cuaderno de preguntas filosóficas que surgen en su vida diaria",
+    "Elaboración de un 'diario de dudas existenciales' con reflexiones personales",
+    "Debate socrático en círculo sobre temas como justicia, libertad o felicidad",
+    "Creación de un mapa conceptual en el cuaderno sobre corrientes filosóficas",
+    "Presentación en el tablero de un filósofo y su aporte a la humanidad",
+    "Registro en el cuaderno de frases célebres de pensadores con su interpretación",
+    "Elaboración de un diálogo ficticio entre dos filósofos con posturas opuestas",
+    "Creación de un 'diccionario filosófico' en el cuaderno con términos y definiciones",
+    "Presentación en PowerPoint sobre un problema social actual y sus causas",
+    "Registro en el cuaderno de análisis de noticias desde una perspectiva crítica",
+    "Elaboración de un ensayo argumentativo en el cuaderno sobre un tema controversial",
+    "Creación de un periódico mural con editoriales sobre temas sociales",
+    "Presentación oral defendiendo una postura frente a un dilema ético",
+    "Registro en el cuaderno de entrevistas a adultos sobre su visión del mundo",
+    "Elaboración de un cuadro comparativo en el cuaderno entre diferentes ideologías",
+    "Creación de un 'manifiesto personal' sobre sus creencias y valores en el cuaderno",
+    "Presentación sobre movimientos sociales colombianos y su impacto",
+    "Registro en el cuaderno de reflexiones sobre la condición humana",
+    "Elaboración de un análisis crítico en el cuaderno de una película o documental",
+    "Creación de un 'círculo de lectura' donde cada estudiante aporta un texto",
+    "Presentación sobre derechos humanos y su aplicación en Colombia",
+    "Registro en el cuaderno de propuestas de solución a problemas sociales locales",
+    "Elaboración de un debate guiado con roles asignados sobre un tema polémico",
+    "Creación de un 'proyecto de investigación' sobre un problema social del entorno",
+    "Presentación con apoyo de videos sobre pensamiento crítico y falacias lógicas",
+    "Registro en el cuaderno de conexiones entre filosofía y otras ciencias",
+    "Elaboración de un mapa mental en el cuaderno sobre la historia de la filosofía",
+    "Creación de un 'club de debate' con temas preparados por los estudiantes",
+    "Presentación sobre ética profesional y su importancia en diferentes campos",
+    "Registro en el cuaderno de análisis de discursos políticos desde lo retórico",
+    "Elaboración de un ensayo sobre el sentido de la vida desde su perspectiva",
+    "Creación de un 'banco de preguntas' filosóficas para discutir en clase",
+    "Presentación sobre filosofía latinoamericana y su aporte al pensamiento mundial",
+    "Registro en el cuaderno de aplicaciones prácticas de la lógica en la vida diaria",
+    "Elaboración de un proyecto final integrando filosofía y ciencias sociales"
+  ],
+  "FÍSICA": [
+    "Registro en el cuaderno de observaciones sobre fenómenos físicos del entorno escolar",
+    "Elaboración de un 'diario de experimentos' con hipótesis, procedimiento y resultados",
+    "Realización de experimentos en parejas sobre fuerza y movimiento en el patio",
+    "Creación de gráficos en el cuaderno representando datos de experimentos",
+    "Presentación en el tablero de conclusiones de experimentos realizados",
+    "Registro en el cuaderno de dibujos explicativos de conceptos físicos",
+    "Elaboración de un mapa conceptual en el cuaderno sobre ramas de la física",
+    "Creación de maquetas con materiales reciclados para demostrar principios físicos",
+    "Presentación en PowerPoint sobre aplicaciones de la física en la vida cotidiana",
+    "Registro en el cuaderno de cálculos matemáticos relacionados con experimentos",
+    "Elaboración de un 'diccionario de términos físicos' con definiciones y ejemplos",
+    "Creación de un cómic en el cuaderno explicando un concepto físico de forma creativa",
+    "Presentación oral explicando un fenómeno físico observado en casa",
+    "Registro en el cuaderno de mediciones reales tomadas en el salón (longitudes, masas)",
+    "Elaboración de un informe de laboratorio completo en el cuaderno",
+    "Creación de un 'museo de física' con demostraciones en estaciones del salón",
+    "Presentación sobre físicos colombianos y sus aportes",
+    "Registro en el cuaderno de conexiones entre física y otras ciencias",
+    "Elaboración de un proyecto de investigación sobre un tema de interés físico",
+    "Creación de un video explicativo grabado con celular sobre un principio físico",
+    "Presentación con apoyo de simulaciones interactivas en la computadora",
+    "Registro en el cuaderno de aplicaciones de la física en la tecnología actual",
+    "Elaboración de un cuadro comparativo en el cuaderno entre diferentes teorías físicas",
+    "Creación de un 'juego de preguntas' sobre conceptos físicos para practicar",
+    "Presentación sobre la física en el deporte con ejemplos concretos",
+    "Registro en el cuaderno de experimentos caseros realizados en familia",
+    "Elaboración de un análisis de errores en experimentos realizados",
+    "Creación de un 'manual de seguridad' para el laboratorio de física en el cuaderno",
+    "Presentación sobre energía renovable y su importancia para Colombia",
+    "Registro en el cuaderno de propuestas de mejora para experimentos realizados",
+    "Elaboración de un ensayo sobre el impacto de la física en la sociedad",
+    "Creación de un 'portafolio de evidencias' con todos los trabajos del periodo",
+    "Presentación final integrando todos los conceptos aprendidos",
+    "Registro en el cuaderno de metas de aprendizaje para el próximo periodo",
+    "Elaboración de un certificado de participación en el cuaderno con logros alcanzados"
+  ],
+  "INGLÉS": [
+    "Registro en el cuaderno de vocabulario nuevo con dibujos y traducciones",
+    "Elaboración de un 'diario en inglés' semanal con frases simples sobre su vida",
+    "Práctica de pronunciación repitiendo frases de videos proyectados en la TV",
+    "Creación de flashcards con imágenes y palabras en inglés en el cuaderno",
+    "Presentación oral en inglés sobre un tema personal con apoyo de dibujos",
+    "Registro en el cuaderno de diálogos escritos entre dos personajes",
+    "Elaboración de un cómic en inglés con viñetas y globos de diálogo",
+    "Creación de un 'diccionario personal' en el cuaderno organizado por temas",
+    "Presentación en tríos de una canción en inglés con gestos y movimientos",
+    "Registro en el cuaderno de reglas gramaticales con ejemplos propios",
+    "Elaboración de un póster en inglés sobre un tema de interés con imágenes",
+    "Creación de un 'libro de lectura' con textos cortos y comprensión lectora",
+    "Presentación sobre una celebración típica de un país de habla inglesa",
+    "Registro en el cuaderno de frases útiles para situaciones cotidianas",
+    "Elaboración de un cuestionario en inglés para entrevistar a compañeros",
+    "Creación de un 'juego de mesa' en inglés con preguntas y respuestas",
+    "Presentación con títeres realizando un diálogo en inglés",
+    "Registro en el cuaderno de comparaciones entre inglés y español",
+    "Elaboración de un 'pasaporte cultural' con sellos de países estudiados",
+    "Creación de un video grabado con celular presentando algo en inglés",
+    "Presentación sobre un personaje famoso de habla inglesa",
+    "Registro en el cuaderno de rimas y trabalenguas en inglés practicados",
+    "Elaboración de un menú ficticio en inglés con dibujos de comidas",
+    "Creación de un 'periódico en inglés' con secciones de noticias, deportes, etc.",
+    "Presentación de una obra de teatro corta en inglés con vestuario simple",
+    "Registro en el cuaderno de expresiones idiomáticas con su significado",
+    "Elaboración de un mapa del mundo en el cuaderno señalando países de habla inglesa",
+    "Creación de un 'karaoke en inglés' con letras proyectadas en la TV",
+    "Presentación sobre diferencias entre inglés británico y americano",
+    "Registro en el cuaderno de metas de aprendizaje del idioma",
+    "Elaboración de un 'proyecto final' integrando vocabulario, gramática y pronunciación",
+    "Creación de un 'certificado de logros' en inglés con sus avances",
+    "Presentación de un 'tour virtual' por su casa o comunidad en inglés",
+    "Registro en el cuaderno de recursos para seguir aprendiendo inglés",
+    "Elaboración de un 'testimonio' en inglés sobre su experiencia en la clase"
+  ],
+  "LENGUA CASTELLANA": [
+    "Registro diario en el cuaderno de un diario personal con reflexiones y vivencias",
+    "Elaboración de un 'diccionario personal' en el cuaderno con palabras nuevas y significados",
+    "Lectura silenciosa de un cuento y subrayado de ideas principales en el cuaderno",
+    "Creación de un resumen escrito en el cuaderno después de leer un texto",
+    "Presentación oral de un libro leído con apoyo de dibujos en el tablero",
+    "Registro en el cuaderno de análisis de personajes de una novela leída",
+    "Elaboración de un mapa conceptual en el cuaderno sobre tipos de texto",
+    "Creación de un cuento original en el cuaderno con inicio, nudo y desenlace",
+    "Presentación en tríos de una poesía memorizada con expresión corporal",
+    "Registro en el cuaderno de reglas ortográficas con ejemplos propios",
+    "Elaboración de un periódico escolar en el cuaderno con diferentes secciones",
+    "Creación de un cómic en el cuaderno con globos de diálogo y onomatopeyas",
+    "Presentación sobre un autor colombiano con biografía y obras principales",
+    "Registro en el cuaderno de figuras literarias encontradas en textos leídos",
+    "Elaboración de un ensayo argumentativo en el cuaderno sobre un tema de interés",
+    "Creación de un 'álbum de poesía' en el cuaderno con poemas propios y ajenos",
+    "Presentación de una noticia actual con análisis de su estructura",
+    "Registro en el cuaderno de entrevistas realizadas a familiares o compañeros",
+    "Elaboración de un guion teatral en el cuaderno para representación en clase",
+    "Creación de un 'libro viajero' donde cada estudiante escribe un capítulo",
+    "Presentación sobre géneros literarios con ejemplos de cada uno",
+    "Registro en el cuaderno de análisis de propaganda y su lenguaje persuasivo",
+    "Elaboración de un debate escrito en el cuaderno sobre un tema controversial",
+    "Creación de un 'diccionario de modismos' regionales en el cuaderno",
+    "Presentación de un programa de radio ficticio con guion escrito en el cuaderno",
+    "Registro en el cuaderno de corrección de errores comunes en la escritura",
+    "Elaboración de un análisis literario en el cuaderno de un cuento completo",
+    "Creación de un 'blog escolar' ficticio con entradas escritas en el cuaderno",
+    "Presentación sobre la importancia de la lectura con testimonios personales",
+    "Registro en el cuaderno de recomendaciones de lectura para compañeros",
+    "Elaboración de un proyecto de investigación sobre un tema literario",
+    "Creación de un 'certificado de lectura' con libros leídos durante el periodo",
+    "Presentación final integrando lectura, escritura, oralidad y análisis",
+    "Registro en el cuaderno de metas de lectura para el próximo periodo",
+    "Elaboración de un 'legado literario' con sus mejores escritos del año"
+  ],
+  "MATEMÁTICAS": [
+    "Registro en el cuaderno de ejercicios diarios de operaciones básicas",
+    "Elaboración de un 'cuaderno de fórmulas' con explicaciones y ejemplos propios",
+    "Resolución de problemas matemáticos del tablero en el cuaderno con procedimientos",
+    "Creación de un juego matemático con tarjetas para practicar operaciones",
+    "Presentación en el tablero de la solución de un problema explicando el proceso",
+    "Registro en el cuaderno de dibujos geométricos con regla, compás y transportador",
+    "Elaboración de un mapa conceptual en el cuaderno sobre conceptos matemáticos",
+    "Creación de un 'diccionario matemático' con términos y definiciones ilustradas",
+    "Presentación en tríos sobre la historia de un concepto matemático",
+    "Registro en el cuaderno de cálculos de áreas y volúmenes de objetos del salón",
+    "Elaboración de gráficas en el cuaderno representando funciones matemáticas",
+    "Creación de un 'proyecto de presupuesto' personal o familiar en el cuaderno",
+    "Presentación sobre aplicaciones de las matemáticas en diferentes profesiones",
+    "Registro en el cuaderno de patrones y secuencias numéricas descubiertas",
+    "Elaboración de un análisis estadístico de datos recolectados en el aula",
+    "Creación de un 'cuaderno de errores' donde registra y corrige sus equivocaciones",
+    "Presentación con apoyo de GeoGebra o software matemático en la computadora",
+    "Registro en el cuaderno de conexiones entre matemáticas y otras áreas",
+    "Elaboración de un ensayo sobre la importancia de las matemáticas en la vida diaria",
+    "Creación de un 'juego de mesa matemático' con reglas y tablero diseñados",
+    "Presentación sobre matemáticos colombianos y sus aportes",
+    "Registro en el cuaderno de problemas matemáticos creados por ellos mismos",
+    "Elaboración de un 'manual de procedimientos' para resolver diferentes tipos de problemas",
+    "Creación de un video explicativo grabado con celular sobre un tema matemático",
+    "Presentación sobre matemáticas en la naturaleza con ejemplos del entorno",
+    "Registro en el cuaderno de estrategias de resolución de problemas",
+    "Elaboración de un proyecto de investigación sobre un tema matemático de interés",
+    "Creación de un 'cuaderno de retos' con problemas desafiantes resueltos",
+    "Presentación sobre el uso de las matemáticas en la tecnología",
+    "Registro en el cuaderno de aplicaciones prácticas de conceptos abstractos",
+    "Elaboración de un análisis de datos reales del municipio usando matemáticas",
+    "Creación de un 'certificado de logros matemáticos' con habilidades dominadas",
+    "Presentación final integrando todos los conceptos del periodo",
+    "Registro en el cuaderno de metas de aprendizaje para el próximo periodo",
+    "Elaboración de un 'legado matemático' con sus mejores trabajos del año"
+  ],
+  "PROYECTO Y EMPRENDIMIENTO": [
+    "Registro en el cuaderno de ideas de proyectos surgidas de necesidades observadas",
+    "Elaboración de un 'diario de proyecto' con avances, dificultades y soluciones",
+    "Creación de un diagrama de Gantt en el cuaderno para planificar etapas",
+    "Presentación en el tablero del avance del proyecto con gráficos de progreso",
+    "Registro en el cuaderno de reuniones de equipo con acuerdos y responsables",
+    "Elaboración de un presupuesto detallado en el cuaderno con costos y recursos",
+    "Creación de un prototipo físico con materiales reciclados del salón",
+    "Presentación en PowerPoint sobre el estado actual del proyecto",
+    "Registro en el cuaderno de feedback recibido de compañeros y docente",
+    "Elaboración de un plan de riesgos en el cuaderno con posibles problemas y soluciones",
+    "Creación de un 'mapa de stakeholders' en el cuaderno: ¿quiénes se ven afectados?",
+    "Presentación oral explicando la metodología utilizada en el proyecto",
+    "Registro en el cuaderno de lecciones aprendidas durante el proceso",
+    "Elaboración de un informe final completo en el cuaderno con todas las etapas",
+    "Creación de un video documental del proceso grabado con celular",
+    "Presentación ante un jurado simulado con preguntas y respuestas",
+    "Registro en el cuaderno de métricas de éxito y resultados alcanzados",
+    "Elaboración de un plan de sostenibilidad para el proyecto a futuro",
+    "Creación de un 'manual de usuario' si el proyecto es un producto o servicio",
+    "Presentación sobre el impacto social o ambiental del proyecto",
+    "Registro en el cuaderno de mejoras futuras o próximos pasos",
+    "Elaboración de un análisis FODA del proyecto en el cuaderno",
+    "Creación de un póster científico para feria de proyectos",
+    "Presentación en feria escolar con stand y demostración en vivo",
+    "Registro en el cuaderno de testimonios de usuarios o beneficiarios",
+    "Elaboración de un plan de escalabilidad si el proyecto tuviera éxito",
+    "Creación de un 'kit de replicación' para que otros puedan implementarlo",
+    "Presentación sobre aprendizajes interdisciplinarios obtenidos",
+    "Registro en el cuaderno de conexiones con los Objetivos de Desarrollo Sostenible",
+    "Elaboración de un certificado de participación en el proyecto",
+    "Creación de un 'banco de ideas' para futuros proyectos basados en esta experiencia",
+    "Presentación sobre trabajo en equipo y resolución de conflictos",
+    "Registro en el cuaderno de habilidades desarrolladas durante el proyecto",
+    "Elaboración de un 'legado del proyecto' con documentos y aprendizajes clave",
+    "Creación de una ceremonia de cierre con reconocimientos a todos los participantes"
+  ],
+  "QUÍMICA": [
+    "Registro en el cuaderno de observaciones de cambios químicos en experimentos",
+    "Elaboración de un 'diario de laboratorio' con hipótesis, materiales y resultados",
+    "Realización de experimentos en parejas sobre reacciones ácido-base en el salón",
+    "Creación de modelos moleculares con plastilina y palillos en el cuaderno",
+    "Presentación en el tablero de conclusiones de experimentos realizados",
+    "Registro en el cuaderno de dibujos de estructuras atómicas y moleculares",
+    "Elaboración de un mapa conceptual en el cuaderno sobre ramas de la química",
+    "Creación de un 'diccionario de términos químicos' con definiciones y ejemplos",
+    "Presentación en PowerPoint sobre aplicaciones de la química en la vida cotidiana",
+    "Registro en el cuaderno de ecuaciones químicas balanceadas de reacciones observadas",
+    "Elaboración de un informe de laboratorio completo en el cuaderno",
+    "Creación de un 'museo de química' con demostraciones en estaciones del salón",
+    "Presentación sobre químicos colombianos y sus aportes",
+    "Registro en el cuaderno de conexiones entre química y otras ciencias",
+    "Elaboración de un proyecto de investigación sobre un tema de interés químico",
+    "Creación de un video explicativo grabado con celular sobre un principio químico",
+    "Presentación con apoyo de simulaciones interactivas en la computadora",
+    "Registro en el cuaderno de aplicaciones de la química en la industria local",
+    "Elaboración de un cuadro comparativo en el cuaderno entre diferentes tipos de enlaces",
+    "Creación de un 'juego de preguntas' sobre conceptos químicos para practicar",
+    "Presentación sobre química ambiental y su importancia para el planeta",
+    "Registro en el cuaderno de experimentos caseros realizados en familia",
+    "Elaboración de un análisis de seguridad en el laboratorio escolar",
+    "Creación de un 'manual de primeros auxilios' para accidentes químicos en el cuaderno",
+    "Presentación sobre química en la alimentación y conservación de alimentos",
+    "Registro en el cuaderno de propiedades físicas y químicas de sustancias del entorno",
+    "Elaboración de un ensayo sobre el impacto de la química en la sociedad",
+    "Creación de un 'periódico mural' sobre noticias relacionadas con la química",
+    "Presentación sobre química verde y sostenibilidad ambiental",
+    "Registro en el cuaderno de propuestas de mejora para experimentos realizados",
+    "Elaboración de un proyecto sobre contaminación química local y soluciones",
+    "Creación de un 'portafolio de evidencias' con todos los trabajos del periodo",
+    "Presentación final integrando todos los conceptos aprendidos",
+    "Registro en el cuaderno de metas de aprendizaje para el próximo periodo",
+    "Elaboración de un certificado de participación en el cuaderno con logros alcanzados"
+  ],
+  "TECNOLOGÍA E INFORMÁTICA": [
+    "Registro en el cuaderno de apuntes sobre conceptos básicos de hardware y software",
+    "Elaboración de un diagrama en el cuaderno sobre las partes de un computador",
+    "Práctica en computadores del aula de procesador de texto con formato básico",
+    "Creación de una presentación en PowerPoint sobre un tema de interés personal",
+    "Presentación en el tablero explicando un concepto tecnológico con apoyo visual",
+    "Registro en el cuaderno de atajos de teclado aprendidos y practicados",
+    "Elaboración de una hoja de cálculo en Excel con fórmulas básicas",
+    "Creación de un blog ficticio en el cuaderno con entradas y comentarios",
+    "Presentación sobre seguridad informática y buenas prácticas en internet",
+    "Registro en el cuaderno de contraseñas seguras creadas con diferentes métodos",
+    "Elaboración de un mapa conceptual en el cuaderno sobre redes de computadores",
+    "Creación de un dibujo digital usando Paint o software similar en la computadora",
+    "Presentación en tríos sobre un dispositivo tecnológico y su funcionamiento",
+    "Registro en el cuaderno de ventajas y desventajas de las redes sociales",
+    "Elaboración de un ensayo en Word sobre el impacto de la tecnología en la sociedad",
+    "Creación de un video corto editado con software básico en la computadora",
+    "Presentación sobre ciudadanía digital y derechos en internet",
+    "Registro en el cuaderno de recursos en línea para seguir aprendiendo",
+    "Elaboración de un proyecto de programación básica con Scratch o similar",
+    "Creación de un sitio web simple usando HTML básico en la computadora",
+    "Presentación sobre inteligencia artificial y sus aplicaciones actuales",
+    "Registro en el cuaderno de algoritmos escritos para resolver problemas cotidianos",
+    "Elaboración de un diagrama de flujo en el cuaderno para un proceso escolar",
+    "Creación de un podcast grabado con celular sobre un tema tecnológico",
+    "Presentación sobre ciberacoso y cómo prevenirlo",
+    "Registro en el cuaderno de buenas prácticas de ergonomía al usar computador",
+    "Elaboración de un análisis comparativo en el cuaderno entre diferentes sistemas operativos",
+    "Creación de un 'manual de usuario' para un software estudiado",
+    "Presentación sobre privacidad de datos y protección de información personal",
+    "Registro en el cuaderno de proyectos tecnológicos que podrían ayudar a su comunidad",
+    "Elaboración de un prototipo de app o sitio web dibujado en el cuaderno",
+    "Creación de un video tutorial grabado con celular explicando algo aprendido",
+    "Presentación final integrando todos los conceptos del periodo",
+    "Registro en el cuaderno de metas de aprendizaje tecnológico para el futuro",
+    "Elaboración de un 'portafolio digital' con evidencias de todos sus trabajos"
+  ],
+  "ÉTICA PROFESIONAL": [
+    "Registro en el cuaderno de valores profesionales identificados en su familia",
+    "Elaboración de un 'código de ética personal' escrito en el cuaderno",
+    "Análisis en grupos de casos éticos profesionales presentados en el tablero",
+    "Creación de un mapa conceptual en el cuaderno sobre principios éticos universales",
+    "Presentación oral sobre un dilema ético profesional y posibles soluciones",
+    "Registro en el cuaderno de entrevistas a trabajadores sobre ética laboral",
+    "Elaboración de un ensayo en el cuaderno sobre responsabilidad social empresarial",
+    "Creación de un 'diccionario de términos éticos' con definiciones propias",
+    "Presentación en PowerPoint sobre casos de corrupción y sus consecuencias",
+    "Registro en el cuaderno de compromisos éticos personales para su futuro profesional",
+    "Elaboración de un análisis en el cuaderno sobre ética en las redes sociales",
+    "Creación de un cómic en el cuaderno ilustrando un dilema ético",
+    "Presentación sobre derechos laborales básicos y su importancia",
+    "Registro en el cuaderno de situaciones donde observó falta de ética y sus consecuencias",
+    "Elaboración de un plan de acción ética para situaciones difíciles en el cuaderno",
+    "Creación de un 'juramento profesional' personal escrito en el cuaderno",
+    "Presentación en tríos sobre ética en diferentes profesiones",
+    "Registro en el cuaderno de frases inspiradoras sobre integridad y honestidad",
+    "Elaboración de un debate escrito en el cuaderno sobre un tema ético controversial",
+    "Creación de un 'mural de valores' en papelógrafo con aportes de todos",
+    "Presentación sobre ética ambiental y responsabilidad con el planeta",
+    "Registro en el cuaderno de propuestas para mejorar la ética en su institución",
+    "Elaboración de un análisis en el cuaderno sobre ética en la tecnología",
+    "Creación de un 'test de ética' con situaciones hipotéticas para reflexionar",
+    "Presentación sobre ética en el emprendimiento y negocios",
+    "Registro en el cuaderno de lecciones aprendidas de errores éticos propios o ajenos",
+    "Elaboración de un proyecto sobre cómo aplicar la ética en su comunidad",
+    "Creación de un 'certificado de compromiso ético' firmado por cada estudiante",
+    "Presentación sobre ética intercultural y respeto a la diversidad",
+    "Registro en el cuaderno de metas éticas personales para el futuro",
+    "Elaboración de un ensayo sobre el papel de la ética en el desarrollo sostenible",
+    "Creación de un 'banco de buenas prácticas' éticas observadas en su entorno",
+    "Presentación final integrando todos los conceptos de ética profesional",
+    "Registro en el cuaderno de un plan de vida con principios éticos como guía",
+    "Elaboración de un 'legado ético' con sus reflexiones más importantes del año"
+  ]
 }

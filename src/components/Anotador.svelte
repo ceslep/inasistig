@@ -5,7 +5,7 @@
     getDocentes,
     getMaterias,
     getEstudiantes,
-    getOpcionesAnotador2 as getOpcionesAnotador,
+    getOpcionesAnotador3 as getOpcionesAnotador,
     saveAnotador,
   } from "../../api/service";
   import {
@@ -50,6 +50,13 @@
   let anotacionGrupos: Record<string, OpcionAnotacion[]> = {};
   let expandedCategories: Record<string, boolean> = {}; // New state for accordion
   
+  // Estado para búsqueda
+  let searchTerm = "";
+  let filteredAnotacionGrupos: Record<string, OpcionAnotacion[]> = {};
+  let sortedFilteredEntries: [string, OpcionAnotacion[]][] = [];
+  let highlightedCategory = "";
+  let lastSelectedMateria = "";
+  
   const toggleCategory = (category: string) => {
     expandedCategories[category] = !expandedCategories[category];
     // This line is needed to trigger reactivity when updating an object property
@@ -58,6 +65,27 @@
 
   const getCategoryColor = (cat: string) => {
     const colors: Record<string, string> = {
+      // Categorías reales del JSON
+      "CÁTEDRA DE LA PAZ": "#8b5cf6", // Violet
+      "CIENCIAS NATURALES Y EDUCACIÓN AMBIENTAL": "#10b981", // Emerald
+      "CIENCIAS SOCIALES (HISTORIA, GEOGRAFÍA Y": "#f59e0b", // Amber
+      "DIRECCIÓN DE GRUPO": "#3b82f6", // Blue
+      "EDUCACIÓN ARTÍSTICA": "#f43f5e", // Rose
+      "EDUCACIÓN FÍSICA, RECREACIÓN Y DEPORTES": "#ef4444", // Red
+      "EDUCACIÓN RELIGIOSA, ÉTICA Y V. HUMANOS": "#8b5cf6", // Violet
+      "EMPRENDIMIENTO": "#f97316", // Orange
+      "ESTADÍSTICA": "#06b6d4", // Cyan
+      "FILOSOFÍA Y CIENCIAS SOCIALES (CIENCIAS": "#6366f1", // Indigo
+      "FÍSICA": "#3b82f6", // Blue
+      "INGLÉS": "#14b8a6", // Teal
+      "LENGUA CASTELLANA": "#10b981", // Emerald
+      "MATEMÁTICAS": "#3b82f6", // Blue
+      "PROYECTO Y EMPRENDIMIENTO": "#f97316", // Orange
+      "QUÍMICA": "#06b6d4", // Cyan
+      "TECNOLOGÍA E INFORMÁTICA": "#6366f1", // Indigo
+      "ÉTICA PROFESIONAL": "#8b5cf6", // Violet
+      
+      // Categorías anteriores (mantener por compatibilidad)
       "Estrategias de Enseñanza-Aprendizaje": "#6366f1", // Indigo
       "Evaluación y Verificación de Saberes": "#10b981", // Emerald
       "Enfoque STEM+ y Contexto Rural": "#f59e0b", // Amber
@@ -70,6 +98,131 @@
     };
     return colors[cat] || "#6366f1";
   };
+
+  // Mapeo de materias a categorías correspondientes (con nombres exactos del JSON)
+  const materiaToCategory: Record<string, string> = {
+    "MATEMÁTICAS": "MATEMÁTICAS",
+    "LENGUA CASTELLANA": "LENGUA CASTELLANA", 
+    "INGLÉS": "INGLÉS",
+    "CIENCIAS NATURALES Y EDUCACIÓN AMBIENTAL": "CIENCIAS NATURALES Y EDUCACIÓN AMBIENTAL",
+    "CIENCIAS NATURALES": "CIENCIAS NATURALES Y EDUCACIÓN AMBIENTAL",
+    "CIENCIAS SOCIALES (HISTORIA, GEOGRAFÍA Y": "CIENCIAS SOCIALES (HISTORIA, GEOGRAFÍA Y",
+    "CIENCIAS SOCIALES": "CIENCIAS SOCIALES (HISTORIA, GEOGRAFÍA Y",
+    "FÍSICA": "FÍSICA",
+    "QUÍMICA": "QUÍMICA",
+    "EDUCACIÓN ARTÍSTICA": "EDUCACIÓN ARTÍSTICA",
+    "EDUCACIÓN FÍSICA, RECREACIÓN Y DEPORTES": "EDUCACIÓN FÍSICA, RECREACIÓN Y DEPORTES",
+    "EDUCACIÓN FÍSICA": "EDUCACIÓN FÍSICA, RECREACIÓN Y DEPORTES",
+    "TECNOLOGÍA E INFORMÁTICA": "TECNOLOGÍA E INFORMÁTICA",
+    "TECNOLOGÍA": "TECNOLOGÍA E INFORMÁTICA",
+    "INFORMÁTICA": "TECNOLOGÍA E INFORMÁTICA",
+    "EMPRENDIMIENTO": "EMPRENDIMIENTO",
+    "FILOSOFÍA Y CIENCIAS SOCIALES (CIENCIAS": "FILOSOFÍA Y CIENCIAS SOCIALES (CIENCIAS",
+    "FILOSOFÍA": "FILOSOFÍA Y CIENCIAS SOCIALES (CIENCIAS",
+    "ESTADÍSTICA": "ESTADÍSTICA",
+    "EDUCACIÓN RELIGIOSA, ÉTICA Y V. HUMANOS": "EDUCACIÓN RELIGIOSA, ÉTICA Y V. HUMANOS",
+    "ÉTICA": "EDUCACIÓN RELIGIOSA, ÉTICA Y V. HUMANOS",
+    "DIRECCIÓN DE GRUPO": "DIRECCIÓN DE GRUPO",
+    "PROYECTO Y EMPRENDIMIENTO": "PROYECTO Y EMPRENDIMIENTO",
+    "PROYECTO": "PROYECTO Y EMPRENDIMIENTO",
+    "CÁTEDRA DE LA PAZ": "CÁTEDRA DE LA PAZ",
+    "ÉTICA PROFESIONAL": "ÉTICA PROFESIONAL"
+  };
+
+  // Función para ordenar categorías según materia seleccionada
+  const sortCategoriesByMateria = (entries: [string, OpcionAnotacion[]][]) => {
+    if (!formData.materia) return entries;
+    
+    // Buscar coincidencia exacta o parcial
+    let targetCategory = materiaToCategory[formData.materia.toUpperCase()] || 
+                       materiaToCategory[formData.materia] ||
+                       "";
+    
+    // Si no encuentra coincidencia exacta, buscar coincidencia parcial
+    if (!targetCategory) {
+      const materiaUpper = formData.materia.toUpperCase();
+      for (const [key, value] of Object.entries(materiaToCategory)) {
+        if (key.includes(materiaUpper) || materiaUpper.includes(key)) {
+          targetCategory = value;
+          break;
+        }
+      }
+    }
+    
+    console.log('Materia seleccionada:', formData.materia, '→ Categoría:', targetCategory);
+    
+    return entries.sort(([catA], [catB]) => {
+      // La categoría correspondiente va primero
+      if (catA === targetCategory && catB !== targetCategory) return -1;
+      if (catB === targetCategory && catA !== targetCategory) return 1;
+      
+      // Mantener orden alfabético para el resto
+      return catA.localeCompare(catB);
+    });
+  };
+
+  // Detectar cambios en la materia seleccionada
+  $: if (formData.materia && formData.materia !== lastSelectedMateria) {
+    lastSelectedMateria = formData.materia;
+    
+    // Encontrar la categoría correspondiente
+    let targetCategory = materiaToCategory[formData.materia.toUpperCase()] || 
+                       materiaToCategory[formData.materia] ||
+                       "";
+    
+    // Buscar coincidencia parcial si no encuentra exacta
+    if (!targetCategory) {
+      const materiaUpper = formData.materia.toUpperCase();
+      for (const [key, value] of Object.entries(materiaToCategory)) {
+        if (key.includes(materiaUpper) || materiaUpper.includes(key)) {
+          targetCategory = value;
+          break;
+        }
+      }
+    }
+    
+    if (targetCategory) {
+      highlightedCategory = targetCategory;
+      console.log('✨ Categoria destacada:', targetCategory);
+      
+      // Remover el highlight después de 3 segundos
+      setTimeout(() => {
+        highlightedCategory = "";
+      }, 3000);
+    }
+  }
+
+  // Reactividad para forzar el reordenamiento
+  $: {
+    console.log('🔄 Reactividad actualizada');
+    console.log('📚 Materias disponibles:', materias.map(m => m.materia));
+    console.log('✍️ Materia seleccionada:', formData.materia);
+    console.log('📊 Categorías disponibles:', Object.keys(anotacionGrupos));
+    console.log('🔍 Categorías filtradas:', Object.keys(filteredAnotacionGrupos));
+    sortedFilteredEntries = sortCategoriesByMateria(Object.entries(filteredAnotacionGrupos));
+    console.log('📋 Entradas ordenadas:', sortedFilteredEntries.map(([cat]) => cat));
+  }
+
+  // Función de filtrado
+  $: filteredAnotacionGrupos = Object.entries(anotacionGrupos).reduce((acc, [categoria, opciones]) => {
+    if (!searchTerm.trim()) {
+      acc[categoria] = opciones;
+      return acc;
+    }
+
+    const term = searchTerm.toLowerCase().trim();
+    const filteredOpciones = opciones.filter(opcion => 
+      opcion.text.toLowerCase().includes(term)
+    );
+
+    // Solo incluir la categoría si encuentra coincidencias en el texto de las opciones
+    if (filteredOpciones.length > 0) {
+      acc[categoria] = filteredOpciones;
+      // No auto-expandir categorías, el docente decide cuándo abrir
+    }
+
+    return acc;
+  }, {} as Record<string, OpcionAnotacion[]>);
 
   // --- Formulario ---
   let formData = {
@@ -724,30 +877,121 @@
           </div>
         </div>
 
+        <!-- Campo de búsqueda -->
+        <div class="space-y-2">
+          <label
+            for="search"
+            class="block text-sm font-medium"
+            style="color: {styles.label};"
+          >
+            Buscar anotaciones
+          </label>
+          <div class="relative">
+            <input
+              type="text"
+              id="search"
+              bind:value={searchTerm}
+              placeholder="Buscar por palabra clave o categoría..."
+              class="w-full px-4 py-3 pl-12 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+            />
+            <svg
+              class="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5"
+              style="color: {styles.placeholder};"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            {#if searchTerm}
+              <button
+                on:click={() => searchTerm = ''}
+                class="absolute right-4 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                style="color: {styles.placeholder};"
+                title="Limpiar búsqueda"
+              >
+                <svg
+                  class="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            {/if}
+          </div>
+          {#if searchTerm && Object.keys(filteredAnotacionGrupos).length === 0}
+            <div class="text-center py-8" style="color: {styles.placeholder};">
+              <svg
+                class="w-12 h-12 mx-auto mb-4 opacity-50"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+              <p class="text-sm">No se encontraron anotaciones para "{searchTerm}"</p>
+            </div>
+          {/if}
+        </div>
+
         <div class="space-y-8">
           {#if isLoadingOpciones}
             <div class="flex items-center justify-center py-12">
               <Loader message="Cargando opciones de anotación..." />
             </div>
           {:else}
-            {#each Object.entries(anotacionGrupos) as [categoria, opciones]}
+            {#each sortedFilteredEntries as [categoria, opciones]}
               {@const catColor = getCategoryColor(categoria)}
+              {@const filteredCount = opciones.length}
               <div class="space-y-4">
                 <button
                   type="button"
                   on:click={() => toggleCategory(categoria)}
                   class="flex items-center gap-3 w-full text-left cursor-pointer group focus:outline-none"
                 >
-                  <h3
-                    class="text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full text-white flex-shrink-0 transition-all duration-300 group-hover:shadow-md"
-                    style="background-color: {catColor};"
-                  >
-                    {categoria}
-                  </h3>
-                  <div
-                    class="h-px flex-1 transition-all duration-300 group-hover:opacity-50"
-                    style="background-color: {catColor}; opacity: 0.2;"
-                  ></div>
+                  <div class="flex items-center gap-3 flex-1">
+                    <h3
+                      class="text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full text-white flex-shrink-0 transition-all duration-300 group-hover:shadow-md {categoria === highlightedCategory ? 'animate-glow ring-4 ring-opacity-50' : ''}"
+                      style="background-color: {catColor}; {categoria === highlightedCategory ? `box-shadow: 0 0 25px ${catColor}60, 0 0 50px ${catColor}30; ring-color: ${catColor}; border: 2px solid ${catColor};` : ''}"
+                    >
+                      {categoria}
+                      {#if categoria === highlightedCategory}
+                        <span class="ml-2 inline-block animate-bounce">✨</span>
+                      {/if}
+                    </h3>
+                    {#if searchTerm}
+                      <span 
+                        class="text-xs font-medium"
+                        style="color: {catColor};"
+                      >
+                        ({filteredCount} resultado{filteredCount !== 1 ? 's' : ''})
+                      </span>
+                    {/if}
+                  </div>
+                  {#if !searchTerm}
+                    <div
+                      class="h-px flex-1 transition-all duration-300 group-hover:opacity-50"
+                      style="background-color: {catColor}; opacity: 0.2;"
+                    ></div>
+                  {/if}
                   <svg
                     class="w-5 h-5 text-gray-500 transform transition-transform duration-200 flex-shrink-0"
                     class:rotate-180={expandedCategories[categoria]}
@@ -767,13 +1011,18 @@
                 {#if expandedCategories[categoria]}
                   <div transition:slide class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {#each opciones as opcion}
+                      {@const isHighlighted = searchTerm && opcion.text.toLowerCase().includes(searchTerm.toLowerCase())}
                       <div
                         class="relative group flex flex-col p-0 rounded-2xl border transition-all duration-200 shadow-sm hover:shadow-md"
                         style="
                           background-color: {opcion.selected
                           ? `${catColor}10`
+                          : isHighlighted
+                          ? `${catColor}05`
                           : styles.inputBg};
                           border-color: {opcion.selected
+                          ? catColor
+                          : isHighlighted
                           ? catColor
                           : styles.border};
                         "
@@ -919,6 +1168,19 @@
   .animate-fade-in {
     animation: fade-in 0.3s ease-out forwards;
   }
-  
 
+  @keyframes glow-pulse {
+    0%, 100% {
+      box-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+      transform: scale(1);
+    }
+    50% {
+      box-shadow: 0 0 20px currentColor, 0 0 40px currentColor;
+      transform: scale(1.05);
+    }
+  }
+  
+  .animate-glow {
+    animation: glow-pulse 2s ease-in-out 3;
+  }
 </style>

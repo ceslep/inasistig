@@ -6,6 +6,7 @@ import {
   ESTUDIANTES_URL,
   ANOTADOR_URL,
   ANOTADOR2_URL,
+  ANOTADOR3_URL,
   SAVE_INASISTENCIAS_URL,
   SAVE_ANOTADOR_URL,
   SAVE_DIARIO_URL,
@@ -189,6 +190,20 @@ export const getOpcionesAnotador2 = async () => {
     return data;
   } catch (error) {
     console.error("Error fetching opciones anotador:", error);
+    throw error;
+  }
+};
+
+export const getOpcionesAnotador3 = async () => {
+  try {
+    const response = await fetch(`${ANOTADOR3_URL}`);
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching opciones anotador3:", error);
     throw error;
   }
 };

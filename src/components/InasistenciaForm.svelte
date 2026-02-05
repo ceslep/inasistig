@@ -418,6 +418,18 @@
       darkTextColor: "dark:text-green-300",
       obligaHoras: false,
     },
+    {
+      value: "Retirado por el acudiente",
+      label: "Retirado por el acudiente",
+      icon: "👨",
+      bgColor: "bg-green-50",
+      borderColor: "border-green-300",
+      textColor: "text-green-700",
+      darkBgColor: "dark:bg-green-950",
+      darkBorderColor: "dark:border-green-800",
+      darkTextColor: "dark:text-green-300",
+      obligaHoras: false,
+    },
   ];
 
   // --- Funciones de Tema ---
@@ -460,9 +472,10 @@
     nuevaHora?: string,
   ) => {
     const index = inasistencias.findIndex((i) => i.nombre === estudianteNombre);
-    const selectedMotivo = motivos.find(m => m.value === nuevoMotivo);
-    
-    let hourToUse = nuevaHora || individualHours[estudianteNombre] || formData.horas;
+    const selectedMotivo = motivos.find((m) => m.value === nuevoMotivo);
+
+    let hourToUse =
+      nuevaHora || individualHours[estudianteNombre] || formData.horas;
     if (selectedMotivo && !selectedMotivo.obligaHoras) {
       hourToUse = "0";
     }
@@ -689,14 +702,22 @@
             id_grupo={formData.grado ? parseInt(formData.grado.toString()) : 0}
             id_docente={0}
             id_materia={0}
-            nombre_grupo={formData.grado ? `Grado ${formData.grado}`.replace(/0(\d)$/, '°$1').replace(/(\d{1,2})0(\d)/, '$1°$2') : ''}
-            nombre_docente={formData.docente || ''}
-            nombre_materia={formData.materia || ''}
-            on:loading={(e) => reportGeneratorLoading = e.detail}
+            nombre_grupo={formData.grado
+              ? `Grado ${formData.grado}`
+                  .replace(/0(\d)$/, "°$1")
+                  .replace(/(\d{1,2})0(\d)/, "$1°$2")
+              : ""}
+            nombre_docente={formData.docente || ""}
+            nombre_materia={formData.materia || ""}
+            on:loading={(e) => (reportGeneratorLoading = e.detail)}
           />
           {#if showFeatureAlertReport}
-            <div class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
-            <div class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+            <div
+              class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping"
+            ></div>
+            <div
+              class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"
+            ></div>
           {/if}
         </div>
 
