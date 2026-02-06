@@ -100,6 +100,18 @@
       accent: "emerald",
       tag: "Estratégico",
     },
+    {
+      id: "horas_laborables",
+      title: "Horas Laborables",
+      subtitle: "Gestión de Tiempo",
+      description:
+        "Calculadora especializada para el seguimiento de jornadas y horas docentes.",
+      image: logoEie,
+      color: "from-orange-600/20 to-amber-600/20",
+      accent: "orange",
+      tag: "Herramienta",
+      url: "https://ceslep.github.io/horas_laborables",
+    },
   ];
 </script>
 
@@ -214,8 +226,14 @@
     >
       {#each modules as module, i}
         <button
-          id="diario-module-target"
-          on:click={() => onSelect(module.id)}
+          id={module.id === "diario" ? "diario-module-target" : ""}
+          on:click={() => {
+            if (module.url) {
+              window.open(module.url, "_blank");
+            } else {
+              onSelect(module.id);
+            }
+          }}
           class="group relative flex flex-col justify-between overflow-hidden rounded-[2.5rem] border border-[rgb(var(--card-border))] bg-[rgb(var(--card-bg))] backdrop-blur-xl transition-all duration-500 hover:border-[rgb(var(--accent-primary))]/30 hover:bg-[rgb(var(--bg-secondary))] p-1"
           in:fly={{ y: 40, duration: 800, delay: 200 + i * 150 }}
         >
