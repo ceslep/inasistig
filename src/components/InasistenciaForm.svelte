@@ -475,38 +475,63 @@
   };
 
   // --- Manejadores del Formulario ---
+  const removeInasistencia = (estudianteNombre: string, motivoValue: string) => {
+    inasistencias = inasistencias.filter(
+      (i) => !(i.nombre === estudianteNombre && i.motivo === motivoValue),
+    );
+  };
+
   const handleInasistenciaChange = (
     estudianteNombre: string,
     nuevoMotivo: string,
     nuevaHora?: string,
   ) => {
-    const index = inasistencias.findIndex((i) => i.nombre === estudianteNombre);
+    if (nuevoMotivo === "" || nuevoMotivo === "Ignorar") {
+      inasistencias = inasistencias.filter((i) => i.nombre !== estudianteNombre);
+      return;
+    }
+
     const selectedMotivo = motivos.find((m) => m.value === nuevoMotivo);
+    if (!selectedMotivo) return;
 
     let hourToUse =
       nuevaHora || individualHours[estudianteNombre] || formData.horas;
-    if (selectedMotivo && !selectedMotivo.obligaHoras) {
+
+    // Si el motivo no obliga horas, forzamos a "0"
+    if (!selectedMotivo.obligaHoras) {
       hourToUse = "0";
     }
 
-    if (nuevoMotivo === "" || nuevoMotivo === "Ignorar") {
-      if (index >= 0) {
-        inasistencias.splice(index, 1);
-        inasistencias = inasistencias;
-      }
-    } else {
-      if (index >= 0) {
-        inasistencias[index].motivo = nuevoMotivo;
-        inasistencias[index].horas = hourToUse;
-      } else {
-        inasistencias.push({
+    if (selectedMotivo.obligaHoras) {
+      // Si es un motivo que OBLIGA horas, reemplazamos cualquier otro que también obligue horas
+      // pero mantenemos los que NO obligan horas
+      inasistencias = inasistencias.filter((i) => {
+        if (i.nombre !== estudianteNombre) return true;
+        const m = motivos.find((mot) => mot.value === i.motivo);
+        return m && !m.obligaHoras;
+      });
+    }
+
+    // Verificar si ya tiene este motivo exacto
+    const alreadyHasIt = inasistencias.some(
+      (i) => i.nombre === estudianteNombre && i.motivo === nuevoMotivo,
+    );
+
+    if (!alreadyHasIt) {
+      // Obtener observaciones existentes para este estudiante si las hay
+      const existingObs =
+        inasistencias.find((i) => i.nombre === estudianteNombre)
+          ?.observaciones || "";
+
+      inasistencias = [
+        ...inasistencias,
+        {
           nombre: estudianteNombre,
           motivo: nuevoMotivo,
           horas: hourToUse,
-          observaciones: "",
-        });
-      }
-      inasistencias = inasistencias;
+          observaciones: existingObs,
+        },
+      ];
     }
   };
 
@@ -514,11 +539,12 @@
     estudianteNombre: string,
     nuevaObs: string,
   ) => {
-    const index = inasistencias.findIndex((i) => i.nombre === estudianteNombre);
-    if (index >= 0) {
-      inasistencias[index].observaciones = nuevaObs;
-      inasistencias = inasistencias;
-    }
+    inasistencias = inasistencias.map((i) => {
+      if (i.nombre === estudianteNombre) {
+        return { ...i, observaciones: nuevaObs };
+      }
+      return i;
+    });
   };
 
   const toggleObservation = (estudianteNombre: string) => {
@@ -530,11 +556,15 @@
     nuevaHora: string,
   ) => {
     individualHours[estudianteNombre] = nuevaHora;
-    const index = inasistencias.findIndex((i) => i.nombre === estudianteNombre);
-    if (index >= 0) {
-      inasistencias[index].horas = nuevaHora;
-      inasistencias = inasistencias;
-    }
+    inasistencias = inasistencias.map((i) => {
+      if (i.nombre === estudianteNombre) {
+        const m = motivos.find((mot) => mot.value === i.motivo);
+        if (m && m.obligaHoras) {
+          return { ...i, horas: nuevaHora };
+        }
+      }
+      return i;
+    });
   };
 
   const handleSubmit = async (event: Event) => {
@@ -1039,43 +1069,77 @@
               style="border-color: {styles.border};"
             >
               {#each estudiantesFiltrados as estudiante (estudiante.nombre)}
-                {@const currentInasistencia = inasistencias.find(
+                {@const studentInasistencias = inasistencias.filter(
                   (i) => i.nombre === estudiante.nombre,
                 )}
-                {@const motivoSeleccionado = currentInasistencia
-                  ? motivos.find((m) => m.value === currentInasistencia.motivo)
-                  : null}
+                {@const hasAnyInasistencia = studentInasistencias.length > 0}
+                {@const hasObligaHoras = studentInasistencias.some((i) => {
+                  const m = motivos.find((mot) => mot.value === i.motivo);
+                  return m && m.obligaHoras;
+                })}
 
                 <div
                   class="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-xl transition-all duration-200 gap-4"
-                  style="background-color: {styles.bg}; border-color: {motivoSeleccionado
+                  style="background-color: {styles.bg}; border-color: {hasAnyInasistencia
                     ? 'transparent'
                     : styles.border};"
-                  class:ring-2={motivoSeleccionado}
-                  class:ring-indigo-500={motivoSeleccionado}
+                  class:ring-2={hasAnyInasistencia}
+                  class:ring-indigo-500={hasAnyInasistencia}
                 >
                   <div class="flex-1 min-w-0">
                     <span
                       class="text-base font-medium block"
                       style="color: {styles.text};">{estudiante.nombre}</span
                     >
-                    {#if motivoSeleccionado}
-                      <span
-                        class={`inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${motivoSeleccionado.bgColor} ${motivoSeleccionado.textColor} ${motivoSeleccionado.borderColor} ${motivoSeleccionado.darkBgColor} ${motivoSeleccionado.darkTextColor} ${motivoSeleccionado.darkBorderColor}`}
-                      >
-                        <span class="mr-1.5">{motivoSeleccionado.icon}</span>
-                        {motivoSeleccionado.label}
-                      </span>
-                    {/if}
+                    <div class="flex flex-wrap gap-2 mt-2">
+                      {#each studentInasistencias as inas}
+                        {@const m = motivos.find((mot) => mot.value === inas.motivo)}
+                        {#if m}
+                          <span
+                            class={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${m.bgColor} ${m.textColor} ${m.borderColor} ${m.darkBgColor} ${m.darkTextColor} ${m.darkBorderColor}`}
+                          >
+                            <span class="mr-1.5">{m.icon}</span>
+                            {m.label}
+                            <button
+                              type="button"
+                              on:click={() =>
+                                removeInasistencia(estudiante.nombre, inas.motivo)}
+                              class="ml-1.5 hover:opacity-70 transition-opacity"
+                              aria-label="Eliminar motivo"
+                            >
+                              <svg
+                                class="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="3"
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
+                              </svg>
+                            </button>
+                          </span>
+                        {/if}
+                      {/each}
+                    </div>
                   </div>
 
                   <div
                     class="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto"
                   >
                     <!-- Selector de Hora Individual -->
-                    <div class="relative w-full sm:w-32">
+                    <div
+                      class="relative w-full sm:w-32 transition-opacity duration-200"
+                      class:opacity-40={!hasObligaHoras}
+                    >
                       <select
-                        value={currentInasistencia?.horas ||
+                        value={studentInasistencias.find((i) => {
+                          const m = motivos.find((mot) => mot.value === i.motivo);
+                          return m && m.obligaHoras;
+                        })?.horas ||
                           individualHours[estudiante.nombre] ||
                           formData.horas}
                         on:change={(e) =>
@@ -1083,6 +1147,7 @@
                             estudiante.nombre,
                             e.currentTarget.value,
                           )}
+                        disabled={!hasObligaHoras}
                         class="w-full appearance-none border rounded-lg px-4 py-2 pr-10 text-sm focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-all outline-none"
                         style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
                       >
@@ -1115,20 +1180,26 @@
                     <!-- Selector de Motivo -->
                     <div class="relative w-full sm:w-56">
                       <select
-                        value={currentInasistencia?.motivo || ""}
-                        on:change={(e) =>
+                        value=""
+                        on:change={(e) => {
                           handleInasistenciaChange(
                             estudiante.nombre,
                             e.currentTarget.value,
-                          )}
+                          );
+                          e.currentTarget.value = "";
+                        }}
                         class="w-full appearance-none border rounded-lg px-4 py-2 pr-10 text-sm focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-all outline-none"
                         style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
                       >
-                        <option value="">Seleccionar motivo...</option>
+                        <option value="">Añadir motivo...</option>
+                        <option value="Ignorar">🚫 Limpiar todo</option>
                         {#each motivos as motivo}
-                          <option value={motivo.value}
-                            >{motivo.icon} {motivo.label}</option
-                          >
+                          {@const isSelected = studentInasistencias.some(
+                            (i) => i.motivo === motivo.value,
+                          )}
+                          <option value={motivo.value} disabled={isSelected}>
+                            {motivo.icon} {motivo.label} {isSelected ? "✓" : ""}
+                          </option>
                         {/each}
                       </select>
                       <div
@@ -1152,13 +1223,13 @@
                     </div>
                   </div>
 
-                  {#if motivoSeleccionado}
+                  {#if hasAnyInasistencia}
                     <div class="flex items-center gap-2">
                       <button
                         type="button"
                         on:click={() => toggleObservation(estudiante.nombre)}
                         class="p-2 rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                        style="color: {currentInasistencia?.observaciones
+                        style="color: {studentInasistencias[0]?.observaciones
                           ? 'rgb(var(--text-primary))'
                           : styles.icon};"
                         title="Agregar observación"
@@ -1181,10 +1252,10 @@
                   {/if}
                 </div>
 
-                {#if motivoSeleccionado && (openObservations[estudiante.nombre] || currentInasistencia?.observaciones)}
+                {#if hasAnyInasistencia && (openObservations[estudiante.nombre] || studentInasistencias[0]?.observaciones)}
                   <div class="px-4 pb-4 animate-fade-in">
                     <textarea
-                      value={currentInasistencia?.observaciones || ""}
+                      value={studentInasistencias[0]?.observaciones || ""}
                       on:input={(e) =>
                         handleIndividualObservationChange(
                           estudiante.nombre,

@@ -1,0 +1,26 @@
+{
+  "project": "inasistig",
+  "version": "1.0.0",
+  "year": 2026,
+  "environment": {
+    "os": "Windows 11",
+    "editor": "Google Antigravity",
+    "user": "cesle"
+  },
+  "stack": {
+    "frontend": ["Svelte", "Tailwind CSS"],
+    "backend": ["PHP", "MySQL (PDO)"],
+    "integrations": ["Google Sheets API", "Apps Script"]
+  },
+  "role_context": {
+    "profession": "Docente de Tecnología e Informática",
+    "institution": "I.E. Instituto Guática",
+    "focus": "Gestión de inasistencias y exámenes"
+  },
+  "skills_reference": "./.opencode/skills/",
+  "coding_rules": [
+    "Usar sentencias preparadas en PHP para seguridad.",
+    "Diseño responsive con Tailwind para uso en dispositivos móviles de la institución.",
+    "Comentarios en código enfocados a la legibilidad para estudiantes (fines pedagógicos)."
+  ]
+}
