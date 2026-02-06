@@ -65,12 +65,14 @@
   };
 
   // Función helper para actualizar selección de anotación y forzar reactividad
-  const toggleAnotacionSeleccion = (categoria: string, index: number) => {
-    if (anotacionGrupos[categoria] && anotacionGrupos[categoria][index]) {
+  const toggleAnotacionSeleccion = (categoria: string, opcion: OpcionAnotacion) => {
+    const index = anotacionGrupos[categoria].indexOf(opcion);
+
+    if (index !== -1) {
       // Create a new option object with the toggled selected state
       const updatedOption = {
-        ...anotacionGrupos[categoria][index],
-        selected: !anotacionGrupos[categoria][index].selected,
+        ...opcion,
+        selected: !opcion.selected,
       };
 
       // Create a new array for the category with the updated option
@@ -89,8 +91,8 @@
       console.log("🔄 Anotación toggle:", {
         categoria,
         index,
-        texto: anotacionGrupos[categoria][index].text,
-        nuevoEstado: anotacionGrupos[categoria][index].selected,
+        texto: updatedOption.text,
+        nuevoEstado: updatedOption.selected,
         totalSeleccionadas: Object.values(anotacionGrupos)
           .flat()
           .filter((o) => o.selected).length,
@@ -1171,12 +1173,7 @@
                               type="checkbox"
                               checked={opcion.selected}
                               class="hidden"
-                              on:change={(e) => {
-                                toggleAnotacionSeleccion(
-                                  categoria,
-                                  opciones.indexOf(opcion),
-                                );
-                              }}
+                              on:change={() => toggleAnotacionSeleccion(categoria, opcion)}
                             />
                             <!-- svelte-ignore a11y_click_events_have_key_events -->
                             <div
@@ -1189,12 +1186,6 @@
                                 ? catColor
                                 : 'transparent'};
                             "
-                              on:click={() => {
-                                toggleAnotacionSeleccion(
-                                  categoria,
-                                  opciones.indexOf(opcion),
-                                );
-                              }}
                             >
                               {#if opcion.selected}
                                 <svg

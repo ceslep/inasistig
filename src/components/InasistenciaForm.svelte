@@ -21,7 +21,7 @@
   import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
   import InasistenciaFilter from "./InasistenciaFilter.svelte";
-  import ReportGenerator from "./ReportGenerator.svelte";
+  import ReportGeneratorInas from "./ReportGeneratorInas.svelte";
   import FeaturePopup from "./FeaturePopup.svelte";
 
   export let onBack: () => void;
@@ -70,11 +70,20 @@
 
   // --- Filtros ---
   let showFilter = false;
+  let showReportGenerator = false;
+
   const openFilters = () => {
     showFilter = true;
   };
   const closeFilters = () => {
     showFilter = false;
+  };
+
+  const openReportGenerator = () => {
+    showReportGenerator = true;
+  };
+  const closeReportGenerator = () => {
+    showReportGenerator = false;
   };
 
   // --- Estado para Report Generator ---
@@ -150,8 +159,8 @@
       "dismissedFeatureAlertReport",
       new Date().toISOString(),
     );
-    // No specific action for now, maybe highlight the button?
-    // For now, just dismiss.
+    // Abrir el generador de reportes
+    openReportGenerator();
     showFeatureAlertReport = false;
   };
 
@@ -668,6 +677,38 @@
             ></div>
             <div
               class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"
+            ></div>
+          {/if}
+        </button>
+
+        <!-- Botón de Reportes Excel -->
+        <button
+          id="report-button-target"
+          on:click={openReportGenerator}
+          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5 relative"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+          title="Generar reportes Excel"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 17v-2a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            />
+          </svg>
+          <span class="text-sm font-medium hidden lg:inline">Reporte Excel</span>
+          {#if showFeatureAlertReport}
+            <div
+              class="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-ping"
+            ></div>
+            <div
+              class="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"
             ></div>
           {/if}
         </button>
@@ -1279,6 +1320,13 @@
   <InasistenciaFilter
     onClose={closeFilters}
     selectedDocente={formData.docente}
+  />
+{/if}
+
+{#if showReportGenerator}
+  <ReportGeneratorInas
+    onClose={closeReportGenerator}
+    initialDocente={formData.docente}
   />
 {/if}
 

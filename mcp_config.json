@@ -1,0 +1,161 @@
+{
+  "mcpServers": {
+    "especialista-web": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-fetch"],
+      "description": "Permite a Gemini consultar documentación actualizada de Svelte 5 y Tailwind v4 para evitar código obsoleto."
+    },
+    "sistema-archivos": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "C:\\Users\\cesle\\Documents"
+      ],
+      "description": "Habilita a Gemini para leer y escribir en tus proyectos de PHP y Svelte directamente."
+    },
+    "experto-diseño": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-google-maps"],
+      "description": "Opcional: Útil si tus proyectos de clase requieren integración con geolocalización."
+    },
+    "opencode-bridge": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@opencode/mcp-server",
+        "--path",
+        "C:\\Users\\cesle\\.gemini\\antigravity\\playground"
+      ]
+    },
+    "web-expert": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-web-dev-helper"],
+      "env": {
+        "FRAMEWORKS": "svelte,tailwind,php8"
+      }
+    },
+    "chrome-dev-tools": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-chrome-devtools"],
+      "description": "Permite a Gemini inspeccionar y depurar aplicaciones web en tiempo real usando Chrome DevTools."
+    },
+    "terminal-cli": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-cli",
+        "--shell",
+        "powershell"
+      ],
+      "description": "Ejecuta comandos de terminal para Vite, Svelte, npm, git y otras herramientas de desarrollo."
+    },
+    "git-version-control": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-git"],
+      "description": "Gestión de control de versiones con Git para proyectos de estudiantes y seguimiento de cambios."
+    },
+    "sql-database": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sql", "--dialect", "mysql"],
+      "description": "Interactúa con bases de datos MySQL/MariaDB para proyectos PHP con backend."
+    },
+    "code-linter": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-linter"],
+      "env": {
+        "LINTERS": "eslint,stylelint,prettier"
+      },
+      "description": "Verifica calidad de código, estilos y formateo automático para JavaScript, Svelte y CSS."
+    },
+    "testing-tools": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-testing",
+        "--frameworks",
+        "vitest,playwright"
+      ],
+      "description": "Ejecuta y genera pruebas unitarias y E2E para aplicaciones Svelte."
+    },
+    "rest-api-client": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-http-client"],
+      "description": "Prueba y documenta APIs REST para proyectos con backend PHP o APIs externas."
+    },
+    "docker-containers": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-docker"],
+      "description": "Gestiona contenedores Docker para entornos de desarrollo consistentes."
+    },
+    "npm-package-manager": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-npm"],
+      "description": "Busca, instala y gestiona paquetes npm para proyectos Svelte y JavaScript."
+    },
+    "documentation-generator": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-docs"],
+      "description": "Genera documentación automática para código y proyectos de estudiantes."
+    },
+    "performance-analyzer": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-performance"],
+      "description": "Analiza rendimiento de aplicaciones web, bundle size y optimizaciones."
+    },
+    "accessibility-checker": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-a11y"],
+      "description": "Verifica accesibilidad WCAG en aplicaciones web para buenas prácticas."
+    },
+    "security-scanner": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-security"],
+      "description": "Escanea vulnerabilidades en código y dependencias npm."
+    },
+    "ui-component-library": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-ui-components"],
+      "env": {
+        "FRAMEWORKS": "svelte,tailwind"
+      },
+      "description": "Genera componentes UI reutilizables con Svelte y Tailwind CSS."
+    },
+    "color-scheme-generator": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-colors"],
+      "description": "Crea paletas de colores personalizadas para proyectos con Tailwind CSS."
+    },
+    "excel-sheets-manager": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-google-sheets"],
+      "description": "Crea, edita y gestiona hojas de cálculo Excel/Google Sheets para reportes de calificaciones, seguimiento de proyectos y análisis de datos."
+    },
+    "pdf-generator": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-pdf"],
+      "description": "Genera reportes PDF profesionales con gráficos, tablas y formateo para certificados, informes y documentación."
+    },
+    "data-visualization": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-charts"],
+      "description": "Crea gráficos y visualizaciones de datos para incluir en reportes Excel y PDF."
+    },
+    "template-engine": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-templates"],
+      "env": {
+        "FORMATS": "xlsx,pdf,html"
+      },
+      "description": "Gestiona plantillas reutilizables para reportes estandarizados de calificaciones, proyectos y evaluaciones."
+    },
+    "report-automation": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-reports"],
+      "env": {
+        "OUTPUT_FORMATS": "excel,pdf,csv"
+      },
+      "description": "Automatiza la generación de reportes periódicos desde bases de datos o archivos JSON."
+    }
+  }
+}
