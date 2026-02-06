@@ -209,7 +209,7 @@
           >
             Ecosistema Digital
           </span>
-          <span class="text-[rgb(var(--accent-primary))]">EIE</span>
+          <span class="text-[rgb(var(--accent-primary))]">Instituto Guática</span>
         </h1>
         <p
           class="text-base md:text-lg text-[rgb(var(--text-muted))] max-w-xl mx-auto font-medium"
@@ -227,13 +227,7 @@
       {#each modules as module, i}
         <button
           id={module.id === "diario" ? "diario-module-target" : ""}
-          on:click={() => {
-            if (module.url) {
-              window.open(module.url, "_blank");
-            } else {
-              onSelect(module.id);
-            }
-          }}
+          on:click={() => onSelect(module.id)}
           class="group relative flex flex-col justify-between overflow-hidden rounded-[2.5rem] border border-[rgb(var(--card-border))] bg-[rgb(var(--card-bg))] backdrop-blur-xl transition-all duration-500 hover:border-[rgb(var(--accent-primary))]/30 hover:bg-[rgb(var(--bg-secondary))] p-1"
           in:fly={{ y: 40, duration: 800, delay: 200 + i * 150 }}
         >
