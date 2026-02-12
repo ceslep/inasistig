@@ -364,7 +364,7 @@
   onTryNow={tryFeatureNowDiario}
   onDismiss={dismissFeatureAlertDiario}
   targetSelector="#diario-module-target"
-  showPopup={showFeatureAlertDiario}
+  showPopup={false}
   colorTheme="emerald"
 />
 

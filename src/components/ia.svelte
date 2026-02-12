@@ -361,7 +361,7 @@
                 item.observaciones || "",
             ]);
 
-            const payload = {
+            const payload: any = {
                 spreadsheetId: SPREADSHEET_ID,
                 worksheetTitle: WORKSHEET_TITLE,
                 inasistencias: inasistenciasPayload,

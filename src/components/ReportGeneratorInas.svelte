@@ -321,7 +321,7 @@
       });
 
       // 6. Descargar
-      const buffer = await workbook.xlsx.writeBuffer();
+      const buffer = await (workbook.xlsx as any).writeBuffer();
       const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       const fileName = `Reporte_Inasistencias_${selectedGrado}_${selectedMateria.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
       
@@ -335,12 +335,13 @@
         showConfirmButton: false,
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error generando Excel:", error);
+      const errorMessage = error instanceof Error ? error.message : "Error desconocido";
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: error.message || "Ocurrió un error al generar el reporte.",
+        text: errorMessage,
       });
     } finally {
       isGenerating = false;
@@ -360,7 +361,12 @@
 
 <div
   class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="modal-title"
+  tabindex="-1"
   on:click|self={onClose}
+  on:keydown={(e: KeyboardEvent) => e.key === 'Escape' && onClose()}
 >
   <div
     class="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl border"
@@ -375,11 +381,11 @@
           </svg>
         </div>
         <div>
-          <h2 class="text-xl font-bold">Generador de Reporte Excel</h2>
+          <h2 id="modal-title" class="text-xl font-bold">Generador de Reporte Excel</h2>
           <p class="text-sm opacity-75">Inasistencias por materia y grado</p>
         </div>
       </div>
-      <button on:click={onClose} class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+      <button on:click={onClose} class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" aria-label="Cerrar modal">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>

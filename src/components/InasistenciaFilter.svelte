@@ -328,18 +328,7 @@
         // La fecha ya viene en formato YYYY-MM-DD del API, comparación directa
         const itemFecha = item.fecha; // Ya es "YYYY-MM-DD"
 
-        // DEBUG: Log para ver qué está pasando
-        if (item === inasistencias[0]) {
-          console.log("🔍 DEBUG FILTRO FECHAS:", {
-            filtrarPorFecha,
-            fechaInicio: filtros.fechaInicio,
-            fechaFin: filtros.fechaFin,
-            itemFecha,
-            pasaFechaInicio:
-              !filtros.fechaInicio || itemFecha >= filtros.fechaInicio,
-            pasaFechaFin: !filtros.fechaFin || itemFecha <= filtros.fechaFin,
-          });
-        }
+
 
         if (filtros.fechaInicio && itemFecha < filtros.fechaInicio)
           return false;

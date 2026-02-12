@@ -866,7 +866,7 @@
         onTryNow={tryFeatureNow}
         onDismiss={dismissFeatureAlert}
         targetSelector="#filter-button-target"
-        showPopup={showFeatureAlert}
+        showPopup={false}
         colorTheme="purple"
       />
 

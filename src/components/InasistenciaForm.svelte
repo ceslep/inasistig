@@ -591,7 +591,7 @@
       await saveInasistencias({
         spreadsheetId: SPREADSHEET_ID,
         worksheetTitle: WORKSHEET_TITLE,
-        inasistencias: inasistenciasPayload,
+        inasistencias: inasistenciasPayload as any,
       });
 
       // Persistir la materia para el docente solo después del éxito
@@ -919,7 +919,7 @@
         onTryNow={tryFeatureNow}
         onDismiss={dismissFeatureAlert}
         targetSelector="#filter-button-target"
-        showPopup={showFeatureAlert}
+        showPopup={false}
         colorTheme="blue"
       />
 
@@ -930,7 +930,7 @@
         onTryNow={tryFeatureNowReport}
         onDismiss={dismissFeatureAlertReport}
         targetSelector="#report-button-target"
-        showPopup={showFeatureAlertReport}
+        showPopup={false}
         colorTheme="green"
       />
 

@@ -14,19 +14,19 @@ import {
 } from "../src/constants";
 
 export interface InasistenciaPayload {
-  [key: string]: any;
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 export interface AnotadorPayload {
   spreadsheetId: string;
   worksheetTitle: string;
-  datos: any[][];
+  datos: string[][];
 }
 
 export interface DiarioPayload {
   spreadsheetId: string;
   worksheetTitle: string;
-  datos: any[][];
+  datos: string[][];
 }
 
 export interface DiarioOption {
@@ -41,7 +41,7 @@ export interface DiarioOption {
 export interface DiarioOptionsResponse {
   success: boolean;
   situaciones: Record<string, DiarioOption[]>;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export const getDiarioOptions = async (): Promise<DiarioOptionsResponse> => {

@@ -6,6 +6,7 @@
     getEstudiantes,
     getAnotador,
   } from "../../api/service";
+  // @ts-ignore
   import { jsPDF } from "jspdf";
   import autoTable from "jspdf-autotable";
   import Loader from "./Loader.svelte";
@@ -84,7 +85,7 @@
   const loadAnotadorData = async () => {
     isLoadingData = true;
     try {
-      const payload: any = {
+      const payload: Record<string, string> = {
         spreadsheetId: SPREADSHEET_ID_ANOTADOR,
         worksheetTitle: WORKSHEET_TITLE_ANOTADOR,
       };
@@ -111,7 +112,7 @@
       // Asegurarnos de que sea un array
       anotadorData = Array.isArray(rawData) ? rawData : [];
       console.log("✅ Datos procesados:", anotadorData.length, "registros");
-      console.log("📋 Primer registro:", anotadorData[0]);
+
       console.log(
         "🔍 Keys del primer registro:",
         anotadorData[0] ? Object.keys(anotadorData[0]) : "No hay registros",
@@ -130,9 +131,17 @@
           "Anotación",
         ];
         anotadorData = anotadorData.map((row: any) => {
-          const obj: any = {};
+          const obj: AnotadorData = {
+            "Marca Temporal": "",
+            Fecha: "",
+            Docente: "",
+            Asignatura: "",
+            Grado: "",
+            Horas: "",
+            Anotación: ""
+          };
           headers.forEach((header, index) => {
-            obj[header] = row.values?.[index] || "";
+            (obj as any)[header] = row.values?.[index] || "";
           });
           return obj;
         });
@@ -141,16 +150,21 @@
           anotadorData.length,
           "registros",
         );
-        console.log("📋 Primer registro transformado:", anotadorData[0]);
+
       }
 
       applyFilters();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("❌ Error cargando datos del anotador:", error);
-      console.error("📋 Error details:", error?.message);
-      if (error?.response) {
-        console.error("🌐 Response status:", error.response.status);
-        console.error("🌐 Response data:", error.response.data);
+      if (error instanceof Error) {
+        console.error("📋 Error details:", error.message);
+      }
+      if (error && typeof error === 'object' && 'response' in error) {
+        const response = (error as any).response;
+        if (response) {
+          console.error("🌐 Response status:", response.status);
+          console.error("🌐 Response data:", response.data);
+        }
       }
       anotadorData = [];
       filteredData = [];

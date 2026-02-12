@@ -338,7 +338,7 @@
             await saveInasistencias({
                 spreadsheetId: SPREADSHEET_ID,
                 worksheetTitle: WORKSHEET_TITLE,
-                inasistencias: inasistenciasPayload,
+                inasistencias: inasistenciasPayload as any,
             });
 
             message = `${inasistencias.length} inasistencia(s) registrada(s) exitosamente`;
