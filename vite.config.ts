@@ -9,16 +9,34 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
+        manualChunks(id) {
           // Separar librerías grandes en chunks separados
-          vendor: ['svelte', 'svelte/transition', 'svelte/store'],
-          ui: ['sweetalert2'],
-          excel: ['exceljs'],
-          pdf: ['jspdf', 'jspdf-autotable'],
-          utils: ['file-saver']
+          if (id.includes('node_modules')) {
+            if (id.includes('svelte') && !id.includes('svelte/transition')) {
+              return 'svelte';
+            }
+            if (id.includes('sweetalert2')) {
+              return 'ui';
+            }
+            if (id.includes('exceljs')) {
+              return 'excel';
+            }
+            if (id.includes('jspdf')) {
+              return 'pdf';
+            }
+            if (id.includes('file-saver')) {
+              return 'utils';
+            }
+            if (id.includes('html2canvas')) {
+              return 'canvas';
+            }
+            if (id.includes('dompurify')) {
+              return 'purify';
+            }
+          }
         }
       }
     },
-    chunkSizeWarningLimit: 800 // Aumentar límite de advertencia a 800kB
+    chunkSizeWarningLimit: 1000 // Aumentar a 1000kB ya que Excel y PDF se cargan bajo demanda
   }
 });

@@ -6,9 +6,9 @@
     getEstudiantes,
     getAnotador,
   } from "../../api/service";
-  // @ts-ignore
-  import { jsPDF } from "jspdf";
-  import autoTable from "jspdf-autotable";
+  // Dynamic imports for heavy libraries
+  let jsPDF: any = null;
+  let autoTable: any = null;
   import Loader from "./Loader.svelte";
   import { theme } from "../lib/themeStore";
   import {
@@ -38,6 +38,18 @@
 
   let isLoading = false;
   let isLoadingData = false;
+
+  // Load heavy libraries dynamically
+  const loadPdfLibraries = async () => {
+    if (!jsPDF || !autoTable) {
+      const [jspdfModule, autoTableModule] = await Promise.all([
+        import('jspdf'),
+        import('jspdf-autotable')
+      ]);
+      jsPDF = jspdfModule.default;
+      autoTable = autoTableModule.default;
+    }
+  };
 
   let docenteMaterias: Record<string, string[]> = JSON.parse(
     localStorage.getItem("docenteMaterias") || "{}",
@@ -244,6 +256,9 @@
   };
 
   const generatePDF = async () => {
+    // Load libraries dynamically
+    await loadPdfLibraries();
+    
     if (filteredData.length === 0) {
       alert("No hay datos para generar el PDF");
       return;
@@ -389,7 +404,7 @@
       },
       margin: { top: 15, right: 15, bottom: 15, left: 15 },
       tableWidth: "auto", // Calcular ancho automáticamente
-            didParseCell: (data) => {
+            didParseCell: (data: any) => {
 
       
               // Estilo especial para la fila de totales

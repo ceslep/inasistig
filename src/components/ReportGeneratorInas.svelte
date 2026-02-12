@@ -6,8 +6,9 @@
     getEstudiantes,
     getInasistencias,
   } from "../../api/service";
-  import ExcelJS from "exceljs";
-  import { saveAs } from "file-saver";
+  // Dynamic imports for heavy libraries
+  let ExcelJS: any = null;
+  let saveAs: any = null;
   import Loader from "./Loader.svelte";
   import { theme } from "../lib/themeStore";
   import {
@@ -42,6 +43,18 @@
 
   let isLoading = false;
   let isGenerating = false;
+
+  // Load heavy libraries dynamically
+  const loadLibraries = async () => {
+    if (!ExcelJS || !saveAs) {
+      const [exceljsModule, fileSaverModule] = await Promise.all([
+        import('exceljs'),
+        import('file-saver')
+      ]);
+      ExcelJS = exceljsModule.default;
+      saveAs = fileSaverModule.default;
+    }
+  };
 
   const normalize = (str: any) => {
     if (!str) return "";
@@ -95,6 +108,9 @@
   });
 
   const generateExcel = async () => {
+    // Load libraries dynamically
+    await loadLibraries();
+    
     if (!selectedDocente || !selectedMateria || !selectedGrado) {
       Swal.fire({
         icon: "warning",
@@ -239,7 +255,7 @@
       });
       worksheet.getColumn(totalCols).width = 15;
 
-      headerRow.eachCell((cell, colNumber) => {
+      headerRow.eachCell((cell: any, colNumber: any) => {
         cell.fill = {
           type: "pattern",
           pattern: "solid",
@@ -310,7 +326,7 @@
         };
 
         // Bordes para toda la fila
-        row.eachCell((cell) => {
+        row.eachCell((cell: any) => {
           cell.border = {
             top: { style: "thin" },
             left: { style: "thin" },
