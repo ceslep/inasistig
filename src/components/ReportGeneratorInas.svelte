@@ -67,6 +67,18 @@
       .toLowerCase();
   };
 
+  const normalizeFecha = (fecha: string): string => {
+    if (!fecha) return "";
+    const parts = fecha.split("/");
+    if (parts.length === 3) {
+      const day = parts[0].padStart(2, "0");
+      const month = parts[1].padStart(2, "0");
+      const year = parts[2];
+      return `${year}-${month}-${day}`;
+    }
+    return fecha;
+  };
+
   const generateDatesFromPeriodo = (periodo: any): Date[] => {
     const dates: Date[] = [];
     const current = new Date(periodo.fecha_inicio);
@@ -164,11 +176,16 @@
           // Filtro por docente, materia y grado usando normalize
           const matchDocente = itemDocente.includes(targetDocente) || targetDocente.includes(itemDocente);
           const matchMateria = itemMateria.includes(targetMateria) || targetMateria.includes(itemMateria);
-          const matchGrado = itemGrado === targetGrado;
+          const matchGrado = itemGrado === targetGrado || itemGrado.startsWith(targetGrado) || targetGrado.startsWith(itemGrado);
 
-          // Filtro por fecha del periodo
-          const d = new Date(item.fecha);
-          const matchPeriodo = d >= periodo.fecha_inicio && d <= periodo.fecha_fin;
+          // Filtro por fecha del periodo - normalizar formato DD/M/YYYY a YYYY-MM-DD
+          const fechaNorm = normalizeFecha(item.fecha);
+          const itemDate = new Date(fechaNorm);
+          const periodoInicio = new Date(periodo.fecha_inicio);
+          const periodoFin = new Date(periodo.fecha_fin);
+          periodoInicio.setHours(0, 0, 0, 0);
+          periodoFin.setHours(23, 59, 59, 999);
+          const matchPeriodo = itemDate >= periodoInicio && itemDate <= periodoFin;
 
           return matchDocente && matchMateria && matchGrado && matchPeriodo;
         });
@@ -187,10 +204,12 @@
       const allDatesInPeriod = generateDatesFromPeriodo(periodo);
       
       // Filtrar para incluir solo fechas que tengan al menos una inasistencia registrada
-      // O podríamos mostrar todas las fechas del periodo. asd.txt filtra fechas con registros.
       const fechasConRegistros = allDatesInPeriod.filter(date => {
         const dateStr = date.toISOString().split("T")[0];
-        return filteredInasistencias.some((reg: InasistenciaData) => reg.fecha === dateStr);
+        return filteredInasistencias.some((reg: InasistenciaData) => {
+          const regFecha = normalizeFecha(reg.fecha);
+          return regFecha === dateStr;
+        });
       });
 
       if (fechasConRegistros.length === 0) {
@@ -277,7 +296,7 @@
         fechasConRegistros.forEach((date) => {
           const dateStr = date.toISOString().split("T")[0];
           const inasistencias = filteredInasistencias.filter(
-            (i: InasistenciaData) => normalize(i.nombre) === normalize(nombreEstudiante) && i.fecha === dateStr
+            (i: InasistenciaData) => normalize(i.nombre) === normalize(nombreEstudiante) && normalizeFecha(i.fecha) === dateStr
           );
 
           if (inasistencias.length > 0) {
