@@ -270,7 +270,7 @@
       // Estilo de encabezados
       worksheet.getColumn(1).width = 35;
       fechasConRegistros.forEach((_, i) => {
-        worksheet.getColumn(i + 2).width = 12;
+        worksheet.getColumn(i + 2).width = 22;
       });
       worksheet.getColumn(totalCols).width = 15;
 
@@ -300,9 +300,18 @@
           );
 
           if (inasistencias.length > 0) {
-            const horas = inasistencias.reduce((sum: number, i: InasistenciaData) => sum + (parseFloat(i.horas) || 0), 0);
-            rowData.push(horas > 0 ? horas.toString() : "X");
-            totalHoras += horas;
+            const inas = inasistencias[0];
+            const horas = parseFloat(inas.horas) || 0;
+            const motivo = inas.motivo || "";
+            
+            if (horas > 0) {
+              rowData.push(horas.toString());
+              totalHoras += horas;
+            } else if (motivo) {
+              rowData.push(motivo);
+            } else {
+              rowData.push("X");
+            }
           } else {
             rowData.push("✓");
           }
@@ -310,6 +319,7 @@
 
         rowData.push(totalHoras.toString());
         const row = worksheet.addRow(rowData);
+        row.height = 30;
 
         // Estilos de celda
         row.getCell(1).font = { bold: true };
@@ -321,9 +331,13 @@
 
         fechasConRegistros.forEach((_, i) => {
           const cell = row.getCell(i + 2);
-          cell.alignment = { horizontal: "center" };
-          const val = cell.value?.toString();
-          if (val === "X" || (parseFloat(val || "0") > 0)) {
+          cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+          const val = cell.value?.toString() || "";
+          const horas = parseFloat(val) || 0;
+          
+          if (val === "✓") {
+            cell.font = { color: { argb: "00AA00" } };
+          } else if (horas > 0 || isNaN(horas)) {
             cell.font = { color: { argb: "FF0000" }, bold: true };
             cell.fill = {
               type: "pattern",
@@ -331,7 +345,12 @@
               fgColor: { argb: "FFE6E6" }
             };
           } else {
-            cell.font = { color: { argb: "00AA00" } };
+            cell.font = { color: { argb: "FF0000" }, bold: true };
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFE6E6" }
+            };
           }
         });
 
