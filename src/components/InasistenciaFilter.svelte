@@ -309,6 +309,36 @@
     inputBg: "rgb(var(--bg-secondary))",
   };
 
+  // --- Normalizar fecha a formato YYYY-MM-DD para comparaciones ---
+  const normalizeFecha = (fecha: string): string => {
+    if (!fecha) return "";
+    
+    // Si ya está en formato YYYY-MM-DD, retornarlo
+    if (/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      return fecha;
+    }
+    
+    // Si viene en formato DD/MM/YYYY, convertir
+    const parts = fecha.split("/");
+    if (parts.length === 3) {
+      const day = parts[0].padStart(2, "0");
+      const month = parts[1].padStart(2, "0");
+      const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+      return `${year}-${month}-${day}`;
+    }
+    
+    // Intentar parsear como fecha
+    const date = new Date(fecha);
+    if (!isNaN(date.getTime())) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+    
+    return fecha;
+  };
+
   // --- Inasistencias filtradas ---
   $: {
     console.log("🔄 Filtro reactivo ejecutándose:", {
@@ -325,10 +355,7 @@
       if (filtros.motivo && item.motivo !== filtros.motivo) return false;
 
       if (filtrarPorFecha) {
-        // La fecha ya viene en formato YYYY-MM-DD del API, comparación directa
-        const itemFecha = item.fecha; // Ya es "YYYY-MM-DD"
-
-
+        const itemFecha = normalizeFecha(item.fecha);
 
         if (filtros.fechaInicio && itemFecha < filtros.fechaInicio)
           return false;
@@ -589,7 +616,7 @@
 
       // Filtro de fecha si está activo
       if (filtrarPorFecha) {
-        const itemFecha = item.fecha; // Ya es "YYYY-MM-DD"
+        const itemFecha = normalizeFecha(item.fecha);
 
         if (filtros.fechaInicio && itemFecha < filtros.fechaInicio)
           return false;

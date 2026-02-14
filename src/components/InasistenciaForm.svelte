@@ -22,6 +22,7 @@
   import eieLogo from "../assets/eie.png";
   import InasistenciaFilter from "./InasistenciaFilter.svelte";
   import ReportGeneratorInas from "./ReportGeneratorInas.svelte";
+  import ReportGeneratorInasView from "./ReportGeneratorInasView.svelte";
   import FeaturePopup from "./FeaturePopup.svelte";
 
   export let onBack: () => void;
@@ -71,6 +72,7 @@
   // --- Filtros ---
   let showFilter = false;
   let showReportGenerator = false;
+  let showOnlineReport = false;
 
   const openFilters = () => {
     showFilter = true;
@@ -84,6 +86,13 @@
   };
   const closeReportGenerator = () => {
     showReportGenerator = false;
+  };
+
+  const openOnlineReport = () => {
+    showOnlineReport = true;
+  };
+  const closeOnlineReport = () => {
+    showOnlineReport = false;
   };
 
   // --- Estado para Report Generator ---
@@ -743,6 +752,35 @@
           {/if}
         </button>
 
+        <!-- Botón de Reporte Online -->
+        <button
+          on:click={openOnlineReport}
+          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+          title="Ver reporte online"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+            />
+          </svg>
+          <span class="text-sm font-medium hidden lg:inline">Ver Online</span>
+        </button>
+
         <!-- Botón de Locker Studio -->
         <button
           on:click={openLocker}
@@ -1397,6 +1435,13 @@
 {#if showReportGenerator}
   <ReportGeneratorInas
     onClose={closeReportGenerator}
+    initialDocente={formData.docente}
+  />
+{/if}
+
+{#if showOnlineReport}
+  <ReportGeneratorInasView
+    onClose={closeOnlineReport}
     initialDocente={formData.docente}
   />
 {/if}

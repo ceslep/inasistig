@@ -3,23 +3,24 @@
 ## Commands
 
 ```bash
-npm run dev        # Dev server (Vite)
-npm run build      # Production build
-npm run preview   # Preview build
-npm run deploy    # Build + deploy to GitHub Pages
-npm run check     # Type checking (svelte-check + tsc)
+npm run dev        # Dev server (Vite) - http://localhost:5173
+npm run build      # Production build to dist/
+npm run preview    # Preview production build locally
+npm run deploy     # Build + deploy to GitHub Pages
+npm run check      # Type checking (svelte-check + tsc)
 ```
 
-**Testing**: No test framework configured. Use manual `.test.html` files in root.
+**Testing**: No test framework configured. Manual testing via `test.html` files in root.
 
 ---
 
 ## Stack
 
-- Svelte 5 + TypeScript + Vite
-- TailwindCSS 4.x with CSS custom properties for themes
-- SweetAlert2 for alerts, ExcelJS/jsPDF for exports
-- Base path: `/inasistig/` (GitHub Pages)
+- **Framework**: Svelte 5 + TypeScript + Vite
+- **Styling**: TailwindCSS 4.x with CSS custom properties for theming
+- **Alerts**: SweetAlert2 for modals/confirmations
+- **Exports**: ExcelJS for Excel, jsPDF for PDF generation
+- **Deployment**: GitHub Pages (base path: `/inasistig/`)
 
 ---
 
@@ -27,122 +28,120 @@ npm run check     # Type checking (svelte-check + tsc)
 
 ```
 src/
-├── components/    # Svelte components (Dashboard, InasistenciaForm, Anotador, Diario, *Filter)
-├── lib/           # Stores (themeStore.ts)
-├── assets/        # Static assets
-├── constants.ts  # App constants/URLs
-├── app.css       # Global styles + CSS variables
-└── App.svelte    # Root component
+├── api/                 # API service layer (Google Sheets)
+├── components/         # Svelte components
+├── lib/                 # Stores (themeStore.ts)
+├── assets/              # Static assets
+├── constants.ts         # App constants (URLs, config)
+├── app.css             # Global styles + CSS variables
+└── App.svelte         # Root component
 ```
 
 ---
 
 ## Code Style
 
-### Svelte Components
-```svelte
-<script lang="ts">
-  import { onMount } from "svelte";
-  
-  export let onSelect: (view: string) => void;
-  export let data: Estudiante[] = [];
-  
-  let mounted = false;
-  
-  const handleSelect = (view: string) => {
-    activeView = view;
-  };
-  
-  onMount(() => {
-    mounted = true;
-  });
-</script>
+### Import Organization
+Order imports by category (separate with blank lines):
+1. Node built-ins 2. External libraries 3. Internal services/api 4. Internal constants
+5. Internal stores 6. Internal components
 
-<main class="w-full min-h-screen">
-  <!-- Template -->
-</main>
+```typescript
+import { onMount } from "svelte";
+import Swal from "sweetalert2";
+import { saveInasistencias } from "../../api/service";
+import { SPREADSHEET_ID } from "../constants";
+import { theme } from "../lib/themeStore";
+import Dashboard from "./Dashboard.svelte";
 ```
 
-### TypeScript
-- Use interfaces for complex data (avoid `any`)
-- Named exports preferred; default for main components
-- Constants in UPPER_SNAKE_CASE
-- Full typing on functions: `const fetchData = async (id: string): Promise<Data[]> => {...}`
+### TypeScript Guidelines
+- **Always** use interfaces/types, never `any`
+- Named exports preferred; default for main route components
+- Constants in `UPPER_SNAKE_CASE`
+- Full function typing: `const fetchData = async (id: string): Promise<Data[]> => {...}`
 
-### CSS & Tailwind
-- Use CSS variables for themes: `class="bg-[rgb(var(--bg-primary))]"`
-- Prefer Tailwind utility classes over custom CSS
-- Use Svelte transitions (fade, fly, slide)
+### Naming Conventions
+| Type | Convention | Example |
+|------|------------|---------|
+| Components | PascalCase | `Dashboard.svelte` |
+| Functions/vars | camelCase | `handleClick` |
+| Interfaces | PascalCase | `interface Estudiante` |
+| Constants | UPPER_SNAKE_CASE | `API_BASE_URL` |
+| CSS classes | kebab-case | `btn-primary` |
 
 ---
 
 ## Patterns
 
 ### State Management
-- **Svelte stores**: Global state (theme, persisted data)
-- **Props**: Parent-child communication
-- **Local state**: Component-specific state
+- **Svelte stores**: Global state (theme) in `lib/`
+- **Props**: Parent-child via `export let`
+- **Local state**: Component-specific with `let`
+
+### Reactive (Svelte 5)
+```typescript
+$: filteredItems = items.filter(i => i.active);
+let count = $state(0);
+let doubled = $derived(count * 2);
+```
 
 ### Navigation
-- Single-page with `activeView` variable
-- Consistent `handleBack()` function
-- Use fade/fly transitions
+- Single-page app with `activeView` state
+- Consistent `handleBack()` returning to "dashboard"
+- Use Svelte transitions: `fade`, `fly`, `slide`
 
 ### Forms
 - Use `bind:value` for inputs
 - Validate in real-time with visual feedback
-- Use SweetAlert2 for confirmations
+- Use SweetAlert2 for confirmations/errors
+- Handle loading states with `isLoading` flags
 
 ### Error Handling
 ```typescript
 import Swal from "sweetalert2";
-
 try {
   const result = await fetch(url);
   if (!result.ok) throw new Error("Failed");
 } catch (e) {
-  Swal.fire({
+  console.error(e);
+  await Swal.fire({
     icon: "error",
     title: "Error",
-    text: "Mensaje de error",
-    confirmButtonColor: "#d33"
+    text: "Mensaje en español",
+    confirmButtonColor: "#ef4444"
   });
 }
 ```
 
 ### API
-- All URLs in `constants.ts`
+- All URLs in `constants.ts` - never hardcode
 - Use async/await with try/catch
-- Type API responses with interfaces
+- Always type API responses with interfaces
 
 ---
 
 ## Theming
 
-CSS variables in `app.css`:
-- `--bg-primary`, `--bg-secondary`
-- `--text-primary`, `--text-secondary`
-- `--card-bg`, `--card-border`
-- `--accent-primary`, `--accent-secondary`
+CSS variables in `app.css`: `--bg-primary`, `--bg-secondary`, `--text-primary`, `--text-secondary`, `--card-bg`, `--card-border`, `--accent-primary`, `--border-primary`
 
 Usage:
 ```svelte
 <div class="bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))]">
   Content
 </div>
+
+$: styles = { bg: "rgb(var(--bg-primary))", text: "rgb(var(--text-primary))" };
 ```
 
 ---
 
-## Conventions
+## CSS & Tailwind
 
-| Type | Convention | Example |
-|------|------------|---------|
-| Components | PascalCase | `Dashboard.svelte` |
-| Functions/vars | camelCase | `handleClick` |
-| CSS classes | kebab-case | `btn-primary` |
-| Constants | UPPER_SNAKE_CASE | `API_BASE_URL` |
-| Data attributes | kebab-case | `data-testid="student-list"` |
+- Use CSS variables for theme-aware styling
+- Prefer Tailwind utility classes
+- Use `transition-colors duration-200` for smooth transitions
+- Mobile-first: `class="w-full sm:w-auto"`
 
 ---
 
@@ -150,9 +149,10 @@ Usage:
 
 - [ ] TypeScript with full types (no `any`)
 - [ ] CSS variables for theming
-- [ ] Tailwind classes
+- [ ] Tailwind utility classes
 - [ ] Error handling with SweetAlert2
-- [ ] Responsive design
+- [ ] Loading states for async
+- [ ] Responsive (mobile-first)
 - [ ] `npm run check` passes
 - [ ] Existing functionality intact
 
@@ -160,12 +160,12 @@ Usage:
 
 ## Notes
 
-1. Always use TypeScript - don't compromise typing
+1. Always use TypeScript - never compromise typing
 2. Follow existing component patterns
 3. All components must support light/dim/dark themes
-4. UI in Spanish
-5. Mobile-first design
+4. UI text in Spanish
+5. Mobile-first responsive design
 6. Ask before git commits
 
-**Version**: 2.1  
+**Version**: 2.3  
 **Updated**: Feb 2026

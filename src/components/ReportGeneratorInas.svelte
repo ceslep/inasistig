@@ -18,6 +18,7 @@
   } from "../constants";
   import eieLogo from "../assets/eie.png";
   import Swal from "sweetalert2";
+  import ReportGeneratorInasView from "./ReportGeneratorInasView.svelte";
 
   export let onClose: () => void;
   export let initialDocente: string = "";
@@ -43,6 +44,7 @@
 
   let isLoading = false;
   let isGenerating = false;
+  let showInlineView = false;
 
   // Load heavy libraries dynamically
   const loadLibraries = async () => {
@@ -505,7 +507,7 @@
           <button
             on:click={generateExcel}
             disabled={isGenerating || !selectedDocente || !selectedMateria || !selectedGrado}
-            class="flex-[2] px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-green-500/20"
+            class="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-green-500/20"
           >
             {#if isGenerating}
               <svg class="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
@@ -525,3 +527,10 @@
     </div>
   </div>
 </div>
+
+{#if showInlineView}
+  <ReportGeneratorInasView 
+    onClose={() => showInlineView = false}
+    initialDocente={selectedDocente}
+  />
+{/if}
