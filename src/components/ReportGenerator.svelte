@@ -350,10 +350,11 @@
       yPosition += 10;
     }
 
-    // Preparar datos de la tabla (sin docente, asignatura ni grado)
+    // Preparar datos de la tabla (incluyendo asignatura)
     const tableData = filteredData.map((item) => [
       item["Fecha"] || "",
       item["Horas"] || "",
+      item["Asignatura"] || "",
       item["Anotación"] || "",
     ]);
 
@@ -361,6 +362,7 @@
     const totalRow = [
       "TOTAL",
       totalHoras.toFixed(1),
+      "",
       "",
     ];
     tableData.push(totalRow);
@@ -373,7 +375,7 @@
 
     // Generar tabla con autoTable
     autoTable(pdf, {
-      head: [["Fecha", "Horas", "Anotación"]],
+      head: [["Fecha", "Horas", "Asignatura", "Anotación"]],
       body: tableData,
       startY: yPosition,
       styles: {
@@ -398,9 +400,10 @@
         fillColor: [248, 250, 252],
       },
       columnStyles: {
-        0: { cellWidth: 60, minCellHeight: 8, halign: 'center' }, // Fecha
-        1: { cellWidth: 30, minCellHeight: 8, halign: 'center' }, // Horas
-        2: { cellWidth: 'auto', minCellHeight: 12 }, // Anotación con altura mínima
+        0: { cellWidth: 30, minCellHeight: 8, halign: 'center' }, // Fecha
+        1: { cellWidth: 20, minCellHeight: 8, halign: 'center' }, // Horas
+        2: { cellWidth: 45, minCellHeight: 8 }, // Asignatura
+        3: { cellWidth: 'auto', minCellHeight: 12 }, // Anotación con altura mínima
       },
       margin: { top: 15, right: 15, bottom: 15, left: 15 },
       tableWidth: "auto", // Calcular ancho automáticamente
@@ -421,7 +424,11 @@
                   data.cell.styles.halign = "center";
                   data.cell.styles.fillColor = [220, 220, 220];
                 }
-                if (data.column.index === 2) { // `${filteredData.length} registros` for Anotación
+                if (data.column.index === 2) { // Asignatura vacía
+                  data.cell.styles.halign = "center";
+                  data.cell.styles.fillColor = [220, 220, 220];
+                }
+                if (data.column.index === 3) { // `${filteredData.length} registros` for Anotación
                   data.cell.styles.halign = "center";
                   data.cell.styles.fillColor = [220, 220, 220];
                 }
@@ -770,6 +777,12 @@
                   class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
                   style="color: {styles.label};"
                 >
+                  Asignatura
+                </th>
+                <th
+                  class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
+                  style="color: {styles.label};"
+                >
                   Anotación
                 </th>
               </tr>
@@ -782,6 +795,11 @@
                 >
                   <td class="px-4 py-3 text-sm">{item["Fecha"] || "-"}</td>
                   <td class="px-4 py-3 text-sm">{item["Horas"] || "-"}</td>
+                  <td class="px-4 py-3 text-sm">
+                    <div class="truncate" title={item["Asignatura"]}>
+                      {item["Asignatura"] || "-"}
+                    </div>
+                  </td>
                   <td class="px-4 py-3 text-sm">
                     <div class="truncate" title={item["Anotación"]}>
                       {item["Anotación"] || "-"}
@@ -799,6 +817,7 @@
                   <td class="px-4 py-3 text-sm font-bold text-center">
                     {totalHoras.toFixed(1)}
                   </td>
+                  <td class="px-4 py-3 text-sm font-bold text-center"></td>
                   <td class="px-4 py-3 text-sm font-bold text-center">
                     {filteredData.length} registros
                   </td>
