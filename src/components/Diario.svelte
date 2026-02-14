@@ -15,7 +15,8 @@
   import Loader from "./Loader.svelte";
   import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
-  import DiarioAnotacionOptions from "./DiarioAnotacionOptions.svelte"; // Import the new component
+  import DiarioAnotacionOptions from "./DiarioAnotacionOptions.svelte";
+  import ReportGeneratorDiario from "./ReportGeneratorDiario.svelte";
 
   export let onBack: () => void;
 
@@ -38,6 +39,16 @@
   let isLoadingMaterias = false;
   let isLoadingEstudiantes = false;
   let isLoading = false;
+
+  // --- Report Generator ---
+  let showReportGenerator = false;
+
+  const openReportGenerator = () => {
+    showReportGenerator = true;
+  };
+  const closeReportGenerator = () => {
+    showReportGenerator = false;
+  };
 
   let selectedDiarioAnots: string[] = []; // State to hold selected annotations from the child component
 
@@ -340,6 +351,29 @@
           <span class="text-sm font-medium hidden lg:inline"
             >Hoja de Cálculo</span
           >
+        </button>
+
+        <!-- Botón de Reportes PDF -->
+        <button
+          on:click={openReportGenerator}
+          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+          title="Generar reportes PDF"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+            />
+          </svg>
+          <span class="text-sm font-medium hidden lg:inline">Reportes PDF</span>
         </button>
 
         <button
@@ -670,7 +704,12 @@
   </main>
 </div>
 
-<!-- Feature Popup Component -->
+{#if showReportGenerator}
+  <ReportGeneratorDiario
+    onClose={closeReportGenerator}
+    initialDocente={formData.docente}
+  />
+{/if}
 
 <style>
   @keyframes fade-in {
