@@ -69,6 +69,12 @@
   let isLoading = false;
   let message = "";
 
+  // Materias múltiples para docente con "-"
+  let selectedMaterias: string[] = [];
+
+  // Verificar si el docente tiene "-"
+  $: docenteHasDash = formData.docente.includes("-");
+
   // --- Filtros ---
   let showFilter = false;
   let showReportGenerator = false;
@@ -241,6 +247,21 @@
   $: estudiantesFiltrados = formData.grado
     ? estudiantes.filter((e) => e.grado.toString() === formData.grado)
     : [];
+
+  // Extraer número del docente cuando tiene patrón "Nombre-número"
+  const getDocenteNumber = (docente: string): string | null => {
+    const match = docente.match(/-(\d+)$/);
+    return match ? match[1] : null;
+  };
+
+  // Filtrar grupos según el número del docente
+  $: docenteNumber = getDocenteNumber(formData.docente);
+
+  $: filteredGrados = docenteNumber
+    ? [...new Set(estudiantes.map((e) => e.grado.toString()))].filter((g) =>
+        g.startsWith(`${docenteNumber}-`),
+      )
+    : [...new Set(estudiantes.map((e) => e.grado.toString()))];
 
   // --- Motivos predefinidos ---
   const motivos = [
@@ -583,19 +604,40 @@
     isLoading = true;
     try {
       const currentTimestamp = new Date().toISOString();
-      const inasistenciasPayload = inasistencias
-        .filter((item) => item.motivo && item.motivo !== "Ignorar")
-        .map((item) => [
-          currentTimestamp,
-          formData.docente,
-          formData.fecha,
-          item.horas,
-          formData.materia,
-          item.motivo,
-          formData.grado,
-          item.nombre,
-          item.observaciones || formData.observaciones,
-        ]);
+
+      // Validar materias seleccionadas
+      const materiasToSave = docenteHasDash ? selectedMaterias : [formData.materia];
+      if (docenteHasDash && selectedMaterias.length === 0) {
+        await Swal.fire({
+          icon: "warning",
+          title: "Atención",
+          text: "Seleccione al menos una materia",
+          confirmButtonColor: "#6366f1",
+        });
+        return;
+      }
+
+      // Crear payload para cada materia seleccionada
+      const inasistenciasPayload: (string | number)[][] = [];
+      const filteredInasistencias = inasistencias.filter(
+        (item) => item.motivo && item.motivo !== "Ignorar",
+      );
+
+      for (const materia of materiasToSave) {
+        for (const item of filteredInasistencias) {
+          inasistenciasPayload.push([
+            currentTimestamp,
+            formData.docente,
+            formData.fecha,
+            item.horas,
+            materia,
+            item.motivo,
+            formData.grado,
+            item.nombre,
+            item.observaciones || formData.observaciones,
+          ]);
+        }
+      }
 
       await saveInasistencias({
         spreadsheetId: SPREADSHEET_ID,
@@ -603,13 +645,15 @@
         inasistencias: inasistenciasPayload as any,
       });
 
-      // Persistir la materia para el docente solo después del éxito
-      saveMateriaForDocente(formData.docente, formData.materia);
+      // Persistir las materias para el docente solo después del éxito
+      for (const materia of materiasToSave) {
+        saveMateriaForDocente(formData.docente, materia);
+      }
 
       await Swal.fire({
         icon: "success",
         title: "¡Éxito!",
-        text: `${inasistencias.length} inasistencia(s) registrada(s) exitosamente`,
+        text: `${inasistenciasPayload.length} inasistencia(s) registrada(s) exitosamente`,
         timer: 3000,
         timerProgressBar: true,
         showConfirmButton: false,
@@ -627,6 +671,7 @@
       inasistencias = [];
       individualHours = {};
       openObservations = {};
+      selectedMaterias = [];
     } catch (error) {
       console.error("Error enviando:", error);
       await Swal.fire({
@@ -1008,32 +1053,52 @@
                 style="color: {styles.label};">Materia</label
               >
             </div>
-            <select
-              id="materia"
-              name="materia"
-              bind:value={formData.materia}
-              required
-              disabled={isLoadingMaterias}
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50"
-              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
-            >
-              <option value=""
-                >{isLoadingMaterias
-                  ? "Cargando..."
-                  : "Seleccione materia"}</option
+            {#if docenteHasDash}
+              <div class="max-h-48 overflow-y-auto border rounded-xl p-3 space-y-2" style="border-color: {styles.border}; background-color: {styles.inputBg};">
+                {#each materiasSorted as materia}
+                  {@const isSaved = docenteMaterias[formData.docente]?.includes(materia.materia)}
+                  <label class="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                    <input
+                      type="checkbox"
+                      bind:group={selectedMaterias}
+                      value={materia.materia}
+                      class="w-5 h-5 rounded border-2 text-indigo-500 focus:ring-indigo-500"
+                      style="border-color: {styles.border}; accent-color: #6366f1;"
+                    />
+                    <span class="text-sm" style="color: {styles.text};">
+                      {isSaved ? "⭐ " : ""}{materia.materia}
+                    </span>
+                  </label>
+                {/each}
+              </div>
+            {:else}
+              <select
+                id="materia"
+                name="materia"
+                bind:value={formData.materia}
+                required
+                disabled={isLoadingMaterias}
+                class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50"
+                style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
               >
-              {#each materiasSorted as materia}
-                {@const isSaved = docenteMaterias[formData.docente]?.includes(
-                  materia.materia,
-                )}
-                <option
-                  value={materia.materia}
-                  style={isSaved ? "color: #6366f1; font-weight: 600;" : ""}
+                <option value=""
+                  >{isLoadingMaterias
+                    ? "Cargando..."
+                    : "Seleccione materia"}</option
                 >
-                  {isSaved ? "⭐ " : ""}{materia.materia}
-                </option>
-              {/each}
-            </select>
+                {#each materiasSorted as materia}
+                  {@const isSaved = docenteMaterias[formData.docente]?.includes(
+                    materia.materia,
+                  )}
+                  <option
+                    value={materia.materia}
+                    style={isSaved ? "color: #6366f1; font-weight: 600;" : ""}
+                  >
+                    {isSaved ? "⭐ " : ""}{materia.materia}
+                  </option>
+                {/each}
+              </select>
+            {/if}
           </div>
         </div>
 
@@ -1082,7 +1147,7 @@
                   ? "Cargando..."
                   : "Seleccione grado"}</option
               >
-              {#each [...new Set(estudiantes.map( (e) => e.grado.toString(), ))] as g}
+              {#each filteredGrados as g}
                 <option value={g}
                   >{g
                     .replace(/0(\d)$/, "°$1")
@@ -1375,7 +1440,7 @@
     disabled={isLoading ||
       inasistencias.length === 0 ||
       !formData.docente ||
-      !formData.materia}
+      (docenteHasDash ? selectedMaterias.length === 0 : !formData.materia)}
     class="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 bg-green-600 hover:bg-green-700 text-white p-4 lg:p-5 rounded-full shadow-2xl hover:shadow-green-500/20 transform transition-all duration-300 hover:scale-110 active:scale-95 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed z-50 group"
     title="Guardar inasistencias"
   >

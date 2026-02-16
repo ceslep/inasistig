@@ -10,7 +10,9 @@ npm run deploy     # Build + deploy to GitHub Pages
 npm run check      # Type checking (svelte-check + tsc)
 ```
 
-**Testing**: No test framework configured. Manual testing via `test.html` files in root.
+**Testing**: No test framework. Manual testing via browser at `http://localhost:5173`.
+
+**Linting**: No separate linter. Run `npm run check` for type checking.
 
 ---
 
@@ -19,8 +21,8 @@ npm run check      # Type checking (svelte-check + tsc)
 - **Framework**: Svelte 5 + TypeScript + Vite
 - **Styling**: TailwindCSS 4.x with CSS custom properties for theming
 - **Alerts**: SweetAlert2 for modals/confirmations
-- **Exports**: ExcelJS for Excel, jsPDF for PDF generation
-- **Deployment**: GitHub Pages (base path: `/inasistig/`)
+- **Exports**: ExcelJS (Excel), jsPDF (PDF)
+- **Deployment**: GitHub Pages (base: `/inasistig/`)
 
 ---
 
@@ -28,21 +30,20 @@ npm run check      # Type checking (svelte-check + tsc)
 
 ```
 src/
-├── api/                 # API service layer (Google Sheets)
+├── api/                 # API service layer
 ├── components/         # Svelte components
-├── lib/                 # Stores (themeStore.ts)
-├── assets/              # Static assets
-├── constants.ts         # App constants (URLs, config)
+├── lib/                # Stores (themeStore.ts)
+├── assets/             # Static assets
+├── constants.ts        # App constants (URLs, config)
 ├── app.css             # Global styles + CSS variables
-└── App.svelte         # Root component
+└── App.svelte          # Root component
 ```
 
 ---
 
 ## Code Style
 
-### Import Organization
-Order imports by category (separate with blank lines):
+### Import Order (separate with blank lines)
 1. Node built-ins 2. External libraries 3. Internal services/api 4. Internal constants
 5. Internal stores 6. Internal components
 
@@ -55,7 +56,7 @@ import { theme } from "../lib/themeStore";
 import Dashboard from "./Dashboard.svelte";
 ```
 
-### TypeScript Guidelines
+### TypeScript
 - **Always** use interfaces/types, never `any`
 - Named exports preferred; default for main route components
 - Constants in `UPPER_SNAKE_CASE`
@@ -87,19 +88,17 @@ let doubled = $derived(count * 2);
 ```
 
 ### Navigation
-- Single-page app with `activeView` state
+- SPA with `activeView` state
 - Consistent `handleBack()` returning to "dashboard"
 - Use Svelte transitions: `fade`, `fly`, `slide`
 
-### Forms
+### Forms & Error Handling
 - Use `bind:value` for inputs
 - Validate in real-time with visual feedback
 - Use SweetAlert2 for confirmations/errors
 - Handle loading states with `isLoading` flags
 
-### Error Handling
 ```typescript
-import Swal from "sweetalert2";
 try {
   const result = await fetch(url);
   if (!result.ok) throw new Error("Failed");
@@ -121,22 +120,13 @@ try {
 
 ---
 
-## Theming
+## Theming & CSS
 
 CSS variables in `app.css`: `--bg-primary`, `--bg-secondary`, `--text-primary`, `--text-secondary`, `--card-bg`, `--card-border`, `--accent-primary`, `--border-primary`
 
-Usage:
 ```svelte
-<div class="bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))]">
-  Content
-</div>
-
-$: styles = { bg: "rgb(var(--bg-primary))", text: "rgb(var(--text-primary))" };
+<div class="bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))]">Content</div>
 ```
-
----
-
-## CSS & Tailwind
 
 - Use CSS variables for theme-aware styling
 - Prefer Tailwind utility classes
@@ -151,7 +141,7 @@ $: styles = { bg: "rgb(var(--bg-primary))", text: "rgb(var(--text-primary))" };
 - [ ] CSS variables for theming
 - [ ] Tailwind utility classes
 - [ ] Error handling with SweetAlert2
-- [ ] Loading states for async
+- [ ] Loading states for async operations
 - [ ] Responsive (mobile-first)
 - [ ] `npm run check` passes
 - [ ] Existing functionality intact
@@ -166,6 +156,3 @@ $: styles = { bg: "rgb(var(--bg-primary))", text: "rgb(var(--text-primary))" };
 4. UI text in Spanish
 5. Mobile-first responsive design
 6. Ask before git commits
-
-**Version**: 2.3  
-**Updated**: Feb 2026
