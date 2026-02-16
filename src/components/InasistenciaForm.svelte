@@ -70,7 +70,11 @@
   let message = "";
 
   // Materias múltiples para docente con "-"
-  let selectedMaterias: string[] = [];
+  interface MateriaHoras {
+    materia: string;
+    horas: string;
+  }
+  let selectedMaterias: MateriaHoras[] = [];
 
   // Verificar si el docente tiene "-"
   $: docenteHasDash = formData.docente.includes("-");
@@ -606,12 +610,27 @@
       const currentTimestamp = new Date().toISOString();
 
       // Validar materias seleccionadas
-      const materiasToSave = docenteHasDash ? selectedMaterias : [formData.materia];
+      const materiasToSave: MateriaHoras[] = docenteHasDash 
+        ? selectedMaterias 
+        : [{ materia: formData.materia, horas: formData.horas }];
+      
       if (docenteHasDash && selectedMaterias.length === 0) {
         await Swal.fire({
           icon: "warning",
           title: "Atención",
           text: "Seleccione al menos una materia",
+          confirmButtonColor: "#6366f1",
+        });
+        return;
+      }
+
+      // Validar que cada materia tenga horas
+      const materiasSinHoras = materiasToSave.filter(m => !m.horas);
+      if (materiasSinHoras.length > 0) {
+        await Swal.fire({
+          icon: "warning",
+          title: "Atención",
+          text: `Seleccione horas para: ${materiasSinHoras.map(m => m.materia).join(", ")}`,
           confirmButtonColor: "#6366f1",
         });
         return;
@@ -623,14 +642,14 @@
         (item) => item.motivo && item.motivo !== "Ignorar",
       );
 
-      for (const materia of materiasToSave) {
+      for (const materiaData of materiasToSave) {
         for (const item of filteredInasistencias) {
           inasistenciasPayload.push([
             currentTimestamp,
             formData.docente,
             formData.fecha,
-            item.horas,
-            materia,
+            materiaData.horas,
+            materiaData.materia,
             item.motivo,
             formData.grado,
             item.nombre,
@@ -646,8 +665,8 @@
       });
 
       // Persistir las materias para el docente solo después del éxito
-      for (const materia of materiasToSave) {
-        saveMateriaForDocente(formData.docente, materia);
+      for (const materiaData of materiasToSave) {
+        saveMateriaForDocente(formData.docente, materiaData.materia);
       }
 
       await Swal.fire({
@@ -1045,7 +1064,7 @@
             </select>
           </div>
 
-          <div class="space-y-2">
+          <div class="space-y-2 {docenteHasDash ? 'lg:col-span-2' : ''}">
             <div class="flex items-center justify-between">
               <label
                 for="materia"
@@ -1054,21 +1073,45 @@
               >
             </div>
             {#if docenteHasDash}
-              <div class="max-h-48 overflow-y-auto border rounded-xl p-3 space-y-2" style="border-color: {styles.border}; background-color: {styles.inputBg};">
+              <div class="border rounded-xl p-2 lg:p-3 flex flex-col lg:flex-row lg:flex-wrap gap-2 lg:gap-2" style="border-color: {styles.border}; background-color: {styles.inputBg};">
                 {#each materiasSorted as materia}
                   {@const isSaved = docenteMaterias[formData.docente]?.includes(materia.materia)}
-                  <label class="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                    <input
-                      type="checkbox"
-                      bind:group={selectedMaterias}
-                      value={materia.materia}
-                      class="w-5 h-5 rounded border-2 text-indigo-500 focus:ring-indigo-500"
-                      style="border-color: {styles.border}; accent-color: #6366f1;"
-                    />
-                    <span class="text-sm" style="color: {styles.text};">
-                      {isSaved ? "⭐ " : ""}{materia.materia}
-                    </span>
-                  </label>
+                  {@const selectedIndex = selectedMaterias.findIndex(m => m.materia === materia.materia)}
+                  {@const isSelected = selectedIndex >= 0}
+                  <div class="flex flex-col lg:flex-row lg:items-center gap-1 lg:gap-2 px-2 py-2 lg:py-1.5 rounded-lg border transition-all {isSelected ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-500' : 'border-transparent'}"
+                    style="border-color: {isSelected ? '#6366f1' : styles.border};">
+                    <div class="flex items-center gap-1.5">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        on:change={(e) => {
+                          if (e.currentTarget.checked) {
+                            selectedMaterias = [...selectedMaterias, { materia: materia.materia, horas: "" }];
+                          } else {
+                            selectedMaterias = selectedMaterias.filter(m => m.materia !== materia.materia);
+                          }
+                        }}
+                        class="w-4 h-4 lg:w-5 lg:h-5 rounded text-indigo-500 focus:ring-indigo-500"
+                        style="accent-color: #6366f1;"
+                      />
+                      <span class="text-sm lg:text-sm flex-shrink-0" style="color: {styles.text};">
+                        {isSaved ? "⭐ " : ""}{materia.materia}
+                      </span>
+                    </div>
+                    {#if isSelected}
+                      <select
+                        bind:value={selectedMaterias[selectedIndex].horas}
+                        class="w-full lg:w-16 px-2 py-1.5 lg:py-1 text-sm rounded border appearance-none cursor-pointer"
+                        style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+                      >
+                        <option value="">Horas...</option>
+                        <option value="0">0</option>
+                        {#each [1, 2, 3, 4] as h}
+                          <option value={h.toString()}>{h}h</option>
+                        {/each}
+                      </select>
+                    {/if}
+                  </div>
                 {/each}
               </div>
             {:else}
@@ -1440,7 +1483,9 @@
     disabled={isLoading ||
       inasistencias.length === 0 ||
       !formData.docente ||
-      (docenteHasDash ? selectedMaterias.length === 0 : !formData.materia)}
+      (docenteHasDash 
+        ? selectedMaterias.length === 0 || selectedMaterias.some(m => !m.horas)
+        : !formData.materia || !formData.horas)}
     class="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 bg-green-600 hover:bg-green-700 text-white p-4 lg:p-5 rounded-full shadow-2xl hover:shadow-green-500/20 transform transition-all duration-300 hover:scale-110 active:scale-95 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed z-50 group"
     title="Guardar inasistencias"
   >
