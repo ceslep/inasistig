@@ -39,6 +39,53 @@
   let isLoadingMaterias = false;
   let isLoadingEstudiantes = false;
   let isLoading = false;
+  let showFieldErrors = false;
+
+  // Materias múltiples para docente con "-"
+  interface MateriaHoras {
+    materia: string;
+    horas: string;
+  }
+  let selectedMaterias: MateriaHoras[] = [];
+
+  // Verificar si el docente tiene "-"
+  $: docenteHasDash = formData.docente.includes("-");
+
+  // Extraer número del docente cuando tiene patrón "Nombre-número"
+  const getDocenteNumber = (docente: string): string | null => {
+    const match = docente.match(/-(\d+)$/);
+    return match ? match[1] : null;
+  };
+
+  // Filtrar grupos según el número del docente
+  $: docenteNumber = getDocenteNumber(formData.docente);
+
+  $: filteredGrados = docenteNumber
+    ? [...new Set(estudiantes.map((e) => e.grado.toString()))].filter((g) =>
+        g.startsWith(`${docenteNumber}-`),
+      )
+    : [...new Set(estudiantes.map((e) => e.grado.toString()))].filter((g) => !g.includes('-'));
+
+  $: missingFields = (() => {
+    const fields: string[] = [];
+    if (!formData.fecha) fields.push("fecha");
+    if (!formData.docente) fields.push("docente");
+    if (!formData.grado) fields.push("grado");
+    if (!formData.horas) fields.push("horas");
+    if (selectedDiarioAnots.length === 0) fields.push("diario");
+    
+    if (docenteHasDash) {
+      if (selectedMaterias.length === 0) {
+        fields.push("materias");
+      } else {
+        const sinHoras = selectedMaterias.filter(m => !m.horas);
+        if (sinHoras.length > 0) fields.push("horas");
+      }
+    } else {
+      if (!formData.materia) fields.push("materia");
+    }
+    return fields;
+  })();
 
   // --- Report Generator ---
   let showReportGenerator = false;
@@ -215,7 +262,65 @@
     event.preventDefault();
     if (isLoading) return;
 
-    const diarioCampoFinal = selectedDiarioAnots.join(" | "); // Join annotations for submission
+    showFieldErrors = true;
+
+    const diarioCampoFinal = selectedDiarioAnots.join(" | ");
+
+    const camposFaltantes: { id: string; label: string }[] = [];
+    if (!formData.fecha) camposFaltantes.push({ id: "fecha", label: "Fecha" });
+    if (!formData.docente) camposFaltantes.push({ id: "docente", label: "Docente" });
+    if (!formData.grado) camposFaltantes.push({ id: "grado", label: "Grado" });
+    if (!formData.horas) camposFaltantes.push({ id: "horas", label: "Horas" });
+    if (selectedDiarioAnots.length === 0) camposFaltantes.push({ id: "diario", label: "Diario de Campo" });
+
+    if (docenteHasDash) {
+      if (selectedMaterias.length === 0) {
+        camposFaltantes.push({ id: "materia", label: "Materia(s)" });
+      } else {
+        const sinHoras = selectedMaterias.filter(m => !m.horas);
+        if (sinHoras.length > 0) {
+          camposFaltantes.push({ id: "horas", label: `Horas para: ${sinHoras.map(m => m.materia).join(", ")}` });
+        }
+      }
+    } else {
+      if (!formData.materia) camposFaltantes.push({ id: "materia", label: "Asignatura" });
+    }
+
+    if (camposFaltantes.length > 0) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Campos requeridos",
+        html: `Complete los siguientes campos:<br/><br/><strong>${camposFaltantes.map(c => c.label).join("<br/>")}</strong>`,
+        confirmButtonColor: "#6366f1",
+      });
+      
+      const firstField = document.getElementById(camposFaltantes[0].id);
+      if (firstField) {
+        firstField.scrollIntoView({ behavior: "smooth", block: "center" });
+        firstField.focus();
+      }
+      return;
+    }
+
+    if (selectedDiarioAnots.length === 0) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Sin diario de campo",
+        text: "Debe seleccionar al menos una opción del diario de campo",
+        confirmButtonColor: "#6366f1",
+      });
+      return;
+    }
+
+    // Determinar las materias a guardar
+    const materiasToSave: MateriaHoras[] = docenteHasDash 
+      ? selectedMaterias 
+      : [{ materia: formData.materia, horas: formData.horas }];
+
+    // Construir mensaje de confirmación según el tipo de docente
+    const materiasMsg = docenteHasDash 
+      ? selectedMaterias.map(m => `${m.materia} (${m.horas}h)`).join(", ")
+      : `${formData.materia} (${formData.horas}h)`;
 
     // Confirmación con SweetAlert2
     const confirmResult = await Swal.fire({
@@ -224,15 +329,15 @@
         <div class="text-left space-y-2 p-2 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10" style="font-size: 0.9rem; line-height: 1.4;">
           <div style="margin-bottom: 8px;"><strong style="color: #6366f1;">Fecha:</strong> ${formData.fecha}</div>
           <div style="margin-bottom: 8px;"><strong style="color: #6366f1;">Docente:</strong> ${formData.docente}</div>
-          <div style="margin-bottom: 8px;"><strong style="color: #6366f1;">Asignatura:</strong> ${formData.materia}</div>
+          <div style="margin-bottom: 8px;"><strong style="color: #6366f1;">Asignatura(s):</strong> ${materiasMsg}</div>
           <div style="margin-bottom: 8px;"><strong style="color: #6366f1;">Grado:</strong> ${formData.grado}</div>
-          <div style="margin-bottom: 8px;"><strong style="color: #6366f1;">Horas:</strong> ${formData.horas}</div>
           <div style="margin-top: 12px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 8px;">
             <strong style="color: #6366f1;">Diario de Campo:</strong>
             <ul style="list-style-type: disc; padding-left: 20px; margin-top: 4px; font-size: 0.8rem; opacity: 0.8;">
               ${selectedDiarioAnots.map((t) => `<li>${t}</li>`).join("")}
             </ul>
           </div>
+          ${docenteHasDash ? `<div style="margin-top: 8px; font-size: 0.75rem; color: #ef4444;">Se creará un registro por cada materia seleccionada (${selectedMaterias.length} registros)</div>` : ''}
         </div>
       `,
       icon: "question",
@@ -252,17 +357,20 @@
     try {
       const currentTimestamp = new Date().toLocaleString();
 
-      const payload = [
-        [
+      // Crear un payload por cada materia seleccionada
+      const payload: string[][] = [];
+      
+      for (const materiaData of materiasToSave) {
+        payload.push([
           currentTimestamp,
           formData.fecha,
-          formData.horas,
+          materiaData.horas,
           formData.docente,
-          formData.materia,
+          materiaData.materia,
           formData.grado,
-          diarioCampoFinal, // Use the joined string for payload
-        ],
-      ];
+          diarioCampoFinal,
+        ]);
+      }
 
       await saveDiario({
         spreadsheetId: SPREADSHEET_ID_DIARIO,
@@ -270,13 +378,19 @@
         datos: payload,
       });
 
-      // Persistir la materia para el docente solo después del éxito
-      saveMateriaForDocente(formData.docente, formData.materia);
+      // Persistir las materias para el docente solo después del éxito
+      for (const materiaData of materiasToSave) {
+        saveMateriaForDocente(formData.docente, materiaData.materia);
+      }
+
+      const registrosMsg = payload.length === 1 
+        ? "Diario de Campo registrado exitosamente" 
+        : `${payload.length} registros de Diario de Campo creados exitosamente`;
 
       await Swal.fire({
         icon: "success",
         title: "¡Éxito!",
-        text: `Diario de Campo registrado exitosamente`,
+        text: registrosMsg,
         timer: 3000,
         timerProgressBar: true,
         showConfirmButton: false,
@@ -287,15 +401,15 @@
       formData = {
         fecha: new Date().toISOString().split("T")[0],
         docente: formData.docente,
-        materia: formData.materia,
+        materia: "",
         grado: formData.grado,
         horas: "",
-        // diarioCampo is now handled by the child component, no direct reset here
       };
 
-      // Reset the child component's selections (if it has an exposed method or through a key prop change)
-      // For now, assume it will re-initialize on key change or local state reset if it manages its own selectedDiarioAnots
-      selectedDiarioAnots = []; // Clear parent's state
+      // Reset the child component's selections
+      selectedDiarioAnots = [];
+      selectedMaterias = [];
+      showFieldErrors = false;
     } catch (error) {
       console.error("Error enviando:", error);
       await Swal.fire({
@@ -516,7 +630,7 @@
         </div>
       {/if}
 
-      <form on:submit={handleSubmit} class="space-y-6">
+      <form on:submit={handleSubmit} novalidate class="space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="space-y-2">
             <label
@@ -529,8 +643,8 @@
               id="fecha"
               bind:value={formData.fecha}
               required
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
-              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text}; color-scheme: {$theme ===
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none {showFieldErrors && missingFields.includes('fecha') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('fecha') ? '#ef4444' : styles.border}; color: {styles.text}; color-scheme: {$theme ===
               'light'
                 ? 'light'
                 : 'dark'};"
@@ -547,8 +661,8 @@
               id="docente"
               bind:value={formData.docente}
               required
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50"
-              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showFieldErrors && missingFields.includes('docente') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('docente') ? '#ef4444' : styles.border}; color: {styles.text};"
             >
               <option value=""
                 >{isLoadingDocentes
@@ -563,36 +677,82 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="space-y-2">
-            <label
-              for="materia"
-              class="block text-sm font-medium"
-              style="color: {styles.label};">Asignatura</label
-            >
-            <select
-              id="materia"
-              bind:value={formData.materia}
-              required
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50"
-              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
-            >
-              <option value=""
-                >{isLoadingMaterias
-                  ? "Cargando..."
-                  : "Seleccione asignatura"}</option
+          <div class="space-y-2 {docenteHasDash ? 'lg:col-span-2' : ''}">
+            <div class="flex items-center justify-between">
+              <label
+                for="materia"
+                class="block text-sm font-medium"
+                style="color: {styles.label};">Materia</label
               >
-              {#each materiasSorted as materia}
-                {@const isSaved = docenteMaterias[formData.docente]?.includes(
-                  materia.materia,
-                )}
-                <option
-                  value={materia.materia}
-                  style={isSaved ? "color: #6366f1; font-weight: 600;" : ""}
+            </div>
+            {#if docenteHasDash}
+              <div class="border rounded-xl p-2 lg:p-3 flex flex-col lg:flex-row lg:flex-wrap gap-2 lg:gap-2 {showFieldErrors && missingFields.includes('materias') ? 'ring-2 ring-red-500 border-red-500' : ''}" style="border-color: {showFieldErrors && missingFields.includes('materias') ? '#ef4444' : styles.border}; background-color: {styles.inputBg};">
+                {#each materiasSorted as materia}
+                  {@const isSaved = docenteMaterias[formData.docente]?.includes(materia.materia)}
+                  {@const selectedIndex = selectedMaterias.findIndex(m => m.materia === materia.materia)}
+                  {@const isSelected = selectedIndex >= 0}
+                  <div class="flex flex-col lg:flex-row lg:items-center gap-1 lg:gap-2 px-2 py-2 lg:py-1.5 rounded-lg border transition-all {isSelected ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-500' : 'border-transparent'}"
+                    style="border-color: {isSelected ? '#6366f1' : styles.border};">
+                    <div class="flex items-center gap-1.5">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        on:change={(e) => {
+                          if (e.currentTarget.checked) {
+                            selectedMaterias = [...selectedMaterias, { materia: materia.materia, horas: formData.horas }];
+                          } else {
+                            selectedMaterias = selectedMaterias.filter(m => m.materia !== materia.materia);
+                          }
+                        }}
+                        class="w-4 h-4 lg:w-5 lg:h-5 rounded text-indigo-500 focus:ring-indigo-500"
+                        style="accent-color: #6366f1;"
+                      />
+                      <span class="text-sm lg:text-sm flex-shrink-0" style="color: {styles.text};">
+                        {isSaved ? "⭐ " : ""}{materia.materia}
+                      </span>
+                    </div>
+                    {#if isSelected}
+                      <select
+                        bind:value={selectedMaterias[selectedIndex].horas}
+                        class="w-full lg:w-16 px-2 py-1.5 lg:py-1 text-sm rounded border appearance-none cursor-pointer {showFieldErrors && missingFields.includes('horas') && !selectedMaterias[selectedIndex].horas ? 'ring-2 ring-red-500 border-red-500' : ''}"
+                        style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('horas') && !selectedMaterias[selectedIndex].horas ? '#ef4444' : styles.border}; color: {styles.text};"
+                      >
+                        <option value="">Horas...</option>
+                        <option value="0">0</option>
+                        {#each [1, 2, 3, 4] as h}
+                          <option value={h.toString()}>{h}h</option>
+                        {/each}
+                      </select>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+            {:else}
+              <select
+                id="materia"
+                bind:value={formData.materia}
+                required
+                class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showFieldErrors && missingFields.includes('materia') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+                style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('materia') ? '#ef4444' : styles.border}; color: {styles.text};"
+              >
+                <option value=""
+                  >{isLoadingMaterias
+                    ? "Cargando..."
+                    : "Seleccione asignatura"}</option
                 >
-                  {isSaved ? "⭐ " : ""}{materia.materia}
-                </option>
-              {/each}
-            </select>
+                {#each materiasSorted as materia}
+                  {@const isSaved = docenteMaterias[formData.docente]?.includes(
+                    materia.materia,
+                  )}
+                  <option
+                    value={materia.materia}
+                    style={isSaved ? "color: #6366f1; font-weight: 600;" : ""}
+              >
+                    {isSaved ? "⭐ " : ""}{materia.materia}
+                  </option>
+                {/each}
+              </select>
+            {/if}
           </div>
 
           <div class="space-y-2">
@@ -605,15 +765,15 @@
               id="grado"
               bind:value={formData.grado}
               required
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50"
-              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showFieldErrors && missingFields.includes('grado') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('grado') ? '#ef4444' : styles.border}; color: {styles.text};"
             >
               <option value=""
                 >{isLoadingEstudiantes
                   ? "Cargando..."
                   : "Seleccione grado"}</option
               >
-              {#each [...new Set(estudiantes.map( (e) => e.grado.toString(), ))] as g}
+              {#each filteredGrados as g}
                 <option value={g}
                   >{g
                     .replace(/0(\d)$/, "°$1")
@@ -634,10 +794,11 @@
             id="horas"
             bind:value={formData.horas}
             required
-            class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer"
-            style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+            class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer {showFieldErrors && missingFields.includes('horas') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+            style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('horas') ? '#ef4444' : styles.border}; color: {styles.text};"
           >
             <option value="">Seleccione horas</option>
+            <option value="0">Sin hora específica</option>
             {#each [1, 2, 3, 4] as h}
               <option value={h.toString()}
                 >{h} {h === 1 ? "Hora" : "Horas"}</option
@@ -654,12 +815,9 @@
         <div class="fixed bottom-8 right-8 z-50">
           <button
             type="submit"
-            disabled={isLoading || !isFormValid}
+            disabled={isLoading}
             class="w-16 h-16 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 dark:disabled:bg-slate-700 disabled:cursor-not-allowed disabled:scale-100 text-white rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 active:scale-95 backdrop-blur-sm bg-opacity-95 flex items-center justify-center overflow-hidden border border-white/20"
             aria-label="Guardar Diario de Campo"
-            title={!isFormValid
-              ? "Complete todos los campos requeridos"
-              : "Guardar Diario de Campo"}
           >
             {#if isLoading}
               <svg

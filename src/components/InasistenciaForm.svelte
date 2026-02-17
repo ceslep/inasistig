@@ -64,10 +64,29 @@
   };
 
   let inasistencias: Inasistencia[] = [];
-  let individualHours: Record<string, string> = {}; // Almacena horas individuales antes de marcar motivo
-  let openObservations: Record<string, boolean> = {}; // Controla qué áreas de observación están abiertas
+  let individualHours: Record<string, string> = {};
+  let openObservations: Record<string, boolean> = {};
   let isLoading = false;
   let message = "";
+  let showFieldErrors = false;
+
+  $: missingFields = (() => {
+    const fields: string[] = [];
+    if (!formData.docente) fields.push("docente");
+    if (!formData.fecha) fields.push("fecha");
+    if (!formData.grado) fields.push("grado");
+    if (docenteHasDash) {
+      if (selectedMaterias.length === 0) fields.push("materias");
+      else {
+        const sinHoras = selectedMaterias.filter(m => !m.horas);
+        if (sinHoras.length > 0) fields.push("horas");
+      }
+    } else {
+      if (!formData.materia) fields.push("materia");
+      if (!formData.horas) fields.push("horas");
+    }
+    return fields;
+  })();
 
   // Materias múltiples para docente con "-"
   interface MateriaHoras {
@@ -603,7 +622,54 @@
 
   const handleSubmit = async (event: Event) => {
     event.preventDefault();
-    if (isLoading || inasistencias.length === 0) return;
+    if (isLoading) return;
+
+    showFieldErrors = true;
+
+    const camposFaltantes: { id: string; label: string }[] = [];
+    if (!formData.docente) camposFaltantes.push({ id: "docente", label: "Docente" });
+    if (!formData.fecha) camposFaltantes.push({ id: "fecha", label: "Fecha" });
+    if (!formData.grado) camposFaltantes.push({ id: "grado", label: "Grado" });
+
+    if (docenteHasDash) {
+      if (selectedMaterias.length === 0) {
+        camposFaltantes.push({ id: "materia", label: "Materia(s)" });
+      } else {
+        const sinHoras = selectedMaterias.filter(m => !m.horas);
+        if (sinHoras.length > 0) {
+          camposFaltantes.push({ id: "horas", label: `Horas para: ${sinHoras.map(m => m.materia).join(", ")}` });
+        }
+      }
+    } else {
+      if (!formData.materia) camposFaltantes.push({ id: "materia", label: "Materia" });
+      if (!formData.horas) camposFaltantes.push({ id: "horas", label: "Horas" });
+    }
+
+    if (camposFaltantes.length > 0) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Campos requeridos",
+        html: `Complete los siguientes campos:<br/><br/><strong>${camposFaltantes.map(c => c.label).join("<br/>")}</strong>`,
+        confirmButtonColor: "#6366f1",
+      });
+      
+      const firstField = document.getElementById(camposFaltantes[0].id);
+      if (firstField) {
+        firstField.scrollIntoView({ behavior: "smooth", block: "center" });
+        firstField.focus();
+      }
+      return;
+    }
+
+    if (inasistencias.length === 0) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Sin inasistencias",
+        text: "Debe seleccionar al menos un estudiante con un motivo de inasistencia",
+        confirmButtonColor: "#6366f1",
+      });
+      return;
+    }
 
     isLoading = true;
     try {
@@ -691,6 +757,7 @@
       individualHours = {};
       openObservations = {};
       selectedMaterias = [];
+      showFieldErrors = false;
     } catch (error) {
       console.error("Error enviando:", error);
       await Swal.fire({
@@ -1050,8 +1117,8 @@
               bind:value={formData.docente}
               required
               disabled={isLoadingDocentes}
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50"
-              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showFieldErrors && missingFields.includes('docente') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('docente') ? '#ef4444' : styles.border}; color: {styles.text};"
             >
               <option value=""
                 >{isLoadingDocentes
@@ -1073,7 +1140,7 @@
               >
             </div>
             {#if docenteHasDash}
-              <div class="border rounded-xl p-2 lg:p-3 flex flex-col lg:flex-row lg:flex-wrap gap-2 lg:gap-2" style="border-color: {styles.border}; background-color: {styles.inputBg};">
+              <div class="border rounded-xl p-2 lg:p-3 flex flex-col lg:flex-row lg:flex-wrap gap-2 lg:gap-2 {showFieldErrors && missingFields.includes('materias') ? 'ring-2 ring-red-500 border-red-500' : ''}" style="border-color: {showFieldErrors && missingFields.includes('materias') ? '#ef4444' : styles.border}; background-color: {styles.inputBg};">
                 {#each materiasSorted as materia}
                   {@const isSaved = docenteMaterias[formData.docente]?.includes(materia.materia)}
                   {@const selectedIndex = selectedMaterias.findIndex(m => m.materia === materia.materia)}
@@ -1101,8 +1168,8 @@
                     {#if isSelected}
                       <select
                         bind:value={selectedMaterias[selectedIndex].horas}
-                        class="w-full lg:w-16 px-2 py-1.5 lg:py-1 text-sm rounded border appearance-none cursor-pointer"
-                        style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+                        class="w-full lg:w-16 px-2 py-1.5 lg:py-1 text-sm rounded border appearance-none cursor-pointer {showFieldErrors && missingFields.includes('horas') && !selectedMaterias[selectedIndex].horas ? 'ring-2 ring-red-500 border-red-500' : ''}"
+                        style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('horas') && !selectedMaterias[selectedIndex].horas ? '#ef4444' : styles.border}; color: {styles.text};"
                       >
                         <option value="">Horas...</option>
                         <option value="0">0</option>
@@ -1121,8 +1188,8 @@
                 bind:value={formData.materia}
                 required
                 disabled={isLoadingMaterias}
-                class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50"
-                style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+                class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showFieldErrors && missingFields.includes('materia') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+                style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('materia') ? '#ef4444' : styles.border}; color: {styles.text};"
               >
                 <option value=""
                   >{isLoadingMaterias
@@ -1157,8 +1224,8 @@
               name="horas"
               bind:value={formData.horas}
               required
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer"
-              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer {showFieldErrors && missingFields.includes('horas') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('horas') ? '#ef4444' : styles.border}; color: {styles.text};"
             >
               <option value="">Seleccione horas</option>
               <option value="0">Sin hora específica</option>
@@ -1182,8 +1249,8 @@
               bind:value={formData.grado}
               required
               disabled={isLoadingEstudiantes}
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50"
-              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showFieldErrors && missingFields.includes('grado') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('grado') ? '#ef4444' : styles.border}; color: {styles.text};"
             >
               <option value=""
                 >{isLoadingEstudiantes
@@ -1480,12 +1547,7 @@
 
   <button
     on:click={handleSubmit}
-    disabled={isLoading ||
-      inasistencias.length === 0 ||
-      !formData.docente ||
-      (docenteHasDash 
-        ? selectedMaterias.length === 0 || selectedMaterias.some(m => !m.horas)
-        : !formData.materia || !formData.horas)}
+    disabled={isLoading}
     class="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 bg-green-600 hover:bg-green-700 text-white p-4 lg:p-5 rounded-full shadow-2xl hover:shadow-green-500/20 transform transition-all duration-300 hover:scale-110 active:scale-95 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed z-50 group"
     title="Guardar inasistencias"
   >

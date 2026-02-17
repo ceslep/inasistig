@@ -1,705 +1,1836 @@
 <script lang="ts">
-  import { createEventDispatcher } from "svelte";
-  import { onMount } from "svelte";
-  import { saveAs } from "file-saver";
-  import ExcelJS from "exceljs";
+  import { onMount, onDestroy } from "svelte";
   import Swal from "sweetalert2";
-  import { getInasistencias } from "../../api/service";
-  import { SPREADSHEET_ID, WORKSHEET_TITLE } from "../constants";
-  import { periodos } from "../constants";
+  import {
+    saveInasistencias,
+    getDocentes,
+    getMaterias,
+    getEstudiantes,
+  } from "../../api/service";
+  import {
+    SPREADSHEET_ID,
+    WORKSHEET_TITLE,
+    INFO_INASISTENCIA,
+    URL_LOCKER_STUDIO,
+  } from "../constants";
 
-  interface RegistroPayload {
-    id_grupo: number;
-    id_docente: number;
-    id_materia: number;
-    fecha_inicio?: string;
-    fecha_fin?: string;
-  }
+  const FEATURE_MESSAGE = "¡Nueva función de filtrado avanzado disponible!";
+  const FEATURE_MESSAGE_REPORT =
+    "¡Nueva función de reporte en Excel disponible!";
 
+  import { theme } from "../lib/themeStore";
+  import eieLogo from "../assets/eie.png";
+  import InasistenciaFilter from "./InasistenciaFilter.svelte";
+  import ReportGeneratorInas from "./ReportGeneratorInas.svelte";
+  import ReportGeneratorInasView from "./ReportGeneratorInasView.svelte";
+  import FeaturePopup from "./FeaturePopup.svelte";
+
+  export let onBack: () => void;
+
+  // --- Interfaces para tipado estricto ---
   interface Estudiante {
-    id: number;
     nombre: string;
-    grado: string;
+    grado: number | string;
   }
 
-  interface Registro {
-    id_estudiante: number;
-    fecha: string;
-    presente: boolean;
-    motivo?: string;
-    horas?: number;
+  interface Materia {
+    materia: string;
   }
 
-  interface ReportData {
-    estudiantes: Estudiante[];
-    registros: Registro[];
+  interface Inasistencia {
+    nombre: string;
+    motivo: string;
+    horas: string;
+    observaciones: string;
   }
 
-  export let id_grupo: number;
-  export let id_docente: number;
-  export let id_materia: number;
-  export let nombre_grupo: string = "";
-  export let nombre_docente: string = "";
-  export let nombre_materia: string = "";
+  // --- Estado de datos ---
+  let docentes: string[] = [];
+  let materias: Materia[] = [];
+  let estudiantes: Estudiante[] = [];
 
-  const dispatch = createEventDispatcher();
+  let isLoadingDocentes = false;
+  let isLoadingMaterias = false;
+  let isLoadingEstudiantes = false;
 
-  // Forzar reactividad creando variables locales que se actualizan cuando las props cambian
-  $: grupo = id_grupo;
-  $: docente = id_docente;
-  $: materia = id_materia;
+  // --- Formulario ---
+  let formData = {
+    docente: localStorage.getItem("lastDocente") || "",
+    materia: "",
+    horas: "",
+    grado: "",
+    fecha: new Date().toISOString().split("T")[0],
+    observaciones: "",
+  };
 
-  async function getRegistrosReporte(
-    payload: RegistroPayload,
-  ): Promise<ReportData> {
-    try {
-      console.log("Obteniendo datos con getInasistencias. Payload:", payload);
-      console.log("Filtros activos - Docente:", nombre_docente, "| Materia:", nombre_materia);
+  let inasistencias: Inasistencia[] = [];
+  let individualHours: Record<string, string> = {}; // Almacena horas individuales antes de marcar motivo
+  let openObservations: Record<string, boolean> = {}; // Controla qué áreas de observación están abiertas
+  let isLoading = false;
+  let message = "";
 
-      const data = await getInasistencias({
-        spreadsheetId: SPREADSHEET_ID,
-        worksheetTitle: WORKSHEET_TITLE,
-      });
+  // --- Filtros ---
+  let showFilter = false;
+  let showReportGenerator = false;
+  let showOnlineReport = false;
 
-      if (!data || !data.records || !Array.isArray(data.records)) {
-        throw new Error("No se encontraron datos de inasistencias");
-      }
+  const openFilters = () => {
+    showFilter = true;
+  };
+  const closeFilters = () => {
+    showFilter = false;
+  };
 
-      console.log(`Total de registros recibidos del API: ${data.records.length}`);
-      if (data.records.length > 0) {
-        console.log("Primer registro (headers):", data.records[0]);
-        console.log("Último registro:", data.records[data.records.length - 1]);
-      }
+  const openReportGenerator = () => {
+    showReportGenerator = true;
+  };
+  const closeReportGenerator = () => {
+    showReportGenerator = false;
+  };
 
-      const normalize = (str: any) => {
-        if (!str) return "";
-        return str.toString()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/[^a-zA-Z0-9\s]/g, "")
-          .replace(/\s+/g, " ")
-          .trim()
-          .toLowerCase();
-      };
+  const openOnlineReport = () => {
+    showOnlineReport = true;
+  };
+  const closeOnlineReport = () => {
+    showOnlineReport = false;
+  };
 
-      // Extraer headers del primer registro
-      const headers: string[] = data.records[0]?.values || [];
-      
-      const getHeaderIndex = (name: string, fallback: number) => {
-        const index = headers.findIndex(h => normalize(h).includes(normalize(name)));
-        return index !== -1 ? index : fallback;
-      };
+  // --- Estado para Report Generator ---
+  let reportGeneratorLoading = false;
 
-      const headerMap = {
-        Docente: getHeaderIndex("Docente", 1),
-        Fecha: getHeaderIndex("Fecha", 2),
-        "Horas de Inasistencia": getHeaderIndex("Horas", 3),
-        Asignatura: getHeaderIndex("Asignatura", 4),
-        "Tipo de registro": getHeaderIndex("Tipo", 5),
-        Grupo: getHeaderIndex("Grupo", 6),
-        Estudiante: getHeaderIndex("Estudiante", 7),
-        Observaciones: getHeaderIndex("Observaciones", 8),
-      };
+  // --- Alertas Dismissibles ---
+  let showInfoAlert =
+    INFO_INASISTENCIA &&
+    localStorage.getItem("dismissedInfoInasistenciaContent") !==
+      INFO_INASISTENCIA;
 
-      console.log("Mapa de cabeceras detectado:", headerMap);
+  let showFeatureAlert = true; // Control inmediato del popup for filters
+  let showFeatureAlertReport = true; // Control inmediato del popup for report
 
-      const targetDocente = normalize(nombre_docente);
-      const targetMateria = normalize(materia || nombre_materia);
-      const targetGrupo = payload.id_grupo ? payload.id_grupo.toString().trim() : "";
+  function shouldShowFeatureAlert(featureKey: string) {
+    // FORZAR MOSTRAR PARA DESARROLLO - Cambiar a false en producción
+    const DEBUG_FORCE_SHOW = true;
 
-      console.log("Normalizados - Docente:", targetDocente, "| Materia:", targetMateria, "| Grupo:", targetGrupo);
-
-      // Transformar datos existentes al formato esperado
-      const estudiantesMap = new Map<string, Estudiante>();
-      const registrosMap = new Map<string, Registro>();
-      
-      // Procesar registros (ignorando el primer registro que son los headers)
-      data.records.slice(1).forEach((record: any, index: number) => {
-        const values = record.values || [];
-
-        const docente = values[headerMap["Docente"]] || "";
-        const materiaRec = values[headerMap["Asignatura"]] || "";
-        const grado = (values[headerMap["Grupo"]] || "").toString().trim();
-        const fecha = values[headerMap["Fecha"]] || "";
-        const tipoRegistro = values[headerMap["Tipo de registro"]] || "";
-        const estudianteNombre = values[headerMap["Estudiante"]] || "Estudiante sin nombre";
-        const horasRaw = values[headerMap["Horas de Inasistencia"]] || "0";
-        const observaciones = values[headerMap["Observaciones"]] || "";
-
-        const normDocente = normalize(docente);
-        const normMateria = normalize(materiaRec);
-        
-        // Filtrar por rango de fechas si se especifica
-        let dentroDeRango = true;
-        if (payload.fecha_inicio && payload.fecha_fin) {
-          const fechaRegistro = new Date(fecha);
-          const fechaInicio = new Date(payload.fecha_inicio);
-          const fechaFin = new Date(payload.fecha_fin);
-          dentroDeRango = fechaRegistro >= fechaInicio && fechaRegistro <= fechaFin;
-        }
-
-        // Debug para registros del docente y fecha solicitados para ver por qué podrían fallar
-        if (fecha === "2026-02-03" && normDocente.includes("cesar")) {
-           console.log(`Registro Feb 3 para Cesar (#${index + 1}):`, {
-             materia: materiaRec,
-             normMateria,
-             targetMateria,
-             grado,
-             targetGrupo,
-             matchMateria: normMateria.includes(targetMateria) || targetMateria.includes(normMateria),
-             matchGrupo: !targetGrupo || grado === targetGrupo
-           });
-        }
-
-        // Filtros principales (más flexibles con includes para subject/docente)
-        if (targetGrupo && grado !== targetGrupo) return;
-        if (targetDocente && !normDocente.includes(targetDocente) && !targetDocente.includes(normDocente)) return;
-        if (targetMateria && !normMateria.includes(targetMateria) && !targetMateria.includes(normMateria)) return;
-        if (!fecha || !tipoRegistro || !estudianteNombre || !dentroDeRango) return;
-
-        // Generar ID único para el estudiante
-        const studentIdKey = normalize(estudianteNombre).replace(/\s+/g, "_");
-
-        if (!estudiantesMap.has(studentIdKey)) {
-          estudiantesMap.set(studentIdKey, {
-            id: estudiantesMap.size + 1,
-            nombre: estudianteNombre,
-            grado: grado,
-          });
-        }
-
-        const estId = estudiantesMap.get(studentIdKey)!.id;
-        const recordKey = `${estId}_${fecha}`;
-        const h = parseFloat(horasRaw.toString().replace(',', '.')) || 0;
-        
-        const isPres = h === 0 && (
-          normalize(tipoRegistro).includes("uniforme") || 
-          normalize(tipoRegistro).includes("pacto") ||
-          normalize(observaciones).includes("uniforme")
-        );
-
-        if (registrosMap.has(recordKey)) {
-          const existing = registrosMap.get(recordKey)!;
-          existing.horas = (existing.horas || 0) + h;
-          if (tipoRegistro && !existing.motivo?.includes(tipoRegistro)) {
-            existing.motivo += `, ${tipoRegistro}`;
-          }
-          if (!isPres) existing.presente = false;
-        } else {
-          registrosMap.set(recordKey, {
-            id_estudiante: estId,
-            fecha: fecha,
-            presente: isPres,
-            motivo: tipoRegistro,
-            horas: h,
-          });
-        }
-      });
-
-      const estudiantes = Array.from(estudiantesMap.values());
-      const registros = Array.from(registrosMap.values());
-
-      if (estudiantes.length === 0) {
-        throw new Error(
-          "No se encontraron estudiantes para los filtros seleccionados",
-        );
-      }
-
-      console.log(
-        `Procesados ${estudiantes.length} estudiantes y ${registros.length} registros consolidados`,
-      );
-
-      return {
-        estudiantes,
-        registros,
-      };
-    } catch (error) {
-      console.error("Error fetching registros reporte:", error);
-
-      // Demo data fallback si todo falla
-      if (payload.id_grupo && nombre_docente && nombre_materia) {
-        console.warn("Usando datos de demostración como fallback");
-        return generateDemoData(payload, currentPeriodo);
-      }
-
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error("Error desconocido al obtener datos del reporte");
-    }
-  }
-
-
-
-  function generateDemoData(payload: RegistroPayload, periodo?: (typeof periodos)[0] | null): ReportData {
-    const estudiantes: Estudiante[] = [];
-    const registros: Registro[] = [];
-
-    // Generar estudiantes de demostración
-    for (let i = 1; i <= 10; i++) {
-      estudiantes.push({
-        id: i,
-        nombre: `Estudiante Demo ${i}`,
-        grado: payload.id_grupo.toString(),
-      });
+    if (DEBUG_FORCE_SHOW) {
+      return true;
     }
 
-    // Generar registros de demostración
-    if (periodo) {
-      const dates = generateDatesFromPeriodo(periodo);
-      dates.forEach((date) => {
-        estudiantes.forEach((estudiante) => {
-          // Random inasistencias (15% de probabilidad)
-          if (Math.random() < 0.15) {
-            registros.push({
-              id_estudiante: estudiante.id,
-              fecha: date.toISOString().split("T")[0],
-              presente: false,
-              motivo: [
-                "Sin excusa",
-                "Excusa médica",
-                "Permiso",
-                "Llegada tarde",
-              ][Math.floor(Math.random() * 4)],
-              horas: Math.floor(Math.random() * 2) + 1, // 1 o 2 horas demo
-            });
-          } else {
-            registros.push({
-              id_estudiante: estudiante.id,
-              fecha: date.toISOString().split("T")[0],
-              presente: true,
-              horas: 0
-            });
-          }
-        });
-      });
+    const dismissed = localStorage.getItem(`dismissed${featureKey}Alert`);
+
+    // Si nunca fue descartado, mostrar siempre
+    if (!dismissed) {
+      return true;
     }
 
-    return { estudiantes, registros };
+    const dismissedDate = new Date(dismissed);
+    const now = new Date();
+    const daysSinceDismissed =
+      (now.getTime() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
+
+    // Mostrar si han pasado más de 5 días desde que se descartó
+    return daysSinceDismissed > 5;
   }
 
-  let loading = false;
-  let validating = false;
-  let reportData: ReportData | null = null;
-  let currentPeriodo: (typeof periodos)[0] | null = null;
+  const dismissInfoAlert = () => {
+    localStorage.setItem("dismissedInfoInasistenciaContent", INFO_INASISTENCIA);
+    showInfoAlert = false;
+  };
 
-  onMount(() => {
-    determineCurrentPeriodo();
-  });
+  const dismissFeatureAlert = () => {
+    localStorage.setItem(
+      "dismissedFeatureAlertFilters",
+      new Date().toISOString(),
+    );
+    showFeatureAlert = false; // Cerrar el popup inmediatamente
+  };
 
-  $: isValid = Boolean(
-    (grupo && grupo > 0) &&
-    (nombre_docente && nombre_docente.length > 0) &&
-    (nombre_materia && nombre_materia.length > 0)
+  const tryFeatureNow = () => {
+    // Cerrar el popup
+    localStorage.setItem(
+      "dismissedFeatureAlertFilters",
+      new Date().toISOString(),
+    );
+    // Abrir el panel de filtros
+    openFilters();
+  };
+
+  const dismissFeatureAlertReport = () => {
+    localStorage.setItem(
+      "dismissedFeatureAlertReport",
+      new Date().toISOString(),
+    );
+    showFeatureAlertReport = false;
+  };
+
+  const tryFeatureNowReport = () => {
+    // Cerrar el popup
+    localStorage.setItem(
+      "dismissedFeatureAlertReport",
+      new Date().toISOString(),
+    );
+    // Abrir el generador de reportes
+    openReportGenerator();
+    showFeatureAlertReport = false;
+  };
+
+  // Forzar reset del mensaje para desarrollo (comentar en producción)
+  const resetFeatureAlert = () => {
+    localStorage.removeItem("dismissedFeatureAlertFilters");
+    localStorage.removeItem("dismissedFeatureAlertReport");
+  };
+
+  // --- Persistencia de Materias por Docente ---
+  let docenteMaterias: Record<string, string[]> = JSON.parse(
+    localStorage.getItem("docenteMaterias") || "{}",
   );
-  
-  // Debug para ver los valores
-  $: {
-    console.log("Validación ReportGenerator:", {
-      grupo,
-      docente,
-      materia,
-      id_grupo,
-      id_docente,
-      id_materia,
-      nombre_docente,
-      nombre_materia,
-      currentPeriodo: !!currentPeriodo,
-      isValid,
-      tipoIdGrupo: typeof id_grupo,
-      tipoIdDocente: typeof id_docente,
-      tipoIdMateria: typeof id_materia
+
+  const saveMateriaForDocente = (docente: string, materia: string) => {
+    if (!docente || !materia) return;
+    if (!docenteMaterias[docente]) {
+      docenteMaterias[docente] = [];
+    }
+    if (!docenteMaterias[docente].includes(materia)) {
+      docenteMaterias[docente] = [...docenteMaterias[docente], materia];
+      localStorage.setItem("docenteMaterias", JSON.stringify(docenteMaterias));
+    }
+  };
+
+  // No longer saving reactively to allow "normal" operation until first success
+
+  $: if (formData.docente) {
+    localStorage.setItem("lastDocente", formData.docente);
+  }
+
+  $: materiasSorted = formData.docente
+    ? [...materias].sort((a, b) => {
+        const aSaved = docenteMaterias[formData.docente]?.includes(a.materia);
+        const bSaved = docenteMaterias[formData.docente]?.includes(b.materia);
+        if (aSaved && !bSaved) return -1;
+        if (!aSaved && bSaved) return 1;
+        return a.materia.localeCompare(b.materia);
+      })
+    : materias;
+
+  // --- Funciones auxiliares ---
+  const getSheetsUrl = () => {
+    return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}`;
+  };
+
+  const openSheets = () => {
+    window.open(getSheetsUrl(), "_blank");
+  };
+
+  const openLocker = () => {
+    window.open(URL_LOCKER_STUDIO, "_blank");
+  };
+
+  // Optimización: Variable reactiva para estilos basada en el tema global
+  $: styles = {
+    bg: "rgb(var(--bg-primary))",
+    text: "rgb(var(--text-primary))",
+    label: "rgb(var(--text-secondary))",
+    border: "rgb(var(--border-primary))",
+    placeholder: "rgb(var(--text-muted))",
+    icon: "rgb(var(--text-muted))",
+    cardBg: "rgb(var(--card-bg))",
+    cardBorder: "rgb(var(--card-border))",
+    inputBg: "rgb(var(--bg-secondary))",
+  };
+
+  // Optimización: Filtrado reactivo (se ejecuta solo cuando cambia estudiantes o el grado seleccionado)
+  $: estudiantesFiltrados = formData.grado
+    ? estudiantes.filter((e) => e.grado.toString() === formData.grado)
+    : [];
+
+  // --- Motivos predefinidos ---
+  const motivos = [
+    {
+      value: "Sin excusa",
+      label: "Sin excusa",
+      icon: "🚫",
+      bgColor: "bg-red-50",
+      borderColor: "border-red-300",
+      textColor: "text-red-700",
+      darkBgColor: "dark:bg-red-950",
+      darkBorderColor: "dark:border-red-800",
+      darkTextColor: "dark:text-red-300",
+      obligaHoras: true,
+    },
+    {
+      value: "Excusa",
+      label: "Excusa",
+      icon: "📄",
+      bgColor: "bg-blue-50",
+      borderColor: "border-blue-300",
+      textColor: "text-blue-700",
+      darkBgColor: "dark:bg-blue-950",
+      darkBorderColor: "dark:border-blue-800",
+      darkTextColor: "dark:text-blue-300",
+      obligaHoras: true,
+    },
+    {
+      value: "LLegada Tarde",
+      label: "Llegada Tarde",
+      icon: "⏰",
+      bgColor: "bg-indigo-50",
+      borderColor: "border-indigo-300",
+      textColor: "text-indigo-700",
+      darkBgColor: "dark:bg-indigo-950",
+      darkBorderColor: "dark:border-indigo-800",
+      darkTextColor: "dark:text-indigo-300",
+      obligaHoras: false,
+    },
+    {
+      value: "Transporte Escolar",
+      label: "Transporte Escolar",
+      icon: "🚌",
+      bgColor: "bg-red-50",
+      borderColor: "border-red-300",
+      textColor: "text-red-700",
+      darkBgColor: "dark:bg-red-950",
+      darkBorderColor: "dark:border-red-800",
+      darkTextColor: "dark:text-red-300",
+      obligaHoras: true,
+    },
+    {
+      value: "Permiso",
+      label: "Permiso",
+      icon: "✅",
+      bgColor: "bg-green-50",
+      borderColor: "border-green-300",
+      textColor: "text-green-700",
+      darkBgColor: "dark:bg-green-950",
+      darkBorderColor: "dark:border-green-800",
+      darkTextColor: "dark:text-green-300",
+      obligaHoras: true,
+    },
+    {
+      value: "No portar/sin uniforme",
+      label: "No portar/sin uniforme",
+      icon: "👚",
+      bgColor: "bg-cyan-50",
+      borderColor: "border-cyan-300",
+      textColor: "text-cyan-700",
+      darkBgColor: "dark:bg-cyan-950",
+      darkBorderColor: "dark:border-cyan-800",
+      darkTextColor: "dark:text-cyan-300",
+      obligaHoras: false,
+    },
+    {
+      value: "Pacto de Aula",
+      label: "Pacto de Aula",
+      icon: "🤝",
+      bgColor: "bg-purple-50",
+      borderColor: "border-purple-300",
+      textColor: "text-purple-700",
+      darkBgColor: "dark:bg-purple-950",
+      darkBorderColor: "dark:border-purple-800",
+      darkTextColor: "dark:text-purple-300",
+      obligaHoras: false,
+    },
+    {
+      value: "Uso del celular",
+      label: "Uso del celular",
+      icon: "📱",
+      bgColor: "bg-orange-50",
+      borderColor: "border-orange-300",
+      textColor: "text-orange-700",
+      darkBgColor: "dark:bg-orange-950",
+      darkBorderColor: "dark:border-orange-800",
+      darkTextColor: "dark:text-orange-300",
+      obligaHoras: false,
+    },
+    {
+      value: "Desorden en Clase",
+      label: "Desorden en Clase",
+      icon: "🔊",
+      bgColor: "bg-yellow-50",
+      borderColor: "border-yellow-300",
+      textColor: "text-yellow-700",
+      darkBgColor: "dark:bg-yellow-950",
+      darkBorderColor: "dark:border-yellow-800",
+      darkTextColor: "dark:text-yellow-300",
+      obligaHoras: false,
+    },
+    {
+      value: "Fuga",
+      label: "Fuga",
+      icon: "🏃‍♂️",
+      bgColor: "bg-red-100",
+      borderColor: "border-red-400",
+      textColor: "text-red-800",
+      darkBgColor: "dark:bg-red-950",
+      darkBorderColor: "dark:border-red-800",
+      darkTextColor: "dark:text-red-300",
+      obligaHoras: true,
+    },
+    {
+      value: "No realización de Aseo",
+      label: "No realización de Aseo",
+      icon: "🧹",
+      bgColor: "bg-teal-50",
+      borderColor: "border-teal-300",
+      textColor: "text-teal-700",
+      darkBgColor: "dark:bg-teal-950",
+      darkBorderColor: "dark:border-teal-800",
+      darkTextColor: "dark:text-teal-300",
+      obligaHoras: false,
+    },
+    {
+      value: "Licencia por salud",
+      label: "Licencia por salud",
+      icon: "🏥",
+      bgColor: "bg-cyan-50",
+      borderColor: "border-cyan-300",
+      textColor: "text-cyan-700",
+      darkBgColor: "dark:bg-cyan-950",
+      darkBorderColor: "dark:border-cyan-800",
+      darkTextColor: "dark:text-cyan-300",
+      obligaHoras: true,
+    },
+    {
+      value: "Incapacidad",
+      label: "Incapacidad",
+      icon: "🩺",
+      bgColor: "bg-pink-50",
+      borderColor: "border-pink-300",
+      textColor: "text-pink-700",
+      darkBgColor: "dark:bg-pink-950",
+      darkBorderColor: "dark:border-pink-800",
+      darkTextColor: "dark:text-pink-300",
+      obligaHoras: true,
+    },
+    {
+      value: "Reunión interna",
+      label: "Reunión interna",
+      icon: "👥",
+      bgColor: "bg-zinc-50",
+      borderColor: "border-zinc-300",
+      textColor: "text-zinc-700",
+      darkBgColor: "dark:bg-zinc-950",
+      darkBorderColor: "dark:border-zinc-800",
+      darkTextColor: "dark:text-zinc-300",
+      obligaHoras: false,
+    },
+    {
+      value: "Ignorar",
+      label: "Ignorar",
+      icon: "🚫",
+      bgColor: "bg-zinc-50",
+      borderColor: "border-zinc-300",
+      textColor: "text-zinc-700",
+      darkBgColor: "dark:bg-zinc-950",
+      darkBorderColor: "dark:border-zinc-800",
+      darkTextColor: "dark:text-zinc-300",
+      obligaHoras: false,
+    },
+    {
+      value: "Psicoorientación",
+      label: "Psicoorientación",
+      icon: "🧠",
+      bgColor: "bg-green-50",
+      borderColor: "border-green-300",
+      textColor: "text-green-700",
+      darkBgColor: "dark:bg-green-950",
+      darkBorderColor: "dark:border-green-800",
+      darkTextColor: "dark:text-green-300",
+      obligaHoras: false,
+    },
+    {
+      value: "Retirado por el acudiente",
+      label: "Retirado por el acudiente",
+      icon: "👨",
+      bgColor: "bg-green-50",
+      borderColor: "border-green-300",
+      textColor: "text-green-700",
+      darkBgColor: "dark:bg-green-950",
+      darkBorderColor: "dark:border-green-800",
+      darkTextColor: "dark:text-green-300",
+      obligaHoras: false,
+    },
+  ];
+
+  // --- Funciones de Tema ---
+  const toggleTheme = () => {
+    theme.update((t) => {
+      if (t === "light") return "dim";
+      if (t === "dim") return "dark";
+      return "light";
     });
-  }
+  };
 
-  function determineCurrentPeriodo() {
-    const today = new Date();
-    currentPeriodo =
-      periodos.find(
-        (periodo: (typeof periodos)[0]) =>
-          today >= periodo.fecha_inicio && today <= periodo.fecha_fin,
-      ) || null;
-  }
+  // --- Carga de Datos ---
+  const loadData = async () => {
+    isLoadingDocentes = true;
+    isLoadingMaterias = true;
+    isLoadingEstudiantes = true;
 
-  async function validateAndGenerateReport() {
-    if (!isValid) {
-      await Swal.fire({
-        icon: "warning",
-        title: "Validación Requerida",
-        html: `
-          <div class="text-left">
-            <p>Por favor complete todos los campos obligatorios:</p>
-            <ul class="list-disc list-inside mt-2 text-sm">
-              ${!grupo ? "<li>Grupo</li>" : ""}
-              ${!nombre_docente ? "<li>Docente</li>" : ""}
-              ${!nombre_materia ? "<li>Materia</li>" : ""}
-            </ul>
-          </div>
-        `,
-        confirmButtonColor: "#3b82f6",
-      });
+    try {
+      const [docentesData, materiasData, estudiantesData] = await Promise.all([
+        getDocentes(),
+        getMaterias(),
+        getEstudiantes(),
+      ]);
+      docentes = docentesData;
+      materias = materiasData;
+      estudiantes = estudiantesData;
+    } catch (error) {
+      console.error("Error cargando datos iniciales:", error);
+    } finally {
+      isLoadingDocentes = false;
+      isLoadingMaterias = false;
+      isLoadingEstudiantes = false;
+    }
+  };
+
+  // --- Manejadores del Formulario ---
+  const removeInasistencia = (estudianteNombre: string, motivoValue: string) => {
+    inasistencias = inasistencias.filter(
+      (i) => !(i.nombre === estudianteNombre && i.motivo === motivoValue),
+    );
+  };
+
+  const handleInasistenciaChange = (
+    estudianteNombre: string,
+    nuevoMotivo: string,
+    nuevaHora?: string,
+  ) => {
+    if (nuevoMotivo === "" || nuevoMotivo === "Ignorar") {
+      inasistencias = inasistencias.filter((i) => i.nombre !== estudianteNombre);
       return;
     }
 
-    await generateReport();
-  }
+    const selectedMotivo = motivos.find((m) => m.value === nuevoMotivo);
+    if (!selectedMotivo) return;
 
-  async function generateReport() {
-    loading = true;
+    let hourToUse =
+      nuevaHora || individualHours[estudianteNombre] || formData.horas;
 
+    // Si el motivo no obliga horas, forzamos a "0"
+    if (!selectedMotivo.obligaHoras) {
+      hourToUse = "0";
+    }
+
+    if (selectedMotivo.obligaHoras) {
+      // Si es un motivo que OBLIGA horas, reemplazamos cualquier otro que también obligue horas
+      // pero mantenemos los que NO obligan horas
+      inasistencias = inasistencias.filter((i) => {
+        if (i.nombre !== estudianteNombre) return true;
+        const m = motivos.find((mot) => mot.value === i.motivo);
+        return m && !m.obligaHoras;
+      });
+    }
+
+    // Verificar si ya tiene este motivo exacto
+    const alreadyHasIt = inasistencias.some(
+      (i) => i.nombre === estudianteNombre && i.motivo === nuevoMotivo,
+    );
+
+    if (!alreadyHasIt) {
+      // Obtener observaciones existentes para este estudiante si las hay
+      const existingObs =
+        inasistencias.find((i) => i.nombre === estudianteNombre)
+          ?.observaciones || "";
+
+      inasistencias = [
+        ...inasistencias,
+        {
+          nombre: estudianteNombre,
+          motivo: nuevoMotivo,
+          horas: hourToUse,
+          observaciones: existingObs,
+        },
+      ];
+    }
+  };
+
+  const handleIndividualObservationChange = (
+    estudianteNombre: string,
+    nuevaObs: string,
+  ) => {
+    inasistencias = inasistencias.map((i) => {
+      if (i.nombre === estudianteNombre) {
+        return { ...i, observaciones: nuevaObs };
+      }
+      return i;
+    });
+  };
+
+  const toggleObservation = (estudianteNombre: string) => {
+    openObservations[estudianteNombre] = !openObservations[estudianteNombre];
+  };
+
+  const handleIndividualHourChange = (
+    estudianteNombre: string,
+    nuevaHora: string,
+  ) => {
+    individualHours[estudianteNombre] = nuevaHora;
+    inasistencias = inasistencias.map((i) => {
+      if (i.nombre === estudianteNombre) {
+        const m = motivos.find((mot) => mot.value === i.motivo);
+        if (m && m.obligaHoras) {
+          return { ...i, horas: nuevaHora };
+        }
+      }
+      return i;
+    });
+  };
+
+  const handleSubmit = async (event: Event) => {
+    event.preventDefault();
+    if (isLoading || inasistencias.length === 0) return;
+
+    isLoading = true;
     try {
-      dispatch("loading", true);
+      const currentTimestamp = new Date().toISOString();
+      const inasistenciasPayload = inasistencias
+        .filter((item) => item.motivo && item.motivo !== "Ignorar")
+        .map((item) => [
+          currentTimestamp,
+          formData.docente,
+          formData.fecha,
+          item.horas,
+          formData.materia,
+          item.motivo,
+          formData.grado,
+          item.nombre,
+          item.observaciones || formData.observaciones,
+        ]);
 
-      console.log("currentPeriodo:", currentPeriodo);
-      if (!currentPeriodo) {
-        console.error("No se encontró período actual");
-        throw new Error("No se encontró período académico actual");
-      }
+      await saveInasistencias({
+        spreadsheetId: SPREADSHEET_ID,
+        worksheetTitle: WORKSHEET_TITLE,
+        inasistencias: inasistenciasPayload as any,
+      });
 
-      const payload: RegistroPayload = {
-        id_grupo: grupo,
-        id_docente: docente,
-        id_materia: materia,
-        fecha_inicio: currentPeriodo.fecha_inicio.toISOString().split("T")[0],
-        fecha_fin: currentPeriodo.fecha_fin.toISOString().split("T")[0],
-      };
-
-      console.log("Obteniendo datos con payload:", payload);
-
-      reportData = await getRegistrosReporte(payload);
-
-      if (!reportData.estudiantes || reportData.estudiantes.length === 0) {
-        throw new Error(
-          "No se encontraron estudiantes para el grupo seleccionado",
-        );
-      }
-
-      console.log("Datos obtenidos:", reportData);
-      await generateExcelFile();
-    } catch (error) {
-      console.error("Error generating report:", error);
-
-      // Demo data fallback si todo falla
-      if (grupo && nombre_docente && nombre_materia && currentPeriodo) {
-        console.warn("Usando datos de demostración como fallback");
-        const fallbackPayload: RegistroPayload = {
-          id_grupo: grupo,
-          id_docente: docente,
-          id_materia: materia,
-          fecha_inicio: currentPeriodo.fecha_inicio.toISOString().split("T")[0],
-          fecha_fin: currentPeriodo.fecha_fin.toISOString().split("T")[0],
-        };
-        
-        try {
-          reportData = generateDemoData(fallbackPayload, currentPeriodo);
-          console.log("Datos de demostración generados:", reportData);
-          await generateExcelFile();
-          return;
-        } catch (demoError) {
-          console.error("Error generando datos de demostración:", demoError);
-        }
-      }
-
-      let errorMessage = "Error desconocido";
-
-      if (error instanceof Error) {
-        if (error.message.includes("fetch")) {
-          errorMessage =
-            "Error de conexión al servidor. Verifique su conexión a internet.";
-        } else if (error.message.includes("timeout")) {
-          errorMessage =
-            "La operación tardó demasiado tiempo. Intente nuevamente.";
-        } else if (error.message.includes("JSON")) {
-          errorMessage = "Error en el formato de datos del servidor.";
-        } else {
-          errorMessage = error.message;
-        }
-      }
+      // Persistir la materia para el docente solo después del éxito
+      saveMateriaForDocente(formData.docente, formData.materia);
 
       await Swal.fire({
+        icon: "success",
+        title: "¡Éxito!",
+        text: `${inasistencias.length} inasistencia(s) registrada(s) exitosamente`,
+        timer: 3000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+        position: "top-end",
+        toast: true,
+      });
+
+      formData = {
+        ...formData,
+        grado: "",
+        fecha: new Date().toISOString().split("T")[0],
+        observaciones: "",
+        horas: "",
+      };
+      inasistencias = [];
+      individualHours = {};
+      openObservations = {};
+    } catch (error) {
+      console.error("Error enviando:", error);
+      await Swal.fire({
         icon: "error",
-        title: "Error al Generar Reporte",
-        text: errorMessage,
+        title: "Error",
+        text: "Error al registrar la inasistencia",
         confirmButtonColor: "#ef4444",
       });
     } finally {
-      loading = false;
-      dispatch("loading", false);
+      isLoading = false;
     }
-  }
+  };
 
-  async function generateExcelFile() {
-    if (!reportData || !currentPeriodo) return;
-
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Reporte de Inasistencias");
-
-    const allDates = generateDatesFromPeriodo(currentPeriodo);
-    
-    // Filtrar fechas para incluir solo las que tienen al menos un registro
-    const dates = allDates.filter(date => {
-      const dateStr = date.toISOString().split("T")[0];
-      return reportData!.registros.some(reg => reg.fecha === dateStr);
-    });
-
-    // Si no hay ninguna fecha con registros (raro si llegó aquí), mostrar al menos el periodo
-    if (dates.length === 0) {
-      await Swal.fire({
-        icon: "info",
-        title: "Reporte Vacío",
-        text: "No hay inasistencias registradas en este periodo para los filtros seleccionados.",
-        confirmButtonColor: "#3b82f6",
-      });
-      return;
-    }
-
-    const totalCols = dates.length + 2; // Estudiante + Dates + Total
-
-    // 1. Título (Row 1)
-    const titleRow = worksheet.addRow([
-      `REPORTE DE INASISTENCIAS - ${nombre_materia || "Materia"} - ${nombre_grupo || "Grupo"}`
-    ]);
-    titleRow.height = 30;
-    titleRow.font = { bold: true, size: 16, color: { argb: "FFFFFF" } };
-    titleRow.fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "2E75B6" },
-    };
-    titleRow.alignment = { vertical: "middle", horizontal: "center" };
-    worksheet.mergeCells(1, 1, 1, totalCols);
-
-    // 2. Info (Row 2)
-    const infoRow = worksheet.addRow([
-      `Docente: ${nombre_docente || "No especificado"} | Periodo: ${currentPeriodo.nombre} (${formatDateForExcel(currentPeriodo.fecha_inicio)} - ${formatDateForExcel(currentPeriodo.fecha_fin)})`
-    ]);
-    infoRow.height = 20;
-    infoRow.font = { bold: true, size: 10, color: { argb: "FFFFFF" } };
-    infoRow.fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "5B9BD5" },
-    };
-    infoRow.alignment = { vertical: "middle", horizontal: "left" };
-    worksheet.mergeCells(2, 1, 2, totalCols);
-
-    // 3. Headers (Row 3)
-    const headerRow = worksheet.getRow(3);
-    headerRow.height = 25;
-    headerRow.font = { bold: true, size: 12, color: { argb: "FFFFFF" } };
-    headerRow.alignment = { vertical: "middle", horizontal: "center" };
-
-    headerRow.getCell(1).value = "Estudiantes";
-    worksheet.getColumn(1).width = 30;
-
-    dates.forEach((date, index) => {
-      const colNumber = index + 2;
-      headerRow.getCell(colNumber).value = formatDateForExcel(date);
-      worksheet.getColumn(colNumber).width = 12;
-    });
-
-    const totalColIdx = dates.length + 2;
-    headerRow.getCell(totalColIdx).value = "Total Horas";
-    worksheet.getColumn(totalColIdx).width = 20;
-
-    // Aplicar estilos al header row
-    headerRow.eachCell((cell, colNumber) => {
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: colNumber === totalColIdx ? "FF6B6B" : "4472C4" },
-      };
-      cell.border = {
-        top: { style: "thin" },
-        left: { style: "thin" },
-        bottom: { style: "thin" },
-        right: { style: "thin" },
-      };
-    });
-
-    // 4. Datos (Row 4+)
-    reportData!.estudiantes.forEach((estudiante: Estudiante, estIndex: number) => {
-      const rowNumber = estIndex + 4;
-      const studentRow = worksheet.getRow(rowNumber);
-      let totalHoras = 0;
-
-      studentRow.getCell(1).value = estudiante.nombre;
-      studentRow.getCell(1).font = { bold: true };
-      studentRow.getCell(1).fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "F2F2F2" },
-      };
-
-      dates.forEach((date, dateIndex) => {
-        const colNumber = dateIndex + 2;
-        const cell = studentRow.getCell(colNumber);
-
-        const registro = reportData!.registros.find(
-          (reg: Registro) =>
-            reg.id_estudiante === estudiante.id &&
-            reg.fecha === date.toISOString().split("T")[0],
-        );
-
-        if (registro) {
-          if (!registro.presente) {
-            const horas = registro.horas || 0;
-            cell.value = horas > 0 ? horas : registro.motivo || "Inasistencia";
-            cell.font = { color: { argb: "FF0000" }, bold: true };
-            cell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: "FFE6E6" },
-            };
-            totalHoras += horas;
-          } else {
-            cell.value = "✓";
-            cell.font = { color: { argb: "00AA00" } };
-          }
-        } else {
-          cell.value = "-";
-          cell.font = { color: { argb: "888888" } };
-        }
-      });
-
-      const totalCell = studentRow.getCell(totalColIdx);
-      totalCell.value = totalHoras;
-      totalCell.font = {
-        bold: true,
-        color: { argb: totalHoras > 0 ? "FF0000" : "00AA00" },
-      };
-      totalCell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: totalHoras > 0 ? "FFE6E6" : "E6FFE6" },
-      };
-
-      // Aplicar bordes y alineación a toda la fila
-      studentRow.eachCell((cell) => {
-        cell.border = {
-          top: { style: "thin" },
-          left: { style: "thin" },
-          bottom: { style: "thin" },
-          right: { style: "thin" },
-        };
-        cell.alignment = { horizontal: "center" };
-      });
-      studentRow.getCell(1).alignment = { horizontal: "left" };
-    });
-
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-
-    const fileName = `Reporte_Inasistencias_${nombre_grupo || "Grupo"}_${nombre_materia || "Materia"}_${new Date().toISOString().split("T")[0]}.xlsx`;
-
-    saveAs(blob, fileName);
-
-    await Swal.fire({
-      icon: "success",
-      title: "Reporte Generado",
-      text: `Se ha generado el reporte con ${reportData!.estudiantes.length} estudiantes`,
-      confirmButtonColor: "#10b981",
-    });
-  }
-
-  function generateDatesFromPeriodo(periodo: (typeof periodos)[0]): Date[] {
-    const dates: Date[] = [];
-    const current = new Date(periodo.fecha_inicio);
-    const end = new Date(periodo.fecha_fin);
-
-    while (current <= end) {
-      const dayOfWeek = current.getUTCDay();
-      if (dayOfWeek >= 1 && dayOfWeek <= 6) {
-        dates.push(new Date(current));
-      }
-      current.setUTCDate(current.getUTCDate() + 1);
-    }
-
-    return dates;
-  }
-
-  function formatDateForExcel(date: Date): string {
-    const months = [
-      "Ene",
-      "Feb",
-      "Mar",
-      "Abr",
-      "May",
-      "Jun",
-      "Jul",
-      "Ago",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dic",
-    ];
-    return `${date.getUTCDate()}/${months[date.getUTCMonth()]}/${date.getUTCFullYear().toString().substr(2)}`;
-  }
+  onMount(() => {
+    loadData();
+    // Inicializar el estado del popup de feature
+    showFeatureAlert = shouldShowFeatureAlert("FeatureAlertFilters");
+    showFeatureAlertReport = shouldShowFeatureAlert("FeatureAlertReport");
+  });
 </script>
 
-<button
-  on:click={validateAndGenerateReport}
-  disabled={loading || !isValid}
-  class="relative inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transform hover:scale-105 active:scale-95 min-w-[160px] h-[44px]"
-  title="Generar reporte Excel de inasistencias"
-  aria-label="Generar reporte Excel de inasistencias"
+<div
+  class="min-h-screen flex flex-col lg:flex-row transition-colors duration-200"
+  style="background-color: {styles.bg};"
 >
-  {#if loading}
-    <svg
-      class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
+  <!-- Sidebar (Escritorio) / Header (Móvil) -->
+  <aside
+    class="w-full lg:w-80 lg:h-screen lg:sticky lg:top-0 border-b lg:border-b-0 lg:border-r transition-colors duration-200 p-6 lg:p-8 flex flex-col flex-shrink-0 z-40"
+    style="background-color: {styles.cardBg}; border-color: {styles.cardBorder};"
+  >
+    <div
+      class="flex flex-col lg:flex-col items-center justify-between lg:justify-start gap-4 lg:gap-8"
     >
-      <circle
-        class="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
+      <div class="flex items-center gap-4 lg:flex-col">
+        <img src={eieLogo} alt="EIE Logo" class="h-12 lg:h-20 w-auto" />
+        <h1
+          class="text-xl lg:text-2xl tracking-tight font-bold lg:text-center"
+          style="color: {styles.text};"
+        >
+          Registrar Inasistencias
+        </h1>
+      </div>
+
+      <!-- Botones de Acción -->
+      <div class="flex flex-wrap justify-center lg:flex-col gap-3 w-full">
+        <button
+          on:click={openSheets}
+          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+          title="Abrir hoja de cálculo"
+        >
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"
+            />
+          </svg>
+          <span class="text-sm font-medium hidden lg:inline"
+            >Hoja de Cálculo</span
+          >
+        </button>
+
+        <!-- Botón de Filtros -->
+        <button
+          id="filter-button-target"
+          on:click={openFilters}
+          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5 relative"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+          title="Abrir Looker Studio"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+            />
+          </svg>
+          <span class="text-sm font-medium hidden lg:inline">Filtros</span>
+          {#if showFeatureAlert}
+            <div
+              class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping"
+            ></div>
+            <div
+              class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"
+            ></div>
+          {/if}
+        </button>
+
+        <!-- Botón de Reportes Excel -->
+        <button
+          id="report-button-target"
+          on:click={openReportGenerator}
+          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5 relative"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+          title="Generar reportes Excel"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+          <span class="text-sm font-medium hidden lg:inline">Reporte Excel</span>
+          {#if showFeatureAlertReport}
+            <div
+              class="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-ping"
+            ></div>
+            <div
+              class="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full"
+            ></div>
+          {/if}
+        </button>
+
+        <!-- Botón de Reporte Online -->
+        <button
+          on:click={openOnlineReport}
+          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+          title="Ver reporte online"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+            />
+          </svg>
+          <span class="text-sm font-medium hidden lg:inline">Ver Online</span>
+        </button>
+
+        <!-- Botón de Locker Studio -->
+        <button
+          on:click={openLocker}
+          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+          title="Abrir Looker Studio"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            />
+          </svg>
+          <span class="text-sm font-medium hidden lg:inline">Looker Studio</span
+          >
+        </button>
+
+
+
+        <!-- Botón de Dashboard -->
+        <button
+          on:click={onBack}
+          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+          title="Volver al Dashboard"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+            />
+          </svg>
+          <span class="text-sm font-medium hidden lg:inline">Dashboard</span>
+        </button>
+
+        <div class="relative">
+          <button
+            on:click={toggleTheme}
+            class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5 w-full"
+            style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+            aria-label="Cambiar tema"
+          >
+            {#if $theme === "dark"}
+              <svg
+                class="w-5 h-5 text-indigo-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                ></path>
+              </svg>
+            {:else if $theme === "light"}
+              <svg
+                class="w-5 h-5 text-amber-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                ></path>
+              </svg>
+            {:else}
+              <svg
+                class="w-5 h-5 text-indigo-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                ></path>
+              </svg>
+            {/if}
+            <span class="text-sm font-medium hidden lg:inline capitalize">
+              {$theme}
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Contenido Principal -->
+  <main class="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+    <div
+      class="max-w-4xl mx-auto rounded-2xl p-6 lg:p-8 transition-colors duration-200 border"
+      style="background-color: {styles.cardBg}; border-color: {styles.cardBorder};"
+    >
+      {#if showInfoAlert}
+        <div
+          class="mb-6 p-4 rounded-xl border flex items-start gap-4 animate-fade-in relative transition-all duration-300 bg-green-50 dark:bg-indigo-900/40 border-green-200 dark:border-indigo-700 shadow-sm"
+        >
+          <div
+            class="p-2 rounded-lg bg-green-100 dark:bg-indigo-800 text-green-700 dark:text-indigo-200 flex-shrink-0"
+          >
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          </div>
+          <div class="flex-1 pr-6 pt-0.5">
+            <h4
+              class="text-sm font-bold mb-1 text-green-900 dark:text-indigo-100"
+            >
+              Información
+            </h4>
+            <p
+              class="text-sm leading-relaxed text-green-800 dark:text-indigo-200"
+            >
+              {INFO_INASISTENCIA}
+            </p>
+          </div>
+          <button
+            on:click={dismissInfoAlert}
+            class="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-green-100 dark:hover:bg-indigo-700 text-green-600 hover:text-green-800 dark:text-indigo-400 dark:hover:text-indigo-100 transition-colors"
+            aria-label="Cerrar alerta"
+          >
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+      {/if}
+
+      <!-- Feature Popup Component -->
+      <FeaturePopup
+        featureMessage={FEATURE_MESSAGE}
+        description="Ahora puedes filtrar tus datos de forma avanzada. ¡Pruébalo!"
+        onTryNow={tryFeatureNow}
+        onDismiss={dismissFeatureAlert}
+        targetSelector="#filter-button-target"
+        showPopup={false}
+        colorTheme="blue"
+      />
+
+      <!-- Feature Popup for Report Generator -->
+      <FeaturePopup
+        featureMessage={FEATURE_MESSAGE_REPORT}
+        description="Ahora puedes generar reportes de inasistencias en formato Excel. ¡Descarga y analiza tus datos!"
+        onTryNow={tryFeatureNowReport}
+        onDismiss={dismissFeatureAlertReport}
+        targetSelector="#report-button-target"
+        showPopup={false}
+        colorTheme="green"
+      />
+
+      <form on:submit={handleSubmit} class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="space-y-2">
+            <label
+              for="docente"
+              class="block text-sm font-medium"
+              style="color: {styles.label};">Docente</label
+            >
+            <select
+              id="docente"
+              name="docente"
+              bind:value={formData.docente}
+              required
+              disabled={isLoadingDocentes}
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50"
+              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+            >
+              <option value=""
+                >{isLoadingDocentes
+                  ? "Cargando..."
+                  : "Seleccione docente"}</option
+              >
+              {#each docentes as docente}
+                <option value={docente}>{docente}</option>
+              {/each}
+            </select>
+          </div>
+
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <label
+                for="materia"
+                class="block text-sm font-medium"
+                style="color: {styles.label};">Materia</label
+              >
+            </div>
+            <select
+              id="materia"
+              name="materia"
+              bind:value={formData.materia}
+              required
+              disabled={isLoadingMaterias}
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50"
+              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+            >
+              <option value=""
+                >{isLoadingMaterias
+                  ? "Cargando..."
+                  : "Seleccione materia"}</option
+              >
+              {#each materiasSorted as materia}
+                {@const isSaved = docenteMaterias[formData.docente]?.includes(
+                  materia.materia,
+                )}
+                <option
+                  value={materia.materia}
+                  style={isSaved ? "color: #6366f1; font-weight: 600;" : ""}
+                >
+                  {isSaved ? "⭐ " : ""}{materia.materia}
+                </option>
+              {/each}
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="space-y-2">
+            <label
+              for="horas"
+              class="block text-sm font-medium"
+              style="color: {styles.label};">Cantidad de Horas</label
+            >
+            <select
+              id="horas"
+              name="horas"
+              bind:value={formData.horas}
+              required
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer"
+              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+            >
+              <option value="">Seleccione horas</option>
+              <option value="0">Sin hora específica</option>
+              {#each [1, 2, 3, 4] as h}
+                <option value={h.toString()}
+                  >{h} {h === 1 ? "Hora" : "Horas"}</option
+                >
+              {/each}
+            </select>
+          </div>
+
+          <div class="space-y-2">
+            <label
+              for="grado"
+              class="block text-sm font-medium"
+              style="color: {styles.label};">Grado</label
+            >
+            <select
+              id="grado"
+              name="grado"
+              bind:value={formData.grado}
+              required
+              disabled={isLoadingEstudiantes}
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50"
+              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+            >
+              <option value=""
+                >{isLoadingEstudiantes
+                  ? "Cargando..."
+                  : "Seleccione grado"}</option
+              >
+              {#each [...new Set(estudiantes.map( (e) => e.grado.toString(), ))] as g}
+                <option value={g}
+                  >{g
+                    .replace(/0(\d)$/, "°$1")
+                    .replace(/(\d{1,2})0(\d)/, "$1°$2")}</option
+                >
+              {/each}
+            </select>
+          </div>
+        </div>
+
+        {#if formData.grado && formData.horas !== ""}
+          <div class="space-y-3 animate-fade-in">
+            <!-- svelte-ignore a11y_label_has_associated_control -->
+            <label
+              class="block text-sm font-semibold uppercase tracking-wider"
+              style="color: {styles.label};"
+            >
+              Estudiantes del Grado {formData.grado}
+            </label>
+            <div
+              class="space-y-2 max-h-[700px] overflow-y-auto border rounded-2xl p-4 bg-zinc-50/50 dark:bg-zinc-900/50 backdrop-blur-sm scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-600"
+              style="border-color: {styles.border};"
+            >
+              {#each estudiantesFiltrados as estudiante (estudiante.nombre)}
+                {@const studentInasistencias = inasistencias.filter(
+                  (i) => i.nombre === estudiante.nombre,
+                )}
+                {@const hasAnyInasistencia = studentInasistencias.length > 0}
+                {@const hasObligaHoras = studentInasistencias.some((i) => {
+                  const m = motivos.find((mot) => mot.value === i.motivo);
+                  return m && m.obligaHoras;
+                })}
+
+                <div
+                  class="flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-xl transition-all duration-200 gap-4"
+                  style="background-color: {styles.bg}; border-color: {hasAnyInasistencia
+                    ? 'transparent'
+                    : styles.border};"
+                  class:ring-2={hasAnyInasistencia}
+                  class:ring-indigo-500={hasAnyInasistencia}
+                >
+                  <div class="flex-1 min-w-0">
+                    <span
+                      class="text-base font-medium block"
+                      style="color: {styles.text};">{estudiante.nombre}</span
+                    >
+                    <div class="flex flex-wrap gap-2 mt-2">
+                      {#each studentInasistencias as inas}
+                        {@const m = motivos.find((mot) => mot.value === inas.motivo)}
+                        {#if m}
+                          <span
+                            class={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${m.bgColor} ${m.textColor} ${m.borderColor} ${m.darkBgColor} ${m.darkTextColor} ${m.darkBorderColor}`}
+                          >
+                            <span class="mr-1.5">{m.icon}</span>
+                            {m.label}
+                            <button
+                              type="button"
+                              on:click={() =>
+                                removeInasistencia(estudiante.nombre, inas.motivo)}
+                              class="ml-1.5 hover:opacity-70 transition-opacity"
+                              aria-label="Eliminar motivo"
+                            >
+                              <svg
+                                class="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="3"
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
+                              </svg>
+                            </button>
+                          </span>
+                        {/if}
+                      {/each}
+                    </div>
+                  </div>
+
+                  <div
+                    class="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto"
+                  >
+                    <!-- Selector de Hora Individual -->
+                    <div
+                      class="relative w-full sm:w-32 transition-opacity duration-200"
+                      class:opacity-40={!hasObligaHoras}
+                    >
+                      <select
+                        value={studentInasistencias.find((i) => {
+                          const m = motivos.find((mot) => mot.value === i.motivo);
+                          return m && m.obligaHoras;
+                        })?.horas ||
+                          individualHours[estudiante.nombre] ||
+                          formData.horas}
+                        on:change={(e) =>
+                          handleIndividualHourChange(
+                            estudiante.nombre,
+                            e.currentTarget.value,
+                          )}
+                        disabled={!hasObligaHoras}
+                        class="w-full appearance-none border rounded-lg px-4 py-2 pr-10 text-sm focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-all outline-none"
+                        style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+                      >
+                        <option value="">Hora...</option>
+                        <option value="0">0 (Sin hora)</option>
+                        {#each [1, 2, 3, 4] as h}
+                          <option value={h.toString()}>{h}</option>
+                        {/each}
+                      </select>
+                      <div
+                        class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3"
+                        style="color: {styles.icon};"
+                      >
+                        <svg
+                          class="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+
+                    <!-- Selector de Motivo -->
+                    <div class="relative w-full sm:w-56">
+                      <select
+                        value=""
+                        on:change={(e) => {
+                          handleInasistenciaChange(
+                            estudiante.nombre,
+                            e.currentTarget.value,
+                          );
+                          e.currentTarget.value = "";
+                        }}
+                        class="w-full appearance-none border rounded-lg px-4 py-2 pr-10 text-sm focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-all outline-none"
+                        style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+                      >
+                        <option value="">Añadir motivo...</option>
+                        <option value="Ignorar">🚫 Limpiar todo</option>
+                        {#each motivos as motivo}
+                          {@const isSelected = studentInasistencias.some(
+                            (i) => i.motivo === motivo.value,
+                          )}
+                          <option value={motivo.value} disabled={isSelected}>
+                            {motivo.icon} {motivo.label} {isSelected ? "✓" : ""}
+                          </option>
+                        {/each}
+                      </select>
+                      <div
+                        class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3"
+                        style="color: {styles.icon};"
+                      >
+                        <svg
+                          class="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {#if hasAnyInasistencia}
+                    <div class="flex items-center gap-2">
+                      <button
+                        type="button"
+                        on:click={() => toggleObservation(estudiante.nombre)}
+                        class="p-2 rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                        style="color: {studentInasistencias[0]?.observaciones
+                          ? 'rgb(var(--text-primary))'
+                          : styles.icon};"
+                        title="Agregar observación"
+                      >
+                        <svg
+                          class="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  {/if}
+                </div>
+
+                {#if hasAnyInasistencia && (openObservations[estudiante.nombre] || studentInasistencias[0]?.observaciones)}
+                  <div class="px-4 pb-4 animate-fade-in">
+                    <textarea
+                      value={studentInasistencias[0]?.observaciones || ""}
+                      on:input={(e) =>
+                        handleIndividualObservationChange(
+                          estudiante.nombre,
+                          e.currentTarget.value,
+                        )}
+                      placeholder="Escribe una observación específica para este estudiante..."
+                      rows="2"
+                      class="w-full px-4 py-2 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none resize-none text-sm"
+                      style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+                    ></textarea>
+                  </div>
+                {/if}
+              {/each}
+
+              {#if estudiantesFiltrados.length === 0}
+                <div
+                  class="text-center py-12 opacity-60"
+                  style="color: {styles.text};"
+                >
+                  No hay estudiantes en este grado.
+                </div>
+              {/if}
+            </div>
+          </div>
+        {/if}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="space-y-2">
+            <label
+              for="fecha"
+              class="block text-sm font-medium"
+              style="color: {styles.label};">Fecha</label
+            >
+            <input
+              type="date"
+              id="fecha"
+              name="fecha"
+              bind:value={formData.fecha}
+              required
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label
+              for="observaciones"
+              class="block text-sm font-medium"
+              style="color: {styles.label};">Observaciones</label
+            >
+            <textarea
+              id="observaciones"
+              name="observaciones"
+              bind:value={formData.observaciones}
+              rows="3"
+              placeholder="Opcional..."
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none resize-none"
+              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+            ></textarea>
+          </div>
+        </div>
+
+        <div
+          class="flex items-center justify-between pt-6 border-t"
+          style="border-color: {styles.border};"
+        >
+          <div class="text-sm font-medium" style="color: {styles.label};">
+            Inasistencias marcadas: <span class="text-indigo-500 font-bold ml-1"
+              >{inasistencias.length}</span
+            >
+          </div>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <button
+    on:click={handleSubmit}
+    disabled={isLoading ||
+      inasistencias.length === 0 ||
+      !formData.docente ||
+      !formData.materia}
+    class="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 bg-green-600 hover:bg-green-700 text-white p-4 lg:p-5 rounded-full shadow-2xl hover:shadow-green-500/20 transform transition-all duration-300 hover:scale-110 active:scale-95 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed z-50 group"
+    title="Guardar inasistencias"
+  >
+    {#if isLoading}
+      <svg
+        class="animate-spin h-6 w-6 lg:h-7 lg:w-7"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
+        <circle
+          class="opacity-25"
+          cx="12"
+          cy="12"
+          r="10"
+          stroke="currentColor"
+          stroke-width="4"
+        ></circle>
+        <path
+          class="opacity-75"
+          fill="currentColor"
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+        ></path>
+      </svg>
+    {:else}
+      <svg
+        class="h-6 w-6 lg:h-7 lg:w-7"
+        fill="none"
         stroke="currentColor"
-        stroke-width="4"
-      ></circle>
-      <path
-        class="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-      ></path>
-    </svg>
-    <span class="font-medium">Generando...</span>
-  {:else}
-    <svg
-      class="w-5 h-5 mr-2"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        stroke-width="2"
-        d="M9 17v1a3 3 0 003 3h0a3 3 0 003-3v-1m3-10V4a2 2 0 00-2-2H8a2 2 0 00-2 2v3m3 2h6l-1 7h-4l-1-7z"
-      ></path>
-    </svg>
-    <span class="font-medium">Generar Reporte Excel</span>
-  {/if}
-</button>
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M5 13l4 4L19 7"
+        />
+      </svg>
+    {/if}
+
+    {#if !isLoading && inasistencias.length > 0}
+      <span
+        class="absolute -top-1 -right-1 lg:-top-2 lg:-right-2 bg-red-500 text-white text-[10px] lg:text-xs font-bold rounded-full h-5 w-5 lg:h-6 lg:w-6 flex items-center justify-center ring-2 ring-white dark:ring-zinc-950 animate-bounce"
+      >
+        {inasistencias.length}
+      </span>
+    {/if}
+  </button>
+</div>
+
+{#if showFilter}
+  <InasistenciaFilter
+    onClose={closeFilters}
+    selectedDocente={formData.docente}
+  />
+{/if}
+
+{#if showReportGenerator}
+  <ReportGeneratorInas
+    onClose={closeReportGenerator}
+    initialDocente={formData.docente}
+  />
+{/if}
+
+{#if showOnlineReport}
+  <ReportGeneratorInasView
+    onClose={closeOnlineReport}
+    initialDocente={formData.docente}
+  />
+{/if}
 
 <style>
-  @keyframes spin {
+  @keyframes fade-in {
     from {
-      transform: rotate(0deg);
+      opacity: 0;
+      transform: translateY(5px);
     }
     to {
-      transform: rotate(360deg);
+      opacity: 1;
+      transform: translateY(0);
     }
   }
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out forwards;
+  }
 
-  .animate-spin {
-    animation: spin 1s linear infinite;
+  @keyframes pulse-slow {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.95;
+      transform: scale(1.01);
+    }
+  }
+  .animate-pulse-slow {
+    animation: pulse-slow 3s ease-in-out infinite;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.5);
+    border-radius: 20px;
   }
 </style>
+
+
+import {
+  API_URL_GS,
+  BASE_URL,
+  DOCENTES_URL,
+  MATERIAS_URL,
+  ESTUDIANTES_URL,
+  ANOTADOR_URL,
+  ANOTADOR2_URL,
+  ANOTADOR3_URL,
+  SAVE_INASISTENCIAS_URL,
+  SAVE_ANOTADOR_URL,
+  SAVE_DIARIO_URL,
+  DIARIO_OPTIONS_URL,
+} from "../src/constants";
+
+export interface InasistenciaPayload {
+  [key: string]: string | number | boolean | null | undefined;
+}
+
+export interface AnotadorPayload {
+  spreadsheetId: string;
+  worksheetTitle: string;
+  datos: string[][];
+}
+
+export interface DiarioPayload {
+  spreadsheetId: string;
+  worksheetTitle: string;
+  datos: string[][];
+}
+
+export interface DiarioOption {
+  id: string;
+  categoria: string;
+  titulo: string;
+  descripcion: string;
+  impacto: number;
+  tiempo_estimado: number;
+}
+
+export interface DiarioOptionsResponse {
+  success: boolean;
+  situaciones: Record<string, DiarioOption[]>;
+  metadata?: Record<string, unknown>;
+}
+
+export const getDiarioOptions = async (): Promise<DiarioOptionsResponse> => {
+  try {
+    const response = await fetch(`${DIARIO_OPTIONS_URL}`);
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching diario options:", error);
+    throw error;
+  }
+};
+
+export const getInasistencias = async (payload: InasistenciaPayload = {}) => {
+  try {
+    const response = await fetch(`${API_URL_GS}/get_inasistencias.php`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching inasistencias:", error);
+    throw error;
+  }
+};
+
+export const getAnotador = async (payload: InasistenciaPayload = {}) => {
+  try {
+    const response = await fetch(`${API_URL_GS}/get_anotador.php`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching inasistencias:", error);
+    throw error;
+  }
+};
+
+export const getDiario = async (payload: InasistenciaPayload = {}) => {
+  try {
+    const response = await fetch(`${API_URL_GS}/get_diario.php`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching diario:", error);
+    throw error;
+  }
+};
+
+export const saveInasistencias = async (payload: InasistenciaPayload) => {
+  try {
+    const response = await fetch(`${SAVE_INASISTENCIAS_URL}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error saving inasistencias:", error);
+    throw error;
+  }
+};
+
+export const getDocentes = async () => {
+  try {
+    const response = await fetch(`${DOCENTES_URL}`);
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching docentes:", error);
+    throw error;
+  }
+};
+
+export const getMaterias = async () => {
+  try {
+    const response = await fetch(`${MATERIAS_URL}`);
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching materias:", error);
+    throw error;
+  }
+};
+
+export const getEstudiantes = async () => {
+  try {
+    const response = await fetch(`${ESTUDIANTES_URL}`);
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching estudiantes:", error);
+    throw error;
+  }
+};
+
+export const getOpcionesAnotador = async () => {
+  try {
+    const response = await fetch(`${ANOTADOR_URL}`);
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching opciones anotador:", error);
+    throw error;
+  }
+};
+
+export const getOpcionesAnotador2 = async () => {
+  try {
+    const response = await fetch(`${ANOTADOR2_URL}`);
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching opciones anotador:", error);
+    throw error;
+  }
+};
+
+export const getOpcionesAnotador3 = async () => {
+  try {
+    const response = await fetch(`${ANOTADOR3_URL}`);
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching opciones anotador3:", error);
+    throw error;
+  }
+};
+
+export const saveAnotador = async (payload: AnotadorPayload) => {
+  try {
+    const response = await fetch(`${SAVE_ANOTADOR_URL}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error saving inasistencias:", error);
+    throw error;
+  }
+};
+
+export const saveDiario = async (payload: DiarioPayload) => {
+  try {
+    const response = await fetch(`${SAVE_DIARIO_URL}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error saving inasistencias:", error);
+    throw error;
+  }
+};
+
+export interface RegistroPayload {
+  id_grupo: number;
+  id_docente: number;
+  id_materia: number;
+  fecha_inicio?: string;
+  fecha_fin?: string;
+}
+
+export interface Estudiante {
+  id: number;
+  nombre: string;
+  grado: string;
+}
+
+export interface Registro {
+  id_estudiante: number;
+  fecha: string;
+  presente: boolean;
+  motivo?: string;
+}
+
+export interface ReportData {
+  estudiantes: Estudiante[];
+  registros: Registro[];
+}
+
+export const getRegistrosReporte = async (
+  payload: RegistroPayload,
+): Promise<ReportData> => {
+  try {
+    const response = await fetch(`${API_URL_GS}/get_registros_reporte.php`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error HTTP: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data || typeof data !== "object") {
+      throw new Error("Respuesta inválida del servidor");
+    }
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    if (!data.estudiantes || !Array.isArray(data.estudiantes)) {
+      throw new Error("No se encontraron datos de estudiantes");
+    }
+
+    if (!data.registros || !Array.isArray(data.registros)) {
+      data.registros = [];
+    }
+
+    return data as ReportData;
+  } catch (error) {
+    console.error("Error fetching registros reporte:", error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("Error desconocido al obtener datos del reporte");
+  }
+};

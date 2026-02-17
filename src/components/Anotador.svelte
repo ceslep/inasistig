@@ -328,6 +328,21 @@
       })
     : materias;
 
+  // Extraer número del docente cuando tiene patrón "Nombre-número"
+  const getDocenteNumber = (docente: string): string | null => {
+    const match = docente.match(/-(\d+)$/);
+    return match ? match[1] : null;
+  };
+
+  // Filtrar grupos según el número del docente
+  $: docenteNumber = getDocenteNumber(formData.docente);
+
+  $: filteredGrados = docenteNumber
+    ? [...new Set(estudiantes.map((e) => e.grado.toString()))].filter((g) =>
+        g.startsWith(`${docenteNumber}-`),
+      )
+    : [...new Set(estudiantes.map((e) => e.grado.toString()))].filter((g) => !g.includes('-'));
+
   // --- Alertas Dismissibles ---
   let showInfoAlert =
     INFO_ANOTADOR &&
@@ -339,6 +354,19 @@
   };
 
   let isLoading = false;
+  let showFieldErrors = false;
+
+  $: missingFields = (() => {
+    const fields: string[] = [];
+    if (!formData.fecha) fields.push("fecha");
+    if (!formData.docente) fields.push("docente");
+    if (!formData.materia) fields.push("materia");
+    if (!formData.grado) fields.push("grado");
+    if (!formData.horas) fields.push("horas");
+    const hasSelectedAnotacion = Object.values(anotacionGrupos).flat().some((o) => o.selected);
+    if (!hasSelectedAnotacion) fields.push("anotacion");
+    return fields;
+  })();
 
   // --- Filtros ---
   let showFilter = false;
@@ -507,11 +535,47 @@
     event.preventDefault();
     if (isLoading) return;
 
+    showFieldErrors = true;
+
     const selectedTexts = Object.values(anotacionGrupos)
       .flat()
       .filter((o) => o.selected)
       .map((o) => o.text);
     const anotacionFinal = selectedTexts.join(" | ");
+
+    const camposFaltantes: { id: string; label: string }[] = [];
+    if (!formData.fecha) camposFaltantes.push({ id: "fecha", label: "Fecha" });
+    if (!formData.docente) camposFaltantes.push({ id: "docente", label: "Docente" });
+    if (!formData.materia) camposFaltantes.push({ id: "materia", label: "Asignatura" });
+    if (!formData.grado) camposFaltantes.push({ id: "grado", label: "Grado" });
+    if (!formData.horas) camposFaltantes.push({ id: "horas", label: "Horas" });
+    if (selectedTexts.length === 0) camposFaltantes.push({ id: "search", label: "Anotación(es)" });
+
+    if (camposFaltantes.length > 0) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Campos requeridos",
+        html: `Complete los siguientes campos:<br/><br/><strong>${camposFaltantes.map(c => c.label).join("<br/>")}</strong>`,
+        confirmButtonColor: "#6366f1",
+      });
+      
+      const firstField = document.getElementById(camposFaltantes[0].id);
+      if (firstField) {
+        firstField.scrollIntoView({ behavior: "smooth", block: "center" });
+        firstField.focus();
+      }
+      return;
+    }
+
+    if (selectedTexts.length === 0) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Sin anotaciones",
+        text: "Debe seleccionar al menos una anotación",
+        confirmButtonColor: "#6366f1",
+      });
+      return;
+    }
 
     // Confirmación con SweetAlert2
     const confirmResult = await Swal.fire({
@@ -605,6 +669,7 @@
       }
       // Forzar reactividad completa
       anotacionGrupos = { ...anotacionGrupos };
+      showFieldErrors = false;
     } catch (error) {
       console.error("Error enviando:", error);
       await Swal.fire({
@@ -870,7 +935,7 @@
         colorTheme="purple"
       />
 
-      <form on:submit={handleSubmit} class="space-y-6">
+      <form on:submit={handleSubmit} novalidate class="space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div class="space-y-2">
             <label
@@ -883,8 +948,8 @@
               id="fecha"
               bind:value={formData.fecha}
               required
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
-              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text}; color-scheme: {$theme ===
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none {showFieldErrors && missingFields.includes('fecha') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('fecha') ? '#ef4444' : styles.border}; color: {styles.text}; color-scheme: {$theme ===
               'light'
                 ? 'light'
                 : 'dark'};"
@@ -901,8 +966,8 @@
               id="docente"
               bind:value={formData.docente}
               required
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50"
-              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showFieldErrors && missingFields.includes('docente') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('docente') ? '#ef4444' : styles.border}; color: {styles.text};"
             >
               <option value=""
                 >{isLoadingDocentes
@@ -925,8 +990,8 @@
               id="materia"
               bind:value={formData.materia}
               required
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50"
-              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showFieldErrors && missingFields.includes('materia') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('materia') ? '#ef4444' : styles.border}; color: {styles.text};"
             >
               <option value=""
                 >{isLoadingMaterias
@@ -959,15 +1024,15 @@
               id="grado"
               bind:value={formData.grado}
               required
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50"
-              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showFieldErrors && missingFields.includes('grado') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('grado') ? '#ef4444' : styles.border}; color: {styles.text};"
             >
               <option value=""
                 >{isLoadingEstudiantes
                   ? "Cargando..."
                   : "Seleccione grado"}</option
               >
-              {#each [...new Set(estudiantes.map( (e) => e.grado.toString(), ))] as g}
+              {#each filteredGrados as g}
                 <option value={g}
                   >{g
                     .replace(/0(\d)$/, "°$1")
@@ -987,8 +1052,8 @@
               id="horas"
               bind:value={formData.horas}
               required
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer"
-              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer {showFieldErrors && missingFields.includes('horas') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('horas') ? '#ef4444' : styles.border}; color: {styles.text};"
             >
               <option value="">Seleccione horas</option>
               {#each [1, 2, 3, 4] as h}
@@ -1239,12 +1304,9 @@
         <div class="fixed bottom-8 right-8 z-50">
           <button
             type="submit"
-            disabled={isLoading || !isFormValid}
+            disabled={isLoading}
             class="w-16 h-16 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 dark:disabled:bg-slate-700 disabled:cursor-not-allowed disabled:scale-100 text-white rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 active:scale-95 backdrop-blur-sm bg-opacity-95 flex items-center justify-center overflow-hidden border border-white/20"
             aria-label="Guardar Anotación"
-            title={!isFormValid
-              ? "Complete todos los campos requeridos y al menos una anotación"
-              : "Guardar Anotación"}
           >
             {#if isLoading}
               <svg

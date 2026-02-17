@@ -10,7 +10,9 @@ npm run deploy     # Build + deploy to GitHub Pages
 npm run check      # Type checking (svelte-check + tsc)
 ```
 
-**Testing**: No test framework. Manual testing via browser at `http://localhost:5173`.
+**Testing**: No test framework. Manual testing:
+- Run `npm run dev` and open `http://localhost:5173`
+- For single component testing, modify App.svelte to render only that component
 
 **Linting**: No separate linter. Run `npm run check` for type checking.
 
@@ -82,15 +84,31 @@ import Dashboard from "./Dashboard.svelte";
 
 ### Reactive (Svelte 5)
 ```typescript
+// Legacy reactive (still works)
 $: filteredItems = items.filter(i => i.active);
+
+// Svelte 5 runes
 let count = $state(0);
 let doubled = $derived(count * 2);
+
+// Callback props
+let onSelect = $props<{ (view: string): void }>();
+```
+
+### Component Props & Events
+```svelte
+<script lang="ts">
+  let { onBack, title = "Default Title" }: { onBack: () => void; title?: string } = $props();
+</script>
+
+<button onclick={onBack}>{title}</button>
 ```
 
 ### Navigation
 - SPA with `activeView` state
 - Consistent `handleBack()` returning to "dashboard"
 - Use Svelte transitions: `fade`, `fly`, `slide`
+- Use `svelte/transition` for animated page transitions
 
 ### Forms & Error Handling
 - Use `bind:value` for inputs
@@ -111,6 +129,20 @@ try {
     confirmButtonColor: "#ef4444"
   });
 }
+```
+
+### Loading States
+```typescript
+let isLoading = $state(false);
+
+const handleSubmit = async () => {
+  isLoading = true;
+  try {
+    await saveData();
+  } finally {
+    isLoading = false;
+  }
+};
 ```
 
 ### API
@@ -156,3 +188,42 @@ CSS variables in `app.css`: `--bg-primary`, `--bg-secondary`, `--text-primary`, 
 4. UI text in Spanish
 5. Mobile-first responsive design
 6. Ask before git commits
+
+---
+
+## Additional Patterns
+
+### Svelte 5 Event Handling
+```svelte
+<!-- Legacy (still supported) -->
+<button on:click={handleClick}>Click</button>
+
+<!-- Svelte 5 -->
+<button onclick={handleClick}>Click</button>
+```
+
+### Conditional Classes
+```svelte
+<button class:disabled={isLoading} class:bg-blue-500={!isLoading}>
+  {isLoading ? 'Cargando...' : 'Enviar'}
+</button>
+```
+
+### Each Blocks with Key
+```svelte
+{#each items as item (item.id)}
+  <Component {item} />
+{/each}
+```
+
+### Using Icons (inline SVG)
+```svelte
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="..." />
+</svg>
+```
+
+### Backend API (PHP)
+- PHP files in `src/assets/php/`
+- Use MySQL via PHP for data persistence
+- See existing PHP files for response format patterns
