@@ -59,7 +59,7 @@
     materia: "",
     horas: "",
     grado: "",
-    fecha: new Date().toISOString().split("T")[0],
+    fecha: new Date().toLocaleDateString('es-CO'),
     observaciones: "",
   };
 
@@ -284,7 +284,9 @@
     ? [...new Set(estudiantes.map((e) => e.grado.toString()))].filter((g) =>
         g.startsWith(`${docenteNumber}-`),
       )
-    : [...new Set(estudiantes.map((e) => e.grado.toString()))];
+    : [...new Set(estudiantes.map((e) => e.grado.toString()))].filter((g) =>
+        !g.includes('-')
+      );
 
   // --- Motivos predefinidos ---
   const motivos = [
@@ -749,7 +751,7 @@
       formData = {
         ...formData,
         grado: "",
-        fecha: new Date().toISOString().split("T")[0],
+        fecha: new Date().toLocaleDateString('en-CA'),
         observaciones: "",
         horas: "",
       };

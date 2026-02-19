@@ -7,7 +7,7 @@ export const MATERIAS_URL = `${BASE_URL}/getMaterias.php`;
 export const ESTUDIANTES_URL = `${BASE_URL}/getEstudiantes.php`;
 
 // Google Sheets SALVAR INASISTENCIAS
-export const SAVE_INASISTENCIAS_URL = `${API_URL_GS}/save_inasistencias2.php`;
+export const SAVE_INASISTENCIAS_URL = `${API_URL_GS}/save_inasistencias.php`;
 
 // Google Sheets SALVAR ANOTADOR
 export const SAVE_ANOTADOR_URL = `${API_URL_GS}/save_anotador.php`;

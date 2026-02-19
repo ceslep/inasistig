@@ -146,7 +146,7 @@
 
   // --- Formulario ---
   let formData = {
-    fecha: new Date().toISOString().split("T")[0],
+    fecha: new Date().toLocaleDateString('es-CO'),
     docente: localStorage.getItem("lastDocenteDiario") || "",
     materia: "",
     grado: "",
@@ -399,7 +399,7 @@
       });
 
       formData = {
-        fecha: new Date().toISOString().split("T")[0],
+        fecha: new Date().toLocaleDateString('es-CO'),
         docente: formData.docente,
         materia: "",
         grado: formData.grado,

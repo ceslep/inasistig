@@ -54,7 +54,7 @@ try {
     // Parámetros dinámicos
     $spreadsheetId = $data['spreadsheetId'];
     $worksheetTitle = $data['worksheetTitle'] ?? date('Y-m');
-    $range = $worksheetTitle . '!A1:Z1000'; // Rango amplio
+    $range = $worksheetTitle . '!A1:Z20000'; // Rango amplio
 
     // Inicializar cliente de Google
     $client = new Client();
@@ -123,14 +123,26 @@ try {
     error_log("DEBUG: Registros existentes en hoja: " . count($existingRecords));
 
     // Procesar los nuevos registros
-    $currentTimestamp = date('Y-m-d H:i:s');
     $newRecordsKeys = []; // Track keys of new records for reporting
 
     foreach ($inasistenciasData as $index => $inasistencia) {
-        // Asegurar que el timestamp esté presente (índice 0)
-        if (!isset($inasistencia[0]) || empty($inasistencia[0])) {
-            $inasistencia[0] = $currentTimestamp;
+        // Normalizar fecha a formato YYYY-MM-DD
+        $fechaOriginal = isset($inasistencia[2]) ? trim((string)$inasistencia[2]) : '';
+        $fechaNormalizada = $fechaOriginal;
+        
+        if (strpos($fechaOriginal, '/') !== false) {
+            $partes = explode('/', $fechaOriginal);
+            if (count($partes) === 3) {
+                $fechaNormalizada = $partes[2] . '-' . str_pad($partes[1], 2, '0', STR_PAD_LEFT) . '-' . str_pad($partes[0], 2, '0', STR_PAD_LEFT);
+            }
         }
+        
+        // Timestamp = fecha normalizada + hora local
+        $timestamp = $fechaNormalizada . ' ' . date('H:i:s');
+        
+        // Guardar timestamp en índice 0 y fecha normalizada en índice 2
+        $inasistencia[0] = $timestamp;
+        $inasistencia[2] = $fechaNormalizada;
 
         $key = generateUniqueKey($inasistencia);
         $newRecordsKeys[] = $key;

@@ -23,7 +23,7 @@
         materia: "",
         horas: "",
         grado: "",
-        fecha: new Date().toISOString().split("T")[0],
+        fecha: new Date().toLocaleDateString('es-CO'),
         observaciones: "",
     };
 
