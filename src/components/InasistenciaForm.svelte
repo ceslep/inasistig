@@ -59,7 +59,7 @@
     materia: "",
     horas: "",
     grado: "",
-    fecha: new Date().toLocaleDateString('es-CO'),
+    fecha: new Date().toLocaleDateString('en-CA'),
     observaciones: "",
   };
 

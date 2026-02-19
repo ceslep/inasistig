@@ -39,7 +39,7 @@
         materia: "",
         horas: "",
         grado: "",
-        fecha: new Date().toLocaleDateString('es-CO'),
+        fecha: new Date().toLocaleDateString('en-CA'),
         observaciones: "",
     };
 
@@ -352,7 +352,7 @@
             formData = {
                 ...formData,
                 grado: "", // Resetear grado
-                fecha: new Date().toLocaleDateString('es-CO'), // Resetear fecha a hoy
+                fecha: new Date().toLocaleDateString('en-CA'), // Resetear fecha a hoy
                 observaciones: "",
                 horas: "", // Opcional: Resetear horas también
             };

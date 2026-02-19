@@ -10,7 +10,7 @@ npm run deploy     # Build + deploy to GitHub Pages
 npm run check      # Type checking (svelte-check + tsc)
 ```
 
-**Testing**: No test framework. Manual testing:
+**Testing**: No test framework. Manual testing only:
 - Run `npm run dev` and open `http://localhost:5173`
 - For single component testing, modify App.svelte to render only that component
 
@@ -35,7 +35,7 @@ src/
 ├── api/                 # API service layer
 ├── components/         # Svelte components
 ├── lib/                # Stores (themeStore.ts)
-├── assets/             # Static assets
+├── assets/             # Static assets (images, PHP backend)
 ├── constants.ts        # App constants (URLs, config)
 ├── app.css             # Global styles + CSS variables
 └── App.svelte          # Root component
@@ -48,15 +48,6 @@ src/
 ### Import Order (separate with blank lines)
 1. Node built-ins 2. External libraries 3. Internal services/api 4. Internal constants
 5. Internal stores 6. Internal components
-
-```typescript
-import { onMount } from "svelte";
-import Swal from "sweetalert2";
-import { saveInasistencias } from "../../api/service";
-import { SPREADSHEET_ID } from "../constants";
-import { theme } from "../lib/themeStore";
-import Dashboard from "./Dashboard.svelte";
-```
 
 ### TypeScript
 - **Always** use interfaces/types, never `any`
@@ -77,16 +68,8 @@ import Dashboard from "./Dashboard.svelte";
 
 ## Patterns
 
-### State Management
-- **Svelte stores**: Global state (theme) in `lib/`
-- **Props**: Parent-child via `export let`
-- **Local state**: Component-specific with `let`
-
-### Reactive (Svelte 5)
+### State Management (Svelte 5)
 ```typescript
-// Legacy reactive (still works)
-$: filteredItems = items.filter(i => i.active);
-
 // Svelte 5 runes
 let count = $state(0);
 let doubled = $derived(count * 2);
@@ -95,12 +78,11 @@ let doubled = $derived(count * 2);
 let onSelect = $props<{ (view: string): void }>();
 ```
 
-### Component Props & Events
+### Component Props
 ```svelte
 <script lang="ts">
   let { onBack, title = "Default Title" }: { onBack: () => void; title?: string } = $props();
 </script>
-
 <button onclick={onBack}>{title}</button>
 ```
 
@@ -108,14 +90,8 @@ let onSelect = $props<{ (view: string): void }>();
 - SPA with `activeView` state
 - Consistent `handleBack()` returning to "dashboard"
 - Use Svelte transitions: `fade`, `fly`, `slide`
-- Use `svelte/transition` for animated page transitions
 
-### Forms & Error Handling
-- Use `bind:value` for inputs
-- Validate in real-time with visual feedback
-- Use SweetAlert2 for confirmations/errors
-- Handle loading states with `isLoading` flags
-
+### Error Handling
 ```typescript
 try {
   const result = await fetch(url);
@@ -134,21 +110,12 @@ try {
 ### Loading States
 ```typescript
 let isLoading = $state(false);
-
 const handleSubmit = async () => {
   isLoading = true;
-  try {
-    await saveData();
-  } finally {
-    isLoading = false;
-  }
+  try { await saveData(); }
+  finally { isLoading = false; }
 };
 ```
-
-### API
-- All URLs in `constants.ts` - never hardcode
-- Use async/await with try/catch
-- Always type API responses with interfaces
 
 ---
 
@@ -162,8 +129,16 @@ CSS variables in `app.css`: `--bg-primary`, `--bg-secondary`, `--text-primary`, 
 
 - Use CSS variables for theme-aware styling
 - Prefer Tailwind utility classes
-- Use `transition-colors duration-200` for smooth transitions
 - Mobile-first: `class="w-full sm:w-auto"`
+
+---
+
+## Available Skills
+
+Use the `skill` tool to load domain-specific instructions:
+- `ui-inasistencias` - UI component standards for inasistencias
+- `google-sync` - Google Sheets sync logic
+- `api-inasistig` - PHP backend and MySQL queries
 
 ---
 
@@ -191,39 +166,9 @@ CSS variables in `app.css`: `--bg-primary`, `--bg-secondary`, `--text-primary`, 
 
 ---
 
-## Additional Patterns
+## Backend API (PHP)
 
-### Svelte 5 Event Handling
-```svelte
-<!-- Legacy (still supported) -->
-<button on:click={handleClick}>Click</button>
-
-<!-- Svelte 5 -->
-<button onclick={handleClick}>Click</button>
-```
-
-### Conditional Classes
-```svelte
-<button class:disabled={isLoading} class:bg-blue-500={!isLoading}>
-  {isLoading ? 'Cargando...' : 'Enviar'}
-</button>
-```
-
-### Each Blocks with Key
-```svelte
-{#each items as item (item.id)}
-  <Component {item} />
-{/each}
-```
-
-### Using Icons (inline SVG)
-```svelte
-<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="..." />
-</svg>
-```
-
-### Backend API (PHP)
-- PHP files in `src/assets/php/`
+- PHP files in `src/assets/php/` and `public/assets/php/`
 - Use MySQL via PHP for data persistence
-- See existing PHP files for response format patterns
+- All URLs in `constants.ts` - never hardcode
+- Always type API responses with interfaces
