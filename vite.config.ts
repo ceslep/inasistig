@@ -37,6 +37,6 @@ export default defineConfig({
         }
       }
     },
-    chunkSizeWarningLimit: 1000 // Aumentar a 1000kB ya que Excel y PDF se cargan bajo demanda
+    chunkSizeWarningLimit: 1200 // ExcelJS es grande (~1.1MB), pero se carga bajo demanda
   }
 });

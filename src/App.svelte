@@ -1,13 +1,30 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Dashboard from "./components/Dashboard.svelte";
-  import InasistenciaForm from "./components/InasistenciaForm.svelte";
-  import Anotador from "./components/Anotador.svelte";
-  import Diario from "./components/Diario.svelte";
 
-  let activeView = "dashboard";
+  let activeView = $state("dashboard");
 
-  const handleSelect = (view: string) => {
+  let InasistenciaForm: any = $state(null);
+  let Anotador: any = $state(null);
+  let Diario: any = $state(null);
+
+  const handleSelect = async (view: string) => {
+    if (view === "dashboard") {
+      activeView = "dashboard";
+      return;
+    }
+
+    if (view === "inasistencia" && !InasistenciaForm) {
+      const module = await import("./components/InasistenciaForm.svelte");
+      InasistenciaForm = module.default;
+    } else if (view === "anotador" && !Anotador) {
+      const module = await import("./components/Anotador.svelte");
+      Anotador = module.default;
+    } else if (view === "diario" && !Diario) {
+      const module = await import("./components/Diario.svelte");
+      Diario = module.default;
+    }
+
     activeView = view;
   };
 
@@ -19,11 +36,11 @@
 <main class="w-full min-h-screen">
   {#if activeView === "dashboard"}
     <Dashboard onSelect={handleSelect} />
-  {:else if activeView === "inasistencia"}
+  {:else if activeView === "inasistencia" && InasistenciaForm}
     <InasistenciaForm onBack={handleBack} />
-  {:else if activeView === "anotador"}
+  {:else if activeView === "anotador" && Anotador}
     <Anotador onBack={handleBack} />
-  {:else if activeView === "diario"}
+  {:else if activeView === "diario" && Diario}
     <Diario onBack={handleBack} />
   {:else if activeView === "horas_laborables"}
     <div class="w-full h-screen flex flex-col bg-[rgb(var(--bg-primary))]">
@@ -32,7 +49,7 @@
         style="background-color: rgb(var(--card-bg)); border-color: rgb(var(--card-border));"
       >
         <button
-          on:click={handleBack}
+          onclick={handleBack}
           class="flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5 font-medium"
           style="color: rgb(var(--text-primary));"
         >
@@ -55,7 +72,6 @@
           Horas Laborables
         </h2>
         <div class="w-10"></div>
-        <!-- Spacer for centering title -->
       </div>
       <iframe
         src="https://ceslep.github.io/horas_laborables"
