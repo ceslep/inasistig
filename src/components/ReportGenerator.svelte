@@ -55,6 +55,26 @@
     localStorage.getItem("docenteMaterias") || "{}",
   );
 
+  // Extraer número del docente cuando tiene patrón "Nombre-número"
+  const getDocenteNumber = (docente: string): string | null => {
+    const match = docente.match(/-(\d+)$/);
+    return match ? match[1] : null;
+  };
+
+  // Verificar si el docente tiene "-"
+  $: docenteHasDash = selectedDocente.includes("-");
+
+  // Filtrar grupos según el número del docente
+  $: docenteNumber = getDocenteNumber(selectedDocente);
+
+  $: filteredGrados = docenteNumber
+    ? [...new Set(estudiantes.map((e) => e.grado.toString()))].filter((g) =>
+        g.startsWith(`${docenteNumber}-`),
+      )
+    : [...new Set(estudiantes.map((e) => e.grado.toString()))].filter((g) =>
+        !g.includes('-')
+      );
+
   let selectedDocente = "";
   let selectedMateria = "";
   let selectedGrado = "";
@@ -612,7 +632,7 @@
               style="background-color: {styles.cardBg}; border-color: {styles.border}; color: {styles.text};"
             >
               <option value="">Todos los grados</option>
-              {#each [...new Set(estudiantes.map( (e) => e.grado.toString(), ))] as g}
+              {#each filteredGrados as g}
                 <option value={g}
                   >{g
                     .replace(/0(\d)$/, "°$1")

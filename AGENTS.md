@@ -12,7 +12,7 @@ npm run check      # Type checking (svelte-check + tsc)
 
 **Testing**: No test framework. Manual testing only:
 - Run `npm run dev` and open `http://localhost:5173`
-- For single component testing, modify App.svelte to render only that component
+- For single component testing, modify App.svelte to import and render only that component
 
 **Linting**: No separate linter. Run `npm run check` for type checking.
 
@@ -25,6 +25,7 @@ npm run check      # Type checking (svelte-check + tsc)
 - **Alerts**: SweetAlert2 for modals/confirmations
 - **Exports**: ExcelJS (Excel), jsPDF (PDF)
 - **Deployment**: GitHub Pages (base: `/inasistig/`)
+- **Backend**: PHP + MySQL
 
 ---
 
@@ -46,8 +47,13 @@ src/
 ## Code Style
 
 ### Import Order (separate with blank lines)
-1. Node built-ins 2. External libraries 3. Internal services/api 4. Internal constants
-5. Internal stores 6. Internal components
+1. Node built-ins (svelte: onMount, onDestroy)
+2. External libraries (sweetalert2, etc.)
+3. Internal services/api
+4. Internal constants
+5. Internal stores
+6. Internal assets/images
+7. Internal components
 
 ### TypeScript
 - **Always** use interfaces/types, never `any`
@@ -74,9 +80,10 @@ src/
 let count = $state(0);
 let doubled = $derived(count * 2);
 
-// Callback props
-let onSelect = $props<{ (view: string): void }>();
+// Props - both styles in use (Svelte 4 export let still common)
+let { onBack, title = "Default" }: { onBack: () => void; title?: string } = $props();
 ```
+Note: Both `$props()` (Svelte 5) and `export let` (Svelte 4) are used. Prefer `$props()` for new code.
 
 ### Component Props
 ```svelte
@@ -87,7 +94,7 @@ let onSelect = $props<{ (view: string): void }>();
 ```
 
 ### Navigation
-- SPA with `activeView` state
+- SPA with `activeView` state (string-based routing)
 - Consistent `handleBack()` returning to "dashboard"
 - Use Svelte transitions: `fade`, `fly`, `slide`
 
