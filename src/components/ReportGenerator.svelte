@@ -370,47 +370,79 @@
       yPosition += 10;
     }
 
-    // Preparar datos de la tabla (incluyendo asignatura)
-    const tableData = filteredData.map((item) => [
-      item["Fecha"] || "",
-      item["Horas"] || "",
-      item["Asignatura"] || "",
-      item["Anotación"] || "",
-    ]);
+    // Preparar datos de la tabla (incluyendo asignatura y grado si no hay filtro)
+    const showGradoColumn = !selectedGrado;
+    
+    // Headers dinámicos según si se muestra grado o no
+    const tableHeaders = showGradoColumn 
+      ? [["Fecha", "Horas", "Asignatura", "Grado", "Anotación"]]
+      : [["Fecha", "Horas", "Asignatura", "Anotación"]];
 
-    // Agregar fila de totales
-    const totalRow = [
-      "TOTAL",
-      totalHoras.toFixed(1),
-      "",
-      "",
-    ];
+    const tableData = filteredData.map((item) => {
+      if (showGradoColumn) {
+        return [
+          item["Fecha"] || "",
+          item["Horas"] || "",
+          item["Asignatura"] || "",
+          item["Grado"] || "",
+          item["Anotación"] || "",
+        ];
+      }
+      return [
+        item["Fecha"] || "",
+        item["Horas"] || "",
+        item["Asignatura"] || "",
+        item["Anotación"] || "",
+      ];
+    });
+
+    // Fila de totales
+    const totalRow = showGradoColumn
+      ? ["TOTAL", totalHoras.toFixed(1), "", "", `${filteredData.length} registros`]
+      : ["TOTAL", totalHoras.toFixed(1), "", `${filteredData.length} registros`];
     tableData.push(totalRow);
 
     console.log("📊 Generando PDF con:", {
       totalHoras,
       registros: filteredData.length,
       filasTabla: tableData.length,
+      showGradoColumn,
     });
+
+    // Definir anchos de columnas según número de columnas
+    const columnStyles = showGradoColumn
+      ? {
+          0: { cellWidth: 22, minCellHeight: 8, halign: 'center' },   // Fecha
+          1: { cellWidth: 15, minCellHeight: 8, halign: 'center' },   // Horas
+          2: { cellWidth: 35, minCellHeight: 8 },                     // Asignatura
+          3: { cellWidth: 18, minCellHeight: 8, halign: 'center' },  // Grado
+          4: { cellWidth: 'auto', minCellHeight: 12 },                // Anotación
+        }
+      : {
+          0: { cellWidth: 28, minCellHeight: 8, halign: 'center' },  // Fecha
+          1: { cellWidth: 18, minCellHeight: 8, halign: 'center' },  // Horas
+          2: { cellWidth: 45, minCellHeight: 8 },                    // Asignatura
+          3: { cellWidth: 'auto', minCellHeight: 12 },                // Anotación
+        };
 
     // Generar tabla con autoTable
     autoTable(pdf, {
-      head: [["Fecha", "Horas", "Asignatura", "Anotación"]],
+      head: tableHeaders,
       body: tableData,
       startY: yPosition,
       styles: {
-        fontSize: 8,
-        cellPadding: 2,
-        cellWidth: "wrap", // Permitir que el texto se ajuste
-        valign: "top", // Alinear texto hacia arriba
-        overflow: "linebreak", // Romper líneas largas
+        fontSize: 7,
+        cellPadding: 1.5,
+        cellWidth: "wrap",
+        valign: "top",
+        overflow: "linebreak",
       },
       headStyles: {
         fillColor: [99, 102, 241],
         textColor: 255,
-        fontSize: 9,
+        fontSize: 8,
         fontStyle: "bold",
-        halign: 'center', // Center align header text
+        halign: 'center',
       },
       bodyStyles: {
         fillColor: [255, 255, 255],
@@ -419,41 +451,20 @@
       alternateRowStyles: {
         fillColor: [248, 250, 252],
       },
-      columnStyles: {
-        0: { cellWidth: 30, minCellHeight: 8, halign: 'center' }, // Fecha
-        1: { cellWidth: 20, minCellHeight: 8, halign: 'center' }, // Horas
-        2: { cellWidth: 45, minCellHeight: 8 }, // Asignatura
-        3: { cellWidth: 'auto', minCellHeight: 12 }, // Anotación con altura mínima
+      columnStyles,
+      margin: { top: 12, right: 12, bottom: 12, left: 12 },
+      tableWidth: "auto",
+      didParseCell: (data: any) => {
+        // Estilo especial para la fila de totales
+        if (data.row.index === tableData.length - 1) {
+          data.cell.styles.fillColor = [230, 230, 230];
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.textColor = [0, 0, 0];
+          
+          // Centrar todas las celdas de la fila de totales
+          data.cell.styles.halign = "center";
+        }
       },
-      margin: { top: 15, right: 15, bottom: 15, left: 15 },
-      tableWidth: "auto", // Calcular ancho automáticamente
-            didParseCell: (data: any) => {
-
-      
-              // Estilo especial para la fila de totales
-              if (data.row.index === tableData.length - 1) {
-                data.cell.styles.fillColor = [240, 240, 240];
-                data.cell.styles.fontStyle = "bold";
-                data.cell.styles.textColor = [0, 0, 0];
-      
-                if (data.column.index === 0) { // "TOTAL"
-                  data.cell.styles.halign = "center";
-                  data.cell.styles.fillColor = [230, 230, 230];
-                }
-                if (data.column.index === 1) { // totalHoras.toFixed(1)
-                  data.cell.styles.halign = "center";
-                  data.cell.styles.fillColor = [220, 220, 220];
-                }
-                if (data.column.index === 2) { // Asignatura vacía
-                  data.cell.styles.halign = "center";
-                  data.cell.styles.fillColor = [220, 220, 220];
-                }
-                if (data.column.index === 3) { // `${filteredData.length} registros` for Anotación
-                  data.cell.styles.halign = "center";
-                  data.cell.styles.fillColor = [220, 220, 220];
-                }
-              }
-            },
     });
 
     // Guardar PDF
