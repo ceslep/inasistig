@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { fade, fly } from "svelte/transition";
   import Dashboard from "./components/Dashboard.svelte";
 
   let activeView = $state("dashboard");
@@ -7,6 +8,7 @@
   let InasistenciaForm: any = $state(null);
   let Anotador: any = $state(null);
   let Diario: any = $state(null);
+  let ClassPlannerForm: any = $state(null);
 
   const handleSelect = async (view: string) => {
     if (view === "dashboard") {
@@ -23,6 +25,9 @@
     } else if (view === "diario" && !Diario) {
       const module = await import("./components/Diario.svelte");
       Diario = module.default;
+    } else if (view === "planeador" && !ClassPlannerForm) {
+      const module = await import("./components/ClassPlannerForm.svelte");
+      ClassPlannerForm = module.default;
     }
 
     activeView = view;
@@ -38,10 +43,14 @@
     <Dashboard onSelect={handleSelect} />
   {:else if activeView === "inasistencia" && InasistenciaForm}
     <InasistenciaForm onBack={handleBack} />
-  {:else if activeView === "anotador" && Anotador}
+{:else if activeView === "anotador" && Anotador}
     <Anotador onBack={handleBack} />
   {:else if activeView === "diario" && Diario}
     <Diario onBack={handleBack} />
+  {:else if activeView === "planeador" && ClassPlannerForm}
+    <div in:fade={{ duration: 300 }}>
+      <ClassPlannerForm onBack={handleBack} />
+    </div>
   {:else if activeView === "horas_laborables"}
     <div class="w-full h-screen flex flex-col bg-[rgb(var(--bg-primary))]">
       <div

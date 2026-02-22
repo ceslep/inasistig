@@ -11,6 +11,10 @@ import {
   SAVE_ANOTADOR_URL,
   SAVE_DIARIO_URL,
   DIARIO_OPTIONS_URL,
+  SAVE_PLANEADOR_URL,
+  GET_PLANEADOR_URL,
+  SPREADSHEET_ID_PLANEADOR,
+  WORKSHEET_TITLE_PLANEADOR,
 } from "../src/constants";
 
 export interface InasistenciaPayload {
@@ -334,12 +338,95 @@ export const getRegistrosReporte = async (
       data.registros = [];
     }
 
-    return data as ReportData;
+return data as ReportData;
   } catch (error) {
     console.error("Error fetching registros reporte:", error);
     if (error instanceof Error) {
       throw error;
     }
     throw new Error("Error desconocido al obtener datos del reporte");
+  }
+};
+
+// ==================== PLANEADOR ====================
+
+export interface PlaneadorData {
+  id?: string;
+  docente: string;
+  institution: string;
+  campus: string;
+  grade: string;
+  subject: string;
+  period: string;
+  dba: string[];
+  standard: string;
+  competency: string;
+  has_piar: boolean;
+  piar_description: string;
+  exploration: string;
+  structuring: string;
+  practice: string;
+  transfer: string;
+  assessment_moment: string;
+  eval_criteria: string;
+  eval_evidence: string;
+  eval_type: string;
+  resources: string;
+  fecha_creacion?: string;
+}
+
+export interface PlaneadorPayload {
+  spreadsheetId: string;
+  worksheetTitle: string;
+  datos: PlaneadorData[];
+}
+
+export const savePlaneador = async (data: PlaneadorData): Promise<{ success: boolean; message: string }> => {
+  try {
+    const payload = {
+      spreadsheetId: SPREADSHEET_ID_PLANEADOR,
+      worksheetTitle: WORKSHEET_TITLE_PLANEADOR,
+      datos: [data],
+    };
+
+    const response = await fetch(SAVE_PLANEADOR_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error("Error saving planeador:", error);
+    throw error;
+  }
+};
+
+export const getPlaneador = async (filtros: { docente?: string; grado?: string; materia?: string } = {}): Promise<PlaneadorData[]> => {
+  try {
+    const response = await fetch(GET_PLANEADOR_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(filtros),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.data || [];
+  } catch (error) {
+    console.error("Error fetching planeador:", error);
+    throw error;
   }
 };

@@ -2,9 +2,10 @@
   import { onMount } from "svelte";
 
   import { fade, fly } from "svelte/transition";
-  import asistenciaHero from "../assets/asistencia_hero.png";
+import asistenciaHero from "../assets/asistencia_hero.png";
   import anotadorHero from "../assets/anotador_hero.png";
   import diarioHero from "../assets/diario_hero.png";
+  import planeadorHero from "../assets/plan_hero.png";
   import logoEie from "../assets/eie.png";
   import { theme, type Theme } from "../lib/themeStore";
   import FeaturePopup from "./FeaturePopup.svelte"; // Re-import FeaturePopup
@@ -89,7 +90,7 @@
       accent: "purple",
       tag: "Académico",
     },
-    {
+{
       id: "diario",
       title: "Diario de Campo",
       subtitle: "Reflexión Docente",
@@ -99,6 +100,17 @@
       color: "from-emerald-600/20 to-teal-600/20",
       accent: "emerald",
       tag: "Estratégico",
+    },
+    {
+      id: "planeador",
+      title: "Planeador de Clases",
+      subtitle: "Planificación MEN",
+      description:
+        "Diseña tus clases alineadas a los estándares y DBA del MEN Colombia.",
+      image: planeadorHero,
+      color: "from-cyan-600/20 to-blue-600/20",
+      accent: "cyan",
+      tag: "Planeación",
     },
     {
       id: "horas_laborables",

@@ -10,22 +10,22 @@ npm run deploy     # Build + deploy to GitHub Pages
 npm run check      # Type checking (svelte-check + tsc)
 ```
 
-**Testing**: No test framework. Manual testing only:
+**Manual Testing Only**: No test framework.
 - Run `npm run dev` and open `http://localhost:5173`
-- For single component testing, modify App.svelte to import and render only that component
+- For single component testing: modify `App.svelte` to import and render only that component
 
-**Linting**: No separate linter. Run `npm run check` for type checking.
+**Linting**: Run `npm run check` for type checking.
 
 ---
 
 ## Stack
 
 - **Framework**: Svelte 5 + TypeScript + Vite
-- **Styling**: TailwindCSS 4.x with CSS custom properties for theming
-- **Alerts**: SweetAlert2 for modals/confirmations
-- **Exports**: ExcelJS (Excel), jsPDF (PDF)
-- **Deployment**: GitHub Pages (base: `/inasistig/`)
+- **Styling**: TailwindCSS 4.x with CSS custom properties
+- **Alerts**: SweetAlert2
+- **Exports**: ExcelJS, jsPDF
 - **Backend**: PHP + MySQL
+- **Deployment**: GitHub Pages (base: `/inasistig/`)
 
 ---
 
@@ -33,13 +33,13 @@ npm run check      # Type checking (svelte-check + tsc)
 
 ```
 src/
-├── api/                 # API service layer
-├── components/         # Svelte components
-├── lib/                # Stores (themeStore.ts)
-├── assets/             # Static assets (images, PHP backend)
-├── constants.ts        # App constants (URLs, config)
-├── app.css             # Global styles + CSS variables
-└── App.svelte          # Root component
+├── api/           # API service layer
+├── components/   # Svelte components
+├── lib/          # Stores (themeStore.ts)
+├── assets/       # Static assets (images, PHP backend)
+├── constants.ts  # App constants (URLs, config)
+├── app.css       # Global styles + CSS variables
+└── App.svelte    # Root component
 ```
 
 ---
@@ -47,8 +47,8 @@ src/
 ## Code Style
 
 ### Import Order (separate with blank lines)
-1. Node built-ins (svelte: onMount, onDestroy)
-2. External libraries (sweetalert2, etc.)
+1. Node built-ins (`svelte: onMount, onDestroy`)
+2. External libraries (sweetalert2, exceljs, jspdf)
 3. Internal services/api
 4. Internal constants
 5. Internal stores
@@ -56,7 +56,7 @@ src/
 7. Internal components
 
 ### TypeScript
-- **Always** use interfaces/types, never `any`
+- **Never use `any`** - always use interfaces/types
 - Named exports preferred; default for main route components
 - Constants in `UPPER_SNAKE_CASE`
 - Full function typing: `const fetchData = async (id: string): Promise<Data[]> => {...}`
@@ -76,21 +76,11 @@ src/
 
 ### State Management (Svelte 5)
 ```typescript
-// Svelte 5 runes
 let count = $state(0);
 let doubled = $derived(count * 2);
 
-// Props - both styles in use (Svelte 4 export let still common)
+// Props - both styles in use, prefer $props()
 let { onBack, title = "Default" }: { onBack: () => void; title?: string } = $props();
-```
-Note: Both `$props()` (Svelte 5) and `export let` (Svelte 4) are used. Prefer `$props()` for new code.
-
-### Component Props
-```svelte
-<script lang="ts">
-  let { onBack, title = "Default Title" }: { onBack: () => void; title?: string } = $props();
-</script>
-<button onclick={onBack}>{title}</button>
 ```
 
 ### Navigation
@@ -146,6 +136,22 @@ Use the `skill` tool to load domain-specific instructions:
 - `ui-inasistencias` - UI component standards for inasistencias
 - `google-sync` - Google Sheets sync logic
 - `api-inasistig` - PHP backend and MySQL queries
+
+### Skill Rules Summary
+
+**ui-inasistencias**:
+- Use TypeScript interfaces for Estudiante and Inasistencia
+- Buttons: `bg-blue-600 hover:bg-blue-700`
+- Alerts: subtle, auto-dismiss after 3 seconds
+
+**api-inasistig**:
+- Always use PDO with Prepared Statements
+- Validate `id_docente` in every request
+- Response format: `{"status": "success", "data": [...]}`
+
+**google-sync**:
+- Map form fields to spreadsheet columns
+- Use for structure changes or new report fields
 
 ---
 

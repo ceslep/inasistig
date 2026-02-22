@@ -21,6 +21,12 @@ export const ANOTADOR3_URL = `${BASE_URL}/getOpcionesAnotador3.php`;
 export const DIARIO_OPTIONS_URL = `${BASE_URL}/adiario.php`;
 export const SAVE_DIARIO_URL = `${API_URL_GS}/save_diario.php`;
 
+// Planeador
+export const SPREADSHEET_ID_PLANEADOR = "1 EXAMPLE ID"; // TODO: Reemplazar con ID real
+export const SAVE_PLANEADOR_URL = `${API_URL_GS}/save_planeador.php`;
+export const GET_PLANEADOR_URL = `${API_URL_GS}/get_planeador.php`;
+export const WORKSHEET_TITLE_PLANEADOR = "Planeaciones";
+
 // Google Sheets
 export const WORKSHEET_TITLE = "Inasistencias";
 export const WORKSHEET_TITLE_ANOTADOR = "Datos";
