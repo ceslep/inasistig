@@ -48,6 +48,11 @@ export const INFO_DIARIO =
 export const URL_LOCKER_STUDIO =
   "https://lookerstudio.google.com/reporting/be2efb22-dc5f-4f21-9dfc-0253e763e19f";
 
+export const URL_DBAS =
+  `${BASE_URL}/getDBAs.php`;
+export const URL_EBCS =
+  `${BASE_URL}/getEBCs.php`;
+
 // Periodos
 
 interface Periodo {

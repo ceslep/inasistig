@@ -15,6 +15,8 @@ import {
   GET_PLANEADOR_URL,
   SPREADSHEET_ID_PLANEADOR,
   WORKSHEET_TITLE_PLANEADOR,
+  URL_DBAS,
+  URL_EBCS,
 } from "../src/constants";
 
 export interface InasistenciaPayload {
@@ -338,7 +340,7 @@ export const getRegistrosReporte = async (
       data.registros = [];
     }
 
-return data as ReportData;
+    return data as ReportData;
   } catch (error) {
     console.error("Error fetching registros reporte:", error);
     if (error instanceof Error) {
@@ -359,7 +361,7 @@ export interface PlaneadorData {
   subject: string;
   period: string;
   dba: string[];
-  standard: string;
+  standard: string[];
   competency: string;
   has_piar: boolean;
   piar_description: string;
@@ -427,6 +429,42 @@ export const getPlaneador = async (filtros: { docente?: string; grado?: string; 
     return data.data || [];
   } catch (error) {
     console.error("Error fetching planeador:", error);
+    throw error;
+  }
+};
+
+// ==================== NORMATIVA ====================
+
+export interface NormativaItem {
+  id: string;
+  tipo: 'DBA' | 'EBC';
+  codigo: string;
+  descripcion: string;
+  metadata: {
+    grado?: string;
+    area?: string;
+    grupo?: string;
+    dimension?: string;
+    evidencia?: string;
+  };
+}
+
+export const fetchNormativa = async (
+  tipo: 'DBA' | 'EBC',
+  filtros: { grado?: string; area?: string }
+): Promise<NormativaItem[]> => {
+  try {
+    const url = tipo === 'DBA' ? URL_DBAS : URL_EBCS;
+    const params = new URLSearchParams();
+    if (filtros.area) params.append('area', filtros.area.toLowerCase());
+    if (filtros.grado) params.append('grado', filtros.grado.toLowerCase());
+
+    const response = await fetch(`${url}?${params.toString()}`);
+    if (!response.ok) throw new Error(`Error: ${response.status}`);
+    const data = await response.json();
+    return data.data || [];
+  } catch (error) {
+    console.error(`Error fetching ${tipo}s:`, error);
     throw error;
   }
 };

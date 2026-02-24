@@ -1,0 +1,56 @@
+        "competencias_ciudadanas" => [
+            "nombre" => "Competencias Ciudadanas",
+            "tipo" => "Transversal",
+            "estandares_por_grado" => [
+                "primero" => [
+                    ["id" => "CC-1-01", "grado" => "primero", "estandar" => "Comprendo que todos los niños y niñas tenemos derecho a recibir buen trato, cuidado y amor", "dimension" => "Convivencia y Paz", "indicadores" => []],
+                    ["id" => "CC-1-02", "grado" => "primero", "estandar" => "Identifico las situaciones de maltrato que se presentan en mi entorno y sé a quién acudir para pedir ayuda", "dimension" => "Convivencia y Paz", "indicadores" => []],
+                    ["id" => "CC-1-03", "grado" => "primero", "estandar" => "Expreso mis sentimientos y emociones mediante distintas formas y lenguajes (gestos, palabras, pintura, teatro, juegos)", "dimension" => "Convivencia y Paz", "indicadores" => []],
+                    ["id" => "CC-1-04", "grado" => "primero", "estandar" => "Participo, en mi contexto cercano (con mi familia y compañeros), en la construcción de acuerdos básicos sobre normas para el logro de metas comunes y las cumplo", "dimension" => "Participación y responsabilidad democrática", "indicadores" => []],
+                    ["id" => "CC-1-05", "grado" => "primero", "estandar" => "Expreso mis puntos de vista sobre decisiones que me afectan tanto en el ámbito escolar como familiar", "dimension" => "Participación y responsabilidad democrática", "indicadores" => []],
+                    ["id" => "CC-1-06", "grado" => "primero", "estandar" => "Identifico las diferencias y semejanzas de género, aspectos físicos, grupo étnico, origen social, costumbres, gustos, ideas y respeto las diferencias", "dimension" => "Pluralidad, identidad y valoración de diferencias", "indicadores" => []],
+                    ["id" => "CC-1-07", "grado" => "primero", "estandar" => "Reconozco que los niños y las niñas podemos realizar las mismas actividades y que podemos hacerlo tanto en la casa como en la escuela", "dimension" => "Pluralidad, identidad y valoración de diferencias", "indicadores" => []],
+                ],
+                "segundo" => [
+                    ["id" => "CC-2-01", "grado" => "segundo", "estandar" => "Comprendo la importancia de valores básicos de la convivencia ciudadana como la solidaridad, el cuidado, el buen trato y el respeto por mí mismo y por los demás", "dimension" => "Convivencia y Paz", "indicadores" => []],
+                    ["id" => "CC-2-02", "grado" => "segundo", "estandar" => "Identifico situaciones de maltrato y abuso en mi entorno y sé a quién acudir para pedir ayuda", "dimension" => "Convivencia y Paz", "indicadores" => []],
+                    ["id" => "CC-2-03", "grado" => "segundo", "estandar" => "Participo en la construcción colectiva de acuerdos, objetivos y proyectos comunes (normas del aula, proyectos del grado, etc.)", "dimension" => "Participación y responsabilidad democrática", "indicadores" => []],
+                    ["id" => "CC-2-04", "grado" => "segundo", "estandar" => "Expreso mis puntos de vista sobre decisiones que me afectan tanto en el ámbito escolar como familiar", "dimension" => "Participación y responsabilidad democrática", "indicadores" => []],
+                    ["id" => "CC-2-05", "grado" => "segundo", "estandar" => "Identifico y respeto las diferencias y semejanzas entre los demás y yo, y rechazo situaciones de exclusión o discriminación en mi entorno", "dimension" => "Pluralidad, identidad y valoración de diferencias", "indicadores" => []],
+                ],
+                "tercero" => [
+                    ["id" => "CC-3-01", "grado" => "tercero", "estandar" => "Comprendo la importancia de valores básicos de la convivencia ciudadana como la solidaridad, el cuidado, el buen trato y el respeto por mí mismo y por los demás", "dimension" => "Convivencia y Paz", "indicadores" => []],
+                    ["id" => "CC-3-02", "grado" => "tercero", "estandar" => "Identifico situaciones de maltrato y abuso en mi entorno y sé a quién acudir para pedir ayuda", "dimension" => "Convivencia y Paz", "indicadores" => []],
+                    ["id" => "CC-3-03", "grado" => "tercero", "estandar" => "Expreso mis sentimientos y emociones mediante distintas formas y lenguajes (gestos, palabras, pintura, teatro, juegos)", "dimension" => "Convivencia y Paz", "indicadores" => []],
+                    ["id" => "CC-3-04", "grado" => "tercero", "estandar" => "Participo en la construcción colectiva de acuerdos, objetivos y proyectos comunes (normas del aula, proyectos del grado, etc.)", "dimension" => "Participación y responsabilidad democrática", "indicadores" => []],
+                    ["id" => "CC-3-05", "grado" => "tercero", "estandar" => "Expreso mis puntos de vista sobre decisiones que me afectan tanto en el ámbito escolar como familiar", "dimension" => "Participación y responsabilidad democrática", "indicadores" => []],
+                    ["id" => "CC-3-06", "grado" => "tercero", "estandar" => "Identifico y respeto las diferencias y semejanzas entre los demás y yo, y rechazo situaciones de exclusión o discriminación en mi entorno", "dimension" => "Pluralidad, identidad y valoración de diferencias", "indicadores" => []],
+                    ["id" => "CC-3-07", "grado" => "tercero", "estandar" => "Reconozco que los niños y las niñas podemos realizar las mismas actividades y que podemos hacerlo tanto en la casa como en la escuela", "dimension" => "Pluralidad, identidad y valoración de diferencias", "indicadores" => []],
+                ],
+                "cuarto" => [
+                    ["id" => "CC-4-01", "grado" => "cuarto", "estandar" => "Conozco y uso estrategias sencillas de resolución pacífica de conflictos (diálogo, mediación, negociación)", "dimension" => "Convivencia y Paz", "indicadores" => []],
+                    ["id" => "CC-4-02", "grado" => "cuarto", "estandar" => "Identifico y rechazo las situaciones en las que se vulneran los derechos fundamentales y sé a quién acudir para pedir ayuda", "dimension" => "Convivencia y Paz", "indicadores" => []],
+                    ["id" => "CC-4-03", "grado" => "cuarto", "estandar" => "Expreso, de manera asertiva, mis puntos de vista e intereses en las discusiones grupales", "dimension" => "Convivencia y Paz", "indicadores" => []],
+                    ["id" => "CC-4-04", "grado" => "cuarto", "estandar" => "Participo en los procesos de elección de representantes estudiantiles, conociendo bien cada propuesta antes de elegir", "dimension" => "Participación y responsabilidad democrática", "indicadores" => []],
+                    ["id" => "CC-4-05", "grado" => "cuarto", "estandar" => "Colaboro activamente en la construcción colectiva de acuerdos, objetivos y proyectos comunes (normas del aula, proyectos del grado, etc.)", "dimension" => "Participación y responsabilidad democrática", "indicadores" => []],
+                    ["id" => "CC-4-06", "grado" => "cuarto", "estandar" => "Reconozco que pertenezco a diversos grupos (familia, colegio, barrio, región, país) y que estos grupos constituyen parte de mi identidad", "dimension" => "Pluralidad, identidad y valoración de diferencias", "indicadores" => []],
+                    ["id" => "CC-4-07", "grado" => "cuarto", "estandar" => "Respeto y defiendo las igualdades y diferencias que existen entre las personas, rechazo cualquier forma de discriminación", "dimension" => "Pluralidad, identidad y valoración de diferencias", "indicadores" => []],
+                ],
+                "quinto" => [
+                    ["id" => "CC-5-01", "grado" => "quinto", "estandar" => "Conozco y uso estrategias sencillas de resolución pacífica de conflictos (diálogo, mediación, negociación)", "dimension" => "Convivencia y Paz", "indicadores" => []],
+                    ["id" => "CC-5-02", "grado" => "quinto", "estandar" => "Identifico y rechazo las situaciones en las que se vulneran los derechos fundamentales y sé a quién acudir para pedir ayuda", "dimension" => "Convivencia y Paz", "indicadores" => []],
+                    ["id" => "CC-5-03", "grado" => "quinto", "estandar" => "Participo en los procesos de elección de representantes estudiantiles, conociendo bien cada propuesta antes de elegir", "dimension" => "Participación y responsabilidad democrática", "indicadores" => []],
+                    ["id" => "CC-5-04", "grado" => "quinto", "estandar" => "Colaboro activamente en la construcción colectiva de acuerdos, objetivos y proyectos comunes", "dimension" => "Participación y responsabilidad democrática", "indicadores" => []],
+                    ["id" => "CC-5-05", "grado" => "quinto", "estandar" => "Reconozco que pertenezco a diversos grupos (familia, colegio, barrio, región, país) y que estos grupos constituyen parte de mi identidad", "dimension" => "Pluralidad, identidad y valoración de diferencias", "indicadores" => []],
+                    ["id" => "CC-5-06", "grado" => "quinto", "estandar" => "Respeto y defiendo las igualdades y diferencias que existen entre las personas, rechazo cualquier forma de discriminación", "dimension" => "Pluralidad, identidad y valoración de diferencias", "indicadores" => []],
+                ],
+                "sexto" => [
+                    ["id" => "CC-6-01", "grado" => "sexto", "estandar" => "Comprendo la importancia de los derechos sexuales y reproductivos y analizo sus implicaciones en mi vida", "dimension" => "Convivencia y Paz", "indicadores" => []],
+                    ["id" => "CC-6-02", "grado" => "sexto", "estandar" => "Analizo críticamente los conflictos entre grupos, en mi barrio, vereda, municipio o país", "dimension" => "Convivencia y Paz", "indicadores" => []],
+                    ["id" => "CC-6-03", "grado" => "sexto", "estandar" => "Conozco y sé usar los mecanismos constitucionales de participación que permiten expresar mis opiniones y participar en la toma de decisiones políticas a nivel local, regional y nacional", "dimension" => "Participación y responsabilidad democrática", "indicadores" => []],
+                    ["id" => "CC-6-04", "grado" => "sexto", "estandar" => "Participo en manifestaciones pacíficas de inconformidad y de resistencia civil frente a injusticias, cuando lo considero necesario", "dimension" => "Participación y responsabilidad democrática", "indicadores" => []],
+                    ["id" => "CC-6-05", "grado" => "sexto", "estandar" => "Identifico y rechazo las situaciones en las que se vulneran los derechos fundamentales y utilizo formas y mecanismos de participación democrática en mi medio escolar", "dimension" => "Pluralidad, identidad y valoración de diferencias", "indicadores" => []],
+                    ["id" => "CC-6-06", "grado" => "sexto", "estandar" => "Analizo cómo las diferentes culturas producen, transforman y transmiten conocimientos, creencias, valores y costumbres", "dimension" => "Pluralidad, identidad y valoración de diferencias", "indicadores" => []],
+                ],
+            ]
+        ]

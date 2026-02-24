@@ -3,7 +3,15 @@
     import { fade, fly } from "svelte/transition";
     import Swal from "sweetalert2";
     import { theme } from "../lib/themeStore";
-    import { savePlaneador, getDocentes, getMaterias, getEstudiantes, type PlaneadorData } from "../../api/service";
+    import {
+        savePlaneador,
+        getDocentes,
+        getMaterias,
+        getEstudiantes,
+        fetchNormativa,
+        type PlaneadorData,
+        type NormativaItem,
+    } from "../../api/service";
 
     let { onBack }: { onBack: () => void } = $props();
 
@@ -11,11 +19,16 @@
     let isLoadingDocentes = $state(false);
     let isLoadingMaterias = $state(false);
     let isLoadingEstudiantes = $state(false);
+    let isLoadingDBAs = $state(false);
+    let isLoadingEBCs = $state(false);
 
     // --- Datos ---
     let docentes = $state<string[]>([]);
     let materias = $state<{ materia: string }[]>([]);
     let estudiantes = $state<{ nombre: string; grado: number | string }[]>([]);
+
+    let dbas = $state<NormativaItem[]>([]);
+    let ebcs = $state<NormativaItem[]>([]);
 
     // --- LÓGICA Y ESTADO (SVELTE 5 RUNES) ---
 
@@ -33,7 +46,7 @@
 
         // 2. Referentes de Calidad (MEN)
         dba: [] as string[], // Derechos Básicos de Aprendizaje seleccionados
-        standard: "", // Estándar Básico de Competencia
+        standard: [] as string[], // Estándar Básico de Competencia
         competency: "", // Competencia (Ciudadana/Socioemocional)
 
         // 3. Inclusión (PIAR)
@@ -56,12 +69,41 @@
 
     // Materias por docente
     let docenteMaterias: Record<string, string[]> = JSON.parse(
-        localStorage.getItem("docenteMaterias") || "{}"
+        localStorage.getItem("docenteMaterias") || "{}",
     );
     let selectedMaterias = $state<{ materia: string; horas: string }[]>([]);
 
     // Verificar si el docente tiene "-"
     let docenteHasDash = $derived(formData.docente.includes("-"));
+
+    const GRADOS_SIN_GUION = [
+        { value: "SEXTO", label: "SEXTO" },
+        { value: "SEPTIMO", label: "SEPTIMO" },
+        { value: "OCTAVO", label: "OCTAVO" },
+        { value: "NOVENO", label: "NOVENO" },
+        { value: "DECIMO", label: "DECIMO" },
+        { value: "ONCE", label: "ONCE" },
+    ];
+
+    const GRADOS_CON_GUION = [
+        { value: "PREESCOLAR", label: "PREESCOLAR" },
+        { value: "PRIMERO", label: "PRIMERO" },
+        { value: "SEGUNDO", label: "SEGUNDO" },
+        { value: "TERCERO", label: "TERCERO" },
+        { value: "CUARTO", label: "CUARTO" },
+        { value: "QUINTO", label: "QUINTO" },
+    ];
+
+    // Extraer número del docente cuando tiene patrón "Nombre-número"
+    const getDocenteNumber = (docente: string): string | null => {
+        const match = docente.match(/-(\d+)$/);
+        return match ? match[1] : null;
+    };
+
+    interface GradoOption {
+        value: string;
+        label: string;
+    }
 
     // Persistencia de materias por docente
     $effect(() => {
@@ -74,21 +116,18 @@
     let materiasSorted = $derived(
         formData.docente
             ? [...materias].sort((a, b) => {
-                const aSaved = docenteMaterias[formData.docente]?.includes(a.materia);
-                const bSaved = docenteMaterias[formData.docente]?.includes(b.materia);
-                if (aSaved && !bSaved) return -1;
-                if (!aSaved && bSaved) return 1;
-                return a.materia.localeCompare(b.materia);
-            })
-            : materias
+                  const aSaved = docenteMaterias[formData.docente]?.includes(
+                      a.materia,
+                  );
+                  const bSaved = docenteMaterias[formData.docente]?.includes(
+                      b.materia,
+                  );
+                  if (aSaved && !bSaved) return -1;
+                  if (!aSaved && bSaved) return 1;
+                  return a.materia.localeCompare(b.materia);
+              })
+            : materias,
     );
-
-    // Datos simulados (Mock Data) para DBA y Estándares según el MEN
-    const dbaOptions = [
-        "DBA 1: Comprendo que los textos literarios crean mundos posibles...",
-        "DBA 2: Produzco textos orales y escritos que evidencian el conocimiento...",
-        "DBA 3: Reconozco en los textos literarios que leo, elementos...",
-    ];
 
     const standardOptions = [
         "Comprendo textos literarios para propiciar el desarrollo de mi capacidad creativa...",
@@ -99,15 +138,35 @@
     let isStepValid = $derived.by(() => {
         if (currentStep === 0)
             return formData.docente !== "" && formData.grado !== "";
-        if (currentStep === 1) return formData.standard !== "";
+        if (currentStep === 1) return formData.standard.length > 0;
         // Se puede expandir la validación según necesidad
         return true;
     });
 
-    // Grados únicos de los estudiantes
-    let filteredGrados = $derived(
-        [...new Set(estudiantes.map(e => e.grado.toString()))].sort()
-    );
+    // Grados únicos de los estudiantes filtrados por docente
+    let docenteNumber = $derived(getDocenteNumber(formData.docente));
+
+    const gradoOrder: Record<string, number> = {
+        PREESCOLAR: 0,
+        PRIMERO: 1,
+        SEGUNDO: 2,
+        TERCERO: 3,
+        CUARTO: 4,
+        QUINTO: 5,
+        SEXTO: 6,
+        SEPTIMO: 7,
+        OCTAVO: 8,
+        NOVENO: 9,
+        DECIMO: 10,
+        ONCE: 11,
+    };
+
+    let filteredGrados = $derived.by((): GradoOption[] => {
+        if (docenteNumber) {
+            return GRADOS_CON_GUION;
+        }
+        return GRADOS_SIN_GUION;
+    });
 
     // Funciones de navegación
     function nextStep() {
@@ -126,17 +185,59 @@
         }
     }
 
+    function toggleEBC(ebc: string) {
+        if (formData.standard.includes(ebc)) {
+            formData.standard = formData.standard.filter((e) => e !== ebc);
+        } else {
+            formData.standard = [...formData.standard, ebc];
+        }
+    }
+
+    $effect(() => {
+        const loadNormativa = async () => {
+            if (!formData.subject || !formData.grado) {
+                dbas = [];
+                ebcs = [];
+                return;
+            }
+
+            isLoadingDBAs = true;
+            isLoadingEBCs = true;
+            try {
+                const area = formData.subject.toLowerCase().trim();
+                const grado = formData.grado.toLowerCase().trim();
+
+                const [dbasData, ebcsData] = await Promise.all([
+                    fetchNormativa("DBA", { grado, area }),
+                    fetchNormativa("EBC", { grado, area }),
+                ]);
+
+                dbas = dbasData;
+                ebcs = ebcsData;
+            } catch (error) {
+                console.error("Error cargando Normativa:", error);
+                dbas = [];
+                ebcs = [];
+            } finally {
+                isLoadingDBAs = false;
+                isLoadingEBCs = false;
+            }
+        };
+        loadNormativa();
+    });
+
     // Carga de datos
     const loadData = async () => {
         isLoadingDocentes = true;
         isLoadingMaterias = true;
         isLoadingEstudiantes = true;
         try {
-            const [docentesData, materiasData, estudiantesData] = await Promise.all([
-                getDocentes(),
-                getMaterias(),
-                getEstudiantes(),
-            ]);
+            const [docentesData, materiasData, estudiantesData] =
+                await Promise.all([
+                    getDocentes(),
+                    getMaterias(),
+                    getEstudiantes(),
+                ]);
             docentes = docentesData;
             materias = materiasData;
             estudiantes = estudiantesData;
@@ -179,6 +280,30 @@
                 resources: formData.resources,
             };
 
+            const validatePlaneacion = (data: PlaneadorData): boolean => {
+                if (!data.dba?.length)
+                    throw new Error("Seleccione al menos un DBA");
+                if (!data.standard?.length)
+                    throw new Error("Seleccione al menos un EBC");
+
+                const dbaIds = new Set(dbas.map((d) => d.id));
+                const ebcIds = new Set(ebcs.map((e) => e.id));
+
+                if (data.dba.some((id) => !dbaIds.has(id))) {
+                    throw new Error(
+                        "Un DBA seleccionado no corresponde al grado/área actual",
+                    );
+                }
+                if (data.standard.some((id) => !ebcIds.has(id))) {
+                    throw new Error(
+                        "Un EBC seleccionado no corresponde al área actual",
+                    );
+                }
+                return true;
+            };
+
+            validatePlaneacion(planeacionData);
+
             const result = await savePlaneador(planeacionData);
 
             if (result.success) {
@@ -199,7 +324,7 @@
                     subject: "",
                     period: "",
                     dba: [],
-                    standard: "",
+                    standard: [],
                     competency: "",
                     has_piar: false,
                     piar_description: "",
@@ -362,9 +487,7 @@
                                         : "Seleccione grado"}</option
                                 >
                                 {#each filteredGrados as g}
-                                    <option value={g}
-                                        >{g.replace(/0(\d)$/, "°$1").replace(/(\d{1,2})0(\d)/, "$1°$2")}</option
-                                    >
+                                    <option value={g.value}>{g.label}</option>
                                 {/each}
                             </select>
                         </div>
@@ -375,26 +498,55 @@
                                 >Asignatura / Área</label
                             >
                             {#if docenteHasDash}
-                                <div class="border rounded-lg p-2 flex flex-col lg:flex-row lg:flex-wrap gap-2">
+                                <div
+                                    class="border rounded-lg p-2 flex flex-col lg:flex-row lg:flex-wrap gap-2"
+                                >
                                     {#each materiasSorted as materia}
-                                        {@const isSaved = docenteMaterias[formData.docente]?.includes(materia.materia)}
-                                        {@const selectedIndex = selectedMaterias.findIndex(m => m.materia === materia.materia)}
+                                        {@const isSaved = docenteMaterias[
+                                            formData.docente
+                                        ]?.includes(materia.materia)}
+                                        {@const selectedIndex =
+                                            selectedMaterias.findIndex(
+                                                (m) =>
+                                                    m.materia ===
+                                                    materia.materia,
+                                            )}
                                         {@const isSelected = selectedIndex >= 0}
-                                        <label class="flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all {isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-transparent'}">
+                                        <label
+                                            class="flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all {isSelected
+                                                ? 'border-indigo-500 bg-indigo-50'
+                                                : 'border-transparent'}"
+                                        >
                                             <input
                                                 type="checkbox"
                                                 checked={isSelected}
                                                 onchange={(e) => {
-                                                    if (e.currentTarget.checked) {
-                                                        selectedMaterias = [...selectedMaterias, { materia: materia.materia, horas: "" }];
+                                                    if (
+                                                        e.currentTarget.checked
+                                                    ) {
+                                                        selectedMaterias = [
+                                                            ...selectedMaterias,
+                                                            {
+                                                                materia:
+                                                                    materia.materia,
+                                                                horas: "",
+                                                            },
+                                                        ];
                                                     } else {
-                                                        selectedMaterias = selectedMaterias.filter(m => m.materia !== materia.materia);
+                                                        selectedMaterias =
+                                                            selectedMaterias.filter(
+                                                                (m) =>
+                                                                    m.materia !==
+                                                                    materia.materia,
+                                                            );
                                                     }
                                                 }}
                                                 class="w-4 h-4 rounded text-indigo-600"
                                             />
                                             <span class="text-sm">
-                                                {isSaved ? "⭐ " : ""}{materia.materia}
+                                                {isSaved
+                                                    ? "⭐ "
+                                                    : ""}{materia.materia}
                                             </span>
                                         </label>
                                     {/each}
@@ -412,9 +564,13 @@
                                             : "Seleccione materia"}</option
                                     >
                                     {#each materiasSorted as materia}
-                                        {@const isSaved = docenteMaterias[formData.docente]?.includes(materia.materia)}
+                                        {@const isSaved = docenteMaterias[
+                                            formData.docente
+                                        ]?.includes(materia.materia)}
                                         <option value={materia.materia}>
-                                            {isSaved ? "⭐ " : ""}{materia.materia}
+                                            {isSaved
+                                                ? "⭐ "
+                                                : ""}{materia.materia}
                                         </option>
                                     {/each}
                                 </select>
@@ -434,53 +590,200 @@
                     </h2>
 
                     <!-- DBA Selection -->
-                    <div
-                        class="bg-blue-50 p-4 rounded-lg border border-blue-100"
-                    >
-                        <p class="block text-sm font-bold text-blue-800 mb-2">
-                            Derechos Básicos de Aprendizaje (DBA)
-                        </p>
-                        <p class="text-xs text-blue-600 mb-3">
-                            Seleccione los DBA que se trabajarán en esta unidad
-                            (Resolución 0256 de 2016).
-                        </p>
-                        <div class="space-y-2">
-                            {#each dbaOptions as dba}
-                                <label
-                                    class="flex items-start space-x-3 cursor-pointer hover:bg-blue-100 p-2 rounded transition"
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.dba.includes(dba)}
-                                        onchange={() => toggleDBA(dba)}
-                                        class="mt-1 h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                                    />
-                                    <span class="text-sm text-gray-700"
-                                        >{dba}</span
-                                    >
-                                </label>
-                            {/each}
+                    {#if !formData.subject || !formData.grado}
+                        <div
+                            class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-yellow-800 text-sm"
+                        >
+                            Seleccione un grado y una materia en el paso
+                            anterior para ver los DBA disponibles.
                         </div>
-                    </div>
+                    {:else if isLoadingDBAs}
+                        <div
+                            class="bg-blue-50 p-4 rounded-lg border border-blue-100 text-center"
+                        >
+                            <div
+                                class="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto"
+                            ></div>
+                            <p class="text-sm text-blue-600 mt-2">
+                                Cargando DBAs...
+                            </p>
+                        </div>
+                    {:else if dbas.length === 0}
+                        <div
+                            class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-yellow-800 text-sm"
+                        >
+                            No se encontraron DBA para la combinación
+                            seleccionada.
+                        </div>
+                    {:else}
+                        <div
+                            class="bg-blue-50 p-4 rounded-lg border border-blue-100"
+                        >
+                            <p
+                                class="block text-sm font-bold text-blue-800 mb-1"
+                            >
+                                Derechos Básicos de Aprendizaje (DBA)
+                            </p>
+                            <p class="text-xs text-blue-600 mb-3">
+                                Seleccione los DBA que se trabajarán en esta
+                                unidad (Resolución 0256 de 2016).
+                            </p>
+                            <div class="space-y-3 max-h-96 overflow-y-auto">
+                                {#each dbas as dba}
+                                    <label
+                                        class="flex items-start space-x-3 cursor-pointer hover:bg-blue-100 p-3 rounded transition border border-blue-200"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.dba.includes(
+                                                dba.id,
+                                            )}
+                                            onchange={() => toggleDBA(dba.id)}
+                                            class="mt-1 h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                        />
+                                        <div class="flex-1">
+                                            <div
+                                                class="flex items-center gap-2 mb-1"
+                                            >
+                                                <span
+                                                    class="text-xs font-bold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded"
+                                                >
+                                                    {dba.codigo}
+                                                </span>
+                                                {#if dba.metadata?.dimension}
+                                                    <span
+                                                        class="text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded"
+                                                    >
+                                                        {dba.metadata.dimension}
+                                                    </span>
+                                                {/if}
+                                            </div>
+                                            <p
+                                                class="text-sm text-gray-700 mb-1"
+                                            >
+                                                {dba.descripcion}
+                                            </p>
+                                            {#if dba.metadata?.evidencia}
+                                                <p
+                                                    class="text-xs text-green-600"
+                                                >
+                                                    <strong>Evidencia:</strong>
+                                                    {dba.metadata.evidencia}
+                                                </p>
+                                            {/if}
+                                        </div>
+                                    </label>
+                                {/each}
+                            </div>
+                            <p class="text-xs text-blue-500 mt-2">
+                                {dbas.length} DBA(s) disponible(s) para {formData.subject}
+                                - {formData.grado}
+                            </p>
+                        </div>
+                    {/if}
 
-                    <!-- Estándares -->
-                    <div>
-                        <label
-                            for="standard"
-                            class="block text-sm font-medium text-gray-700 mb-1"
-                            >Estándar Básico de Competencia (EBC)</label
+                    <!-- Estándares EBC -->
+                    {#if !formData.subject || !formData.grado}
+                        <div
+                            class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-yellow-800 text-sm"
                         >
-                        <select
-                            id="standard"
-                            bind:value={formData.standard}
-                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2.5 bg-white/80"
+                            Seleccione un grado y una materia en el paso
+                            anterior para ver los EBC disponibles.
+                        </div>
+                    {:else if isLoadingEBCs}
+                        <div
+                            class="bg-purple-50 p-4 rounded-lg border border-purple-100 text-center"
                         >
-                            <option value="">Seleccione el estándar...</option>
-                            {#each standardOptions as std}
-                                <option value={std}>{std}</option>
-                            {/each}
-                        </select>
-                    </div>
+                            <div
+                                class="animate-spin h-6 w-6 border-2 border-purple-500 border-t-transparent rounded-full mx-auto"
+                            ></div>
+                            <p class="text-sm text-purple-600 mt-2">
+                                Cargando EBCs...
+                            </p>
+                        </div>
+                    {:else if ebcs.length === 0}
+                        <div
+                            class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-yellow-800 text-sm"
+                        >
+                            No se encontraron EBC para la combinación
+                            seleccionada.
+                        </div>
+                    {:else}
+                        <div
+                            class="bg-purple-50 p-4 rounded-lg border border-purple-100"
+                        >
+                            <p
+                                class="block text-sm font-bold text-purple-800 mb-1"
+                            >
+                                Estándares Básicos de Competencia (EBC)
+                            </p>
+                            <p class="text-xs text-purple-600 mb-3">
+                                Seleccione el estándar que se trabajarán en esta
+                                unidad.
+                            </p>
+                            <!-- <select
+                                id="standard"
+                                bind:value={formData.standard}
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2.5 bg-white/80 mb-3"
+                            >
+                                <option value="">Seleccione el estándar...</option>
+                                {#each ebcOptions as ebc}
+                                    <option value={ebc.id}>{ebc.id} - {ebc.descripcion.substring(0, 80)}...</option>
+                                {/each}
+                            </select> -->
+                            <div class="space-y-3 max-h-64 overflow-y-auto">
+                                {#each ebcs as ebc}
+                                    <label
+                                        class="flex items-start space-x-3 cursor-pointer hover:bg-purple-100 p-3 rounded transition border border-purple-200"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.standard.includes(
+                                                ebc.id,
+                                            )}
+                                            onchange={() => toggleEBC(ebc.id)}
+                                            class="mt-1 h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                                        />
+                                        <div class="flex-1">
+                                            <div
+                                                class="flex items-center gap-2 mb-1"
+                                            >
+                                                <span
+                                                    class="text-xs font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded"
+                                                >
+                                                    {ebc.codigo}
+                                                </span>
+                                                {#if ebc.metadata?.dimension}
+                                                    <span
+                                                        class="text-xs text-pink-600 bg-pink-50 px-2 py-0.5 rounded"
+                                                    >
+                                                        {ebc.metadata.dimension}
+                                                    </span>
+                                                {/if}
+                                            </div>
+                                            <p
+                                                class="text-sm text-gray-700 mb-1"
+                                            >
+                                                {ebc.descripcion}
+                                            </p>
+                                            {#if ebc.metadata?.evidencia}
+                                                <p
+                                                    class="text-xs text-green-600"
+                                                >
+                                                    <strong>Evidencia:</strong>
+                                                    {ebc.metadata.evidencia}
+                                                </p>
+                                            {/if}
+                                        </div>
+                                    </label>
+                                {/each}
+                            </div>
+                            <p class="text-xs text-purple-500 mt-2">
+                                {ebcs.length} EBC(s) disponible(s) para {formData.subject}
+                                - {formData.grado}
+                            </p>
+                        </div>
+                    {/if}
 
                     <!-- PIAR Toggle -->
                     <div
