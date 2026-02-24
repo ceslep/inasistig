@@ -1,16 +1,25 @@
 # AGENTS.md - Inasistig Code Guidelines
 
+Guidelines for agentic coding agents working on the inasistig project.
+
+---
+
 ## Commands
 
 ```bash
 npm run dev        # Dev server (Vite) - http://localhost:5173
 npm run build      # Production build to dist/
 npm run preview    # Preview production build locally
-npm run deploy     # Build + deploy to GitHub Pages
+npm run deploy    # Build + deploy to GitHub Pages
 npm run check      # Type checking (svelte-check + tsc)
 ```
 
-**Manual Testing**: No test framework. Run `npm run dev` and open `http://localhost:5173`. For single component testing: modify `App.svelte` to import and render only that component. Test PHP backend: place files in `src/assets/php/` and access via browser.
+**Testing**: No test framework configured. Manual testing only:
+1. Modify `App.svelte` to import and render only the component to test
+2. Run `npm run dev` and open `http://localhost:5173`
+3. Revert changes to `App.svelte` after testing
+
+**PHP Backend**: Place PHP files in `src/assets/php/`, access at `http://localhost:5173/src/assets/php/file.php`
 
 ---
 
@@ -19,7 +28,7 @@ npm run check      # Type checking (svelte-check + tsc)
 - **Framework**: Svelte 5 + TypeScript + Vite
 - **Styling**: TailwindCSS 4.x with CSS custom properties
 - **Alerts**: SweetAlert2
-- **Exports**: ExcelJS, jsPDF
+- **Exports**: ExcelJS, jsPDF with jspdf-autotable
 - **Backend**: PHP + MySQL
 - **Deployment**: GitHub Pages (base: `/inasistig/`)
 
@@ -29,8 +38,8 @@ npm run check      # Type checking (svelte-check + tsc)
 
 ```
 src/
-├── api/           # API service layer
-├── components/   # Svelte components
+├── api/           # API service layer (service.ts)
+├── components/   # Svelte components (PascalCase)
 ├── lib/          # Stores (themeStore.ts)
 ├── assets/       # Static assets (images, PHP backend)
 ├── constants.ts  # App constants (URLs, config)
@@ -42,30 +51,47 @@ src/
 
 ## Code Style
 
-### Import Order (separate with blank lines)
+### Import Order (strict - separate groups with blank lines)
+
 1. Node built-ins (`svelte: onMount, onDestroy`)
-2. External libraries (sweetalert2, exceljs, jspdf)
+2. External libraries (`sweetalert2`, `exceljs`, `jspdf`)
 3. Internal services/api
 4. Internal constants
 5. Internal stores
 6. Internal assets/images
 7. Internal components
 
-### TypeScript
-- **Never use `any`** - always use interfaces/types. Never cast to `as any`.
-- Define interfaces at the top of components (e.g., `interface Estudiante`)
-- Full function typing: `const fetchData = async (id: string): Promise<Data[]> => {...}`
-- Named exports preferred; default for main route components
+```typescript
+import { onMount } from "svelte";
+import Swal from "sweetalert2";
+import { saveInasistencias, getDocentes } from "../../api/service";
+import { API_BASE_URL, WORKSHEET_TITLE } from "../constants";
+import { theme } from "../lib/themeStore";
+import logo from "../assets/logo.png";
+import Dashboard from "./Dashboard.svelte";
+```
+
+### TypeScript Rules
+
+- **Never use `any`** - always use explicit interfaces/types
+- **Never cast to `as any`** - define proper types instead
+- Define interfaces at the top of the component script
+- Use full function typing including return types
+- Default exports for main route components, named exports for utilities
 
 ### Naming Conventions
+
 | Type | Convention | Example |
 |------|------------|---------|
 | Components | PascalCase | `Dashboard.svelte` |
-| Functions/vars | camelCase | `handleClick` |
+| Functions/variables | camelCase | `handleClick`, `isLoading` |
 | Interfaces | PascalCase | `interface Estudiante` |
 | Constants | UPPER_SNAKE_CASE | `API_BASE_URL` |
+| Boolean variables | is/has/should prefix | `isLoading`, `hasError` |
 
-### State Management (Svelte 5)
+### Svelte 5 State Management
+
+Use runes (`$state`, `$derived`, `$props`):
 ```typescript
 let count = $state(0);
 let doubled = $derived(count * 2);
@@ -73,22 +99,32 @@ let { onBack, title = "Default" }: { onBack: () => void; title?: string } = $pro
 ```
 
 ### Error Handling
+
+Always use try-catch with SweetAlert2 for user feedback:
 ```typescript
 try {
   const result = await fetch(url);
-  if (!result.ok) throw new Error("Failed");
+  if (!result.ok) throw new Error("Failed to fetch");
+  return await result.json();
 } catch (e) {
   console.error(e);
-  await Swal.fire({ icon: "error", title: "Error", text: "Mensaje en español", confirmButtonColor: "#ef4444" });
+  await Swal.fire({
+    icon: "error",
+    title: "Error",
+    text: "Mensaje de error en español",
+    confirmButtonColor: "#ef4444"
+  });
 }
 ```
 
 ### Loading States
+
 ```typescript
 let isLoading = $state(false);
 const handleSubmit = async () => {
   isLoading = true;
   try { await saveData(); }
+  catch (e) { /* error handling */ }
   finally { isLoading = false; }
 };
 ```
@@ -97,36 +133,62 @@ const handleSubmit = async () => {
 
 ## Theming & CSS
 
-CSS variables in `app.css`: `--bg-primary`, `--bg-secondary`, `--text-primary`, `--text-secondary`, `--card-bg`, `--card-border`, `--accent-primary`, `--border-primary`
+### CSS Variables (defined in `app.css`)
+
+`--bg-primary`, `--bg-secondary`, `--text-primary`, `--text-secondary`, `--card-bg`, `--card-border`, `--accent-primary`, `--border-primary`
+
+### Usage
 
 ```svelte
 <div class="bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))]">Content</div>
 ```
 
+### Guidelines
+
 - Use CSS variables for theme-aware styling
-- Prefer Tailwind utility classes
+- Prefer Tailwind utility classes over custom CSS
 - Mobile-first: `class="w-full sm:w-auto"`
+- TailwindCSS 4.x: uses `@theme` directive, arbitrary values like `bg-[#ff0000]`
+
+---
+
+## PHP Backend
+
+- Place PHP files in `src/assets/php/`
+- Access via browser at `/src/assets/php/file.php`
+- MySQL connection details stored in PHP files (not in frontend)
+- API endpoints communicate with PHP scripts via `fetch()`
 
 ---
 
 ## Available Skills
 
-Use the `skill` tool to load domain-specific instructions:
-- `ui-inasistencias` - UI component standards for inasistencias
+Use the `skill` tool for domain-specific instructions:
+
+- `ui-inasistencias` - UI component standards
 - `google-sync` - Google Sheets sync logic
 - `api-inasistig` - PHP backend and MySQL queries
 
 ---
 
-## Checklist
+## Checklist Before Committing
 
 - [ ] TypeScript with full types (no `any`)
 - [ ] CSS variables for theming
 - [ ] Tailwind utility classes
-- [ ] Error handling with SweetAlert2
+- [ ] Error handling with SweetAlert2 (Spanish text)
 - [ ] Loading states for async operations
 - [ ] Responsive (mobile-first)
-- [ ] `npm run check` passes
+- [ ] `npm run check` passes with no errors
 - [ ] Existing functionality intact
 - [ ] UI text in Spanish
-- [ ] Ask before git commits
+- [ ] Ask user before creating git commits
+
+---
+
+## Git Workflow
+
+- Create feature branches for new features
+- Commit messages in Spanish or English (be consistent)
+- Ask before pushing to remote
+- Never force push to main/master

@@ -1,0 +1,67 @@
+{
+  "status": "success",
+  "source": "Derechos Básicos de Aprendizaje (DBA) - Tecnología e Informática - Universidad de Nariño (2023) \/ MEN Colombia",
+  "nota": "DBA organizados por componentes tradicionales del MEN más componentes emergentes: Investigación\/gestión de información, Pensamiento computacional, Programación. Estructura compatible con sistema de planeación inasistig.",
+  "componentes_tradicionales": {
+    "naturaleza_conocimiento": "Comprensión de la tecnología como construcción humana, su evolución y fundamentos científicos.",
+    "apropiacion_uso": "Utilización competente, segura y crítica de herramientas y sistemas tecnológicos.",
+    "solucion_problemas": "Aplicación de metodologías de diseño y desarrollo tecnológico para resolver necesidades reales.",
+    "tecnologia_sociedad": "Reflexión ética y crítica sobre el impacto social, ambiental y cultural de la tecnología."
+  },
+  "componentes_emergentes": {
+    "investigacion_informacion": "Búsqueda, selección, evaluación y gestión rigurosa de información con fines académicos (DBA central grado 5°).",
+    "pensamiento_computacional": "Descomposición, abstracción, reconocimiento de patrones y diseño algorítmico para resolver problemas.",
+    "programacion_desarrollo": "Creación, depuración y colaboración en el desarrollo de software y soluciones digitales."
+  },
+  "enfoques_pedagogicos": {
+    "constructivista": "Aprendizaje activo basado en proyectos, indagación y construcción de conocimiento significativo.",
+    "transversal": "Integración de tecnología con otras áreas del currículo para resolver problemas complejos.",
+    "critico_reflexivo": "Desarrollo de posturas éticas y argumentadas frente a dilemas tecnológicos contemporáneos.",
+    "colaborativo": "Trabajo en equipo, comunicación efectiva y gestión de proyectos tecnológicos compartidos.",
+    "innovador": "Fomento de creatividad, experimentación y emprendimiento tecnológico con impacto social."
+  },
+  "data": [
+    {
+      "grado": 10,
+      "asignatura": "tecnologia_informatica",
+      "dbas": [
+        "Analiza críticamente cómo los paradigmas tecnológicos contemporáneos redefinen conceptos de identidad, privacidad y agencia humana.",
+        "Evalúa la interdependencia entre innovación tecnológica, sostenibilidad ambiental y justicia social en escenarios globales.",
+        "Argumenta posturas fundamentadas sobre ética tecnológica considerando marcos filosóficos, legales y culturales diversos.",
+        "Lidera proyectos de transformación digital que integren visión estratégica, gestión del cambio y evaluación de impacto social.",
+        "Diseña ecosistemas tecnológicos que promuevan innovación responsable, inclusión digital y desarrollo humano integral.",
+        "Evalúa críticamente modelos de negocio tecnológicos considerando externalidades, equidad y sostenibilidad a largo plazo.",
+        "Diseña arquitecturas de solución tecnológica escalables que respondan a requisitos funcionales, no funcionales y de evolución.",
+        "Aplica metodologías de investigación-acción o diseño basado en evidencia para iterar soluciones tecnológicas en contextos reales.",
+        "Comunica propuestas tecnológicas complejas adaptando argumentos técnicos, económicos y sociales a stakeholders diversos.",
+        "Debate críticamente sobre gobernanza algorítmica, sesgos en IA y derechos digitales en sociedades democráticas.",
+        "Analiza cómo las tecnologías disruptivas reconfiguran mercados laborales, educación y participación ciudadana.",
+        "Promueve políticas públicas tecnológicas que equilibren innovación, regulación y protección de derechos fundamentales.",
+        "Diseña investigaciones tecnológicas que integren marcos teóricos robustos, métodos rigurosos y análisis crítico de resultados.",
+        "Evalúa la calidad epistemológica de investigaciones tecnológicas considerando paradigmas, métodos y límites del conocimiento.",
+        "Sintetiza conocimiento tecnológico en revisiones críticas, meta-análisis o propuestas de agenda de investigación futura.",
+        "Comunica hallazgos de investigación tecnológica en formatos académicos, técnicos y de divulgación pública con rigor y accesibilidad.",
+        "Modela problemas complejos utilizando múltiples paradigmas de programación y estructuras de datos avanzadas.",
+        "Evalúa y optimiza algoritmos considerando complejidad computacional, escalabilidad y adaptabilidad a contextos cambiantes.",
+        "Aplica técnicas de aprendizaje automático, procesamiento de datos o computación distribuida para resolver desafíos tecnológicos reales.",
+        "Desarrolla sistemas software complejos aplicando patrones de diseño, principios de arquitectura y prácticas de ingeniería de software.",
+        "Lidera equipos de desarrollo utilizando metodologías ágiles, gestión de calidad y prácticas de DevOps.",
+        "Evalúa y selecciona tecnologías emergentes considerando madurez técnica, ecosistema de soporte y alineación estratégica."
+      ]
+    }
+  ],
+  "filtered_by": {
+    "tipo": "DBA",
+    "materia": "tecnologia e informatica",
+    "grado": "decimo"
+  },
+  "metadata": {
+    "request": {
+      "tipo": "DBA",
+      "materia": "tecnologia e informatica",
+      "grado": "decimo",
+      "source_file": "dba_tecnologia.php",
+      "timestamp": "2026-02-24 12:48:19"
+    }
+  }
+}

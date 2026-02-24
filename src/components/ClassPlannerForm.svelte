@@ -8,10 +8,11 @@
         getDocentes,
         getMaterias,
         getEstudiantes,
-        fetchNormativa,
         type PlaneadorData,
         type NormativaItem,
     } from "../../api/service";
+    import { URL_DBA_EBC } from "../constants";
+    import Piar from "./Piar.svelte";
 
     let { onBack }: { onBack: () => void } = $props();
 
@@ -22,6 +23,9 @@
     let isLoadingDBAs = $state(false);
     let isLoadingEBCs = $state(false);
 
+    // PIAR Modal
+    let showPiarModal = $state(false);
+
     // --- Datos ---
     let docentes = $state<string[]>([]);
     let materias = $state<{ materia: string }[]>([]);
@@ -29,6 +33,94 @@
 
     let dbas = $state<NormativaItem[]>([]);
     let ebcs = $state<NormativaItem[]>([]);
+
+    // --- Búsqueda y Filtros ---
+    let dbaSearch = $state("");
+    let ebcSearch = $state("");
+    let dbaFilterComponente = $state<string | null>(null);
+    let ebcFilterComponente = $state<string | null>(null);
+
+    // Clasificación de componentes por palabras clave
+    const COMPONENTES_KEYWORDS: Record<string, string[]> = {
+        naturaleza: ["naturaleza", "conocimiento", "ciencia", "teórico", "concepto", "fundamento", "evolución", "análisis"],
+        apropiacion: ["apropiación", "uso", "utilizar", "herramienta", "empleo", "manejo", "aplicar"],
+        solucion: ["solución", "problema", "diseñar", "construir", "desarrollar", "crear", "implementar", "proponer"],
+        sociedad: ["sociedad", "impacto", "ambiente", "ético", "comunidad", "cultura", "responsabilidad", "derechos"]
+    };
+
+    function clasificarComponente(texto: string): string {
+        const t = texto.toLowerCase();
+        for (const [comp, palabras] of Object.entries(COMPONENTES_KEYWORDS)) {
+            if (palabras.some(p => t.includes(p))) return comp;
+        }
+        return "general";
+    }
+
+    // Listas derivadas con filtros
+    let filteredDbas = $derived.by(() => {
+        const withComponente = dbas.map(d => ({...d, componente: clasificarComponente(d.descripcion)}));
+        let result = withComponente;
+        if (dbaFilterComponente) {
+            result = result.filter(d => d.componente === dbaFilterComponente);
+        }
+        if (dbaSearch) {
+            const s = dbaSearch.toLowerCase();
+            result = result.filter(d => d.descripcion.toLowerCase().includes(s));
+        }
+        return result;
+    });
+
+    let filteredEbcs = $derived.by(() => {
+        const withComponente = ebcs.map(e => ({...e, componente: clasificarComponente(e.descripcion)}));
+        let result = withComponente;
+        if (ebcFilterComponente) {
+            result = result.filter(e => e.componente === ebcFilterComponente);
+        }
+        if (ebcSearch) {
+            const s = ebcSearch.toLowerCase();
+            result = result.filter(e => e.descripcion.toLowerCase().includes(s));
+        }
+        return result;
+    });
+
+    // Componentes únicos disponibles
+    let dbaComponentes = $derived([...new Set(dbas.map(d => clasificarComponente(d.descripcion)))]);
+    let ebcComponentes = $derived([...new Set(ebcs.map(e => clasificarComponente(e.descripcion)))]);
+
+    // Contadores por componente
+    let dbaCountsByComponente = $derived.by(() => {
+        const counts: Record<string, number> = {};
+        dbas.forEach(d => {
+            const comp = clasificarComponente(d.descripcion);
+            counts[comp] = (counts[comp] || 0) + 1;
+        });
+        return counts;
+    });
+
+    let ebcCountsByComponente = $derived.by(() => {
+        const counts: Record<string, number> = {};
+        ebcs.forEach(e => {
+            const comp = clasificarComponente(e.descripcion);
+            counts[comp] = (counts[comp] || 0) + 1;
+        });
+        return counts;
+    });
+
+    const LABELS_COMPONENTE: Record<string, string> = {
+        naturaleza: "Naturaleza",
+        apropiacion: "Apropiación",
+        solucion: "Solución",
+        sociedad: "Sociedad",
+        general: "General"
+    };
+
+    const COLORES_COMPONENTE: Record<string, { bg: string; text: string }> = {
+        naturaleza: { bg: "bg-blue-100", text: "text-blue-700" },
+        apropiacion: { bg: "bg-green-100", text: "text-green-700" },
+        solucion: { bg: "bg-orange-100", text: "text-orange-700" },
+        sociedad: { bg: "bg-pink-100", text: "text-pink-700" },
+        general: { bg: "bg-gray-100", text: "text-gray-700" }
+    };
 
     // --- LÓGICA Y ESTADO (SVELTE 5 RUNES) ---
 
@@ -204,16 +296,30 @@
             isLoadingDBAs = true;
             isLoadingEBCs = true;
             try {
-                const area = formData.subject.toLowerCase().trim();
+                const materia = formData.subject.toLowerCase().trim();
                 const grado = formData.grado.toLowerCase().trim();
 
-                const [dbasData, ebcsData] = await Promise.all([
-                    fetchNormativa("DBA", { grado, area }),
-                    fetchNormativa("EBC", { grado, area }),
+                const [dbasResponse, ebcsResponse] = await Promise.all([
+                    fetch(`${URL_DBA_EBC}?tipo=DBA&materia=${materia}&grado=${grado}`),
+                    fetch(`${URL_DBA_EBC}?tipo=EBC&materia=${materia}&grado=${grado}`),
                 ]);
 
-                dbas = dbasData;
-                ebcs = ebcsData;
+                const [dbasJson, ebcsJson] = await Promise.all([
+                    dbasResponse.json(),
+                    ebcsResponse.json(),
+                ]);
+
+                const transformar = (json: any, tipo: string): NormativaItem[] => {
+                    const items = json?.data?.[0]?.dbas || [];
+                    return items.map((texto: string, i: number) => ({
+                        id: texto,
+                        codigo: `${tipo} ${i + 1}`,
+                        descripcion: texto
+                    }));
+                };
+
+                dbas = transformar(dbasJson, "DBA");
+                ebcs = transformar(ebcsJson, "EBC");
             } catch (error) {
                 console.error("Error cargando Normativa:", error);
                 dbas = [];
@@ -591,197 +697,389 @@
 
                     <!-- DBA Selection -->
                     {#if !formData.subject || !formData.grado}
-                        <div
-                            class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-yellow-800 text-sm"
-                        >
-                            Seleccione un grado y una materia en el paso
-                            anterior para ver los DBA disponibles.
+                        <div class="bg-gradient-to-r from-amber-50 to-yellow-50 p-6 rounded-xl border border-amber-200">
+                            <div class="flex items-center gap-3">
+                                <div class="p-3 bg-amber-100 rounded-full">
+                                    <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-amber-800">Selección requerida</h3>
+                                    <p class="text-sm text-amber-700">Seleccione un grado y una materia en el paso anterior para ver los DBA disponibles.</p>
+                                </div>
+                            </div>
                         </div>
                     {:else if isLoadingDBAs}
-                        <div
-                            class="bg-blue-50 p-4 rounded-lg border border-blue-100 text-center"
-                        >
-                            <div
-                                class="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto"
-                            ></div>
-                            <p class="text-sm text-blue-600 mt-2">
-                                Cargando DBAs...
-                            </p>
+                        <div class="bg-white p-6 rounded-xl border border-gray-200">
+                            <div class="flex items-center gap-3 mb-4">
+                                <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                                </svg>
+                                <h3 class="font-semibold text-gray-800">Derechos Básicos de Aprendizaje (DBA)</h3>
+                            </div>
+                            <div class="space-y-3">
+                                {#each Array(4) as _, i}
+                                    <div class="animate-pulse flex gap-3">
+                                        <div class="w-5 h-5 bg-gray-200 rounded"></div>
+                                        <div class="flex-1 space-y-2">
+                                            <div class="h-4 bg-gray-200 rounded w-1/4"></div>
+                                            <div class="h-3 bg-gray-100 rounded w-3/4"></div>
+                                        </div>
+                                    </div>
+                                {/each}
+                            </div>
                         </div>
                     {:else if dbas.length === 0}
-                        <div
-                            class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-yellow-800 text-sm"
-                        >
-                            No se encontraron DBA para la combinación
-                            seleccionada.
+                        <div class="bg-gradient-to-r from-red-50 to-orange-50 p-6 rounded-xl border border-red-200">
+                            <div class="flex items-center gap-3">
+                                <div class="p-3 bg-red-100 rounded-full">
+                                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-red-800">Sin resultados</h3>
+                                    <p class="text-sm text-red-700">No se encontraron DBA para la combinación seleccionada.</p>
+                                </div>
+                            </div>
                         </div>
                     {:else}
-                        <div
-                            class="bg-blue-50 p-4 rounded-lg border border-blue-100"
-                        >
-                            <p
-                                class="block text-sm font-bold text-blue-800 mb-1"
-                            >
-                                Derechos Básicos de Aprendizaje (DBA)
-                            </p>
-                            <p class="text-xs text-blue-600 mb-3">
-                                Seleccione los DBA que se trabajarán en esta
-                                unidad (Resolución 0256 de 2016).
-                            </p>
-                            <div class="space-y-3 max-h-96 overflow-y-auto">
-                                {#each dbas as dba}
-                                    <label
-                                        class="flex items-start space-x-3 cursor-pointer hover:bg-blue-100 p-3 rounded transition border border-blue-200"
+                        <!-- DBA Section -->
+                        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                            <!-- Header -->
+                            <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 border-b border-gray-100">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="p-2 bg-indigo-100 rounded-lg">
+                                            <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-bold text-gray-800">Derechos Básicos de Aprendizaje (DBA)</h3>
+                                            <p class="text-xs text-gray-500">Marco normativo: Resolución 0256 de 2016</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-medium px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full">
+                                            {dbas.length} disponibles
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Search Input -->
+                                <div class="relative">
+                                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                    <input 
+                                        type="text"
+                                        bind:value={dbaSearch}
+                                        placeholder="Buscar en descripción..."
+                                        class="w-full pl-10 pr-10 py-2.5 text-sm rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none"
+                                    />
+                                    {#if dbaSearch}
+                                        <button 
+                                            onclick={() => dbaSearch = ""} 
+                                            aria-label="Limpiar búsqueda"
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                    {/if}
+                                </div>
+                            </div>
+
+                            <!-- Filter Chips -->
+                            <div class="p-4 border-b border-gray-100 bg-gray-50">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <button 
+                                        type="button"
+                                        onclick={() => dbaFilterComponente = null}
+                                        class="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200
+                                               {dbaFilterComponente === null 
+                                                   ? 'bg-indigo-600 text-white shadow-md' 
+                                                   : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}"
                                     >
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.dba.includes(
-                                                dba.id,
-                                            )}
-                                            onchange={() => toggleDBA(dba.id)}
-                                            class="mt-1 h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                                        />
-                                        <div class="flex-1">
-                                            <div
-                                                class="flex items-center gap-2 mb-1"
-                                            >
-                                                <span
-                                                    class="text-xs font-bold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded"
-                                                >
+                                        Todos ({dbas.length})
+                                    </button>
+                                    {#each dbaComponentes as comp}
+                                        {@const count = dbaCountsByComponente[comp] || 0}
+                                        <button 
+                                            type="button"
+                                            onclick={() => dbaFilterComponente = comp}
+                                            class="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 capitalize
+                                                   {dbaFilterComponente === comp 
+                                                       ? 'bg-indigo-600 text-white shadow-md' 
+                                                       : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}"
+                                        >
+                                            {LABELS_COMPONENTE[comp] || comp} ({count})
+                                        </button>
+                                    {/each}
+                                </div>
+                            </div>
+
+                            <!-- Results Count -->
+                            <div class="px-4 py-2 bg-gray-50 border-b border-gray-100">
+                                <p class="text-xs text-gray-500">
+                                    Mostrando <span class="font-semibold text-indigo-600">{filteredDbas.length}</span> de <span class="font-semibold">{dbas.length}</span> resultados
+                                    {#if dbaFilterComponente}
+                                        <span class="text-gray-400"> · Filtrado por: {LABELS_COMPONENTE[dbaFilterComponente] || dbaFilterComponente}</span>
+                                    {/if}
+                                </p>
+                            </div>
+
+                            <!-- Items List -->
+                            <div class="max-h-96 overflow-y-auto divide-y divide-gray-100">
+                                {#each filteredDbas as dba, index}
+                                    {@const isSelected = formData.dba.includes(dba.id)}
+                                    {@const compColor = COLORES_COMPONENTE[dba.componente] || COLORES_COMPONENTE.general}
+                                    <label 
+                                        class="flex items-start gap-3 p-4 cursor-pointer transition-all duration-200 hover:bg-indigo-50/50
+                                               {isSelected ? 'bg-indigo-50' : 'bg-white'}"
+                                    >
+                                        <div class="relative flex-shrink-0 mt-0.5">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={isSelected}
+                                                onchange={() => toggleDBA(dba.id)}
+                                                class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer transition-all"
+                                            />
+                                        </div>
+                                        
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2 mb-2 flex-wrap">
+                                                <span class="px-2 py-1 text-xs font-bold rounded-md bg-indigo-100 text-indigo-700">
                                                     {dba.codigo}
                                                 </span>
-                                                {#if dba.metadata?.dimension}
-                                                    <span
-                                                        class="text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded"
-                                                    >
-                                                        {dba.metadata.dimension}
-                                                    </span>
-                                                {/if}
+                                                <span class="px-2 py-1 text-xs font-medium rounded-md capitalize {compColor.bg} {compColor.text}">
+                                                    {LABELS_COMPONENTE[dba.componente] || dba.componente}
+                                                </span>
                                             </div>
-                                            <p
-                                                class="text-sm text-gray-700 mb-1"
-                                            >
+                                            <p class="text-sm text-gray-700 leading-relaxed line-clamp-3">
                                                 {dba.descripcion}
                                             </p>
-                                            {#if dba.metadata?.evidencia}
-                                                <p
-                                                    class="text-xs text-green-600"
-                                                >
-                                                    <strong>Evidencia:</strong>
-                                                    {dba.metadata.evidencia}
-                                                </p>
-                                            {/if}
                                         </div>
                                     </label>
                                 {/each}
                             </div>
-                            <p class="text-xs text-blue-500 mt-2">
-                                {dbas.length} DBA(s) disponible(s) para {formData.subject}
-                                - {formData.grado}
-                            </p>
+
+                            <!-- Empty Filter Results -->
+                            {#if filteredDbas.length === 0 && dbaSearch}
+                                <div class="p-8 text-center">
+                                    <div class="p-4 bg-gray-100 rounded-full inline-flex mb-4">
+                                        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </div>
+                                    <p class="text-gray-600 font-medium">No se encontraron resultados</p>
+                                    <p class="text-sm text-gray-500 mt-1">Intente con otros términos de búsqueda</p>
+                                    <button 
+                                        type="button"
+                                        onclick={() => { dbaSearch = ""; dbaFilterComponente = null; }}
+                                        class="mt-4 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+                                    >
+                                        Limpiar filtros
+                                    </button>
+                                </div>
+                            {/if}
                         </div>
                     {/if}
 
                     <!-- Estándares EBC -->
                     {#if !formData.subject || !formData.grado}
-                        <div
-                            class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-yellow-800 text-sm"
-                        >
-                            Seleccione un grado y una materia en el paso
-                            anterior para ver los EBC disponibles.
+                        <div class="bg-gradient-to-r from-amber-50 to-yellow-50 p-6 rounded-xl border border-amber-200">
+                            <div class="flex items-center gap-3">
+                                <div class="p-3 bg-amber-100 rounded-full">
+                                    <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-amber-800">Selección requerida</h3>
+                                    <p class="text-sm text-amber-700">Seleccione un grado y una materia en el paso anterior para ver los EBC disponibles.</p>
+                                </div>
+                            </div>
                         </div>
                     {:else if isLoadingEBCs}
-                        <div
-                            class="bg-purple-50 p-4 rounded-lg border border-purple-100 text-center"
-                        >
-                            <div
-                                class="animate-spin h-6 w-6 border-2 border-purple-500 border-t-transparent rounded-full mx-auto"
-                            ></div>
-                            <p class="text-sm text-purple-600 mt-2">
-                                Cargando EBCs...
-                            </p>
+                        <div class="bg-white p-6 rounded-xl border border-gray-200">
+                            <div class="flex items-center gap-3 mb-4">
+                                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                                </svg>
+                                <h3 class="font-semibold text-gray-800">Estándares Básicos de Competencia (EBC)</h3>
+                            </div>
+                            <div class="space-y-3">
+                                {#each Array(4) as _, i}
+                                    <div class="animate-pulse flex gap-3">
+                                        <div class="w-5 h-5 bg-gray-200 rounded"></div>
+                                        <div class="flex-1 space-y-2">
+                                            <div class="h-4 bg-gray-200 rounded w-1/4"></div>
+                                            <div class="h-3 bg-gray-100 rounded w-3/4"></div>
+                                        </div>
+                                    </div>
+                                {/each}
+                            </div>
                         </div>
                     {:else if ebcs.length === 0}
-                        <div
-                            class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 text-yellow-800 text-sm"
-                        >
-                            No se encontraron EBC para la combinación
-                            seleccionada.
+                        <div class="bg-gradient-to-r from-red-50 to-orange-50 p-6 rounded-xl border border-red-200">
+                            <div class="flex items-center gap-3">
+                                <div class="p-3 bg-red-100 rounded-full">
+                                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-red-800">Sin resultados</h3>
+                                    <p class="text-sm text-red-700">No se encontraron EBC para la combinación seleccionada.</p>
+                                </div>
+                            </div>
                         </div>
                     {:else}
-                        <div
-                            class="bg-purple-50 p-4 rounded-lg border border-purple-100"
-                        >
-                            <p
-                                class="block text-sm font-bold text-purple-800 mb-1"
-                            >
-                                Estándares Básicos de Competencia (EBC)
-                            </p>
-                            <p class="text-xs text-purple-600 mb-3">
-                                Seleccione el estándar que se trabajarán en esta
-                                unidad.
-                            </p>
-                            <!-- <select
-                                id="standard"
-                                bind:value={formData.standard}
-                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2.5 bg-white/80 mb-3"
-                            >
-                                <option value="">Seleccione el estándar...</option>
-                                {#each ebcOptions as ebc}
-                                    <option value={ebc.id}>{ebc.id} - {ebc.descripcion.substring(0, 80)}...</option>
-                                {/each}
-                            </select> -->
-                            <div class="space-y-3 max-h-64 overflow-y-auto">
-                                {#each ebcs as ebc}
-                                    <label
-                                        class="flex items-start space-x-3 cursor-pointer hover:bg-purple-100 p-3 rounded transition border border-purple-200"
+                        <!-- EBC Section -->
+                        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                            <!-- Header -->
+                            <div class="bg-gradient-to-r from-purple-50 to-pink-50 p-4 border-b border-gray-100">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="p-2 bg-purple-100 rounded-lg">
+                                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-bold text-gray-800">Estándares Básicos de Competencia (EBC)</h3>
+                                            <p class="text-xs text-gray-500">Estándares curriculares MEN</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-medium px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
+                                            {ebcs.length} disponibles
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Search Input -->
+                                <div class="relative">
+                                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                    <input 
+                                        type="text"
+                                        bind:value={ebcSearch}
+                                        placeholder="Buscar en descripción..."
+                                        class="w-full pl-10 pr-10 py-2.5 text-sm rounded-lg border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all outline-none"
+                                    />
+                                    {#if ebcSearch}
+                                        <button 
+                                            onclick={() => ebcSearch = ""} 
+                                            aria-label="Limpiar búsqueda"
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                    {/if}
+                                </div>
+                            </div>
+
+                            <!-- Filter Chips -->
+                            <div class="p-4 border-b border-gray-100 bg-gray-50">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <button 
+                                        type="button"
+                                        onclick={() => ebcFilterComponente = null}
+                                        class="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200
+                                               {ebcFilterComponente === null 
+                                                   ? 'bg-purple-600 text-white shadow-md' 
+                                                   : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}"
                                     >
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.standard.includes(
-                                                ebc.id,
-                                            )}
-                                            onchange={() => toggleEBC(ebc.id)}
-                                            class="mt-1 h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                                        />
-                                        <div class="flex-1">
-                                            <div
-                                                class="flex items-center gap-2 mb-1"
-                                            >
-                                                <span
-                                                    class="text-xs font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded"
-                                                >
+                                        Todos ({ebcs.length})
+                                    </button>
+                                    {#each ebcComponentes as comp}
+                                        {@const count = ebcCountsByComponente[comp] || 0}
+                                        <button 
+                                            type="button"
+                                            onclick={() => ebcFilterComponente = comp}
+                                            class="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 capitalize
+                                                   {ebcFilterComponente === comp 
+                                                       ? 'bg-purple-600 text-white shadow-md' 
+                                                       : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}"
+                                        >
+                                            {LABELS_COMPONENTE[comp] || comp} ({count})
+                                        </button>
+                                    {/each}
+                                </div>
+                            </div>
+
+                            <!-- Results Count -->
+                            <div class="px-4 py-2 bg-gray-50 border-b border-gray-100">
+                                <p class="text-xs text-gray-500">
+                                    Mostrando <span class="font-semibold text-purple-600">{filteredEbcs.length}</span> de <span class="font-semibold">{ebcs.length}</span> resultados
+                                    {#if ebcFilterComponente}
+                                        <span class="text-gray-400"> · Filtrado por: {LABELS_COMPONENTE[ebcFilterComponente] || ebcFilterComponente}</span>
+                                    {/if}
+                                </p>
+                            </div>
+
+                            <!-- Items List -->
+                            <div class="max-h-80 overflow-y-auto divide-y divide-gray-100">
+                                {#each filteredEbcs as ebc, index}
+                                    {@const isSelected = formData.standard.includes(ebc.id)}
+                                    {@const compColor = COLORES_COMPONENTE[ebc.componente] || COLORES_COMPONENTE.general}
+                                    <label 
+                                        class="flex items-start gap-3 p-4 cursor-pointer transition-all duration-200 hover:bg-purple-50/50
+                                               {isSelected ? 'bg-purple-50' : 'bg-white'}"
+                                    >
+                                        <div class="relative flex-shrink-0 mt-0.5">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={isSelected}
+                                                onchange={() => toggleEBC(ebc.id)}
+                                                class="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer transition-all"
+                                            />
+                                        </div>
+                                        
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2 mb-2 flex-wrap">
+                                                <span class="px-2 py-1 text-xs font-bold rounded-md bg-purple-100 text-purple-700">
                                                     {ebc.codigo}
                                                 </span>
-                                                {#if ebc.metadata?.dimension}
-                                                    <span
-                                                        class="text-xs text-pink-600 bg-pink-50 px-2 py-0.5 rounded"
-                                                    >
-                                                        {ebc.metadata.dimension}
-                                                    </span>
-                                                {/if}
+                                                <span class="px-2 py-1 text-xs font-medium rounded-md capitalize {compColor.bg} {compColor.text}">
+                                                    {LABELS_COMPONENTE[ebc.componente] || ebc.componente}
+                                                </span>
                                             </div>
-                                            <p
-                                                class="text-sm text-gray-700 mb-1"
-                                            >
+                                            <p class="text-sm text-gray-700 leading-relaxed line-clamp-3">
                                                 {ebc.descripcion}
                                             </p>
-                                            {#if ebc.metadata?.evidencia}
-                                                <p
-                                                    class="text-xs text-green-600"
-                                                >
-                                                    <strong>Evidencia:</strong>
-                                                    {ebc.metadata.evidencia}
-                                                </p>
-                                            {/if}
                                         </div>
                                     </label>
                                 {/each}
                             </div>
-                            <p class="text-xs text-purple-500 mt-2">
-                                {ebcs.length} EBC(s) disponible(s) para {formData.subject}
-                                - {formData.grado}
-                            </p>
+
+                            <!-- Empty Filter Results -->
+                            {#if filteredEbcs.length === 0 && ebcSearch}
+                                <div class="p-8 text-center">
+                                    <div class="p-4 bg-gray-100 rounded-full inline-flex mb-4">
+                                        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </div>
+                                    <p class="text-gray-600 font-medium">No se encontraron resultados</p>
+                                    <p class="text-sm text-gray-500 mt-1">Intente con otros términos de búsqueda</p>
+                                    <button 
+                                        type="button"
+                                        onclick={() => { ebcSearch = ""; ebcFilterComponente = null; }}
+                                        class="mt-4 px-4 py-2 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                                    >
+                                        Limpiar filtros
+                                    </button>
+                                </div>
+                            {/if}
                         </div>
                     {/if}
 
@@ -815,17 +1113,35 @@
                     </div>
 
                     {#if formData.has_piar}
-                        <label
-                            for="piar_description"
-                            class="block text-sm font-medium text-gray-700 mb-1"
-                            >Descripción de Ajustes Razonables</label
-                        >
-                        <textarea
-                            id="piar_description"
-                            bind:value={formData.piar_description}
-                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 p-3 bg-white/80"
-                            placeholder="Describa los ajustes razonables específicos (Decreto 1421 de 2017)..."
-                        ></textarea>
+                        <div class="space-y-4">
+                            <label
+                                for="piar_description"
+                                class="block text-sm font-medium text-gray-700"
+                            >Descripción de Ajustes Razonables</label>
+                            <textarea
+                                id="piar_description"
+                                bind:value={formData.piar_description}
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 p-3 bg-white/80"
+                                placeholder="Describa los ajustes razonables específicos (Decreto 1421 de 2017)..."
+                                rows="3"
+                            ></textarea>
+                            
+                            <!-- Botón para abrir PIAR completo -->
+                            <button
+                                type="button"
+                                onclick={() => showPiarModal = true}
+                                class="flex items-center justify-center gap-2 w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-semibold rounded-lg shadow-md transition-all duration-200"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                Crear Acta PIAR Completa
+                            </button>
+                            
+                            <p class="text-xs text-gray-500 text-center">
+                                Genere un documento oficial completo con firma digital para el estudiante
+                            </p>
+                        </div>
                     {/if}
                 </div>
             {/if}
@@ -1087,6 +1403,58 @@
             </div>
         </form>
     </div>
+
+    <!-- PIAR Modal -->
+    {#if showPiarModal}
+        <div 
+            class="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4"
+            transition:fade={{ duration: 200 }}
+        >
+            <!-- Backdrop -->
+            <button 
+                type="button"
+                class="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-default"
+                onclick={() => showPiarModal = false}
+                aria-label="Cerrar modal"
+            ></button>
+            
+            <!-- Modal Content -->
+            <div 
+                class="relative bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col"
+                transition:fly={{ y: 20, duration: 300 }}
+            >
+                <!-- Header -->
+                <div class="flex items-center justify-between p-4 bg-slate-800 text-white flex-shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-slate-700 rounded-lg">
+                            <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="font-bold text-lg">Registro PIAR Completo</h2>
+                            <p class="text-xs text-slate-400">Acta de Ajustes Razonables - Decreto 1421 de 2017</p>
+                        </div>
+                    </div>
+                    <button 
+                        type="button"
+                        onclick={() => showPiarModal = false}
+                        class="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+                        aria-label="Cerrar modal"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Content -->
+                <div class="flex-1 overflow-y-auto bg-slate-50">
+                    <Piar />
+                </div>
+            </div>
+        </div>
+    {/if}
 </div>
 
 <style>

@@ -52,6 +52,8 @@ export const URL_DBAS =
   `${BASE_URL}/getDBAs.php`;
 export const URL_EBCS =
   `${BASE_URL}/getEBCs.php`;
+export const URL_DBA_EBC =
+  `${BASE_URL}/dba_ebc/dba_ebc.php`;
 
 // Periodos
 
