@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
 
   import { fade, fly } from "svelte/transition";
-import asistenciaHero from "../assets/asistencia_hero.png";
+  import asistenciaHero from "../assets/asistencia_hero.png";
   import anotadorHero from "../assets/anotador_hero.png";
   import diarioHero from "../assets/diario_hero.png";
   import planeadorHero from "../assets/plan_hero.png";
@@ -17,39 +17,49 @@ import asistenciaHero from "../assets/asistencia_hero.png";
   // --- Feature Alert for Diario ---
   let showFeatureAlertDiario = true; // Initial control for the popup
   const FEATURE_MESSAGE_DIARIO = "¡Nueva forma de anotar el Diario de Campo!";
-  const FEATURE_DESCRIPTION_DIARIO = "Ahora el Diario de Campo permite seleccionar y personalizar anotaciones predefinidas. ¡Explóralo!";
+  const FEATURE_DESCRIPTION_DIARIO =
+    "Ahora el Diario de Campo permite seleccionar y personalizar anotaciones predefinidas. ¡Explóralo!";
 
   function checkFeatureAlertDiarioVisibility() {
     // FORZAR MOSTRAR PARA DESARROLLO - Cambiar a false en producción
     const DEBUG_FORCE_SHOW = false; // Set to false for production
-    
+
     if (DEBUG_FORCE_SHOW) {
       return true;
     }
-    
-    const dismissed = localStorage.getItem("dismissedFeatureAlertDashboardDiario");
-    
+
+    const dismissed = localStorage.getItem(
+      "dismissedFeatureAlertDashboardDiario",
+    );
+
     // If never dismissed, show
     if (!dismissed) {
       return true;
     }
-    
+
     const dismissedDate = new Date(dismissed);
     const now = new Date();
-    const daysSinceDismissed = (now.getTime() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
-    
+    const daysSinceDismissed =
+      (now.getTime() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
+
     // Show if more than 5 days passed since last dismissal (e.g., to remind users)
     return daysSinceDismissed > 5;
   }
 
   const dismissFeatureAlertDiario = () => {
-    localStorage.setItem("dismissedFeatureAlertDashboardDiario", new Date().toISOString());
+    localStorage.setItem(
+      "dismissedFeatureAlertDashboardDiario",
+      new Date().toISOString(),
+    );
     showFeatureAlertDiario = false; // Close the popup immediately
   };
 
   const tryFeatureNowDiario = () => {
     // Close the popup
-    localStorage.setItem("dismissedFeatureAlertDashboardDiario", new Date().toISOString());
+    localStorage.setItem(
+      "dismissedFeatureAlertDashboardDiario",
+      new Date().toISOString(),
+    );
     showFeatureAlertDiario = false; // Dismiss popup
     onSelect("diario"); // Navigate to Diario module
   };
@@ -67,7 +77,19 @@ import asistenciaHero from "../assets/asistencia_hero.png";
     });
   };
 
-  const modules = [
+  interface Module {
+    id: string;
+    title: string;
+    subtitle: string;
+    description: string;
+    image: string;
+    color: string;
+    accent: string;
+    tag: string;
+    url?: string;
+  }
+
+  const modules: Module[] = [
     {
       id: "inasistencia",
       title: "Registro Diario",
@@ -90,7 +112,7 @@ import asistenciaHero from "../assets/asistencia_hero.png";
       accent: "purple",
       tag: "Académico",
     },
-{
+    {
       id: "diario",
       title: "Diario de Campo",
       subtitle: "Reflexión Docente",
@@ -124,13 +146,23 @@ import asistenciaHero from "../assets/asistencia_hero.png";
       tag: "Herramienta",
       url: "https://ceslep.github.io/horas_laborables",
     },
+    {
+      id: "piar",
+      title: "PIAR",
+      subtitle: "Anexo 1, 2 y 3",
+      description:
+        "Generador completo para el Plan Individual de Ajustes Razonables (Versión 2).",
+      image: planeadorHero,
+      color: "from-blue-600/20 to-cyan-600/20",
+      accent: "blue",
+      tag: "Piar",
+    },
   ];
 </script>
 
 <div
   class="min-h-screen w-full flex flex-col items-center p-6 lg:p-12 transition-colors duration-700 bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))]"
 >
-  <!-- Decorative background elements -->
   <div class="fixed inset-0 overflow-hidden pointer-events-none -z-10">
     <div
       class="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] bg-indigo-500/5 blur-[120px] rounded-full animate-pulse"
@@ -221,7 +253,9 @@ import asistenciaHero from "../assets/asistencia_hero.png";
           >
             Ecosistema Digital
           </span>
-          <span class="text-[rgb(var(--accent-primary))]">Instituto Guática</span>
+          <span class="text-[rgb(var(--accent-primary))]"
+            >Instituto Guática</span
+          >
         </h1>
         <p
           class="text-base md:text-lg text-[rgb(var(--text-muted))] max-w-xl mx-auto font-medium"
@@ -279,7 +313,8 @@ import asistenciaHero from "../assets/asistencia_hero.png";
                 class="relative w-full aspect-video rounded-3xl overflow-hidden bg-black/20 border border-white/5"
               >
                 <div
-                  class="absolute inset-0 bg-gradient-to-br {module.color} mix-blend-overlay z-10"
+                  class="absolute inset-0 bg-gradient-to-br {module.color ||
+                    'from-gray-500/20 to-gray-600/20'} mix-blend-overlay z-10"
                 ></div>
                 <img
                   src={module.image}
@@ -379,8 +414,6 @@ import asistenciaHero from "../assets/asistencia_hero.png";
   showPopup={false}
   colorTheme="emerald"
 />
-
-
 
 <style>
   :global(body) {

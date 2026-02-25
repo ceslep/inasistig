@@ -10,13 +10,13 @@ Guidelines for agentic coding agents working on the inasistig project.
 npm run dev        # Dev server (Vite) - http://localhost:5173
 npm run build      # Production build to dist/
 npm run preview    # Preview production build locally
-npm run deploy    # Build + deploy to GitHub Pages
-npm run check      # Type checking (svelte-check + tsc)
+npm run deploy     # Build + deploy to GitHub Pages
+npm run check      # Type checking (svelte-check + tsc) - LINT + TYPES
 ```
 
-**Testing**: No test framework configured. Manual testing only:
-1. Modify `App.svelte` to import and render only the component to test
-2. Run `npm run dev` and open `http://localhost:5173`
+**Testing**: No test framework. Manual testing only:
+1. Modify `App.svelte` to import/render only the component
+2. Run `npm run dev` and open http://localhost:5173
 3. Revert changes to `App.svelte` after testing
 
 **PHP Backend**: Place PHP files in `src/assets/php/`, access at `http://localhost:5173/src/assets/php/file.php`
@@ -61,16 +61,6 @@ src/
 6. Internal assets/images
 7. Internal components
 
-```typescript
-import { onMount } from "svelte";
-import Swal from "sweetalert2";
-import { saveInasistencias, getDocentes } from "../../api/service";
-import { API_BASE_URL, WORKSHEET_TITLE } from "../constants";
-import { theme } from "../lib/themeStore";
-import logo from "../assets/logo.png";
-import Dashboard from "./Dashboard.svelte";
-```
-
 ### TypeScript Rules
 
 - **Never use `any`** - always use explicit interfaces/types
@@ -89,7 +79,7 @@ import Dashboard from "./Dashboard.svelte";
 | Constants | UPPER_SNAKE_CASE | `API_BASE_URL` |
 | Boolean variables | is/has/should prefix | `isLoading`, `hasError` |
 
-### Svelte 5 State Management
+### Svelte 5 State Management (Required)
 
 Use runes (`$state`, `$derived`, `$props`):
 ```typescript
@@ -109,9 +99,7 @@ try {
 } catch (e) {
   console.error(e);
   await Swal.fire({
-    icon: "error",
-    title: "Error",
-    text: "Mensaje de error en español",
+    icon: "error", title: "Error", text: "Mensaje en español",
     confirmButtonColor: "#ef4444"
   });
 }
@@ -133,9 +121,9 @@ const handleSubmit = async () => {
 
 ## Theming & CSS
 
-### CSS Variables (defined in `app.css`)
+### CSS Variables (in `app.css`)
 
-`--bg-primary`, `--bg-secondary`, `--text-primary`, `--text-secondary`, `--card-bg`, `--card-border`, `--accent-primary`, `--border-primary`
+`--bg-primary`, `--bg-secondary`, `--text-primary`, `--text-secondary`, `--card-bg`, `--card-border`, `--accent-primary`, `--border-primary`, `--bg-tertiary`, `--text-muted`
 
 ### Usage
 
@@ -156,15 +144,14 @@ const handleSubmit = async () => {
 
 - Place PHP files in `src/assets/php/`
 - Access via browser at `/src/assets/php/file.php`
-- MySQL connection details stored in PHP files (not in frontend)
-- API endpoints communicate with PHP scripts via `fetch()`
+- MySQL credentials stored in PHP files (not frontend)
+- API endpoints communicate via `fetch()`
 
 ---
 
 ## Available Skills
 
 Use the `skill` tool for domain-specific instructions:
-
 - `ui-inasistencias` - UI component standards
 - `google-sync` - Google Sheets sync logic
 - `api-inasistig` - PHP backend and MySQL queries

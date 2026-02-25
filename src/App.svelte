@@ -9,6 +9,7 @@
   let Anotador: any = $state(null);
   let Diario: any = $state(null);
   let ClassPlannerForm: any = $state(null);
+  let FormatoPiar: any = $state(null);
 
   const handleSelect = async (view: string) => {
     if (view === "dashboard") {
@@ -28,6 +29,9 @@
     } else if (view === "planeador" && !ClassPlannerForm) {
       const module = await import("./components/ClassPlannerForm.svelte");
       ClassPlannerForm = module.default;
+    } else if (view === "piar" && !FormatoPiar) {
+      const module = await import("./components/FormatoPiar2.svelte");
+      FormatoPiar = module.default;
     }
 
     activeView = view;
@@ -43,7 +47,7 @@
     <Dashboard onSelect={handleSelect} />
   {:else if activeView === "inasistencia" && InasistenciaForm}
     <InasistenciaForm onBack={handleBack} />
-{:else if activeView === "anotador" && Anotador}
+  {:else if activeView === "anotador" && Anotador}
     <Anotador onBack={handleBack} />
   {:else if activeView === "diario" && Diario}
     <Diario onBack={handleBack} />
@@ -51,6 +55,8 @@
     <div in:fade={{ duration: 300 }}>
       <ClassPlannerForm onBack={handleBack} />
     </div>
+  {:else if activeView === "piar" && FormatoPiar}
+    <FormatoPiar onBack={handleBack} />
   {:else if activeView === "horas_laborables"}
     <div class="w-full h-screen flex flex-col bg-[rgb(var(--bg-primary))]">
       <div
