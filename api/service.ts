@@ -433,6 +433,86 @@ export const getPlaneador = async (filtros: { docente?: string; grado?: string; 
   }
 };
 
+const MAX_LOCAL_PLANEACIONES = 100;
+const LOCAL_STORAGE_KEY = 'planeaciones_local';
+
+export interface PlaneadorLocal extends PlaneadorData {
+  id_local: string;
+  fecha_local: string;
+}
+
+export const savePlaneadorLocal = (data: PlaneadorData): PlaneadorLocal => {
+  const existentes = getPlaneadoresLocales();
+  
+  const nueva: PlaneadorLocal = {
+    ...data,
+    id_local: `local_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+    fecha_local: new Date().toISOString(),
+  };
+  
+  existentes.push(nueva);
+  
+  const limitadas = existentes.slice(-MAX_LOCAL_PLANEACIONES);
+  
+  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(limitadas));
+  
+  return nueva;
+};
+
+export const getPlaneadoresLocales = (): PlaneadorLocal[] => {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]');
+  } catch {
+    return [];
+  }
+};
+
+export const getPlaneadorLocal = (id_local: string): PlaneadorLocal | null => {
+  const existentes = getPlaneadoresLocales();
+  return existentes.find(p => p.id_local === id_local) || null;
+};
+
+export const deletePlaneadorLocal = (id_local: string): boolean => {
+  const existentes = getPlaneadoresLocales();
+  const filtradas = existentes.filter(p => p.id_local !== id_local);
+  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(filtradas));
+  return true;
+};
+
+export const clearPlaneadoresLocales = (): void => {
+  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify([]));
+};
+
+export const exportPlaneadoresLocales = (): void => {
+  const data = getPlaneadoresLocales();
+  const jsonStr = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `planeaciones_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+export const importPlaneadoresLocales = (jsonData: string): { success: boolean; count: number; message: string } => {
+  try {
+    const nuevas = JSON.parse(jsonData);
+    if (!Array.isArray(nuevas)) {
+      throw new Error('El formato debe ser un array de planeaciones');
+    }
+    
+    const existentes = getPlaneadoresLocales();
+    const combinadas = [...existentes, ...nuevas].slice(-MAX_LOCAL_PLANEACIONES);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(combinadas));
+    
+    const count = combinadas.length - existentes.length;
+    return { success: true, count, message: `${count} planeación(es) importada(s)` };
+  } catch (error) {
+    return { success: false, count: 0, message: `Error: ${error instanceof Error ? error.message : 'Formato inválido'}` };
+  }
+};
+
 // ==================== NORMATIVA ====================
 
 export interface NormativaItem {

@@ -7,6 +7,7 @@
   import diarioHero from "../assets/diario_hero.png";
   import planeadorHero from "../assets/plan_hero.png";
   import logoEie from "../assets/eie.png";
+  import observadorHero from "../assets/diario_hero.png";
   import { theme, type Theme } from "../lib/themeStore";
   import FeaturePopup from "./FeaturePopup.svelte"; // Re-import FeaturePopup
 
@@ -156,6 +157,17 @@
       color: "from-blue-600/20 to-cyan-600/20",
       accent: "blue",
       tag: "Piar",
+    },
+    {
+      id: "observador",
+      title: "Observador",
+      subtitle: "Convivencia Escolar",
+      description:
+        "Registro digital para reportes de convivencia y seguimiento disciplinario.",
+      image: observadorHero,
+      color: "from-rose-600/20 to-orange-600/20",
+      accent: "rose",
+      tag: "Disciplina",
     },
   ];
 </script>
