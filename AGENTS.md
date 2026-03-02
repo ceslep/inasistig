@@ -10,6 +10,11 @@ npm run deploy     # Build + deploy to GitHub Pages
 npm run check      # Type checking (svelte-check + tsc)
 ```
 
+**Single File Type Checking**:
+```bash
+npx svelte-check --tsconfig ./tsconfig.app.json src/path/to/file.svelte
+```
+
 **Manual Testing Only**: No test framework.
 - Run `npm run dev` and open `http://localhost:5173`
 - For single component testing: modify `App.svelte` to import and render only that component
@@ -32,8 +37,8 @@ npm run check      # Type checking (svelte-check + tsc)
 ## Project Structure
 
 ```
+api/               # API service layer (api/service.ts)
 src/
-├── api/           # API service layer
 ├── components/   # Svelte components
 ├── lib/          # Stores (themeStore.ts)
 ├── assets/       # Static assets (images, PHP backend)
@@ -49,7 +54,7 @@ src/
 ### Import Order (separate with blank lines)
 1. Node built-ins (`svelte: onMount, onDestroy`)
 2. External libraries (sweetalert2, exceljs, jspdf)
-3. Internal services/api
+3. Internal services/api (e.g., `from "../../api/service"`)
 4. Internal constants
 5. Internal stores
 6. Internal assets/images
@@ -185,3 +190,4 @@ Use the `skill` tool to load domain-specific instructions:
 - Use MySQL via PHP for data persistence
 - All URLs in `constants.ts` - never hardcode
 - Always type API responses with interfaces
+- PHP endpoints are accessed directly (e.g., `/src/assets/php/get_inasistencias.php`)
