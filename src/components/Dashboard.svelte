@@ -126,6 +126,28 @@
       tag: "Herramienta",
       url: "https://ceslep.github.io/horas_laborables",
     },
+    {
+      id: "observador",
+      title: "Observador Escolar",
+      subtitle: "Convivencia y Seguimiento",
+      description:
+        "Registro normativo de situaciones, acciones inmediatas y seguimiento estudiantil.",
+      image: logoEie,
+      color: "from-rose-600/20 to-red-600/20",
+      accent: "rose",
+      tag: "Normativo",
+    },
+    {
+      id: "piar",
+      title: "Registro PIAR",
+      subtitle: "Inclusión Educativa",
+      description:
+        "Plan Individual de Ajustes Razonables para estudiantes con necesidades especiales.",
+      image: logoEie,
+      color: "from-yellow-600/20 to-amber-600/20",
+      accent: "yellow",
+      tag: "Inclusión",
+    },
   ];
 </script>
 

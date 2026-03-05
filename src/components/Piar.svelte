@@ -1,13 +1,16 @@
 <script lang="ts">
-  // @ts-nocheck
   import { onMount } from "svelte";
   import { getEstudiantes } from "../../api/service";
+  import { theme } from "../lib/themeStore";
+  import { ArrowLeft, Download, Plus, Trash2, X } from "lucide-svelte";
 
   // Tipos básicos
   type Estudiante = {
     nombre: string;
     grado: number | string;
   };
+
+  let { onBack }: { onBack: () => void } = $props();
 
   let formData = $state({
     estudiante: { nombre: "", documento: "", grado: "", foto: null as string | null },
@@ -171,14 +174,22 @@
   };
 </script>
 
-<div class="max-w-5xl mx-auto p-6 bg-slate-50 min-h-screen space-y-8 font-sans">
+<div class="max-w-5xl mx-auto p-6 min-h-screen space-y-8 font-sans" style="background-color: rgb(var(--bg-primary)); color: rgb(var(--text-primary));">
   <div
-    class="bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden"
+    class="rounded-[2rem] shadow-xl overflow-hidden"
+    style="background-color: rgb(var(--card-bg)); border: 1px solid rgb(var(--card-border));"
   >
     <header
       class="bg-slate-800 p-8 text-white flex justify-between items-center"
     >
       <div class="flex items-center gap-4">
+        <button
+          onclick={onBack}
+          class="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors"
+          aria-label="Volver al Dashboard"
+        >
+          <ArrowLeft class="w-5 h-5" />
+        </button>
         <div
           class="w-16 h-16 rounded-full bg-slate-700 border-2 border-slate-500 overflow-hidden relative group"
         >
@@ -200,8 +211,8 @@
       </div>
       <button
         onclick={generatePDF}
-        class="bg-emerald-500 hover:bg-emerald-400 px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-lg"
-        >FINALIZAR Y FIRMAR</button
+        class="bg-emerald-500 hover:bg-emerald-400 px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-2"
+        ><Download class="w-4 h-4" /> FINALIZAR Y FIRMAR</button
       >
     </header>
 
@@ -209,12 +220,13 @@
       <!-- Selector de Grado y Estudiante -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">
+          <label class="block text-xs font-black uppercase tracking-widest mb-2" style="color: rgb(var(--text-secondary));">
             Grado
           </label>
           <select
             bind:value={formData.estudiante.grado}
-            class="w-full p-4 rounded-xl bg-slate-50 border-2 border-slate-100 focus:border-slate-800 outline-none font-bold"
+            class="w-full p-4 rounded-xl border-2 outline-none font-bold"
+            style="background-color: rgb(var(--bg-secondary)); border-color: rgb(var(--border-primary)); color: rgb(var(--text-primary));"
             disabled={isLoadingEstudiantes}
           >
             <option value="">
@@ -225,21 +237,22 @@
             {/each}
           </select>
         </div>
-        
+
         <div>
-          <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">
+          <label class="block text-xs font-black uppercase tracking-widest mb-2" style="color: rgb(var(--text-secondary));">
             Estudiante
           </label>
           <select
             bind:value={formData.estudiante.nombre}
-            class="w-full p-4 rounded-xl bg-slate-50 border-2 border-slate-100 focus:border-slate-800 outline-none font-bold"
+            class="w-full p-4 rounded-xl border-2 outline-none font-bold"
+            style="background-color: rgb(var(--bg-secondary)); border-color: rgb(var(--border-primary)); color: rgb(var(--text-primary));"
             disabled={!formData.estudiante.grado || isLoadingEstudiantes}
           >
             <option value="">
-              {!formData.estudiante.grado 
-                ? "Seleccione grado primero..." 
-                : isLoadingEstudiantes 
-                  ? "Cargando..." 
+              {!formData.estudiante.grado
+                ? "Seleccione grado primero..."
+                : isLoadingEstudiantes
+                  ? "Cargando..."
                   : "Seleccione estudiante..."}
             </option>
             {#each estudiantesFiltrados as estudiante}
@@ -252,13 +265,14 @@
       <!-- Información adicional del estudiante -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label class="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">
+          <label class="block text-xs font-black uppercase tracking-widest mb-2" style="color: rgb(var(--text-secondary));">
             Documento (opcional)
           </label>
           <input
             bind:value={formData.estudiante.documento}
             placeholder="Número de documento"
-            class="w-full p-4 rounded-xl bg-slate-50 border-2 border-slate-100 focus:border-slate-800 outline-none"
+            class="w-full p-4 rounded-xl border-2 outline-none"
+            style="background-color: rgb(var(--bg-secondary)); border-color: rgb(var(--border-primary)); color: rgb(var(--text-primary));"
           />
         </div>
       </div>
@@ -266,17 +280,20 @@
       <div class="space-y-4">
         {#each formData.ajustes as ajuste}
           <div
-            class="flex gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100"
+            class="flex gap-4 p-4 rounded-2xl"
+            style="background-color: rgb(var(--bg-secondary)); border: 1px solid rgb(var(--border-primary));"
           >
             <input
               bind:value={ajuste.area}
               placeholder="Área"
-              class="w-1/3 bg-transparent border-b border-slate-300 font-bold outline-none uppercase text-xs"
+              class="w-1/3 bg-transparent border-b font-bold outline-none uppercase text-xs"
+              style="border-color: rgb(var(--border-primary)); color: rgb(var(--text-primary));"
             />
             <textarea
               bind:value={ajuste.ajuste}
               placeholder="Ajustes..."
-              class="w-2/3 bg-white p-3 rounded-lg text-sm border-none shadow-sm h-16 outline-none focus:ring-1 focus:ring-slate-400"
+              class="w-2/3 p-3 rounded-lg text-sm border-none shadow-sm h-16 outline-none"
+              style="background-color: rgb(var(--card-bg)); color: rgb(var(--text-primary));"
             ></textarea>
           </div>
         {/each}
@@ -286,25 +303,28 @@
               ...formData.ajustes,
               { area: "", ajuste: "" },
             ])}
-          class="text-slate-400 text-xs font-bold hover:text-slate-600 uppercase tracking-widest"
-          >+ Añadir Área</button
+          class="text-xs font-bold uppercase tracking-widest flex items-center gap-1"
+          style="color: rgb(var(--text-muted));"
+          ><Plus class="w-3 h-3" /> Añadir Área</button
         >
       </div>
 
-      <div class="pt-6 border-t border-slate-100">
+      <div class="pt-6" style="border-top: 1px solid rgb(var(--border-primary));">
         <div class="flex justify-between items-center mb-4">
           <label
-            class="text-xs font-black text-slate-500 uppercase tracking-widest"
+            class="text-xs font-black uppercase tracking-widest"
+            style="color: rgb(var(--text-secondary));"
             >Firma del Docente / Acudiente</label
           >
           <button
             onclick={clearSignature}
-            class="text-[10px] text-red-500 font-bold hover:underline"
-            >LIMPIAR PANEL</button
+            class="text-[10px] text-red-500 font-bold hover:underline flex items-center gap-1"
+            ><Trash2 class="w-3 h-3" /> LIMPIAR PANEL</button
           >
         </div>
         <div
-          class="bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 p-2 inline-block"
+          class="rounded-2xl border-2 border-dashed p-2 inline-block"
+          style="background-color: rgb(var(--bg-secondary)); border-color: rgb(var(--border-primary));"
         >
           <canvas
             bind:this={canvas}
@@ -317,10 +337,11 @@
             ontouchstart={startDrawing}
             ontouchmove={draw}
             ontouchend={stopDrawing}
-            class="bg-white rounded-lg cursor-crosshair touch-none"
+            class="rounded-lg cursor-crosshair touch-none"
+            style="background-color: rgb(var(--card-bg));"
           ></canvas>
         </div>
-        <p class="text-[10px] text-slate-400 mt-2 italic">
+        <p class="text-[10px] mt-2 italic" style="color: rgb(var(--text-muted));">
           Use el mouse o panel táctil para firmar dentro del recuadro.
         </p>
       </div>
@@ -332,23 +353,26 @@
       class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/95 backdrop-blur-md p-4 animate-in fade-in duration-300"
     >
       <div
-        class="bg-white w-full max-w-5xl h-[95vh] rounded-[2.5rem] flex flex-col shadow-2xl overflow-hidden"
+        class="w-full max-w-5xl h-[95vh] rounded-[2.5rem] flex flex-col shadow-2xl overflow-hidden"
+        style="background-color: rgb(var(--card-bg));"
       >
         <div
-          class="p-4 bg-slate-100 flex justify-between items-center border-b"
+          class="p-4 flex justify-between items-center"
+          style="background-color: rgb(var(--bg-secondary)); border-bottom: 1px solid rgb(var(--border-primary));"
         >
-          <span class="text-sm font-bold text-slate-600 px-4"
+          <span class="text-sm font-bold px-4" style="color: rgb(var(--text-secondary));"
             >Documento PIAR Generado con Firma Digital</span
           >
           <button
             onclick={() => (showPreview = false)}
-            class="bg-white w-8 h-8 rounded-full shadow hover:text-red-500 transition-colors"
-            >✕</button
+            class="w-8 h-8 rounded-full shadow hover:text-red-500 transition-colors flex items-center justify-center"
+            style="background-color: rgb(var(--card-bg)); color: rgb(var(--text-primary));"
+            ><X class="w-4 h-4" /></button
           >
         </div>
         <iframe src={pdfUrl} title="PDF" class="flex-1 w-full border-none"
         ></iframe>
-        <div class="p-6 bg-white border-t flex justify-center">
+        <div class="p-6 flex justify-center" style="background-color: rgb(var(--card-bg)); border-top: 1px solid rgb(var(--border-primary));">
           <a
             href={pdfUrl}
             download="PIAR_FIRMADO.pdf"
@@ -362,10 +386,6 @@
 </div>
 
 <style>
-  :global(body) {
-    background: #f8fafc;
-    overflow-x: hidden;
-  }
   canvas {
     image-rendering: -moz-crisp-edges;
     image-rendering: -webkit-crisp-edges;

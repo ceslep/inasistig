@@ -4,6 +4,7 @@
   import { onMount } from "svelte";
   import { theme } from "../lib/themeStore";
   import { get } from 'svelte/store';
+  import { ChevronLeft, FileText, Sun, Moon, CloudMoon } from 'lucide-svelte';
 
   let { onBack }: { onBack: () => void } = $props();
 
@@ -667,14 +668,10 @@
       <div class="bg-white/80 dark:bg-white/5 backdrop-blur-xl p-4 rounded-[2rem] border border-slate-200 dark:border-white/10 shadow-sm flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-4">
           <button onclick={onBack} class="p-3 rounded-2xl bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 transition-colors">
-            <svg class="w-5 h-5 text-slate-600 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
+            <ChevronLeft class="w-5 h-5 text-slate-600 dark:text-white" />
           </button>
           <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center">
-            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+            <FileText class="w-5 h-5 text-white" />
           </div>
           <div>
             <h1 class="text-lg font-black text-slate-800 dark:text-white uppercase">Observador Escolar</h1>
@@ -691,11 +688,11 @@
           </button>
           <button onclick={toggleTheme} class="p-3 rounded-xl bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-yellow-400 hover:scale-105 transition-all">
             {#if $theme === "dark"}
-              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" /></svg>
+              <Sun class="w-5 h-5" />
             {:else if $theme === "dim"}
-              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg>
+              <CloudMoon class="w-5 h-5" />
             {:else}
-              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg>
+              <Moon class="w-5 h-5" />
             {/if}
           </button>
           <button onclick={clearAll} class="px-4 py-2 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
