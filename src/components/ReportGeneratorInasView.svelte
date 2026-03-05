@@ -8,6 +8,7 @@
   } from "../../api/service";
   import Loader from "./Loader.svelte";
   import { theme } from "../lib/themeStore";
+  import { FileText, X, Loader2, Eye } from "lucide-svelte";
   import {
     SPREADSHEET_ID,
     WORKSHEET_TITLE,
@@ -294,9 +295,7 @@
     <div class="flex items-center justify-between p-4 md:p-6 border-b flex-shrink-0" style="border-color: {styles.cardBorder};">
       <div class="flex items-center gap-3">
         <div class="p-2 rounded-lg bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
+          <FileText class="w-6 h-6" />
         </div>
         <div>
           <h2 id="modal-title" class="text-lg md:text-xl font-bold">Vista de Reporte</h2>
@@ -304,9 +303,7 @@
         </div>
       </div>
       <button on:click={onClose} class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" aria-label="Cerrar">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
+        <X class="w-5 h-5" />
       </button>
     </div>
 
@@ -373,16 +370,10 @@
               class="flex-[2] px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {#if isGenerating}
-                <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
+                <Loader2 class="animate-spin h-5 w-5" />
                 Generando...
               {:else}
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
+                <Eye class="w-5 h-5" />
                 Ver Reporte
               {/if}
             </button>

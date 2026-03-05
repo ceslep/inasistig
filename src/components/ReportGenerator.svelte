@@ -11,6 +11,7 @@
   let autoTable: any = null;
   import Loader from "./Loader.svelte";
   import { theme } from "../lib/themeStore";
+  import { FileText, X, Filter, Loader2, Download } from "lucide-svelte";
   import {
     SPREADSHEET_ID_ANOTADOR,
     WORKSHEET_TITLE_ANOTADOR,
@@ -524,19 +525,7 @@
         <div
           class="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200"
         >
-          <svg
-            class="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 17v2a2 2 0 002 2h6a2 2 0 002-2v-2M9 17H5a2 2 0 01-2-2v-6a2 2 0 012-2h4M9 7V5a2 2 0 012-2h6a2 2 0 012 2v2M9 7h10a2 2 0 012 2v6a2 2 0 01-2 2H9M9 7V17m0 0h10"
-            />
-          </svg>
+          <FileText class="w-6 h-6" />
         </div>
         <div>
           <h2 id="modal-title" class="text-xl font-bold">
@@ -553,19 +542,7 @@
         aria-label="Cerrar ventana de reportes"
         title="Cerrar"
       >
-        <svg
-          class="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M6 18L18 6M6 6l12 12"
-          />
-        </svg>
+        <X class="w-5 h-5" />
       </button>
     </div>
 
@@ -661,41 +638,10 @@
             class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {#if isLoadingData}
-              <svg
-                class="animate-spin h-4 w-4"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
+              <Loader2 class="animate-spin h-4 w-4" />
               Cargando...
             {:else}
-              <svg
-                class="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-                />
-              </svg>
+              <Filter class="w-4 h-4" />
               Aplicar Filtros
             {/if}
           </button>
@@ -704,19 +650,7 @@
             class="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors flex items-center gap-2"
             style="color: {styles.text};"
           >
-            <svg
-              class="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <X class="w-4 h-4" />
             Limpiar
           </button>
           <button
@@ -724,19 +658,7 @@
             disabled={filteredData.length === 0}
             class="ml-auto px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition-colors flex items-center gap-2"
           >
-            <svg
-              class="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
+            <Download class="w-4 h-4" />
             Generar PDF
           </button>
         </div>
@@ -764,19 +686,7 @@
         </div>
       {:else if filteredData.length === 0}
         <div class="text-center py-12" style="color: {styles.placeholder};">
-          <svg
-            class="w-16 h-16 mx-auto mb-4 opacity-50"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 17v2a2 2 0 002 2h6a2 2 0 002-2v-2M9 17H5a2 2 0 01-2-2v-6a2 2 0 012-2h4M9 7V5a2 2 0 012-2h6a2 2 0 012 2v2M9 7h10a2 2 0 012 2v6a2 2 0 01-2 2H9M9 7V17m0 0h10"
-            />
-          </svg>
+          <FileText class="w-16 h-16 mx-auto mb-4 opacity-50" />
           <p class="text-lg font-medium mb-2">No hay datos disponibles</p>
           <p class="text-sm">
             {selectedDocente || selectedMateria || selectedGrado

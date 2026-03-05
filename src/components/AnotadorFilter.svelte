@@ -10,6 +10,7 @@
   import { SPREADSHEET_ID_ANOTADOR, WORKSHEET_TITLE_ANOTADOR } from "../constants";
   import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
+  import { Download, X, FileText, User, BookOpen } from "lucide-svelte";
 
   export let onClose: () => void;
   export let selectedDocente: string = "";
@@ -560,19 +561,7 @@
           class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
           disabled={anotacionesFiltradas.length === 0}
         >
-          <svg
-            class="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
+          <Download class="w-4 h-4" />
           Exportar CSV
         </button>
         <button
@@ -581,19 +570,7 @@
           style="color: {styles.text};"
           aria-label="Cerrar"
         >
-          <svg
-            class="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
+          <X class="w-6 h-6" />
         </button>
       </div>
     </div>
@@ -862,20 +839,7 @@
           {#if anotacionesFiltradas.length === 0}
             <div class="flex-1 flex items-center justify-center">
               <div class="text-center py-12 px-4">
-                <svg
-                  class="w-16 h-16 mx-auto mb-4 opacity-50"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  style="color: {styles.icon};"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
+                <FileText class="w-16 h-16 mx-auto mb-4 opacity-50" style="color: {styles.icon};" />
                 <p class="text-sm sm:text-base" style="color: {styles.text};">
                   No se encontraron registros con los filtros seleccionados
                 </p>
@@ -1013,35 +977,11 @@
                       style="color: {styles.text};"
                     >
                       <div class="flex items-center flex-1 min-w-0">
-                        <svg
-                          class="w-3 h-3 mr-1 opacity-60 flex-shrink-0"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                          />
-                        </svg>
+                        <User class="w-3 h-3 mr-1 opacity-60 flex-shrink-0" />
                         <span class="truncate">{item.docente}</span>
                       </div>
                       <div class="flex items-center flex-1 min-w-0">
-                        <svg
-                          class="w-3 h-3 mr-1 opacity-60 flex-shrink-0"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                          />
-                        </svg>
+                        <BookOpen class="w-3 h-3 mr-1 opacity-60 flex-shrink-0" />
                         <span class="truncate" title={item.materia}
                           >{item.materia}</span
                         >

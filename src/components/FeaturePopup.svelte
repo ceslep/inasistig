@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
+  import { Sparkles, X } from "lucide-svelte";
   // The message for the feature. This should be passed as a prop.
   export let featureMessage: string;
   // The main description for the feature.
@@ -134,19 +135,7 @@
         <!-- Header con ícono y texto NUEVO -->
         <div class="flex items-center gap-2 mb-3">
           <div class="p-1.5 bg-white/20 rounded-lg">
-            <svg
-              class="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-              />
-            </svg>
+            <Sparkles class="w-5 h-5" />
           </div>
           <span
             class="inline-block px-2 py-0.5 text-xs font-bold rounded-full bg-white/25 animate-pulse"
@@ -190,19 +179,7 @@
           class="absolute top-2 right-2 p-1 rounded-lg hover:bg-white/20 transition-colors"
           aria-label="Cerrar notificación"
         >
-          <svg
-            class="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
+          <X class="w-4 h-4" />
         </button>
       </div>
   </div>{/if}

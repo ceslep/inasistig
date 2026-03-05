@@ -20,6 +20,7 @@
   import eieLogo from "../assets/eie.png";
   import { slide } from "svelte/transition";
   import FeaturePopup from "./FeaturePopup.svelte";
+  import { Cloud, Filter, FileText, LayoutGrid, Moon, Sun, CloudMoon, Info, X, Search, ChevronDown, Check, Loader2, Send } from "lucide-svelte";
 
   export let onBack: () => void;
 
@@ -719,11 +720,7 @@
           style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
           title="Abrir hoja de cálculo"
         >
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-            <path
-              d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"
-            />
-          </svg>
+          <Cloud class="w-5 h-5" />
           <span class="text-sm font-medium hidden lg:inline"
             >Hoja de Cálculo</span
           >
@@ -737,19 +734,7 @@
           style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
           title="Abrir filtros de anotaciones"
         >
-          <svg
-            class="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-            />
-          </svg>
+          <Filter class="w-5 h-5" />
           <span class="text-sm font-medium hidden lg:inline">Filtros</span>
           {#if showFeatureAlert}
             <div
@@ -768,19 +753,7 @@
           style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
           title="Generar reportes PDF"
         >
-          <svg
-            class="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-            />
-          </svg>
+          <FileText class="w-5 h-5" />
           <span class="text-sm font-medium hidden lg:inline">Reportes PDF</span>
         </button>
 
@@ -790,19 +763,7 @@
           style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
           title="Volver al Dashboard"
         >
-          <svg
-            class="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-            />
-          </svg>
+          <LayoutGrid class="w-5 h-5" />
           <span class="text-sm font-medium hidden lg:inline">Dashboard</span>
         </button>
 
@@ -813,47 +774,11 @@
           aria-label="Cambiar tema"
         >
           {#if $theme === "dark"}
-            <svg
-              class="w-5 h-5 text-indigo-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-              ></path>
-            </svg>
+            <Moon class="w-5 h-5 text-indigo-500" />
           {:else if $theme === "light"}
-            <svg
-              class="w-5 h-5 text-amber-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-              ></path>
-            </svg>
+            <Sun class="w-5 h-5 text-amber-500" />
           {:else}
-            <svg
-              class="w-5 h-5 text-indigo-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-              ></path>
-            </svg>
+            <CloudMoon class="w-5 h-5 text-indigo-400" />
           {/if}
           <span class="text-sm font-medium hidden lg:inline capitalize">
             {$theme}
@@ -876,19 +801,7 @@
           <div
             class="p-2 rounded-lg bg-green-100 dark:bg-indigo-800 text-green-700 dark:text-indigo-200 flex-shrink-0"
           >
-            <svg
-              class="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
+            <Info class="w-5 h-5" />
           </div>
           <div class="flex-1 pr-6 pt-0.5">
             <h4
@@ -907,19 +820,7 @@
             class="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-green-100 dark:hover:bg-indigo-700 text-green-600 hover:text-green-800 dark:text-indigo-400 dark:hover:text-indigo-100 transition-colors"
             aria-label="Cerrar alerta"
           >
-            <svg
-              class="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <X class="w-4 h-4" />
           </button>
         </div>
       {/if}
@@ -1083,20 +984,7 @@
               class="w-full px-4 py-3 pl-12 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
               style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
             />
-            <svg
-              class="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5"
-              style="color: {styles.placeholder};"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
+            <Search class="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5" style="color: {styles.placeholder};" />
             {#if searchTerm}
               <button
                 on:click={() => (searchTerm = "")}
@@ -1104,37 +992,13 @@
                 style="color: {styles.placeholder};"
                 title="Limpiar búsqueda"
               >
-                <svg
-                  class="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <X class="w-4 h-4" />
               </button>
             {/if}
           </div>
           {#if searchTerm && Object.keys(filteredAnotacionGrupos).length === 0}
             <div class="text-center py-8" style="color: {styles.placeholder};">
-              <svg
-                class="w-12 h-12 mx-auto mb-4 opacity-50"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
+              <Search class="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p class="text-sm">
                 No se encontraron anotaciones para "{searchTerm}"
               </p>
@@ -1190,20 +1054,7 @@
                       style="background-color: {catColor}; opacity: 0.2;"
                     ></div>
                   {/if}
-                  <svg
-                    class="w-5 h-5 text-gray-500 transform transition-transform duration-200 flex-shrink-0"
-                    class:rotate-180={expandedCategories[categoria]}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
+                  <ChevronDown class="w-5 h-5 text-gray-500 transform transition-transform duration-200 flex-shrink-0 {expandedCategories[categoria] ? 'rotate-180' : ''}" />
                 </button>
 
                 {#if expandedCategories[categoria]}
@@ -1253,17 +1104,7 @@
                             "
                             >
                               {#if opcion.selected}
-                                <svg
-                                  class="w-3 h-3 text-white"
-                                  viewBox="0 0 20 20"
-                                  fill="currentColor"
-                                >
-                                  <path
-                                    fill-rule="evenodd"
-                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                    clip-rule="evenodd"
-                                  />
-                                </svg>
+                                <Check class="w-3 h-3 text-white" />
                               {/if}
                             </div>
                           </label>
@@ -1309,40 +1150,9 @@
             aria-label="Guardar Anotación"
           >
             {#if isLoading}
-              <svg
-                class="animate-spin h-7 w-7 text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
+              <Loader2 class="animate-spin h-7 w-7 text-white" />
             {:else}
-              <svg
-                class="w-8 h-8 transform rotate-90"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                />
-              </svg>
+              <Send class="w-8 h-8 transform rotate-90" />
             {/if}
           </button>
         </div>

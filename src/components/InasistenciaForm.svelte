@@ -19,6 +19,7 @@
     "¡Nueva función de reporte en Excel disponible!";
 
   import { theme } from "../lib/themeStore";
+  import { Cloud, Filter, FileDown, Eye, BarChart3, LayoutGrid, Moon, Sun, CloudMoon, Info, X, Clock, ChevronDown, Pencil, Loader2, Check } from "lucide-svelte";
   import eieLogo from "../assets/eie.png";
   import InasistenciaFilter from "./InasistenciaFilter.svelte";
   import ReportGeneratorInas from "./ReportGeneratorInas.svelte";
@@ -811,11 +812,7 @@
           style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
           title="Abrir hoja de cálculo"
         >
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-            <path
-              d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"
-            />
-          </svg>
+          <Cloud class="w-5 h-5" />
           <span class="text-sm font-medium hidden lg:inline"
             >Hoja de Cálculo</span
           >
@@ -829,19 +826,7 @@
           style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
           title="Abrir Looker Studio"
         >
-          <svg
-            class="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-            />
-          </svg>
+          <Filter class="w-5 h-5" />
           <span class="text-sm font-medium hidden lg:inline">Filtros</span>
           {#if showFeatureAlert}
             <div
@@ -861,19 +846,7 @@
           style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
           title="Generar reportes Excel"
         >
-          <svg
-            class="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
+          <FileDown class="w-5 h-5" />
           <span class="text-sm font-medium hidden lg:inline">Reporte Excel</span>
           {#if showFeatureAlertReport}
             <div
@@ -892,25 +865,7 @@
           style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
           title="Ver reporte online"
         >
-          <svg
-            class="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-            />
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-            />
-          </svg>
+          <Eye class="w-5 h-5" />
           <span class="text-sm font-medium hidden lg:inline">Ver Online</span>
         </button>
 
@@ -921,19 +876,7 @@
           style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
           title="Abrir Looker Studio"
         >
-          <svg
-            class="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-            />
-          </svg>
+          <BarChart3 class="w-5 h-5" />
           <span class="text-sm font-medium hidden lg:inline">Looker Studio</span
           >
         </button>
@@ -947,19 +890,7 @@
           style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
           title="Volver al Dashboard"
         >
-          <svg
-            class="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-            />
-          </svg>
+          <LayoutGrid class="w-5 h-5" />
           <span class="text-sm font-medium hidden lg:inline">Dashboard</span>
         </button>
 
@@ -971,47 +902,11 @@
             aria-label="Cambiar tema"
           >
             {#if $theme === "dark"}
-              <svg
-                class="w-5 h-5 text-indigo-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                ></path>
-              </svg>
+              <Moon class="w-5 h-5 text-indigo-500" />
             {:else if $theme === "light"}
-              <svg
-                class="w-5 h-5 text-amber-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                ></path>
-              </svg>
+              <Sun class="w-5 h-5 text-amber-500" />
             {:else}
-              <svg
-                class="w-5 h-5 text-indigo-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                ></path>
-              </svg>
+              <CloudMoon class="w-5 h-5 text-indigo-400" />
             {/if}
             <span class="text-sm font-medium hidden lg:inline capitalize">
               {$theme}
@@ -1035,19 +930,7 @@
           <div
             class="p-2 rounded-lg bg-green-100 dark:bg-indigo-800 text-green-700 dark:text-indigo-200 flex-shrink-0"
           >
-            <svg
-              class="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
+            <Info class="w-5 h-5" />
           </div>
           <div class="flex-1 pr-6 pt-0.5">
             <h4
@@ -1066,19 +949,7 @@
             class="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-green-100 dark:hover:bg-indigo-700 text-green-600 hover:text-green-800 dark:text-indigo-400 dark:hover:text-indigo-100 transition-colors"
             aria-label="Cerrar alerta"
           >
-            <svg
-              class="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <X class="w-4 h-4" />
           </button>
         </div>
       {/if}

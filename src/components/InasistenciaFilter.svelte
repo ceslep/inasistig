@@ -10,6 +10,7 @@
   import { SPREADSHEET_ID, WORKSHEET_TITLE } from "../constants";
   import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
+  import { FileText, Download, X, Filter, Calendar, User, BookOpen, Building, AlertTriangle, Printer } from "lucide-svelte";
 
   export let onClose: () => void;
   export let selectedDocente: string = "";
@@ -925,9 +926,7 @@
     >
       <div class="flex items-center gap-4">
         <div class="p-2.5 sm:p-3 rounded-xl bg-indigo-100 dark:bg-indigo-900/50">
-          <svg class="w-6 h-6 sm:w-7 sm:h-7 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-          </svg>
+          <FileText class="w-6 h-6 sm:w-7 sm:h-7 text-indigo-600 dark:text-indigo-400" />
         </div>
         <div>
           <h2 class="text-xl sm:text-2xl font-bold" style="color: {styles.text};">
@@ -948,9 +947,7 @@
           class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shadow-sm hover:shadow-md font-medium text-sm"
           disabled={inasistenciasFiltradas.length === 0}
         >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-          </svg>
+          <Download class="w-4 h-4" />
           <span class="hidden sm:inline">CSV</span>
         </button>
         <button
@@ -958,9 +955,7 @@
           class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all shadow-sm hover:shadow-md font-medium text-sm"
           disabled={inasistenciasFiltradas.length === 0}
         >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-          </svg>
+          <FileText class="w-4 h-4" />
           <span class="hidden sm:inline">PDF</span>
         </button>
         <button
@@ -969,9 +964,7 @@
           style="color: {styles.text}; border-color: {styles.border};"
           aria-label="Cerrar"
         >
-          <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
+          <X class="w-5 h-5 sm:w-6 sm:h-6" />
         </button>
       </div>
     </div>
@@ -994,9 +987,7 @@
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
               <div class="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/30">
-                <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-                </svg>
+                <Filter class="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
               </div>
               <div>
                 <h3 class="text-lg font-semibold" style="color: {styles.text};">
@@ -1017,9 +1008,7 @@
               style="border-color: {styles.border}; color: {styles.text};"
             >
               <span class="flex items-center gap-1.5">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
+                <X class="w-4 h-4" />
                 Limpiar
               </span>
             </button>
@@ -1029,9 +1018,7 @@
           <div class="p-3 sm:p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border" style="border-color: {styles.border};">
             <div class="flex items-center justify-between mb-3">
               <div class="flex items-center gap-2">
-                <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
+                <Calendar class="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                 <span class="text-sm font-medium" style="color: {styles.text};">Rango de fechas</span>
               </div>
               <div class="flex items-center gap-2">
@@ -1094,9 +1081,7 @@
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div class="space-y-1.5 sm:space-y-2">
               <label for="filtroDocente" class="block text-xs sm:text-sm font-medium flex items-center gap-1" style="color: {styles.label};">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                </svg>
+                <User class="w-3.5 h-3.5" />
                 Docente
               </label>
               <select
@@ -1114,9 +1099,7 @@
 
             <div class="space-y-1.5 sm:space-y-2">
               <label for="filtroMateria" class="block text-xs sm:text-sm font-medium flex items-center gap-1" style="color: {styles.label};">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                </svg>
+                <BookOpen class="w-3.5 h-3.5" />
                 Materia {filtros.docente ? '(del docente)' : ''}
               </label>
               <select
@@ -1136,9 +1119,7 @@
 
             <div class="space-y-1.5 sm:space-y-2">
               <label for="filtroGrado" class="block text-xs sm:text-sm font-medium flex items-center gap-1" style="color: {styles.label};">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                </svg>
+                <Building class="w-3.5 h-3.5" />
                 Grado {filtros.docente || filtros.materia ? '(filtrado)' : ''}
               </label>
               <select
@@ -1160,9 +1141,7 @@
           <!-- Fila 2: Estudiante (prominente) -->
           <div class="space-y-1.5 sm:space-y-2">
             <label for="filtroEstudiante" class="block text-xs sm:text-sm font-medium flex items-center gap-1" style="color: {styles.label};">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-              </svg>
+              <User class="w-3.5 h-3.5" />
               Estudiante {filtros.estudiante ? `(seleccionado)` : ''}
               {#if filtros.estudiante}
                 <span class="ml-1 px-1.5 py-0.5 text-[10px] bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 rounded-full">
@@ -1189,9 +1168,7 @@
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div class="space-y-1.5 sm:space-y-2">
               <label for="filtroMotivo" class="block text-xs sm:text-sm font-medium flex items-center gap-1" style="color: {styles.label};">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                </svg>
+                <AlertTriangle class="w-3.5 h-3.5" />
                 Motivo
               </label>
               <select
@@ -1214,9 +1191,7 @@
 
             <div class="space-y-1.5 sm:space-y-2">
               <label for="filtroFechaInicio" class="block text-xs sm:text-sm font-medium flex items-center gap-1" style="color: {styles.label};">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
+                <Calendar class="w-3.5 h-3.5" />
                 Fecha desde
               </label>
               <input
@@ -1231,9 +1206,7 @@
 
             <div class="space-y-1.5 sm:space-y-2">
               <label for="filtroFechaFin" class="block text-xs sm:text-sm font-medium flex items-center gap-1" style="color: {styles.label};">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
+                <Calendar class="w-3.5 h-3.5" />
                 Fecha hasta
               </label>
               <input
@@ -1261,20 +1234,7 @@
           {#if inasistenciasFiltradas.length === 0}
             <div class="flex-1 flex items-center justify-center">
               <div class="text-center py-12 px-4">
-                <svg
-                  class="w-16 h-16 mx-auto mb-4 opacity-50"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  style="color: {styles.icon};"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
+                <FileText class="w-16 h-16 mx-auto mb-4 opacity-50" style="color: {styles.icon};" />
                 <p class="text-sm sm:text-base" style="color: {styles.text};">
                   No se encontraron registros con los filtros seleccionados
                 </p>
@@ -1410,9 +1370,7 @@
         <div class="flex items-center justify-between p-3 sm:p-4 border-b flex-shrink-0" style="border-color: {styles.cardBorder};">
           <div class="flex items-center gap-3">
             <div class="p-2 rounded-lg bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200">
-              <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-              </svg>
+              <FileText class="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
               <h2 id="pdf-modal-title" class="text-lg sm:text-xl font-bold" style="color: {styles.text};">
@@ -1429,9 +1387,7 @@
             style="color: {styles.text};"
             aria-label="Cerrar"
           >
-            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X class="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
 
@@ -1467,18 +1423,14 @@
             on:click={imprimirPDF}
             class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
+            <Printer class="w-4 h-4" />
             Imprimir
           </button>
           <button
             on:click={descargarPDF}
             class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
+            <Download class="w-4 h-4" />
             Descargar
           </button>
         </div>

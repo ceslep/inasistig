@@ -2,13 +2,15 @@
   import { onMount } from "svelte";
 
   import { fade, fly } from "svelte/transition";
-import asistenciaHero from "../assets/asistencia_hero.png";
+  import { Sun, Moon, CloudMoon, ArrowRight } from "lucide-svelte";
+  import asistenciaHero from "../assets/asistencia_hero.png";
   import anotadorHero from "../assets/anotador_hero.png";
   import diarioHero from "../assets/diario_hero.png";
   import planeadorHero from "../assets/plan_hero.png";
   import logoEie from "../assets/eie.png";
   import { theme, type Theme } from "../lib/themeStore";
-  import FeaturePopup from "./FeaturePopup.svelte"; // Re-import FeaturePopup
+  import FeaturePopup from "./FeaturePopup.svelte";
+  import { Badge } from "./ui";
 
   export let onSelect: (view: string) => void;
 
@@ -158,47 +160,11 @@ import asistenciaHero from "../assets/asistencia_hero.png";
           aria-label="Toggle Theme"
         >
           {#if $theme === "light"}
-            <svg
-              class="w-6 h-6 text-amber-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M16.95 16.95l.707.707M7.636 7.636l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z"
-              />
-            </svg>
+            <Sun class="w-6 h-6 text-amber-500" />
           {:else if $theme === "dim"}
-            <svg
-              class="w-6 h-6 text-indigo-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-              />
-            </svg>
+            <CloudMoon class="w-6 h-6 text-indigo-400" />
           {:else}
-            <svg
-              class="w-6 h-6 text-indigo-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M16.95 16.95l.707.707M7.636 7.636l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z"
-              />
-            </svg>
+            <Moon class="w-6 h-6 text-indigo-500" />
           {/if}
         </button>
       </div>
@@ -265,11 +231,7 @@ import asistenciaHero from "../assets/asistencia_hero.png";
               </div>
 
               <!-- Tag/Badge -->
-              <span
-                class="px-3 py-1 rounded-full text-[10px] font-bold bg-[rgb(var(--bg-tertiary))] border border-[rgb(var(--border-primary))] text-[rgb(var(--text-muted))] uppercase tracking-wider"
-              >
-                {module.tag}
-              </span>
+              <Badge>{module.tag}</Badge>
             </div>
 
             <!-- Content section -->
@@ -294,19 +256,7 @@ import asistenciaHero from "../assets/asistencia_hero.png";
                   <div
                     class="p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20"
                   >
-                    <svg
-                      class="w-6 h-6 text-white"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M14 5l7 7m0 0l-7 7m7-7H3"
-                      />
-                    </svg>
+                    <ArrowRight class="w-6 h-6 text-white" />
                   </div>
                 </div>
               </div>
@@ -360,7 +310,7 @@ import asistenciaHero from "../assets/asistencia_hero.png";
       <div
         class="hidden md:block w-px h-4 bg-[rgb(var(--border-primary))]"
       ></div>
-      <div>v2.0.4 PLATINUM</div>
+      <Badge variant="info">v2.0.4 PLATINUM</Badge>
       <div
         class="hidden md:block w-px h-4 bg-[rgb(var(--border-primary))]"
       ></div>

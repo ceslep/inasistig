@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { fade, fly } from "svelte/transition";
+  import { ArrowLeft } from "lucide-svelte";
   import Dashboard from "./components/Dashboard.svelte";
 
   let activeView = $state("dashboard");
@@ -62,19 +63,7 @@
           class="flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5 font-medium"
           style="color: rgb(var(--text-primary));"
         >
-          <svg
-            class="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M10 19l-7-7m0 0l7-7m-7 7h18"
-            />
-          </svg>
+          <ArrowLeft class="w-5 h-5" />
           Volver al Dashboard
         </button>
         <h2 class="text-lg font-bold" style="color: rgb(var(--text-primary));">

@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from "svelte";
   import { slide } from "svelte/transition";
-  import { getDiarioOptions } from "../../api/service"; // Adjust path if needed
-  import { theme } from "../lib/themeStore"; // For theme-based styling
-  import Loader from "./Loader.svelte"; // Re-use Loader component
+  import { getDiarioOptions } from "../../api/service";
+  import { theme } from "../lib/themeStore";
+  import Loader from "./Loader.svelte";
+  import { ChevronDown, Check } from "lucide-svelte";
 
   // --- Props ---
   // Prop to bind the selected annotations back to the parent component (Diario.svelte)
@@ -157,20 +158,9 @@
             class="h-px flex-1 transition-all duration-300 group-hover:opacity-50"
             style="background-color: {catColor}; opacity: 0.2;"
           ></div>
-          <svg
-            class="w-5 h-5 text-gray-500 transform transition-transform duration-200 flex-shrink-0"
-            class:rotate-180={expandedCategories[categoria]}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M19 9l-7 7-7-7"
-            />
-          </svg>
+          <ChevronDown
+            class="w-5 h-5 text-gray-500 transform transition-transform duration-200 flex-shrink-0 {expandedCategories[categoria] ? 'rotate-180' : ''}"
+          />
         </button>
 
         {#if expandedCategories[categoria]}
@@ -212,17 +202,7 @@
                           "
                         >
                           {#if opcion.selected}
-                            <svg
-                              class="w-3 h-3 text-white"
-                              viewBox="0 0 20 20"
-                              fill="currentColor"
-                            >
-                              <path
-                                fill-rule="evenodd"
-                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                clip-rule="evenodd"
-                              />
-                            </svg>
+                            <Check class="w-3 h-3 text-white" />
                           {/if}
                         </div>
                       </label>
