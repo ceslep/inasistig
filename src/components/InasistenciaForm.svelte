@@ -727,11 +727,13 @@
         }
       }
 
-      await saveInasistencias({
+      const result = await saveInasistencias({
         spreadsheetId: SPREADSHEET_ID,
         worksheetTitle: WORKSHEET_TITLE,
         inasistencias: inasistenciasPayload as any,
       });
+
+      const isOffline = result?.offline === true;
 
       // Persistir las materias para el docente solo después del éxito
       for (const materiaData of materiasToSave) {
@@ -739,9 +741,11 @@
       }
 
       await Swal.fire({
-        icon: "success",
-        title: "¡Éxito!",
-        text: `${inasistenciasPayload.length} inasistencia(s) registrada(s) exitosamente`,
+        icon: isOffline ? "warning" : "success",
+        title: isOffline ? "Guardado offline" : "¡Éxito!",
+        text: isOffline
+          ? `${inasistenciasPayload.length} inasistencia(s) guardada(s) en cola. Se enviarán al recuperar conexión.`
+          : `${inasistenciasPayload.length} inasistencia(s) registrada(s) exitosamente`,
         timer: 3000,
         timerProgressBar: true,
         showConfirmButton: false,

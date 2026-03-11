@@ -373,24 +373,30 @@
         ]);
       }
 
-      await saveDiario({
+      const result = await saveDiario({
         spreadsheetId: SPREADSHEET_ID_DIARIO,
         worksheetTitle: WORKSHEET_TITLE_DIARIO,
         datos: payload,
       });
+
+      const isOffline = result?.offline === true;
 
       // Persistir las materias para el docente solo después del éxito
       for (const materiaData of materiasToSave) {
         saveMateriaForDocente(formData.docente, materiaData.materia);
       }
 
-      const registrosMsg = payload.length === 1 
-        ? "Diario de Campo registrado exitosamente" 
-        : `${payload.length} registros de Diario de Campo creados exitosamente`;
+      const registrosMsg = isOffline
+        ? (payload.length === 1
+          ? "Diario de Campo guardado en cola. Se enviará al recuperar conexión."
+          : `${payload.length} registros guardados en cola. Se enviarán al recuperar conexión.`)
+        : (payload.length === 1
+          ? "Diario de Campo registrado exitosamente"
+          : `${payload.length} registros de Diario de Campo creados exitosamente`);
 
       await Swal.fire({
-        icon: "success",
-        title: "¡Éxito!",
+        icon: isOffline ? "warning" : "success",
+        title: isOffline ? "Guardado offline" : "¡Éxito!",
         text: registrosMsg,
         timer: 3000,
         timerProgressBar: true,

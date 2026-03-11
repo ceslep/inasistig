@@ -220,10 +220,11 @@
       <!-- Selector de Grado y Estudiante -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label class="block text-xs font-black uppercase tracking-widest mb-2" style="color: rgb(var(--text-secondary));">
+          <label for="piar-grado" class="block text-xs font-black uppercase tracking-widest mb-2" style="color: rgb(var(--text-secondary));">
             Grado
           </label>
           <select
+            id="piar-grado"
             bind:value={formData.estudiante.grado}
             class="w-full p-4 rounded-xl border-2 outline-none font-bold"
             style="background-color: rgb(var(--bg-secondary)); border-color: rgb(var(--border-primary)); color: rgb(var(--text-primary));"
@@ -239,10 +240,11 @@
         </div>
 
         <div>
-          <label class="block text-xs font-black uppercase tracking-widest mb-2" style="color: rgb(var(--text-secondary));">
+          <label for="piar-estudiante" class="block text-xs font-black uppercase tracking-widest mb-2" style="color: rgb(var(--text-secondary));">
             Estudiante
           </label>
           <select
+            id="piar-estudiante"
             bind:value={formData.estudiante.nombre}
             class="w-full p-4 rounded-xl border-2 outline-none font-bold"
             style="background-color: rgb(var(--bg-secondary)); border-color: rgb(var(--border-primary)); color: rgb(var(--text-primary));"
@@ -265,10 +267,11 @@
       <!-- Información adicional del estudiante -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label class="block text-xs font-black uppercase tracking-widest mb-2" style="color: rgb(var(--text-secondary));">
+          <label for="piar-documento" class="block text-xs font-black uppercase tracking-widest mb-2" style="color: rgb(var(--text-secondary));">
             Documento (opcional)
           </label>
           <input
+            id="piar-documento"
             bind:value={formData.estudiante.documento}
             placeholder="Número de documento"
             class="w-full p-4 rounded-xl border-2 outline-none"
@@ -311,10 +314,10 @@
 
       <div class="pt-6" style="border-top: 1px solid rgb(var(--border-primary));">
         <div class="flex justify-between items-center mb-4">
-          <label
+          <span
             class="text-xs font-black uppercase tracking-widest"
             style="color: rgb(var(--text-secondary));"
-            >Firma del Docente / Acudiente</label
+            >Firma del Docente / Acudiente</span
           >
           <button
             onclick={clearSignature}

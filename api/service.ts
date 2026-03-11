@@ -16,6 +16,22 @@ import {
   SPREADSHEET_ID_PLANEADOR,
   WORKSHEET_TITLE_PLANEADOR,
 } from "../src/constants";
+import { enqueue } from "../src/lib/offlineQueue";
+import { refreshPendingCount } from "../src/lib/networkStore";
+
+async function offlineFallback(
+  endpoint: string,
+  payload: unknown,
+  operationType: string,
+) {
+  await enqueue({ endpoint, payload, timestamp: Date.now(), operationType });
+  refreshPendingCount();
+  return { success: true, offline: true, message: "Guardado en cola offline" };
+}
+
+function isNetworkError(error: unknown): boolean {
+  return error instanceof TypeError && error.message.includes("fetch");
+}
 
 export interface InasistenciaPayload {
   [key: string]: string | number | boolean | null | undefined;
@@ -129,6 +145,9 @@ export const getDiario = async (payload: InasistenciaPayload = {}) => {
 };
 
 export const saveInasistencias = async (payload: InasistenciaPayload) => {
+  if (!navigator.onLine) {
+    return offlineFallback(SAVE_INASISTENCIAS_URL, payload, "saveInasistencias");
+  }
   try {
     const response = await fetch(`${SAVE_INASISTENCIAS_URL}`, {
       method: "POST",
@@ -145,6 +164,9 @@ export const saveInasistencias = async (payload: InasistenciaPayload) => {
     const data = await response.json();
     return data;
   } catch (error) {
+    if (isNetworkError(error)) {
+      return offlineFallback(SAVE_INASISTENCIAS_URL, payload, "saveInasistencias");
+    }
     console.error("Error saving inasistencias:", error);
     throw error;
   }
@@ -235,6 +257,9 @@ export const getOpcionesAnotador3 = async () => {
 };
 
 export const saveAnotador = async (payload: AnotadorPayload) => {
+  if (!navigator.onLine) {
+    return offlineFallback(SAVE_ANOTADOR_URL, payload, "saveAnotador");
+  }
   try {
     const response = await fetch(`${SAVE_ANOTADOR_URL}`, {
       method: "POST",
@@ -251,12 +276,18 @@ export const saveAnotador = async (payload: AnotadorPayload) => {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Error saving inasistencias:", error);
+    if (isNetworkError(error)) {
+      return offlineFallback(SAVE_ANOTADOR_URL, payload, "saveAnotador");
+    }
+    console.error("Error saving anotador:", error);
     throw error;
   }
 };
 
 export const saveDiario = async (payload: DiarioPayload) => {
+  if (!navigator.onLine) {
+    return offlineFallback(SAVE_DIARIO_URL, payload, "saveDiario");
+  }
   try {
     const response = await fetch(`${SAVE_DIARIO_URL}`, {
       method: "POST",
@@ -273,7 +304,10 @@ export const saveDiario = async (payload: DiarioPayload) => {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("Error saving inasistencias:", error);
+    if (isNetworkError(error)) {
+      return offlineFallback(SAVE_DIARIO_URL, payload, "saveDiario");
+    }
+    console.error("Error saving diario:", error);
     throw error;
   }
 };
@@ -382,13 +416,16 @@ export interface PlaneadorPayload {
 }
 
 export const savePlaneador = async (data: PlaneadorData): Promise<{ success: boolean; message: string }> => {
-  try {
-    const payload = {
-      spreadsheetId: SPREADSHEET_ID_PLANEADOR,
-      worksheetTitle: WORKSHEET_TITLE_PLANEADOR,
-      datos: [data],
-    };
+  const payload = {
+    spreadsheetId: SPREADSHEET_ID_PLANEADOR,
+    worksheetTitle: WORKSHEET_TITLE_PLANEADOR,
+    datos: [data],
+  };
 
+  if (!navigator.onLine) {
+    return offlineFallback(SAVE_PLANEADOR_URL, payload, "savePlaneador") as Promise<{ success: boolean; message: string }>;
+  }
+  try {
     const response = await fetch(SAVE_PLANEADOR_URL, {
       method: "POST",
       headers: {
@@ -404,6 +441,9 @@ export const savePlaneador = async (data: PlaneadorData): Promise<{ success: boo
     const result = await response.json();
     return result;
   } catch (error) {
+    if (isNetworkError(error)) {
+      return offlineFallback(SAVE_PLANEADOR_URL, payload, "savePlaneador") as Promise<{ success: boolean; message: string }>;
+    }
     console.error("Error saving planeador:", error);
     throw error;
   }

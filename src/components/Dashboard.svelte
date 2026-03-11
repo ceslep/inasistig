@@ -10,7 +10,7 @@
   import logoEie from "../assets/eie.png";
   import { theme, type Theme } from "../lib/themeStore";
   import FeaturePopup from "./FeaturePopup.svelte";
-  import { Badge } from "./ui";
+  import { Badge, NetworkStatus } from "./ui";
 
   export let onSelect: (view: string) => void;
 
@@ -323,12 +323,7 @@
       class="mt-20 flex flex-col md:flex-row items-center gap-8 text-[rgb(var(--text-muted))] text-xs font-bold tracking-widest uppercase"
       in:fade={{ duration: 1000, delay: 800 }}
     >
-      <div
-        class="flex items-center gap-4 px-6 py-3 rounded-full bg-[rgb(var(--bg-secondary))] border border-[rgb(var(--border-primary))] backdrop-blur-sm"
-      >
-        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        SISTEMA OPERATIVO
-      </div>
+      <NetworkStatus />
       <div
         class="hidden md:block w-px h-4 bg-[rgb(var(--border-primary))]"
       ></div>

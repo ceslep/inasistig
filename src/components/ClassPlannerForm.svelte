@@ -183,12 +183,13 @@
             const result = await savePlaneador(planeacionData);
 
             if (result.success) {
+                const isOffline = (result as any).offline === true;
                 Swal.fire({
-                    icon: "success",
-                    title: "¡Guardado!",
-                    text:
-                        result.message ||
-                        "Planeación guardada exitosamente según normativa MEN.",
+                    icon: isOffline ? "warning" : "success",
+                    title: isOffline ? "Guardado offline" : "¡Guardado!",
+                    text: isOffline
+                        ? "Planeación guardada en cola. Se enviará al recuperar conexión."
+                        : (result.message || "Planeación guardada exitosamente según normativa MEN."),
                     confirmButtonColor: "#10b981",
                     timer: 3000,
                 });

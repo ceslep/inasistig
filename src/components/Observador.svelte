@@ -408,7 +408,7 @@
   });
 
   // --- FIRMA MODAL ---
-  let firmaCanvas: HTMLCanvasElement;
+  let firmaCanvas: HTMLCanvasElement = $state(null!);
   
   const guardarFirma = () => {
     if (firmaCanvas && firmaModal.tipo) {

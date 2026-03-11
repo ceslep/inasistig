@@ -1,10 +1,36 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { fade, fly } from "svelte/transition";
-  import { ArrowLeft } from "lucide-svelte";
+  import { ArrowLeft, Wifi, WifiOff, CloudUpload, Loader2 } from "lucide-svelte";
+  import Swal from "sweetalert2";
   import Dashboard from "./components/Dashboard.svelte";
+  import { isOnline, pendingCount, isSyncing } from "./lib/networkStore";
 
   let activeView = $state("dashboard");
+
+  function handleSyncComplete(e: Event) {
+    const { synced } = (e as CustomEvent).detail;
+    Swal.fire({
+      icon: "success",
+      title: "¡Datos sincronizados!",
+      text: `${synced} operaci${synced > 1 ? "ones" : "ón"} sincronizada${synced > 1 ? "s" : ""} exitosamente.`,
+      timer: 4000,
+      timerProgressBar: true,
+      showConfirmButton: false,
+      position: "top-end",
+      toast: true,
+    });
+  }
+
+  onMount(() => {
+    window.addEventListener("pwa-sync-complete", handleSyncComplete);
+  });
+
+  onDestroy(() => {
+    if (typeof window !== "undefined") {
+      window.removeEventListener("pwa-sync-complete", handleSyncComplete);
+    }
+  });
 
   let InasistenciaForm: any = $state(null);
   let Anotador: any = $state(null);
@@ -91,6 +117,35 @@
     </div>
   {/if}
 </main>
+
+<!-- Indicador flotante global de estado de red -->
+{#if !$isOnline || $pendingCount > 0 || $isSyncing}
+  <div
+    class="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl text-sm font-bold tracking-wide transition-all duration-300"
+    style="
+      background-color: {$isOnline ? ($isSyncing ? 'rgb(59, 130, 246)' : 'rgb(245, 158, 11)') : 'rgb(239, 68, 68)'};
+      color: white;
+    "
+    in:fly={{ y: 40, duration: 300 }}
+    out:fade={{ duration: 200 }}
+  >
+    {#if !$isOnline}
+      <WifiOff class="w-5 h-5" />
+      <span>SIN CONEXIÓN</span>
+      {#if $pendingCount > 0}
+        <span class="px-2 py-0.5 rounded-full bg-white/20 text-[11px]">
+          {$pendingCount} pendiente{$pendingCount > 1 ? "s" : ""}
+        </span>
+      {/if}
+    {:else if $isSyncing}
+      <Loader2 class="w-5 h-5 animate-spin" />
+      <span>SINCRONIZANDO...</span>
+    {:else if $pendingCount > 0}
+      <CloudUpload class="w-5 h-5" />
+      <span>{$pendingCount} PENDIENTE{$pendingCount > 1 ? "S" : ""}</span>
+    {/if}
+  </div>
+{/if}
 
 <style>
   :global(body) {

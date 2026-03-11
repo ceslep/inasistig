@@ -631,19 +631,23 @@
         ],
       ];
 
-      await saveAnotador({
+      const result = await saveAnotador({
         spreadsheetId: SPREADSHEET_ID_ANOTADOR,
         worksheetTitle: WORKSHEET_TITLE_ANOTADOR,
-        datos: payload, // Reusing the parameter name 'inasistencias' from the service
+        datos: payload,
       });
+
+      const isOffline = result?.offline === true;
 
       // Persistir la materia para el docente solo después del éxito
       saveMateriaForDocente(formData.docente, formData.materia);
 
       await Swal.fire({
-        icon: "success",
-        title: "¡Éxito!",
-        text: `Anotación registrada exitosamente`,
+        icon: isOffline ? "warning" : "success",
+        title: isOffline ? "Guardado offline" : "¡Éxito!",
+        text: isOffline
+          ? "Anotación guardada en cola. Se enviará al recuperar conexión."
+          : "Anotación registrada exitosamente",
         timer: 3000,
         timerProgressBar: true,
         showConfirmButton: false,
