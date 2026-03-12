@@ -24,6 +24,7 @@
     "vite-plugin-pwa": "^1.2.0"
   },
   "dependencies": {
+    "@openrouter/sdk": "^0.9.11",
     "@tailwindcss/vite": "^4.1.18",
     "@types/file-saver": "^2.0.7",
     "exceljs": "^4.1.1",

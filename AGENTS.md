@@ -27,13 +27,13 @@ npm run check      # Type checking (svelte-check + tsc)
 ## Project Structure
 ```
 src/
-├── api/service.ts   # API service layer
-├── components/     # Svelte components
-├── lib/            # Stores (themeStore.ts)
-├── assets/         # Static assets, PHP backend
-├── constants.ts    # App constants (URLs, config)
-├── app.css         # Global styles + CSS variables
-└── App.svelte     # Root component
+├── api/              # API service layer (api/service.ts)
+├── components/       # Svelte components
+├── lib/             # Stores (themeStore.ts)
+├── assets/          # Static assets, PHP backend
+├── constants.ts     # App constants (URLs, config)
+├── app.css          # Global styles + CSS variables
+└── App.svelte       # Root component
 ```
 
 ## Code Style
@@ -55,9 +55,9 @@ src/
 ### Naming Conventions
 | Type | Convention | Example |
 |------|------------|---------|
-| Components | PascalCase | `Dashboard.svelte` |
+| Components | PascalCase | `Dashboard` |
 | Functions/vars | camelCase | `handleClick` |
-| Interfaces | PascalCase | `interface Estudiante` |
+| Interfaces | PascalCase | `Estudiante` |
 | Constants | UPPER_SNAKE_CASE | `API_BASE_URL` |
 | CSS classes | kebab-case | `btn-primary` |
 
@@ -95,6 +95,15 @@ const handleSubmit = async () => {
 };
 ```
 
+### Form Validation
+```typescript
+$: missingFields = (() => {
+  const fields: string[] = [];
+  if (!formData.field) fields.push("field");
+  return fields;
+})();
+```
+
 ## Theming & CSS
 CSS variables in `app.css`: `--bg-primary`, `--bg-secondary`, `--text-primary`, `--text-secondary`, `--card-bg`, `--card-border`, `--accent-primary`, `--border-primary`
 ```svelte
@@ -117,19 +126,16 @@ Use the `skill` tool to load domain-specific instructions:
 
 ## Backend API (PHP)
 - PHP files in `src/assets/php/` and `public/assets/php/`
-- Use MySQL via PHP for data persistence
 - All URLs in `constants.ts` - never hardcode
-- Always type API responses with interfaces
+- Use typed interfaces for all responses
 
 ## Checklist
 - [ ] TypeScript with full types (no `any`)
 - [ ] CSS variables for theming
-- [ ] Tailwind utility classes
 - [ ] Error handling with SweetAlert2
 - [ ] Loading states for async operations
-- [ ] Responsive (mobile-first)
+- [ ] Mobile-first responsive
 - [ ] `npm run check` passes
-- [ ] Existing functionality intact
 
 ## Notes
 1. Always use TypeScript - never compromise typing
@@ -138,3 +144,12 @@ Use the `skill` tool to load domain-specific instructions:
 4. UI text in Spanish
 5. Mobile-first responsive design
 6. Ask before git commits
+7. Use localStorage for user preferences (docente, theme)
+8. Implement offline support via service worker for read operations
+9. Icons from `lucide-svelte` - import individually for tree-shaking
+10. Confirm destructive actions with SweetAlert2
+
+## API Service
+- Use typed interfaces for all payloads and responses
+- Handle network errors with offline fallback using `isNetworkError()`
+- Store frequently accessed data in localStorage

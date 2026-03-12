@@ -60,6 +60,13 @@
     let showFirmaModal = $state(false);
     let firmaCanvas = $state<HTMLCanvasElement | null>(null);
 
+    // OpenRouter AI
+    let showAIPanel = $state(false);
+    let isGeneratingAI = $state(false);
+    let aiPrompt = $state("");
+    let aiResult = $state("");
+    let aiSection = $state<"exploration" | "structuring" | "practice" | "transfer">("exploration");
+
     // Inicializar canvas de firma cuando se abre el modal
     $effect(() => {
         if (showFirmaModal && firmaCanvas) {
@@ -133,6 +140,144 @@
             const ctx = canvas.getContext("2d");
             if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
+    };
+
+    // --- OpenRouter AI Functions ---
+    const getAPIKey = (): string | undefined => {
+        return import.meta.env.VITE_OPENROUTER_API_KEY;
+    };
+
+    const hasAPIKey = (): boolean => {
+        const key = getAPIKey();
+        return !!key && key.length > 0;
+    };
+
+    const openAIPanel = (): void => {
+        if (!hasAPIKey()) {
+            Swal.fire({
+                icon: "error",
+                title: "API Key no configurada",
+                text: "Configura VITE_OPENROUTER_API_KEY en el archivo .env",
+                confirmButtonColor: "#ef4444"
+            });
+            return;
+        }
+        showAIPanel = true;
+    };
+
+    const generateWithAI = async (): Promise<void> => {
+        if (!aiPrompt.trim()) {
+            Swal.fire({
+                icon: "warning",
+                title: "Prompt vacío",
+                text: "Por favor escribe un prompt para generar contenido",
+            });
+            return;
+        }
+
+        isGeneratingAI = true;
+        
+        try {
+            const apiKey = getAPIKey();
+            if (!apiKey) {
+                throw new Error("API key no configurada");
+            }
+            
+            const sectionInstructions: Record<string, string> = {
+                exploration: "Genera una actividad de EXPLORACIÓN/INICIO para una secuencia didáctica. Incluye: pregunta generadora, objetivo de la actividad, desarrollo (5-7 pasos), duración sugerida. Formato: texto corrido con viñetas.",
+                structuring: "Genera una actividad de ESTRUCTURACIÓN/DESARROLLO para una secuencia didáctica. Incluye: concepto principal a enseñar, explicación clara, ejemplos, actividad guiada. Formato: texto corrido con viñetas.",
+                practice: "Genera una actividad de PRÁCTICA para una secuencia didáctica. Incluye: ejercicios o actividades prácticas, instrucciones claras para los estudiantes, materiales necesarios. Formato: texto corrido con viñetas.",
+                transfer: "Genera una actividad de TRANSFERENCIA/CIERRE para una secuencia didáctica. Incluye: actividad final de aplicación, producto esperado, preguntas de cierre. Formato: texto corrido con viñetas."
+            };
+
+            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": window.location.origin || "https://example.com",
+                    "X-Title": "Inasistig"
+                },
+                body: JSON.stringify({
+                    model: "openrouter/free",
+                    messages: [
+                        {
+                            role: "system",
+                            content: "Eres un asistente educativo colombiano experto en didáctica y pedagogía. Genera contenido en español claro y profesional, apropiado para docentes de secundaria en Colombia."
+                        },
+                        {
+                            role: "user",
+                            content: `${sectionInstructions[aiSection]}\n\nTema/Contexto: ${aiPrompt}`
+                        }
+                    ]
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`Error ${response.status}: ${errorData.error?.message || response.statusText}`);
+            }
+
+            const data = await response.json();
+            
+            // Manejar diferentes formatos de respuesta
+            let content = "";
+            if (data.choices && data.choices[0]) {
+                content = data.choices[0].message?.content || data.choices[0].text || "";
+            } else if (data.output?.text) {
+                content = data.output.text;
+            } else if (data.generations && data.generations[0]) {
+                content = data.generations[0].text || data.generations[0].content || "";
+            }
+            
+            if (content) {
+                aiResult = content;
+            } else {
+                console.error("Respuesta inesperada:", data);
+                throw new Error("No se recibió respuesta válida de la IA");
+            }
+        } catch (error) {
+            console.error("Error generando con IA:", error);
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: error instanceof Error ? error.message : "Error al generar contenido con IA",
+                confirmButtonColor: "#ef4444"
+            });
+        } finally {
+            isGeneratingAI = false;
+        }
+    };
+
+    const applyAIResult = (): void => {
+        if (!aiResult.trim()) return;
+
+        const prefix = formData[aiSection] ? formData[aiSection] + "\n\n" : "";
+        
+        if (aiSection === "exploration") {
+            formData.exploration = prefix + aiResult;
+        } else if (aiSection === "structuring") {
+            formData.structuring = prefix + aiResult;
+        } else if (aiSection === "practice") {
+            formData.practice = prefix + aiResult;
+        } else if (aiSection === "transfer") {
+            formData.transfer = prefix + aiResult;
+        }
+
+        Swal.fire({
+            icon: "success",
+            title: "Aplicado",
+            text: "El contenido generado se ha añadido a la sección seleccionada",
+            timer: 2000
+        });
+
+        closeAIPanel();
+    };
+
+    const closeAIPanel = (): void => {
+        showAIPanel = false;
+        aiPrompt = "";
+        aiResult = "";
     };
 
     const loadPlaneacionesLocales = (): void => {
@@ -2683,6 +2828,27 @@
                         {/if}
                     </div>
 
+                    <!-- Botón Generador IA -->
+                    <div class="bg-gradient-to-r from-violet-50 to-purple-50 p-4 rounded-xl border border-violet-200">
+                        <div class="flex items-center justify-between flex-wrap gap-3">
+                            <div>
+                                <h3 class="font-bold text-violet-800 flex items-center gap-2">
+                                    🤖 Generador con IA
+                                </h3>
+                                <p class="text-xs text-violet-600 mt-1">
+                                    Genera contenido para tus actividades usando OpenRouter (gratuito)
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onclick={openAIPanel}
+                                class="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium text-sm transition-colors flex items-center gap-2 shadow-md"
+                            >
+                                🚀 Abrir Generador IA
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Objetivos y Competencias -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
@@ -3922,6 +4088,158 @@
                 <!-- Content -->
                 <div class="flex-1 overflow-y-auto bg-slate-50">
                     <Piar onBack={() => showPiarModal = false} />
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- AI Panel Modal -->
+    {#if showAIPanel}
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <!-- Backdrop -->
+            <button 
+                type="button"
+                class="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-default"
+                onclick={closeAIPanel}
+                aria-label="Cerrar panel"
+            ></button>
+            
+            <!-- Modal Content -->
+            <div 
+                class="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
+                transition:fly={{ y: 20, duration: 300 }}
+            >
+                <!-- Header -->
+                <div class="flex items-center justify-between p-4 bg-gradient-to-r from-violet-600 to-purple-600 text-white flex-shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-white/20 rounded-lg">
+                            <span class="text-xl">🤖</span>
+                        </div>
+                        <div>
+                            <h2 class="font-bold text-lg">Generador de Contenido con IA</h2>
+                            <p class="text-xs text-violet-200">OpenRouter - Modelo gratuito</p>
+                        </div>
+                    </div>
+                    <button 
+                        type="button"
+                        onclick={closeAIPanel}
+                        class="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                        aria-label="Cerrar panel"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Content -->
+                <div class="flex-1 overflow-y-auto p-6 space-y-4">
+                    <!-- Selector de Sección -->
+                    <div>
+                        <label class="text-sm font-bold text-gray-700 mb-2 block">
+                            📍 Sección destino:
+                        </label>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <button
+                                type="button"
+                                onclick={() => aiSection = "exploration"}
+                                class="p-3 rounded-lg border-2 text-sm font-medium transition-all
+                                    {aiSection === 'exploration' ? 'border-violet-500 bg-violet-50 text-violet-700' : 'border-gray-200 hover:border-gray-300'}"
+                            >
+                                🔍 Exploración
+                            </button>
+                            <button
+                                type="button"
+                                onclick={() => aiSection = "structuring"}
+                                class="p-3 rounded-lg border-2 text-sm font-medium transition-all
+                                    {aiSection === 'structuring' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300'}"
+                            >
+                                📝 Estructuración
+                            </button>
+                            <button
+                                type="button"
+                                onclick={() => aiSection = "practice"}
+                                class="p-3 rounded-lg border-2 text-sm font-medium transition-all
+                                    {aiSection === 'practice' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 hover:border-gray-300'}"
+                            >
+                                💪 Práctica
+                            </button>
+                            <button
+                                type="button"
+                                onclick={() => aiSection = "transfer"}
+                                class="p-3 rounded-lg border-2 text-sm font-medium transition-all
+                                    {aiSection === 'transfer' ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-gray-200 hover:border-gray-300'}"
+                            >
+                                🚀 Transferencia
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Prompt Input -->
+                    <div>
+                        <label class="text-sm font-bold text-gray-700 mb-2 block">
+                            📝 Describe el tema o contexto:
+                        </label>
+                        <textarea
+                            bind:value={aiPrompt}
+                            rows="4"
+                            class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-200 transition-all text-sm"
+                            placeholder="Ej: La fotosíntesis en plantas - objetivos, proceso, importancia para el medio ambiente..."
+                        ></textarea>
+                    </div>
+
+                    <!-- Generate Button -->
+                    <button
+                        type="button"
+                        onclick={generateWithAI}
+                        disabled={isGeneratingAI || !aiPrompt.trim()}
+                        class="w-full py-3 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg"
+                    >
+                        {#if isGeneratingAI}
+                            <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Generando...
+                        {:else}
+                            ⚡ Generar Contenido
+                        {/if}
+                    </button>
+
+                    <!-- Result Output -->
+                    {#if aiResult}
+                        <div class="space-y-2">
+                            <label class="text-sm font-bold text-gray-700 block">
+                                📄 Resultado generado:
+                            </label>
+                            <div class="relative">
+                                <textarea
+                                    readonly
+                                    value={aiResult}
+                                    rows="10"
+                                    class="w-full px-4 py-3 rounded-xl border-2 border-green-300 bg-green-50 text-gray-800 text-sm resize-none"
+                                ></textarea>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div class="flex gap-3">
+                                <button
+                                    type="button"
+                                    onclick={() => { navigator.clipboard.writeText(aiResult); Swal.fire({ icon: "success", title: "Copiado", text: "Contenido copiado al portapapeles", timer: 1500 }); }}
+                                    class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                                >
+                                    📋 Copiar
+                                </button>
+                                <button
+                                    type="button"
+                                    onclick={applyAIResult}
+                                    class="flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                                >
+                                    ✅ Aplicar a sección
+                                </button>
+                            </div>
+                        </div>
+                    {/if}
                 </div>
             </div>
         </div>
