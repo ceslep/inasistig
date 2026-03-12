@@ -1,11 +1,37 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install:*)",
-      "Bash(npm run:*)",
-      "Bash(npm ls:*)",
-      "Bash(head:*)",
-      "Bash(ls:*)"
+      "Bash(npx svelte-check:*)",
+      "Bash(npm run:*)"
+    ],
+    "allowedTools": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(git *)",
+      "Bash(ls *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(cat *)",
+      "Bash(sed *)",
+      "Bash(mkdir *)",
+      "Bash(echo *)",
+      "mcp__github__create_or_update_file",
+      "mcp__github__search_repositories",
+      "mcp__github__create_repository",
+      "mcp__github__get_file_contents",
+      "mcp__github__push_files",
+      "mcp__github__create_issue",
+      "mcp__github__create_pull_request",
+      "mcp__github__fork_repository",
+      "mcp__github__create_branch",
+      "mcp__github__list_commits",
+      "mcp__github__search_code"
     ]
   }
 }

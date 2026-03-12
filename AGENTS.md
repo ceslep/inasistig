@@ -1,7 +1,6 @@
 # AGENTS.md - Inasistig Code Guidelines
 
 ## Commands
-
 ```bash
 npm run dev        # Dev server (Vite) - http://localhost:5173
 npm run build      # Production build to dist/
@@ -9,17 +8,8 @@ npm run preview    # Preview production build locally
 npm run deploy     # Build + deploy to GitHub Pages
 npm run check      # Type checking (svelte-check + tsc)
 ```
-
-**Single File Type Checking**:
-```bash
-npx svelte-check --tsconfig ./tsconfig.app.json src/path/to/file.svelte
-```
-
-**Manual Testing Only**: No test framework.
-- Run `npm run dev` and open `http://localhost:5173`
-- For single component testing: modify `App.svelte` to import and render only that component
-
-**Linting**: Run `npm run check` for type checking.
+**Single File**: `npx svelte-check --tsconfig ./tsconfig.app.json src/path/to/file.svelte`
+**Manual Testing**: No test framework - run `npm run dev` and open `http://localhost:5173`. For single component testing, modify `App.svelte` to import and render only that component.
 
 ---
 
@@ -35,26 +25,22 @@ npx svelte-check --tsconfig ./tsconfig.app.json src/path/to/file.svelte
 ---
 
 ## Project Structure
-
 ```
-api/               # API service layer (api/service.ts)
 src/
-├── components/   # Svelte components
-├── lib/          # Stores (themeStore.ts)
-├── assets/       # Static assets (images, PHP backend)
-├── constants.ts  # App constants (URLs, config)
-├── app.css       # Global styles + CSS variables
-└── App.svelte    # Root component
+├── api/service.ts   # API service layer
+├── components/     # Svelte components
+├── lib/            # Stores (themeStore.ts)
+├── assets/         # Static assets, PHP backend
+├── constants.ts    # App constants (URLs, config)
+├── app.css         # Global styles + CSS variables
+└── App.svelte     # Root component
 ```
-
----
 
 ## Code Style
-
-### Import Order (separate with blank lines)
-1. Node built-ins (`svelte: onMount, onDestroy`)
+### Import Order
+1. Node built-ins (`svelte: onMount`)
 2. External libraries (sweetalert2, exceljs, jspdf)
-3. Internal services/api (e.g., `from "../../api/service"`)
+3. Internal services/api
 4. Internal constants
 5. Internal stores
 6. Internal assets/images
@@ -75,16 +61,11 @@ src/
 | Constants | UPPER_SNAKE_CASE | `API_BASE_URL` |
 | CSS classes | kebab-case | `btn-primary` |
 
----
-
 ## Patterns
-
 ### State Management (Svelte 5)
 ```typescript
 let count = $state(0);
 let doubled = $derived(count * 2);
-
-// Props - both styles in use, prefer $props()
 let { onBack, title = "Default" }: { onBack: () => void; title?: string } = $props();
 ```
 
@@ -100,12 +81,7 @@ try {
   if (!result.ok) throw new Error("Failed");
 } catch (e) {
   console.error(e);
-  await Swal.fire({
-    icon: "error",
-    title: "Error",
-    text: "Mensaje en español",
-    confirmButtonColor: "#ef4444"
-  });
+  await Swal.fire({ icon: "error", title: "Error", text: "Mensaje en español", confirmButtonColor: "#ef4444" });
 }
 ```
 
@@ -119,49 +95,33 @@ const handleSubmit = async () => {
 };
 ```
 
----
-
 ## Theming & CSS
-
 CSS variables in `app.css`: `--bg-primary`, `--bg-secondary`, `--text-primary`, `--text-secondary`, `--card-bg`, `--card-border`, `--accent-primary`, `--border-primary`
-
 ```svelte
 <div class="bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))]">Content</div>
 ```
-
 - Use CSS variables for theme-aware styling
 - Prefer Tailwind utility classes
 - Mobile-first: `class="w-full sm:w-auto"`
 
----
-
 ## Available Skills
-
 Use the `skill` tool to load domain-specific instructions:
-- `ui-inasistencias` - UI component standards for inasistencias
+- `ui-inasistencias` - UI component standards
 - `google-sync` - Google Sheets sync logic
 - `api-inasistig` - PHP backend and MySQL queries
 
-### Skill Rules Summary
+**Skill Summaries**:
+- **ui-inasistencias**: TypeScript interfaces for Estudiante/Inasistencia, buttons `bg-blue-600 hover:bg-blue-700`, alerts auto-dismiss 3s
+- **api-inasistig**: PDO Prepared Statements, validate `id_docente`, response `{"status": "success", "data": [...]}`
+- **google-sync**: Map form fields to spreadsheet columns
 
-**ui-inasistencias**:
-- Use TypeScript interfaces for Estudiante and Inasistencia
-- Buttons: `bg-blue-600 hover:bg-blue-700`
-- Alerts: subtle, auto-dismiss after 3 seconds
-
-**api-inasistig**:
-- Always use PDO with Prepared Statements
-- Validate `id_docente` in every request
-- Response format: `{"status": "success", "data": [...]}`
-
-**google-sync**:
-- Map form fields to spreadsheet columns
-- Use for structure changes or new report fields
-
----
+## Backend API (PHP)
+- PHP files in `src/assets/php/` and `public/assets/php/`
+- Use MySQL via PHP for data persistence
+- All URLs in `constants.ts` - never hardcode
+- Always type API responses with interfaces
 
 ## Checklist
-
 - [ ] TypeScript with full types (no `any`)
 - [ ] CSS variables for theming
 - [ ] Tailwind utility classes
@@ -171,23 +131,10 @@ Use the `skill` tool to load domain-specific instructions:
 - [ ] `npm run check` passes
 - [ ] Existing functionality intact
 
----
-
 ## Notes
-
 1. Always use TypeScript - never compromise typing
 2. Follow existing component patterns
 3. All components must support light/dim/dark themes
 4. UI text in Spanish
 5. Mobile-first responsive design
 6. Ask before git commits
-
----
-
-## Backend API (PHP)
-
-- PHP files in `src/assets/php/` and `public/assets/php/`
-- Use MySQL via PHP for data persistence
-- All URLs in `constants.ts` - never hardcode
-- Always type API responses with interfaces
-- PHP endpoints are accessed directly (e.g., `/src/assets/php/get_inasistencias.php`)

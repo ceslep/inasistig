@@ -27,6 +27,10 @@ export const SAVE_PLANEADOR_URL = `${API_URL_GS}/save_planeador.php`;
 export const GET_PLANEADOR_URL = `${API_URL_GS}/get_planeador.php`;
 export const WORKSHEET_TITLE_PLANEADOR = "Planeaciones";
 
+// Temas del Docente (JSON)
+export const UPLOAD_TEMAS_URL = `${BASE_URL}/arjson.php`;
+export const GET_TEMAS_BASE_URL = `${BASE_URL}/getjson.php`;
+
 // Google Sheets
 export const WORKSHEET_TITLE = "Inasistencias";
 export const WORKSHEET_TITLE_ANOTADOR = "Datos";
@@ -47,6 +51,13 @@ export const INFO_DIARIO =
 
 export const URL_LOCKER_STUDIO =
   "https://lookerstudio.google.com/reporting/be2efb22-dc5f-4f21-9dfc-0253e763e19f";
+
+export const URL_DBAS =
+  `${BASE_URL}/getDBAs.php`;
+export const URL_EBCS =
+  `${BASE_URL}/getEBCs.php`;
+export const URL_DBA_EBC =
+  `${BASE_URL}/dba_ebc/dba_ebc.php`;
 
 // Periodos
 
