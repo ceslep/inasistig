@@ -22,7 +22,7 @@
         getTemasDocente,
         type TemaDocenteEntry,
     } from "../../api/service";
-    import { URL_DBA_EBC } from "../constants";
+    import { URL_DBA_EBC, AI_PROXY_URL } from "../constants";
     import Piar from "./Piar.svelte";
 
     let { onBack }: { onBack: () => void } = $props();
@@ -40,7 +40,7 @@
     // Local Planeaciones
     let showLocalPanel = $state(false);
     let planeacionesLocales = $state<PlaneadorLocal[]>([]);
-    let fileInputRef: HTMLInputElement | undefined = undefined;
+    let fileInputRef = $state<HTMLInputElement | undefined>(undefined);
 
     // PDF Preview
     let showPdfPreview = $state(false);
@@ -51,7 +51,7 @@
     let isLoadingTemas = $state(false);
     let isUploadingTemas = $state(false);
     let temasDocente = $state<TemaDocenteEntry[]>([]);
-    let temasJsonInputRef: HTMLInputElement | undefined = undefined;
+    let temasJsonInputRef = $state<HTMLInputElement | undefined>(undefined);
     let selectedTemas = $state<string[]>([]);
     let selectedActividades = $state<string[]>([]);
     let showTemasSection = $state(true);
@@ -143,84 +143,75 @@
     };
 
     // --- OpenRouter AI Functions ---
-    const getAPIKey = (): string | undefined => {
-        return import.meta.env.VITE_OPENROUTER_API_KEY;
-    };
-
-    const hasAPIKey = (): boolean => {
-        const key = getAPIKey();
-        return !!key && key.length > 0;
-    };
-
     const openAIPanel = (): void => {
-        if (!hasAPIKey()) {
-            Swal.fire({
-                icon: "error",
-                title: "API Key no configurada",
-                text: "Configura VITE_OPENROUTER_API_KEY en el archivo .env",
-                confirmButtonColor: "#ef4444"
-            });
-            return;
-        }
         showAIPanel = true;
     };
+
+    interface AISections {
+        exploration: string;
+        structuring: string;
+        practice: string;
+        transfer: string;
+    }
+
+    let aiSectionsResult = $state<AISections | null>(null);
 
     const generateWithAI = async (): Promise<void> => {
         if (!aiPrompt.trim()) {
             Swal.fire({
                 icon: "warning",
                 title: "Prompt vacío",
-                text: "Por favor escribe un prompt para generar contenido",
+                text: "Por favor escribe un tema o contexto para generar contenido",
             });
             return;
         }
 
         isGeneratingAI = true;
+        aiSectionsResult = null;
+        aiResult = "";
         
         try {
-            const apiKey = getAPIKey();
-            if (!apiKey) {
-                throw new Error("API key no configurada");
-            }
-            
-            const sectionInstructions: Record<string, string> = {
-                exploration: "Genera una actividad de EXPLORACIÓN/INICIO para una secuencia didáctica. Incluye: pregunta generadora, objetivo de la actividad, desarrollo (5-7 pasos), duración sugerida. Formato: texto corrido con viñetas.",
-                structuring: "Genera una actividad de ESTRUCTURACIÓN/DESARROLLO para una secuencia didáctica. Incluye: concepto principal a enseñar, explicación clara, ejemplos, actividad guiada. Formato: texto corrido con viñetas.",
-                practice: "Genera una actividad de PRÁCTICA para una secuencia didáctica. Incluye: ejercicios o actividades prácticas, instrucciones claras para los estudiantes, materiales necesarios. Formato: texto corrido con viñetas.",
-                transfer: "Genera una actividad de TRANSFERENCIA/CIERRE para una secuencia didáctica. Incluye: actividad final de aplicación, producto esperado, preguntas de cierre. Formato: texto corrido con viñetas."
-            };
-
-            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            const response = await fetch(AI_PROXY_URL, {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${apiKey}`,
                     "Content-Type": "application/json",
-                    "HTTP-Referer": window.location.origin || "https://example.com",
-                    "X-Title": "Inasistig"
                 },
                 body: JSON.stringify({
                     model: "openrouter/free",
+                    max_tokens: 800,
                     messages: [
                         {
                             role: "system",
-                            content: "Eres un asistente educativo colombiano experto en didáctica y pedagogía. Genera contenido en español claro y profesional, apropiado para docentes de secundaria en Colombia."
+                            content: "Eres un asistente educativo colombiano experto en didáctica y pedagogía. Genera contenido en español claro y profesional. IMPORTANTE: Responde ÚNICAMENTE con un JSON válido, sin markdown ni texto adicional."
                         },
                         {
                             role: "user",
-                            content: `${sectionInstructions[aiSection]}\n\nTema/Contexto: ${aiPrompt}`
+                            content: `Genera una secuencia didáctica completa para el siguiente tema. Responde SOLO con un JSON con estas 4 claves, cada valor máximo 2 párrafos cortos:
+
+{
+  "exploration": "actividad de exploración/inicio: pregunta generadora y pasos clave",
+  "structuring": "actividad de estructuración/desarrollo: concepto principal y actividad guiada",
+  "practice": "actividad de práctica: ejercicios con instrucciones claras",
+  "transfer": "actividad de transferencia/cierre: aplicación y preguntas de cierre"
+}
+
+Tema/Contexto: ${aiPrompt}`
                         }
                     ]
                 })
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
+                const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
                 throw new Error(`Error ${response.status}: ${errorData.error?.message || response.statusText}`);
             }
 
-            const data = await response.json();
+            const data = await response.json() as {
+                choices?: { message?: { content?: string }; text?: string }[];
+                output?: { text?: string };
+                generations?: { text?: string; content?: string }[];
+            };
             
-            // Manejar diferentes formatos de respuesta
             let content = "";
             if (data.choices && data.choices[0]) {
                 content = data.choices[0].message?.content || data.choices[0].text || "";
@@ -230,12 +221,48 @@
                 content = data.generations[0].text || data.generations[0].content || "";
             }
             
-            if (content) {
-                aiResult = content;
-            } else {
-                console.error("Respuesta inesperada:", data);
+            if (!content) {
                 throw new Error("No se recibió respuesta válida de la IA");
             }
+
+            // Validar que no sea código
+            const invalidPatterns = ["<?php", "<?=", "include_once", "require_once", "json_encode", "file_get_contents", "<script"];
+            const lowerContent = content.toLowerCase();
+            if (invalidPatterns.some(p => lowerContent.includes(p.toLowerCase()))) {
+                throw new Error("La IA devolvió una respuesta no válida. Intenta de nuevo.");
+            }
+
+            // Intentar parsear JSON de la respuesta
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                try {
+                    const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+                    if (parsed.exploration && parsed.structuring && parsed.practice && parsed.transfer) {
+                        aiSectionsResult = {
+                            exploration: String(parsed.exploration),
+                            structuring: String(parsed.structuring),
+                            practice: String(parsed.practice),
+                            transfer: String(parsed.transfer),
+                        };
+                        aiResult = "✅ Contenido generado para las 4 secciones. Revisa y aplica.";
+                        return;
+                    }
+                } catch {
+                    // JSON parse falló, usar como texto plano
+                }
+            }
+
+            // Fallback: si no devolvió JSON, dividir el texto en 4 partes
+            const lines = content.split("\n").filter((l: string) => l.trim());
+            const chunkSize = Math.max(1, Math.ceil(lines.length / 4));
+            aiSectionsResult = {
+                exploration: lines.slice(0, chunkSize).join("\n"),
+                structuring: lines.slice(chunkSize, chunkSize * 2).join("\n"),
+                practice: lines.slice(chunkSize * 2, chunkSize * 3).join("\n"),
+                transfer: lines.slice(chunkSize * 3).join("\n"),
+            };
+            aiResult = "✅ Contenido generado para las 4 secciones (distribuido). Revisa y aplica.";
+
         } catch (error) {
             console.error("Error generando con IA:", error);
             Swal.fire({
@@ -250,25 +277,25 @@
     };
 
     const applyAIResult = (): void => {
-        if (!aiResult.trim()) return;
+        if (!aiSectionsResult) return;
 
-        const prefix = formData[aiSection] ? formData[aiSection] + "\n\n" : "";
-        
-        if (aiSection === "exploration") {
-            formData.exploration = prefix + aiResult;
-        } else if (aiSection === "structuring") {
-            formData.structuring = prefix + aiResult;
-        } else if (aiSection === "practice") {
-            formData.practice = prefix + aiResult;
-        } else if (aiSection === "transfer") {
-            formData.transfer = prefix + aiResult;
-        }
+        const prefixE = formData.exploration ? formData.exploration + "\n\n" : "";
+        formData.exploration = prefixE + aiSectionsResult.exploration;
+
+        const prefixS = formData.structuring ? formData.structuring + "\n\n" : "";
+        formData.structuring = prefixS + aiSectionsResult.structuring;
+
+        const prefixP = formData.practice ? formData.practice + "\n\n" : "";
+        formData.practice = prefixP + aiSectionsResult.practice;
+
+        const prefixT = formData.transfer ? formData.transfer + "\n\n" : "";
+        formData.transfer = prefixT + aiSectionsResult.transfer;
 
         Swal.fire({
             icon: "success",
             title: "Aplicado",
-            text: "El contenido generado se ha añadido a la sección seleccionada",
-            timer: 2000
+            text: "El contenido generado se ha aplicado a las 4 secciones de la secuencia didáctica",
+            timer: 2500,
         });
 
         closeAIPanel();
@@ -278,6 +305,7 @@
         showAIPanel = false;
         aiPrompt = "";
         aiResult = "";
+        aiSectionsResult = null;
     };
 
     const loadPlaneacionesLocales = (): void => {
@@ -2017,6 +2045,7 @@
                     />
                 </svg>
             </button>
+            </div>
         </header>
 
         <!-- Stepper Indicator -->
@@ -2362,7 +2391,7 @@
                                 {#each filteredDbas as dba, index}
                                     {@const isSelected = formData.dba.includes(dba.id)}
                                     {@const compColor = COLORES_COMPONENTE[dba.componente] || COLORES_COMPONENTE.general}
-                                    <label 
+                                    <span 
                                         class="flex items-start gap-3 p-4 cursor-pointer transition-all duration-200 hover:bg-indigo-50/50
                                                {isSelected ? 'bg-indigo-50' : 'bg-white'}"
                                     >
@@ -2388,7 +2417,7 @@
                                                 {dba.descripcion}
                                             </p>
                                         </div>
-                                    </label>
+                                    </span>
                                 {/each}
                             </div>
 
@@ -2556,7 +2585,7 @@
                                 {#each filteredEbcs as ebc, index}
                                     {@const isSelected = formData.standard.includes(ebc.id)}
                                     {@const compColor = COLORES_COMPONENTE[ebc.componente] || COLORES_COMPONENTE.general}
-                                    <label 
+                                    <span 
                                         class="flex items-start gap-3 p-4 cursor-pointer transition-all duration-200 hover:bg-purple-50/50
                                                {isSelected ? 'bg-purple-50' : 'bg-white'}"
                                     >
@@ -2582,7 +2611,7 @@
                                                 {ebc.descripcion}
                                             </p>
                                         </div>
-                                    </label>
+                                    </span>
                                 {/each}
                             </div>
 
@@ -2751,9 +2780,9 @@
                                 <!-- Temas Disponibles -->
                                 {#if temasDisponibles.length > 0}
                                     <div class="bg-white p-3 rounded-lg border border-amber-200">
-                                        <label class="text-xs font-medium text-gray-600 mb-2 block">
+                                        <span class="text-xs font-medium text-gray-600 mb-2 block">
                                             Temas disponibles (click para seleccionar):
-                                        </label>
+                                        </span>
                                         <div class="flex flex-wrap gap-2">
                                             {#each temasDisponibles as tema}
                                                 {@const selected = selectedTemas.includes(tema)}
@@ -2773,9 +2802,9 @@
                                 <!-- Actividades Disponibles -->
                                 {#if actividadesDisponibles.length > 0}
                                     <div class="bg-white p-3 rounded-lg border border-purple-200">
-                                        <label class="text-xs font-medium text-purple-700 mb-2 block">
+                                        <span class="text-xs font-medium text-purple-700 mb-2 block">
                                             Actividades disponibles (click para seleccionar):
-                                        </label>
+                                        </span>
                                         <div class="flex flex-wrap gap-2">
                                             {#each actividadesDisponibles as actividad}
                                                 {@const selected = selectedActividades.includes(actividad)}
@@ -2853,7 +2882,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
                             <div class="flex items-center justify-between mb-2">
-                                <label class="text-sm font-bold text-blue-800">🎯 Objetivos de Aprendizaje</label>
+                                <span class="text-sm font-bold text-blue-800">🎯 Objetivos de Aprendizaje</span>
                                 <button 
                                     type="button"
                                     onclick={generarObjetivos}
@@ -2877,7 +2906,7 @@
                         <!-- Competencias con chips -->
                         <div class="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
                             <div class="flex items-center justify-between mb-2">
-                                <label class="text-sm font-bold text-green-800">🤝 Competencias a Desarrollar</label>
+                                <span class="text-sm font-bold text-green-800">🤝 Competencias a Desarrollar</span>
                             </div>
                             <!-- Chips de competencias -->
                             <div class="flex flex-wrap gap-1.5 mb-2">
@@ -2904,7 +2933,7 @@
                     <!-- Indicadores de Logro con chips -->
                     <div class="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
                         <div class="flex items-center justify-between mb-2">
-                            <label class="text-sm font-bold text-purple-800">📊 Indicadores de Logro</label>
+                            <span class="text-sm font-bold text-purple-800">📊 Indicadores de Logro</span>
                         </div>
                         <!-- Chips de indicadores -->
                         <div class="flex flex-wrap gap-1.5 mb-3">
@@ -2931,7 +2960,7 @@
                     <!-- Tiempos por momento con presets -->
                     <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
                         <div class="flex items-center justify-between mb-3">
-                            <label class="text-sm font-semibold text-gray-700">⏱️ Distribución del Tiempo</label>
+                            <span class="text-sm font-semibold text-gray-700">⏱️ Distribución del Tiempo</span>
                             <!-- Presets de tiempo -->
                             <div class="flex gap-2">
                                 <button 
@@ -2962,7 +2991,7 @@
                         </div>
                         <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
                             <div>
-                                <label class="text-xs text-gray-500 block mb-1">Exploración</label>
+                                <span class="text-xs text-gray-500 block mb-1">Exploración</span>
                                 <div class="flex items-center gap-1">
                                     <input type="number" bind:value={formData.tiempo_exploracion} min="1" max="60" class="w-14 text-sm p-1.5 rounded border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500" />
                                     <span class="text-xs text-gray-500">min</span>
@@ -2972,7 +3001,7 @@
                                 </div>
                             </div>
                             <div>
-                                <label class="text-xs text-gray-500 block mb-1">Estructuración</label>
+                                <span class="text-xs text-gray-500 block mb-1">Estructuración</span>
                                 <div class="flex items-center gap-1">
                                     <input type="number" bind:value={formData.tiempo_estructuracion} min="1" max="60" class="w-14 text-sm p-1.5 rounded border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500" />
                                     <span class="text-xs text-gray-500">min</span>
@@ -2982,7 +3011,7 @@
                                 </div>
                             </div>
                             <div>
-                                <label class="text-xs text-gray-500 block mb-1">Práctica</label>
+                                <span class="text-xs text-gray-500 block mb-1">Práctica</span>
                                 <div class="flex items-center gap-1">
                                     <input type="number" bind:value={formData.tiempo_practica} min="1" max="60" class="w-14 text-sm p-1.5 rounded border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500" />
                                     <span class="text-xs text-gray-500">min</span>
@@ -2992,7 +3021,7 @@
                                 </div>
                             </div>
                             <div>
-                                <label class="text-xs text-gray-500 block mb-1">Transferencia</label>
+                                <span class="text-xs text-gray-500 block mb-1">Transferencia</span>
                                 <div class="flex items-center gap-1">
                                     <input type="number" bind:value={formData.tiempo_transferencia} min="1" max="60" class="w-14 text-sm p-1.5 rounded border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500" />
                                     <span class="text-xs text-gray-500">min</span>
@@ -3002,7 +3031,7 @@
                                 </div>
                             </div>
                             <div>
-                                <label class="text-xs text-gray-500 block mb-1">Valoración</label>
+                                <span class="text-xs text-gray-500 block mb-1">Valoración</span>
                                 <div class="flex items-center gap-1">
                                     <input type="number" bind:value={formData.tiempo_valoracion} min="1" max="60" class="w-14 text-sm p-1.5 rounded border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500" />
                                     <span class="text-xs text-gray-500">min</span>
@@ -3033,7 +3062,7 @@
                             <div class="p-4 space-y-4">
                                 <!-- Actividades sugeridas -->
                                 <div>
-                                    <label class="text-xs font-medium text-gray-600 mb-2 block">🎯 Haz click para agregar actividades:</label>
+                                    <span class="text-xs font-medium text-gray-600 mb-2 block">🎯 Haz click para agregar actividades:</span>
                                     <div class="flex flex-wrap gap-2">
                                         {#each ACTIVIDADES_EXPLORACION as act}
                                             {@const selected = formData.exploration_activities.includes(act.id)}
@@ -3051,7 +3080,7 @@
                                 </div>
                                 <!-- Descripción -->
                                 <div class="flex items-center justify-between">
-                                    <label class="text-xs font-medium text-gray-600">Descripción de actividades:</label>
+                                    <span class="text-xs font-medium text-gray-600">Descripción de actividades:</span>
                                     <button 
                                         type="button"
                                         onclick={() => limpiarDescripcion('exploration')}
@@ -3086,7 +3115,7 @@
                             </div>
                             <div class="p-4 space-y-4">
                                 <div>
-                                    <label class="text-xs font-medium text-gray-600 mb-2 block">📚 Haz click para agregar actividades:</label>
+                                    <span class="text-xs font-medium text-gray-600 mb-2 block">📚 Haz click para agregar actividades:</span>
                                     <div class="flex flex-wrap gap-2">
                                         {#each ACTIVIDADES_ESTRUCTURACION as act}
                                             {@const selected = formData.structuring_activities.includes(act.id)}
@@ -3103,7 +3132,7 @@
                                     </div>
                                 </div>
                                 <div class="flex items-center justify-between">
-                                    <label class="text-xs font-medium text-gray-600">Descripción de actividades:</label>
+                                    <span class="text-xs font-medium text-gray-600">Descripción de actividades:</span>
                                     <button 
                                         type="button"
                                         onclick={() => limpiarDescripcion('structuring')}
@@ -3138,7 +3167,7 @@
                             </div>
                             <div class="p-4 space-y-4">
                                 <div>
-                                    <label class="text-xs font-medium text-gray-600 mb-2 block">✏️ Haz click para agregar actividades:</label>
+                                    <span class="text-xs font-medium text-gray-600 mb-2 block">✏️ Haz click para agregar actividades:</span>
                                     <div class="flex flex-wrap gap-2">
                                         {#each ACTIVIDADES_PRACTICA as act}
                                             {@const selected = formData.practice_activities.includes(act.id)}
@@ -3155,7 +3184,7 @@
                                     </div>
                                 </div>
                                 <div class="flex items-center justify-between">
-                                    <label class="text-xs font-medium text-gray-600">Descripción de actividades:</label>
+                                    <span class="text-xs font-medium text-gray-600">Descripción de actividades:</span>
                                     <button 
                                         type="button"
                                         onclick={() => limpiarDescripcion('practice')}
@@ -3190,7 +3219,7 @@
                             </div>
                             <div class="p-4 space-y-4">
                                 <div>
-                                    <label class="text-xs font-medium text-gray-600 mb-2 block">🌎 Haz click para agregar actividades:</label>
+                                    <span class="text-xs font-medium text-gray-600 mb-2 block">🌎 Haz click para agregar actividades:</span>
                                     <div class="flex flex-wrap gap-2">
                                         {#each ACTIVIDADES_TRANSFERENCIA as act}
                                             {@const selected = formData.transfer_activities.includes(act.id)}
@@ -3207,7 +3236,7 @@
                                     </div>
                                 </div>
                                 <div class="flex items-center justify-between">
-                                    <label class="text-xs font-medium text-gray-600">Descripción de actividades:</label>
+                                    <span class="text-xs font-medium text-gray-600">Descripción de actividades:</span>
                                     <button 
                                         type="button"
                                         onclick={() => limpiarDescripcion('transfer')}
@@ -3242,7 +3271,7 @@
                             </div>
                             <div class="p-4 space-y-4">
                                 <div>
-                                    <label class="text-xs font-medium text-gray-600 mb-2 block">📋 Haz click para agregar actividades:</label>
+                                    <span class="text-xs font-medium text-gray-600 mb-2 block">📋 Haz click para agregar actividades:</span>
                                     <div class="flex flex-wrap gap-2">
                                         {#each ACTIVIDADES_VALORACION as act}
                                             {@const selected = formData.assessment_activities.includes(act.id)}
@@ -3259,7 +3288,7 @@
                                     </div>
                                 </div>
                                 <div class="flex items-center justify-between">
-                                    <label class="text-xs font-medium text-gray-600">Descripción de actividades:</label>
+                                    <span class="text-xs font-medium text-gray-600">Descripción de actividades:</span>
                                     <button 
                                         type="button"
                                         onclick={() => limpiarDescripcion('assessment')}
@@ -3336,7 +3365,7 @@
 
                     <!-- TIPO DE EVALUACIÓN -->
                     <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
-                        <label class="text-sm font-bold text-blue-800 mb-3 block">🔍 Tipo de Evaluación (Decreto 1290)</label>
+                        <span class="text-sm font-bold text-blue-800 mb-3 block">🔍 Tipo de Evaluación (Decreto 1290)</span>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                             {#each TIPOS_EVALUACION as tipo}
                                 {@const selected = formData.eval_type === tipo.id}
@@ -3359,7 +3388,7 @@
 
                     <!-- MODALIDADES DE EVALUACIÓN -->
                     <div class="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
-                        <label class="text-sm font-bold text-green-800 mb-3 block">🎓 Modalidades de Evaluación (Artículo 6 - Decreto 1290)</label>
+                        <span class="text-sm font-bold text-green-800 mb-3 block">🎓 Modalidades de Evaluación (Artículo 6 - Decreto 1290)</span>
                         <div class="flex flex-wrap gap-3">
                             {#each MODALIDADES_EVALUACION as mod}
                                 {@const selected = formData.eval_modalidades.includes(mod.id)}
@@ -3382,7 +3411,7 @@
 
                     <!-- INSTRUMENTOS DE EVALUACIÓN -->
                     <div class="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
-                        <label class="text-sm font-bold text-purple-800 mb-3 block">📋 Instrumentos de Evaluación - Click para seleccionar:</label>
+                        <span class="text-sm font-bold text-purple-800 mb-3 block">📋 Instrumentos de Evaluación - Click para seleccionar:</span>
                         <div class="flex flex-wrap gap-2">
                             {#each INSTRUMENTOS_EVALUACION as inst}
                                 {@const selected = formData.eval_instrumentos.includes(inst.id)}
@@ -3402,7 +3431,7 @@
 
                     <!-- CRITERIOS DE EVALUACIÓN -->
                     <div class="bg-gradient-to-r from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-200">
-                        <label class="text-sm font-bold text-orange-800 mb-3 block">🎯 Criterios de Evaluación - Selecciona los que aplicarás:</label>
+                        <span class="text-sm font-bold text-orange-800 mb-3 block">🎯 Criterios de Evaluación - Selecciona los que aplicarás:</span>
                         <div class="flex flex-wrap gap-2">
                             {#each CRITERIOS_EVALUACION as crit}
                                 {@const selected = formData.eval_criterios.includes(crit.id)}
@@ -3422,7 +3451,7 @@
 
                     <!-- EVIDENCIAS DE APRENDIZAJE -->
                     <div class="bg-gradient-to-r from-cyan-50 to-teal-50 p-4 rounded-xl border border-cyan-200">
-                        <label class="text-sm font-bold text-cyan-800 mb-3 block">📦 Evidencias de Aprendizaje - Productos esperados:</label>
+                        <span class="text-sm font-bold text-cyan-800 mb-3 block">📦 Evidencias de Aprendizaje - Productos esperados:</span>
                         <div class="flex flex-wrap gap-2">
                             {#each EVIDENCIAS_APRENDIZAJE as ev}
                                 {@const selected = formData.eval_evidencias.includes(ev.id)}
@@ -3442,7 +3471,7 @@
 
                     <!-- PONDERACIÓN -->
                     <div class="bg-gradient-to-r from-slate-50 to-gray-50 p-4 rounded-xl border border-slate-200">
-                        <label class="text-sm font-bold text-slate-800 mb-4 block">⚖️ Ponderación (Debe sumar 100%)</label>
+                        <span class="text-sm font-bold text-slate-800 mb-4 block">⚖️ Ponderación (Debe sumar 100%)</span>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <div class="flex justify-between mb-1">
@@ -3493,7 +3522,7 @@
 
                     <!-- ESCALA DE VALORACIÓN -->
                     <div class="bg-gradient-to-r from-amber-50 to-yellow-50 p-4 rounded-xl border border-amber-200">
-                        <label class="text-sm font-bold text-amber-800 mb-3 block">📊 Escala de Valoración (Decreto 1290)</label>
+                        <span class="text-sm font-bold text-amber-800 mb-3 block">📊 Escala de Valoración (Decreto 1290)</span>
                         <div class="grid grid-cols-5 gap-2">
                             {#each ESCALA_VALORACION as escala}
                                 <div class="text-center p-2 bg-white rounded-lg border border-amber-200">
@@ -3507,7 +3536,7 @@
                     <!-- DESCRIPCIÓN AUTO-GENERADA -->
                     <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-200">
                         <div class="flex items-center justify-between mb-2">
-                            <label class="text-sm font-bold text-indigo-800">📝 Descripción de Evaluación (Auto-generada)</label>
+                            <span class="text-sm font-bold text-indigo-800">📝 Descripción de Evaluación (Auto-generada)</span>
                             <button 
                                 type="button"
                                 onclick={autoGenerarDescripcionEval}
@@ -3572,7 +3601,7 @@
 
                     <!-- CATEGORÍAS DE RECURSOS -->
                     <div class="bg-gradient-to-r from-cyan-50 to-blue-50 p-4 rounded-xl border border-cyan-200">
-                        <label class="text-sm font-bold text-cyan-800 mb-3 block">📂 Categorías de Recursos - Selecciona una o varias:</label>
+                        <span class="text-sm font-bold text-cyan-800 mb-3 block">📂 Categorías de Recursos - Selecciona una o varias:</span>
                         <div class="flex flex-wrap gap-2">
                             {#each CATEGORIAS_RECURSOS as cat}
                                 {@const selected = recursosCategorias.includes(cat.id)}
@@ -3633,7 +3662,7 @@
 
                     <!-- RECURSOS PERSONALIZADOS -->
                     <div class="bg-gradient-to-r from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-200">
-                        <label class="text-sm font-bold text-orange-800 mb-3 block">➕ Agregar Recurso Personalizado</label>
+                        <span class="text-sm font-bold text-orange-800 mb-3 block">➕ Agregar Recurso Personalizado</span>
                         <div class="flex gap-2">
                             <input
                                 type="text"
@@ -3671,7 +3700,7 @@
                     <!-- RECURSOS SELECCIONADOS -->
                     <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-xl border border-indigo-200">
                         <div class="flex items-center justify-between mb-3">
-                            <label class="text-sm font-bold text-indigo-800">📝 Recursos Seleccionados (Auto-generados)</label>
+                            <span class="text-sm font-bold text-indigo-800">📝 Recursos Seleccionados (Auto-generados)</span>
                             <button 
                                 type="button"
                                 onclick={generarDescripcionRecursos}
@@ -3754,7 +3783,7 @@
 
                     <!-- TIPO DE PLANEACIÓN -->
                     <div class="bg-gradient-to-r from-violet-50 to-purple-50 p-4 rounded-xl border border-violet-200">
-                        <label class="text-sm font-bold text-violet-800 mb-3 block">📅 Tipo de Planeación - Selecciona:</label>
+                        <span class="text-sm font-bold text-violet-800 mb-3 block">📅 Tipo de Planeación - Selecciona:</span>
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                             {#each TIPOS_PLANEACION as tipo}
                                 {@const selected = formData.planeacion_tipo === tipo.id}
@@ -3777,7 +3806,7 @@
 
                     <!-- FECHAS REALES -->
                     <div class="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-xl border border-blue-200">
-                        <label class="text-sm font-bold text-blue-800 mb-3 block">📆 Fechas Reales (yyyy-mm-dd)</label>
+                        <span class="text-sm font-bold text-blue-800 mb-3 block">📆 Fechas Reales (yyyy-mm-dd)</span>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label for="fecha_inicio" class="block text-sm font-medium text-gray-700 mb-1">📥 Fecha Inicio</label>
@@ -3814,7 +3843,7 @@
 
                     <!-- PERÍODO ACADÉMICO -->
                     <div class="bg-gradient-to-r from-emerald-50 to-teal-50 p-4 rounded-xl border border-emerald-200">
-                        <label class="text-sm font-bold text-emerald-800 mb-3 block">📚 Período Académico - Selecciona:</label>
+                        <span class="text-sm font-bold text-emerald-800 mb-3 block">📚 Período Académico - Selecciona:</span>
                         <div class="flex flex-wrap gap-2">
                             {#each getPeriodosPorTipo() as periodo}
                                 {@const selected = formData.periodo_academico === periodo.id}
@@ -4036,7 +4065,7 @@
                     src={pdfUrl} 
                     title="Vista Previa PDF" 
                     class="flex-1 w-full border-none bg-gray-100"
-                />
+                ></iframe>
             </div>
         </div>
     {/if}
@@ -4134,57 +4163,24 @@
                 
                 <!-- Content -->
                 <div class="flex-1 overflow-y-auto p-6 space-y-4">
-                    <!-- Selector de Sección -->
-                    <div>
-                        <label class="text-sm font-bold text-gray-700 mb-2 block">
-                            📍 Sección destino:
-                        </label>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                            <button
-                                type="button"
-                                onclick={() => aiSection = "exploration"}
-                                class="p-3 rounded-lg border-2 text-sm font-medium transition-all
-                                    {aiSection === 'exploration' ? 'border-violet-500 bg-violet-50 text-violet-700' : 'border-gray-200 hover:border-gray-300'}"
-                            >
-                                🔍 Exploración
-                            </button>
-                            <button
-                                type="button"
-                                onclick={() => aiSection = "structuring"}
-                                class="p-3 rounded-lg border-2 text-sm font-medium transition-all
-                                    {aiSection === 'structuring' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300'}"
-                            >
-                                📝 Estructuración
-                            </button>
-                            <button
-                                type="button"
-                                onclick={() => aiSection = "practice"}
-                                class="p-3 rounded-lg border-2 text-sm font-medium transition-all
-                                    {aiSection === 'practice' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 hover:border-gray-300'}"
-                            >
-                                💪 Práctica
-                            </button>
-                            <button
-                                type="button"
-                                onclick={() => aiSection = "transfer"}
-                                class="p-3 rounded-lg border-2 text-sm font-medium transition-all
-                                    {aiSection === 'transfer' ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-gray-200 hover:border-gray-300'}"
-                            >
-                                🚀 Transferencia
-                            </button>
-                        </div>
+                    <!-- Info -->
+                    <div class="flex items-center gap-2 p-3 bg-violet-50 rounded-xl border border-violet-200">
+                        <span class="text-lg">✨</span>
+                        <p class="text-xs text-violet-700">
+                            Escribe el tema y la IA generará contenido para las <strong>4 secciones</strong> de la secuencia didáctica automáticamente.
+                        </p>
                     </div>
 
                     <!-- Prompt Input -->
                     <div>
-                        <label class="text-sm font-bold text-gray-700 mb-2 block">
+                        <span class="text-sm font-bold text-gray-700 mb-2 block">
                             📝 Describe el tema o contexto:
-                        </label>
+                        </span>
                         <textarea
                             bind:value={aiPrompt}
-                            rows="4"
+                            rows="3"
                             class="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-200 transition-all text-sm"
-                            placeholder="Ej: La fotosíntesis en plantas - objetivos, proceso, importancia para el medio ambiente..."
+                            placeholder="Ej: La fotosíntesis en plantas para grado 7°, enfoque práctico..."
                         ></textarea>
                     </div>
 
@@ -4200,42 +4196,55 @@
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            Generando...
+                            Generando las 4 secciones...
                         {:else}
-                            ⚡ Generar Contenido
+                            ⚡ Generar Secuencia Didáctica Completa
                         {/if}
                     </button>
 
-                    <!-- Result Output -->
-                    {#if aiResult}
-                        <div class="space-y-2">
-                            <label class="text-sm font-bold text-gray-700 block">
-                                📄 Resultado generado:
-                            </label>
-                            <div class="relative">
-                                <textarea
-                                    readonly
-                                    value={aiResult}
-                                    rows="10"
-                                    class="w-full px-4 py-3 rounded-xl border-2 border-green-300 bg-green-50 text-gray-800 text-sm resize-none"
-                                ></textarea>
-                            </div>
+                    <!-- Results: 4 sections preview -->
+                    {#if aiSectionsResult}
+                        <div class="space-y-3">
+                            <span class="text-sm font-bold text-gray-700 block">
+                                📄 Resultado generado para las 4 secciones:
+                            </span>
+                            
+                            {#each [
+                                { key: "exploration", label: "🔍 Exploración", color: "violet" },
+                                { key: "structuring", label: "📝 Estructuración", color: "blue" },
+                                { key: "practice", label: "💪 Práctica", color: "green" },
+                                { key: "transfer", label: "🚀 Transferencia", color: "orange" },
+                            ] as section}
+                                <div class="rounded-xl border-2 border-{section.color}-200 overflow-hidden">
+                                    <div class="px-3 py-2 bg-{section.color}-50 border-b border-{section.color}-200">
+                                        <span class="text-xs font-bold text-{section.color}-700">{section.label}</span>
+                                    </div>
+                                    <div class="p-3">
+                                        <p class="text-sm text-gray-700 whitespace-pre-wrap">{aiSectionsResult[section.key as keyof AISections]}</p>
+                                    </div>
+                                </div>
+                            {/each}
                             
                             <!-- Action Buttons -->
-                            <div class="flex gap-3">
+                            <div class="flex gap-3 pt-2">
                                 <button
                                     type="button"
-                                    onclick={() => { navigator.clipboard.writeText(aiResult); Swal.fire({ icon: "success", title: "Copiado", text: "Contenido copiado al portapapeles", timer: 1500 }); }}
+                                    onclick={() => {
+                                        if (!aiSectionsResult) return;
+                                        const fullText = `EXPLORACIÓN:\n${aiSectionsResult.exploration}\n\nESTRUCTURACIÓN:\n${aiSectionsResult.structuring}\n\nPRÁCTICA:\n${aiSectionsResult.practice}\n\nTRANSFERENCIA:\n${aiSectionsResult.transfer}`;
+                                        navigator.clipboard.writeText(fullText);
+                                        Swal.fire({ icon: "success", title: "Copiado", text: "Contenido de las 4 secciones copiado", timer: 1500 });
+                                    }}
                                     class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                                 >
-                                    📋 Copiar
+                                    📋 Copiar todo
                                 </button>
                                 <button
                                     type="button"
                                     onclick={applyAIResult}
                                     class="flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                                 >
-                                    ✅ Aplicar a sección
+                                    ✅ Aplicar a las 4 secciones
                                 </button>
                             </div>
                         </div>

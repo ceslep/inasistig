@@ -1,10 +1,15 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { fade, fly } from "svelte/transition";
-  import { ArrowLeft, Wifi, WifiOff, CloudUpload, Loader2 } from "lucide-svelte";
+  import { ArrowLeft, Wifi, WifiOff, CloudUpload, Loader2, BarChart3 } from "lucide-svelte";
   import Swal from "sweetalert2";
   import Dashboard from "./components/Dashboard.svelte";
   import { isOnline, pendingCount, isSyncing } from "./lib/networkStore";
+  import { initAnalytics, trackViewChange } from "./lib/analyticsService";
+  import { initVersionCheck } from "./version";
+
+  let showAnalytics = $state(false);
+  let AnalyticsModal: ReturnType<typeof $state<typeof import("./components/AnalyticsModal.svelte").default | null>> = $state(null);
 
   let activeView = $state("dashboard");
 
@@ -24,6 +29,8 @@
 
   onMount(() => {
     window.addEventListener("pwa-sync-complete", handleSyncComplete);
+    initAnalytics();
+    void initVersionCheck();
   });
 
   onDestroy(() => {
@@ -66,6 +73,15 @@
     }
 
     activeView = view;
+    trackViewChange(view);
+  };
+
+  const openAnalytics = async () => {
+    if (!AnalyticsModal) {
+      const module = await import("./components/AnalyticsModal.svelte");
+      AnalyticsModal = module.default;
+    }
+    showAnalytics = true;
   };
 
   const handleBack = () => {
@@ -145,6 +161,21 @@
       <span>{$pendingCount} PENDIENTE{$pendingCount > 1 ? "S" : ""}</span>
     {/if}
   </div>
+{/if}
+
+<!-- Botón flotante de estadísticas -->
+<button
+  onclick={openAnalytics}
+  class="fixed bottom-6 left-6 z-40 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95"
+  style="background-color: rgb(var(--accent-primary)); color: white;"
+  title="Estadísticas de uso"
+>
+  <BarChart3 class="w-5 h-5" />
+</button>
+
+<!-- Modal de estadísticas -->
+{#if showAnalytics && AnalyticsModal}
+  <AnalyticsModal onClose={() => (showAnalytics = false)} />
 {/if}
 
 <style>
