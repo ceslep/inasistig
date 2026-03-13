@@ -27,8 +27,11 @@ if (!file_exists($SESSIONS_FILE)) {
 }
 
 function readJson(string $file): array {
+    if (!file_exists($file)) return [];
     $content = file_get_contents($file);
-    return $content ? json_decode($content, true) : [];
+    if (!$content) return [];
+    $decoded = json_decode($content, true);
+    return is_array($decoded) ? $decoded : [];
 }
 
 function writeJson(string $file, array $data): void {

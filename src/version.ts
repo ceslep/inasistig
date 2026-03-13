@@ -5,7 +5,7 @@
  * obtenga los assets más recientes (invalida service worker cache).
  */
 
-export const APP_VERSION = "1.0.1";
+export const APP_VERSION = "1.0.2";
 export const APP_BUILD_DATE = "2026-03-13";
 
 const VERSION_STORAGE_KEY = "app_version";

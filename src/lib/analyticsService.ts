@@ -136,9 +136,80 @@ function getSessionId(): string {
   return sessionId;
 }
 
+const DOCENTE_MATERIAS_KEYS = [
+  "docenteMaterias",
+  "docenteMateriasDiario",
+];
+
+const LAST_DOCENTE_KEYS = ["lastDocente", "lastDocenteDiario"];
+
+function normalizeDocente(docente: unknown): string | null {
+  if (typeof docente !== "string") return null;
+  const normalized = docente.trim();
+  return normalized.length === 0 ? null : normalized;
+}
+
+function addDocenteCount(counts: Map<string, number>, docente: string, value: number): void {
+  const previous = counts.get(docente) ?? 0;
+  counts.set(docente, previous + value);
+}
+
+function collectDocenteCounts(): Map<string, number> {
+  const counts = new Map<string, number>();
+
+  if (typeof window === "undefined" || typeof localStorage === "undefined") {
+    return counts;
+  }
+
+  for (const key of DOCENTE_MATERIAS_KEYS) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") continue;
+      for (const [docenteKey, value] of Object.entries(parsed)) {
+        const docente = normalizeDocente(docenteKey);
+        if (!docente) continue;
+        let weight = 0;
+        if (Array.isArray(value)) {
+          weight = value.length;
+        } else if (value && typeof value === "object") {
+          weight = Object.keys(value).length;
+        } else if (typeof value === "string") {
+          weight = value.trim().length > 0 ? 1 : 0;
+        }
+        addDocenteCount(counts, docente, Math.max(weight, 1));
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  for (const key of LAST_DOCENTE_KEYS) {
+    try {
+      const doc = normalizeDocente(localStorage.getItem(key));
+      if (!doc) continue;
+      addDocenteCount(counts, doc, 1);
+    } catch {
+      continue;
+    }
+  }
+
+  return counts;
+}
+
 function getDocente(): string | null {
   try {
-    return localStorage.getItem("docenteMaterias") || null;
+    const counts = collectDocenteCounts();
+    let winner: string | null = null;
+    let bestCount = 0;
+    counts.forEach((value, docente) => {
+      if (value > bestCount) {
+        bestCount = value;
+        winner = docente;
+      }
+    });
+    return winner;
   } catch {
     return null;
   }
