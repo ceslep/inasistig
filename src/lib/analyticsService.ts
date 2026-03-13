@@ -138,7 +138,7 @@ function getSessionId(): string {
 
 function getDocente(): string | null {
   try {
-    return localStorage.getItem("selectedDocente") || null;
+    return localStorage.getItem("docenteMaterias") || null;
   } catch {
     return null;
   }

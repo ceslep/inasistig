@@ -152,9 +152,187 @@
         structuring: string;
         practice: string;
         transfer: string;
+        objectives: string;
+        competencias: string;
+        indicadores: string;
+        tiempo_exploracion: number;
+        tiempo_estructuracion: number;
+        tiempo_practica: number;
+        tiempo_transferencia: number;
+        tiempo_valoracion: number;
     }
 
     let aiSectionsResult = $state<AISections | null>(null);
+
+    const MAX_AI_RETRIES = 3;
+    let aiAttempt = $state(0);
+
+    interface AIResponseChoice {
+        message?: {
+            content?: string | null;
+            reasoning?: string | null;
+            reasoning_details?: { text?: string }[];
+        };
+        text?: string;
+        finish_reason?: string;
+    }
+
+    interface AIResponseData {
+        choices?: AIResponseChoice[];
+        output?: { text?: string };
+        generations?: { text?: string; content?: string }[];
+        error?: { message?: string };
+    }
+
+    /**
+     * Extrae texto útil de la respuesta de la IA (content, reasoning, o reasoning_details)
+     */
+    const extractContent = (data: AIResponseData): string => {
+        if (data.error?.message) return "";
+
+        const choice = data.choices?.[0];
+        if (!choice) {
+            if (data.output?.text) return data.output.text;
+            if (data.generations?.[0]) return data.generations[0].text || data.generations[0].content || "";
+            return "";
+        }
+
+        // 1. content directo
+        if (choice.message?.content && choice.message.content.trim().length > 10) {
+            return choice.message.content;
+        }
+
+        // 2. reasoning (algunos modelos ponen todo aquí)
+        if (choice.message?.reasoning && choice.message.reasoning.trim().length > 10) {
+            return choice.message.reasoning;
+        }
+
+        // 3. reasoning_details
+        if (choice.message?.reasoning_details?.length) {
+            const text = choice.message.reasoning_details.map(d => d.text || "").join("\n");
+            if (text.trim().length > 10) return text;
+        }
+
+        // 4. text directo
+        if (choice.text && choice.text.trim().length > 10) {
+            return choice.text;
+        }
+
+        return "";
+    };
+
+    /**
+     * Intenta extraer las 4 secciones de un texto (JSON o texto libre)
+     */
+    const parseSections = (text: string): AISections | null => {
+        // Validar que no sea código
+        const invalidPatterns = ["<?php", "<?=", "include_once", "require_once", "json_encode", "file_get_contents", "<script"];
+        if (invalidPatterns.some(p => text.toLowerCase().includes(p.toLowerCase()))) {
+            return null;
+        }
+
+        // Intentar parsear JSON
+        let jsonString = text.match(/\{[\s\S]*\}/)?.[0] || "";
+
+        if (!jsonString && text.includes("{")) {
+            jsonString = text.substring(text.indexOf("{")).trim();
+            if (!jsonString.endsWith("}")) {
+                // Cerrar strings abiertos y la llave
+                const lastQuote = jsonString.lastIndexOf('"');
+                if (lastQuote > jsonString.lastIndexOf('":')) {
+                    jsonString = jsonString.substring(0, lastQuote + 1) + "}";
+                } else {
+                    jsonString += '"}';
+                }
+            }
+        }
+
+        if (jsonString) {
+            try {
+                const cleanJson = jsonString
+                    .replace(/[\x00-\x1F\x7F]/g, (c: string) => c === "\n" || c === "\t" ? c : "")
+                    .replace(/,\s*}/g, "}");
+
+                const parsed = JSON.parse(cleanJson) as Record<string, unknown>;
+                if (parsed.exploration && parsed.structuring && parsed.practice && parsed.transfer) {
+                    return {
+                        exploration: String(parsed.exploration),
+                        structuring: String(parsed.structuring),
+                        practice: String(parsed.practice),
+                        transfer: String(parsed.transfer),
+                        objectives: parsed.objectives ? String(parsed.objectives) : "",
+                        competencias: parsed.competencias ? String(parsed.competencias) : "",
+                        indicadores: parsed.indicadores ? String(parsed.indicadores) : "",
+                        tiempo_exploracion: Number(parsed.tiempo_exploracion) || 10,
+                        tiempo_estructuracion: Number(parsed.tiempo_estructuracion) || 20,
+                        tiempo_practica: Number(parsed.tiempo_practica) || 25,
+                        tiempo_transferencia: Number(parsed.tiempo_transferencia) || 15,
+                        tiempo_valoracion: Number(parsed.tiempo_valoracion) || 10,
+                    };
+                }
+            } catch {
+                // JSON parse falló
+            }
+        }
+
+        // Fallback: buscar secciones por keywords en texto libre
+        const sectionMap: Record<string, string> = {};
+        const sectionKeys = [
+            { key: "exploration", patterns: ["exploración", "exploration", "inicio", "pregunta generadora"] },
+            { key: "structuring", patterns: ["estructuración", "structuring", "desarrollo", "concepto principal"] },
+            { key: "practice", patterns: ["práctica", "practice", "ejercicio"] },
+            { key: "transfer", patterns: ["transferencia", "transfer", "cierre", "aplicación"] },
+        ];
+
+        const lowerText = text.toLowerCase();
+        for (const sec of sectionKeys) {
+            for (const pattern of sec.patterns) {
+                const idx = lowerText.indexOf(pattern);
+                if (idx !== -1) {
+                    // Encontrar el contenido después del patrón
+                    const afterPattern = text.substring(idx);
+                    const nextLineEnd = afterPattern.indexOf("\n\n", pattern.length);
+                    const chunk = nextLineEnd > 0
+                        ? afterPattern.substring(0, nextLineEnd).trim()
+                        : afterPattern.substring(0, 500).trim();
+                    if (chunk.length > 20 && !sectionMap[sec.key]) {
+                        sectionMap[sec.key] = chunk;
+                    }
+                    break;
+                }
+            }
+        }
+
+        if (sectionMap.exploration && sectionMap.structuring && sectionMap.practice && sectionMap.transfer) {
+            return {
+                ...sectionMap,
+                objectives: sectionMap.objectives || "",
+                competencias: sectionMap.competencias || "",
+                indicadores: sectionMap.indicadores || "",
+                tiempo_exploracion: 10,
+                tiempo_estructuracion: 20,
+                tiempo_practica: 25,
+                tiempo_transferencia: 15,
+                tiempo_valoracion: 10,
+            } as AISections;
+        }
+
+        // Último fallback: dividir en 4 partes iguales si hay suficiente texto
+        const lines = text.split("\n").filter((l: string) => l.trim().length > 5);
+        if (lines.length >= 4) {
+            const chunkSize = Math.max(1, Math.ceil(lines.length / 4));
+            return {
+                exploration: lines.slice(0, chunkSize).join("\n"),
+                structuring: lines.slice(chunkSize, chunkSize * 2).join("\n"),
+                practice: lines.slice(chunkSize * 2, chunkSize * 3).join("\n"),
+                transfer: lines.slice(chunkSize * 3).join("\n"),
+                objectives: "", competencias: "", indicadores: "",
+                tiempo_exploracion: 10, tiempo_estructuracion: 20, tiempo_practica: 25, tiempo_transferencia: 15, tiempo_valoracion: 10,
+            };
+        }
+
+        return null;
+    };
 
     const generateWithAI = async (): Promise<void> => {
         if (!aiPrompt.trim()) {
@@ -169,100 +347,75 @@
         isGeneratingAI = true;
         aiSectionsResult = null;
         aiResult = "";
+        aiAttempt = 0;
         
         try {
-            const response = await fetch(AI_PROXY_URL, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    model: "openrouter/free",
-                    max_tokens: 800,
-                    messages: [
-                        {
-                            role: "system",
-                            content: "Eres un asistente educativo colombiano experto en didáctica y pedagogía. Genera contenido en español claro y profesional. IMPORTANTE: Responde ÚNICAMENTE con un JSON válido, sin markdown ni texto adicional."
-                        },
-                        {
-                            role: "user",
-                            content: `Genera una secuencia didáctica completa para el siguiente tema. Responde SOLO con un JSON con estas 4 claves, cada valor máximo 2 párrafos cortos:
+            for (let attempt = 1; attempt <= MAX_AI_RETRIES; attempt++) {
+                aiAttempt = attempt;
 
-{
-  "exploration": "actividad de exploración/inicio: pregunta generadora y pasos clave",
-  "structuring": "actividad de estructuración/desarrollo: concepto principal y actividad guiada",
-  "practice": "actividad de práctica: ejercicios con instrucciones claras",
-  "transfer": "actividad de transferencia/cierre: aplicación y preguntas de cierre"
-}
+                const response = await fetch(AI_PROXY_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        model: "openrouter/free",
+                        max_tokens: 1000,
+                        messages: [
+                            {
+                                role: "system",
+                                content: "Eres un asistente educativo colombiano. Responde ÚNICAMENTE con un JSON válido, sin markdown. Sé conciso, máximo 2 párrafos por sección."
+                            },
+                            {
+                                role: "user",
+                                content: `Genera una secuencia didáctica completa. Responde SOLO con este JSON (sin explicaciones ni markdown):
+{"exploration":"actividad de inicio con pregunta generadora","structuring":"actividad de desarrollo con concepto y guía","practice":"ejercicios prácticos con instrucciones","transfer":"actividad de cierre con preguntas","objectives":"3 objetivos de aprendizaje separados por salto de linea","competencias":"3 competencias a desarrollar separadas por salto de linea","indicadores":"3 indicadores de logro separados por salto de linea","tiempo_exploracion":10,"tiempo_estructuracion":20,"tiempo_practica":25,"tiempo_transferencia":15,"tiempo_valoracion":10}
 
-Tema/Contexto: ${aiPrompt}`
-                        }
-                    ]
-                })
-            });
+Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
+                            }
+                        ]
+                    })
+                });
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
-                throw new Error(`Error ${response.status}: ${errorData.error?.message || response.statusText}`);
-            }
-
-            const data = await response.json() as {
-                choices?: { message?: { content?: string }; text?: string }[];
-                output?: { text?: string };
-                generations?: { text?: string; content?: string }[];
-            };
-            
-            let content = "";
-            if (data.choices && data.choices[0]) {
-                content = data.choices[0].message?.content || data.choices[0].text || "";
-            } else if (data.output?.text) {
-                content = data.output.text;
-            } else if (data.generations && data.generations[0]) {
-                content = data.generations[0].text || data.generations[0].content || "";
-            }
-            
-            if (!content) {
-                throw new Error("No se recibió respuesta válida de la IA");
-            }
-
-            // Validar que no sea código
-            const invalidPatterns = ["<?php", "<?=", "include_once", "require_once", "json_encode", "file_get_contents", "<script"];
-            const lowerContent = content.toLowerCase();
-            if (invalidPatterns.some(p => lowerContent.includes(p.toLowerCase()))) {
-                throw new Error("La IA devolvió una respuesta no válida. Intenta de nuevo.");
-            }
-
-            // Intentar parsear JSON de la respuesta
-            const jsonMatch = content.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                try {
-                    const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
-                    if (parsed.exploration && parsed.structuring && parsed.practice && parsed.transfer) {
-                        aiSectionsResult = {
-                            exploration: String(parsed.exploration),
-                            structuring: String(parsed.structuring),
-                            practice: String(parsed.practice),
-                            transfer: String(parsed.transfer),
-                        };
-                        aiResult = "✅ Contenido generado para las 4 secciones. Revisa y aplica.";
-                        return;
-                    }
-                } catch {
-                    // JSON parse falló, usar como texto plano
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
+                    if (attempt < MAX_AI_RETRIES) continue;
+                    throw new Error(`Error ${response.status}: ${errorData.error?.message || response.statusText}`);
                 }
+
+                const data = await response.json() as AIResponseData;
+                const content = extractContent(data);
+
+                if (!content || content.trim().length < 50) {
+                    if (attempt < MAX_AI_RETRIES) continue;
+                    throw new Error("La IA no generó contenido suficiente después de varios intentos.");
+                }
+
+                const sections = parseSections(content);
+                if (sections) {
+                    aiSectionsResult = sections;
+                    aiResult = `✅ Contenido generado para las 4 secciones. Revisa y aplica.`;
+                    break;
+                }
+
+                if (attempt < MAX_AI_RETRIES) continue;
+
+                // Último intento: forzar fallback con texto crudo
+                const lines = content.split("\n").filter((l: string) => l.trim().length > 5);
+                if (lines.length >= 4) {
+                    const cs = Math.max(1, Math.ceil(lines.length / 4));
+                    aiSectionsResult = {
+                        exploration: lines.slice(0, cs).join("\n"),
+                        structuring: lines.slice(cs, cs * 2).join("\n"),
+                        practice: lines.slice(cs * 2, cs * 3).join("\n"),
+                        transfer: lines.slice(cs * 3).join("\n"),
+                        objectives: "", competencias: "", indicadores: "",
+                        tiempo_exploracion: 10, tiempo_estructuracion: 20, tiempo_practica: 25, tiempo_transferencia: 15, tiempo_valoracion: 10,
+                    };
+                    aiResult = "⚠️ Contenido generado (formato aproximado). Revisa antes de aplicar.";
+                    break;
+                }
+
+                throw new Error("La IA no devolvió un formato reconocible después de varios intentos.");
             }
-
-            // Fallback: si no devolvió JSON, dividir el texto en 4 partes
-            const lines = content.split("\n").filter((l: string) => l.trim());
-            const chunkSize = Math.max(1, Math.ceil(lines.length / 4));
-            aiSectionsResult = {
-                exploration: lines.slice(0, chunkSize).join("\n"),
-                structuring: lines.slice(chunkSize, chunkSize * 2).join("\n"),
-                practice: lines.slice(chunkSize * 2, chunkSize * 3).join("\n"),
-                transfer: lines.slice(chunkSize * 3).join("\n"),
-            };
-            aiResult = "✅ Contenido generado para las 4 secciones (distribuido). Revisa y aplica.";
-
         } catch (error) {
             console.error("Error generando con IA:", error);
             Swal.fire({
@@ -273,12 +426,14 @@ Tema/Contexto: ${aiPrompt}`
             });
         } finally {
             isGeneratingAI = false;
+            aiAttempt = 0;
         }
     };
 
     const applyAIResult = (): void => {
         if (!aiSectionsResult) return;
 
+        // Secuencia didáctica
         const prefixE = formData.exploration ? formData.exploration + "\n\n" : "";
         formData.exploration = prefixE + aiSectionsResult.exploration;
 
@@ -291,11 +446,32 @@ Tema/Contexto: ${aiPrompt}`
         const prefixT = formData.transfer ? formData.transfer + "\n\n" : "";
         formData.transfer = prefixT + aiSectionsResult.transfer;
 
+        // Objetivos, competencias e indicadores
+        if (aiSectionsResult.objectives) {
+            const prefixO = formData.learning_objectives ? formData.learning_objectives + "\n" : "";
+            formData.learning_objectives = prefixO + aiSectionsResult.objectives;
+        }
+        if (aiSectionsResult.competencias) {
+            const prefixC = formData.competencias ? formData.competencias + "\n" : "";
+            formData.competencias = prefixC + aiSectionsResult.competencias;
+        }
+        if (aiSectionsResult.indicadores) {
+            const prefixI = formData.indicadores_logro ? formData.indicadores_logro + "\n" : "";
+            formData.indicadores_logro = prefixI + aiSectionsResult.indicadores;
+        }
+
+        // Tiempos
+        formData.tiempo_exploracion = aiSectionsResult.tiempo_exploracion;
+        formData.tiempo_estructuracion = aiSectionsResult.tiempo_estructuracion;
+        formData.tiempo_practica = aiSectionsResult.tiempo_practica;
+        formData.tiempo_transferencia = aiSectionsResult.tiempo_transferencia;
+        formData.tiempo_valoracion = aiSectionsResult.tiempo_valoracion;
+
         Swal.fire({
             icon: "success",
             title: "Aplicado",
-            text: "El contenido generado se ha aplicado a las 4 secciones de la secuencia didáctica",
-            timer: 2500,
+            text: "Contenido aplicado: 4 secciones, objetivos, competencias, indicadores y tiempos",
+            timer: 3000,
         });
 
         closeAIPanel();
@@ -4196,7 +4372,7 @@ Tema/Contexto: ${aiPrompt}`
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            Generando las 4 secciones...
+                            Generando...{aiAttempt > 1 ? ` (intento ${aiAttempt}/3)` : ''}
                         {:else}
                             ⚡ Generar Secuencia Didáctica Completa
                         {/if}
@@ -4206,9 +4382,45 @@ Tema/Contexto: ${aiPrompt}`
                     {#if aiSectionsResult}
                         <div class="space-y-3">
                             <span class="text-sm font-bold text-gray-700 block">
-                                📄 Resultado generado para las 4 secciones:
+                                📄 Resultado generado:
                             </span>
+
+                            <!-- Objetivos, Competencias, Indicadores -->
+                            {#if aiSectionsResult.objectives || aiSectionsResult.competencias || aiSectionsResult.indicadores}
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                    {#if aiSectionsResult.objectives}
+                                        <div class="rounded-xl border border-blue-200 p-3 bg-blue-50">
+                                            <span class="text-[11px] font-bold text-blue-700 uppercase block mb-1">🎯 Objetivos</span>
+                                            <p class="text-xs text-gray-700 whitespace-pre-wrap">{aiSectionsResult.objectives}</p>
+                                        </div>
+                                    {/if}
+                                    {#if aiSectionsResult.competencias}
+                                        <div class="rounded-xl border border-green-200 p-3 bg-green-50">
+                                            <span class="text-[11px] font-bold text-green-700 uppercase block mb-1">🤝 Competencias</span>
+                                            <p class="text-xs text-gray-700 whitespace-pre-wrap">{aiSectionsResult.competencias}</p>
+                                        </div>
+                                    {/if}
+                                    {#if aiSectionsResult.indicadores}
+                                        <div class="rounded-xl border border-purple-200 p-3 bg-purple-50">
+                                            <span class="text-[11px] font-bold text-purple-700 uppercase block mb-1">📊 Indicadores</span>
+                                            <p class="text-xs text-gray-700 whitespace-pre-wrap">{aiSectionsResult.indicadores}</p>
+                                        </div>
+                                    {/if}
+                                </div>
+                            {/if}
+
+                            <!-- Tiempos -->
+                            <div class="flex flex-wrap gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200">
+                                <span class="text-[11px] font-bold text-amber-700 w-full mb-1">⏱️ Distribución del tiempo (minutos)</span>
+                                <span class="text-xs px-2 py-1 rounded-full bg-violet-100 text-violet-700 font-medium">Exploración: {aiSectionsResult.tiempo_exploracion}</span>
+                                <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">Estructuración: {aiSectionsResult.tiempo_estructuracion}</span>
+                                <span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 font-medium">Práctica: {aiSectionsResult.tiempo_practica}</span>
+                                <span class="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-700 font-medium">Transferencia: {aiSectionsResult.tiempo_transferencia}</span>
+                                <span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 font-medium">Valoración: {aiSectionsResult.tiempo_valoracion}</span>
+                                <span class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-700 font-bold">Total: {aiSectionsResult.tiempo_exploracion + aiSectionsResult.tiempo_estructuracion + aiSectionsResult.tiempo_practica + aiSectionsResult.tiempo_transferencia + aiSectionsResult.tiempo_valoracion} min</span>
+                            </div>
                             
+                            <!-- Secciones de la secuencia -->
                             {#each [
                                 { key: "exploration", label: "🔍 Exploración", color: "violet" },
                                 { key: "structuring", label: "📝 Estructuración", color: "blue" },
@@ -4231,9 +4443,9 @@ Tema/Contexto: ${aiPrompt}`
                                     type="button"
                                     onclick={() => {
                                         if (!aiSectionsResult) return;
-                                        const fullText = `EXPLORACIÓN:\n${aiSectionsResult.exploration}\n\nESTRUCTURACIÓN:\n${aiSectionsResult.structuring}\n\nPRÁCTICA:\n${aiSectionsResult.practice}\n\nTRANSFERENCIA:\n${aiSectionsResult.transfer}`;
+                                        const fullText = `OBJETIVOS:\n${aiSectionsResult.objectives}\n\nCOMPETENCIAS:\n${aiSectionsResult.competencias}\n\nINDICADORES:\n${aiSectionsResult.indicadores}\n\nEXPLORACIÓN:\n${aiSectionsResult.exploration}\n\nESTRUCTURACIÓN:\n${aiSectionsResult.structuring}\n\nPRÁCTICA:\n${aiSectionsResult.practice}\n\nTRANSFERENCIA:\n${aiSectionsResult.transfer}`;
                                         navigator.clipboard.writeText(fullText);
-                                        Swal.fire({ icon: "success", title: "Copiado", text: "Contenido de las 4 secciones copiado", timer: 1500 });
+                                        Swal.fire({ icon: "success", title: "Copiado", text: "Todo el contenido copiado", timer: 1500 });
                                     }}
                                     class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                                 >
@@ -4244,7 +4456,7 @@ Tema/Contexto: ${aiPrompt}`
                                     onclick={applyAIResult}
                                     class="flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                                 >
-                                    ✅ Aplicar a las 4 secciones
+                                    ✅ Aplicar todo al formulario
                                 </button>
                             </div>
                         </div>
