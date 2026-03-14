@@ -390,6 +390,7 @@ return data as ReportData;
 
 export interface PlaneadorData {
   id?: string;
+  fecha_creacion?: string;
   docente: string;
   institution: string;
   campus: string;
@@ -398,19 +399,46 @@ export interface PlaneadorData {
   period: string;
   dba: string[];
   standard: string[];
+  dba_manual: string;
   competency: string;
   has_piar: boolean;
   piar_description: string;
+  learning_objectives: string;
+  competencias: string;
+  indicadores_logro: string;
   exploration: string;
+  exploration_activities: string[];
+  tiempo_exploracion: number;
   structuring: string;
+  structuring_activities: string[];
+  tiempo_estructuracion: number;
   practice: string;
+  practice_activities: string[];
+  tiempo_practica: number;
   transfer: string;
+  transfer_activities: string[];
+  tiempo_transferencia: number;
   assessment_moment: string;
+  assessment_activities: string[];
+  tiempo_valoracion: number;
+  eval_type: string;
+  eval_modalidades: string[];
+  eval_instrumentos: string[];
+  eval_criterios: string[];
+  eval_evidencias: string[];
   eval_criteria: string;
   eval_evidence: string;
-  eval_type: string;
+  eval_ponderacion_conceptos: number;
+  eval_ponderacion_procedimientos: number;
+  eval_ponderacion_actitudes: number;
+  eval_descripcion_auto: string;
   resources: string;
-  fecha_creacion?: string;
+  planeacion_tipo: string;
+  periodo_academico: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  firma_docente: string;
+  fecha_firma: string;
 }
 
 export interface PlaneadorPayload {
@@ -453,7 +481,16 @@ export const savePlaneador = async (data: PlaneadorData): Promise<{ success: boo
   }
 };
 
-export const getPlaneador = async (filtros: { docente?: string; grado?: string; materia?: string } = {}): Promise<PlaneadorData[]> => {
+export interface PlaneadorFiltros {
+  docente?: string;
+  grado?: string;
+  materia?: string;
+  periodo?: string;
+  fechaDesde?: string;
+  fechaHasta?: string;
+}
+
+export const getPlaneador = async (filtros: PlaneadorFiltros = {}): Promise<PlaneadorData[]> => {
   try {
     const response = await fetch(GET_PLANEADOR_URL, {
       method: "POST",
@@ -464,7 +501,7 @@ export const getPlaneador = async (filtros: { docente?: string; grado?: string; 
     });
 
     if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
+      throw new Error(`Error ${response.status}`);
     }
 
     const data = await response.json();

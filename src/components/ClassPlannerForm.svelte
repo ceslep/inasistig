@@ -9,6 +9,7 @@
         getMaterias,
         getEstudiantes,
         type PlaneadorData,
+        type PlaneadorFiltros,
         type NormativaItem,
         savePlaneadorLocal,
         getPlaneadoresLocales,
@@ -21,6 +22,7 @@
         uploadTemasDocente,
         getTemasDocente,
         type TemaDocenteEntry,
+        getPlaneador,
     } from "../../api/service";
     import { URL_DBA_EBC, AI_PROXY_URL } from "../constants";
     import Piar from "./Piar.svelte";
@@ -41,6 +43,19 @@
     let showLocalPanel = $state(false);
     let planeacionesLocales = $state<PlaneadorLocal[]>([]);
     let fileInputRef = $state<HTMLInputElement | undefined>(undefined);
+
+    // Online Planeaciones (Google Sheets)
+    let showFiltrosPanel = $state(false);
+    let planeacionesOnline = $state<PlaneadorData[]>([]);
+    let isLoadingOnline = $state(false);
+    let filtrosBusqueda = $state<PlaneadorFiltros>({
+        docente: "",
+        grado: "",
+        materia: "",
+        periodo: "",
+        fechaDesde: "",
+        fechaHasta: ""
+    });
 
     // PDF Preview
     let showPdfPreview = $state(false);
@@ -575,6 +590,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
         formData.period = planeacion.period;
         formData.dba = planeacion.dba;
         formData.standard = planeacion.standard;
+        formData.dba_manual = planeacion.dba_manual || "";
         formData.competency = planeacion.competency;
         formData.has_piar = planeacion.has_piar;
         formData.piar_description = planeacion.piar_description;
@@ -595,6 +611,91 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
             icon: "success",
             title: "Cargada",
             text: "Planeación local cargada para edición",
+            timer: 2000,
+        });
+    };
+
+    // --- Funciones Planeaciones Online (Google Sheets) ---
+    const buscarPlaneacionesOnline = async (): Promise<void> => {
+        isLoadingOnline = true;
+        try {
+            planeacionesOnline = await getPlaneador(filtrosBusqueda);
+            if (planeacionesOnline.length === 0) {
+                Swal.fire({
+                    icon: "info",
+                    title: "Sin resultados",
+                    text: "No se encontraron planeaciones con los filtros seleccionados.",
+                    timer: 2000,
+                });
+            }
+        } catch (error) {
+            console.error("Error buscando planeaciones:", error);
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "No se pudieron cargar las planeaciones. Verifique la conexión.",
+                confirmButtonColor: "#ef4444",
+            });
+        } finally {
+            isLoadingOnline = false;
+        }
+    };
+
+    const loadPlaneacionOnline = (planeacion: PlaneadorData): void => {
+        formData.docente = planeacion.docente;
+        formData.grado = planeacion.grade;
+        formData.subject = planeacion.subject;
+        formData.period = planeacion.period;
+        formData.dba = planeacion.dba || [];
+        formData.standard = planeacion.standard || [];
+        formData.dba_manual = planeacion.dba_manual || "";
+        formData.competency = planeacion.competency;
+        formData.has_piar = planeacion.has_piar;
+        formData.piar_description = planeacion.piar_description || "";
+        formData.learning_objectives = planeacion.learning_objectives || "";
+        formData.competencias = planeacion.competencias || "";
+        formData.indicadores_logro = planeacion.indicadores_logro || "";
+        formData.exploration = planeacion.exploration || "";
+        formData.exploration_activities = planeacion.exploration_activities || [];
+        formData.tiempo_exploracion = planeacion.tiempo_exploracion || 10;
+        formData.structuring = planeacion.structuring || "";
+        formData.structuring_activities = planeacion.structuring_activities || [];
+        formData.tiempo_estructuracion = planeacion.tiempo_estructuracion || 20;
+        formData.practice = planeacion.practice || "";
+        formData.practice_activities = planeacion.practice_activities || [];
+        formData.tiempo_practica = planeacion.tiempo_practica || 25;
+        formData.transfer = planeacion.transfer || "";
+        formData.transfer_activities = planeacion.transfer_activities || [];
+        formData.tiempo_transferencia = planeacion.tiempo_transferencia || 15;
+        formData.assessment_moment = planeacion.assessment_moment || "";
+        formData.assessment_activities = planeacion.assessment_activities || [];
+        formData.tiempo_valoracion = planeacion.tiempo_valoracion || 10;
+        formData.eval_type = planeacion.eval_type || "Formativa";
+        formData.eval_modalidades = planeacion.eval_modalidades || [];
+        formData.eval_instrumentos = planeacion.eval_instrumentos || [];
+        formData.eval_criterios = planeacion.eval_criterios || [];
+        formData.eval_evidencias = planeacion.eval_evidencias || [];
+        formData.eval_criteria = planeacion.eval_criteria || "";
+        formData.eval_evidence = planeacion.eval_evidence || "";
+        formData.eval_ponderacion_conceptos = planeacion.eval_ponderacion_conceptos || 30;
+        formData.eval_ponderacion_procedimientos = planeacion.eval_ponderacion_procedimientos || 40;
+        formData.eval_ponderacion_actitudes = planeacion.eval_ponderacion_actitudes || 30;
+        formData.eval_descripcion_auto = planeacion.eval_descripcion_auto || "";
+        formData.resources = planeacion.resources || "";
+        formData.planeacion_tipo = planeacion.planeacion_tipo || "";
+        formData.periodo_academico = planeacion.periodo_academico || "";
+        formData.fecha_inicio = planeacion.fecha_inicio || "";
+        formData.fecha_fin = planeacion.fecha_fin || "";
+        formData.firma_docente = planeacion.firma_docente || "";
+        formData.fecha_firma = planeacion.fecha_firma || "";
+
+        showFiltrosPanel = false;
+        currentStep = 0;
+
+        Swal.fire({
+            icon: "success",
+            title: "Cargada",
+            text: "Planeación de Google Sheets cargada para edición",
             timer: 2000,
         });
     };
@@ -695,6 +796,46 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
         general: { bg: "bg-gray-100", text: "text-gray-700" }
     };
 
+    // Materias que NO tienen normativa DBA/EBC
+    const MATERIAS_SIN_NORMATIVA = [
+        "educación artística",
+        "educacion artistica",
+        "educación física",
+        "educacion fisica",
+        "ética",
+        "etica",
+        "religión",
+        "religion",
+        "educación religiosa",
+        "educacion religiosa",
+        "educación ética",
+        "educacion etica",
+        "educación para la ciudadanía",
+        "ciudadanía",
+        "ciudadania",
+        "proyecto de vida",
+        "tecnología",
+        "tecnologia",
+        "informática",
+        "informatica",
+        "artes",
+        "música",
+        "musica",
+        "danza",
+        "teatro",
+        "educación física y deportes",
+        "deportes",
+        "fsica",
+        "fsca",
+    ];
+
+    // Verificar si la materia actual no tiene normativa
+    let materiaSinNormativa = $derived(
+        MATERIAS_SIN_NORMATIVA.some(m => 
+            formData.subject.toLowerCase().includes(m)
+        )
+    );
+
     // --- LÓGICA Y ESTADO (SVELTE 5 RUNES) ---
 
     // Estado reactivo para controlar el paso actual del Stepper (0 a 4)
@@ -712,6 +853,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
         // 2. Referentes de Calidad (MEN)
         dba: [] as string[], // Derechos Básicos de Aprendizaje seleccionados
         standard: [] as string[], // Estándar Básico de Competencia
+        dba_manual: "", // Estándares/DBA manual cuando no hay normativa
         competency: "", // Competencia (Ciudadana/Socioemocional)
 
         // 3. Inclusión (PIAR)
@@ -2026,6 +2168,8 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
         let guardadoOnline = false;
         
         const planeacionData: PlaneadorData = {
+            id: `PL_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            fecha_creacion: new Date().toISOString().split('T')[0],
             docente: formData.docente,
             institution: "",
             campus: "",
@@ -2034,21 +2178,59 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
             period: formData.period,
             dba: formData.dba,
             standard: formData.standard,
+            dba_manual: formData.dba_manual,
             competency: formData.competency,
             has_piar: formData.has_piar,
             piar_description: formData.piar_description,
+            learning_objectives: formData.learning_objectives,
+            competencias: formData.competencias,
+            indicadores_logro: formData.indicadores_logro,
             exploration: formData.exploration,
+            exploration_activities: formData.exploration_activities,
+            tiempo_exploracion: formData.tiempo_exploracion,
             structuring: formData.structuring,
+            structuring_activities: formData.structuring_activities,
+            tiempo_estructuracion: formData.tiempo_estructuracion,
             practice: formData.practice,
+            practice_activities: formData.practice_activities,
+            tiempo_practica: formData.tiempo_practica,
             transfer: formData.transfer,
+            transfer_activities: formData.transfer_activities,
+            tiempo_transferencia: formData.tiempo_transferencia,
             assessment_moment: formData.assessment_moment,
+            assessment_activities: formData.assessment_activities,
+            tiempo_valoracion: formData.tiempo_valoracion,
+            eval_type: formData.eval_type,
+            eval_modalidades: formData.eval_modalidades,
+            eval_instrumentos: formData.eval_instrumentos,
+            eval_criterios: formData.eval_criterios,
+            eval_evidencias: formData.eval_evidencias,
             eval_criteria: formData.eval_criteria,
             eval_evidence: formData.eval_evidence,
-            eval_type: formData.eval_type,
+            eval_ponderacion_conceptos: formData.eval_ponderacion_conceptos,
+            eval_ponderacion_procedimientos: formData.eval_ponderacion_procedimientos,
+            eval_ponderacion_actitudes: formData.eval_ponderacion_actitudes,
+            eval_descripcion_auto: formData.eval_descripcion_auto,
             resources: formData.resources,
+            planeacion_tipo: formData.planeacion_tipo,
+            periodo_academico: formData.periodo_academico,
+            fecha_inicio: formData.fecha_inicio,
+            fecha_fin: formData.fecha_fin,
+            firma_docente: formData.firma_docente,
+            fecha_firma: formData.fecha_firma,
         };
 
         const validatePlaneacion = (data: PlaneadorData): boolean => {
+            // Si la materia no tiene normativa, permitir modo manual
+            if (materiaSinNormativa) {
+                // Verificar que haya algo en dba_manual
+                if (!data.dba_manual?.trim()) {
+                    throw new Error("Escriba los estándares/temas que abordará en esta planeación");
+                }
+                return true;
+            }
+
+            // Validación normal cuando hay normativa
             if (!data.dba?.length)
                 throw new Error("Seleccione al menos un DBA");
             if (!data.standard?.length)
@@ -2107,6 +2289,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                 period: "",
                 dba: [],
                 standard: [],
+                dba_manual: "",
                 competency: "",
                 has_piar: false,
                 piar_description: "",
@@ -2461,18 +2644,27 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                             </div>
                         </div>
                     {:else if dbas.length === 0}
-                        <div class="bg-gradient-to-r from-red-50 to-orange-50 p-6 rounded-xl border border-red-200">
-                            <div class="flex items-center gap-3">
-                                <div class="p-3 bg-red-100 rounded-full">
-                                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                        <!-- Modo manual cuando no hay normativa -->
+                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="p-3 bg-blue-100 rounded-full">
+                                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                     </svg>
                                 </div>
                                 <div>
-                                    <h3 class="font-semibold text-red-800">Sin resultados</h3>
-                                    <p class="text-sm text-red-700">No se encontraron DBA para la combinación seleccionada.</p>
+                                    <h3 class="font-semibold text-blue-800">Entrada Manual de Estándares</h3>
+                                    <p class="text-sm text-blue-700">Esta materia no tiene DBA/EBC en la base de datos. Escriba los estándares y temas que abordará.</p>
                                 </div>
                             </div>
+                            <textarea
+                                bind:value={formData.dba_manual}
+                                placeholder="Ejemplo: Estándar: Aplico operaciones de pensamiento para resolver problemas cotidianos. Temas: Números enteros, operaciones básicas, solución de ecuaciones..."
+                                class="w-full h-40 p-4 text-sm border-2 border-blue-200 rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all resize-none"
+                            ></textarea>
+                            <p class="text-xs text-blue-600 mt-2">
+                                💡 Escriba los aprendizajes esperados, competencias y contenidos que abordará en esta planeación.
+                            </p>
                         </div>
                     {:else}
                         <!-- DBA Section -->
@@ -2655,16 +2847,17 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                             </div>
                         </div>
                     {:else if ebcs.length === 0}
-                        <div class="bg-gradient-to-r from-red-50 to-orange-50 p-6 rounded-xl border border-red-200">
-                            <div class="flex items-center gap-3">
-                                <div class="p-3 bg-red-100 rounded-full">
-                                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                        <!-- Modo manual cuando no hay normativa (usar el mismo textarea de DBA) -->
+                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="p-3 bg-blue-100 rounded-full">
+                                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                     </svg>
                                 </div>
                                 <div>
-                                    <h3 class="font-semibold text-red-800">Sin resultados</h3>
-                                    <p class="text-sm text-red-700">No se encontraron EBC para la combinación seleccionada.</p>
+                                    <h3 class="font-semibold text-blue-800">Sin estándares en la base de datos</h3>
+                                    <p class="text-sm text-blue-700">Use el campo de arriba para escribir manualmente los estándares y temas.</p>
                                 </div>
                             </div>
                         </div>
@@ -4144,6 +4337,137 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                 class="hidden"
                             />
                         </div>
+                    </div>
+                {/if}
+            </div>
+
+            <!-- Panel de Planeaciones Online (Google Sheets) -->
+            <div class="mt-4 bg-blue-50 rounded-xl border border-blue-200 overflow-hidden">
+                <button
+                    type="button"
+                    onclick={() => { showFiltrosPanel = !showFiltrosPanel; if (showFiltrosPanel && planeacionesOnline.length === 0) buscarPlaneacionesOnline(); }}
+                    class="w-full px-4 py-3 flex items-center justify-between bg-blue-100 hover:bg-blue-200 transition-colors text-left"
+                >
+                    <span class="flex items-center gap-2 font-medium text-blue-800">
+                        <span>☁️</span> Planeaciones en la Nube ({planeacionesOnline.length})
+                    </span>
+                    <span class="text-blue-600">{showFiltrosPanel ? '▼' : '▶'}</span>
+                </button>
+
+                {#if showFiltrosPanel}
+                    <div class="p-4 space-y-4">
+                        <!-- Filtros -->
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-blue-700 mb-1">Docente</label>
+                                <input
+                                    type="text"
+                                    bind:value={filtrosBusqueda.docente}
+                                    placeholder="Buscar por nombre..."
+                                    class="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-blue-700 mb-1">Grado</label>
+                                <input
+                                    type="text"
+                                    bind:value={filtrosBusqueda.grado}
+                                    placeholder="Ej: 6, 7, 8..."
+                                    class="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-blue-700 mb-1">Materia</label>
+                                <input
+                                    type="text"
+                                    bind:value={filtrosBusqueda.materia}
+                                    placeholder="Buscar materia..."
+                                    class="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-blue-700 mb-1">Período</label>
+                                <input
+                                    type="text"
+                                    bind:value={filtrosBusqueda.periodo}
+                                    placeholder="Ej: Periodo 1..."
+                                    class="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-blue-700 mb-1">Desde fecha</label>
+                                <input
+                                    type="date"
+                                    bind:value={filtrosBusqueda.fechaDesde}
+                                    class="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-blue-700 mb-1">Hasta fecha</label>
+                                <input
+                                    type="date"
+                                    bind:value={filtrosBusqueda.fechaHasta}
+                                    class="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+                                />
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            onclick={buscarPlaneacionesOnline}
+                            disabled={isLoadingOnline}
+                            class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {#if isLoadingOnline}
+                                <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                                Buscando...
+                            {:else}
+                                🔍 Buscar Planeaciones
+                            {/if}
+                        </button>
+
+                        <!-- Resultados -->
+                        {#if planeacionesOnline.length > 0}
+                            <div class="border-t border-blue-200 pt-4">
+                                <p class="text-sm font-medium text-blue-700 mb-2">
+                                    {planeacionesOnline.length} planeación(es) encontrada(s)
+                                </p>
+                                <div class="max-h-80 overflow-y-auto space-y-2">
+                                    {#each planeacionesOnline as planeacion}
+                                        <div class="bg-white p-3 rounded-lg border border-blue-200">
+                                            <div class="flex items-start justify-between">
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="font-medium text-sm text-gray-800">
+                                                        {planeacion.subject || 'Sin materia'} - Grado {planeacion.grade || 'N/A'}
+                                                    </p>
+                                                    <p class="text-xs text-gray-500">
+                                                        📅 {planeacion.fecha_creacion || 'Sin fecha'} 
+                                                        👤 {planeacion.docente || 'Sin docente'}
+                                                        📅 Período: {planeacion.period || planeacion.periodo_academico || 'N/A'}
+                                                    </p>
+                                                </div>
+                                                <div class="flex gap-2 ml-2">
+                                                    <button
+                                                        type="button"
+                                                        onclick={() => loadPlaneacionOnline(planeacion)}
+                                                        class="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded"
+                                                    >
+                                                        📥 Cargar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {/each}
+                                </div>
+                            </div>
+                        {:else if !isLoadingOnline}
+                            <p class="text-blue-600 text-center py-2 text-sm">
+                                Use los filtros y haga clic en "Buscar Planeaciones"
+                            </p>
+                        {/if}
                     </div>
                 {/if}
             </div>

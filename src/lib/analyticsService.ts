@@ -5,6 +5,43 @@
 import { ANALYTICS_URL } from "../constants";
 import { APP_VERSION } from "../version";
 
+import { UAParser } from "ua-parser-js";
+
+// Parsed UA info (cached per session since UA doesn't change)
+interface ParsedUA {
+  browser_name: string;
+  browser_version: string;
+  os_name: string;
+  os_version: string;
+  device_type: string;
+  device_vendor: string;
+  device_model: string;
+  cpu_architecture: string;
+}
+
+let cachedParsedUA: ParsedUA | null = null;
+
+function getParsedUA(): ParsedUA {
+  if (cachedParsedUA) return cachedParsedUA;
+  const parser = new UAParser(navigator.userAgent);
+  const browser = parser.getBrowser();
+  const os = parser.getOS();
+  const device = parser.getDevice();
+  const cpu = parser.getCPU();
+
+  cachedParsedUA = {
+    browser_name: browser.name || "Desconocido",
+    browser_version: browser.version || "Desconocido",
+    os_name: os.name || "Desconocido",
+    os_version: os.version || "Desconocido",
+    device_type: device.type || "desktop",
+    device_vendor: device.vendor || "Desconocido",
+    device_model: device.model || "Desconocido",
+    cpu_architecture: cpu.architecture || "Desconocido",
+  };
+  return cachedParsedUA;
+}
+
 // Interfaces
 interface NetworkInfo {
   effectiveType?: string;
@@ -19,6 +56,14 @@ interface AnalyticsEvent {
   app_version: string;
   user_agent: string;
   platform: string;
+  browser_name: string;
+  browser_version: string;
+  os_name: string;
+  os_version: string;
+  device_type: string;
+  device_vendor: string;
+  device_model: string;
+  cpu_architecture: string;
   language: string;
   screen_width: number;
   screen_height: number;
@@ -72,6 +117,11 @@ export interface SessionDetail {
   events_count: number;
   app_version: string | null;
   platform: string | null;
+  browser_name: string | null;
+  browser_version: string | null;
+  os_name: string | null;
+  os_version: string | null;
+  device_type: string | null;
   ip_address: string | null;
 }
 
@@ -94,6 +144,14 @@ export interface ClientInfo {
   app_version: string;
   user_agent: string;
   platform: string;
+  browser_name: string;
+  browser_version: string;
+  os_name: string;
+  os_version: string;
+  device_type: string;
+  device_vendor: string;
+  device_model: string;
+  cpu_architecture: string;
   language: string;
   screen: string;
   viewport: string;
@@ -222,6 +280,7 @@ function getNetworkInfo(): NetworkInfo {
 
 function buildEvent(eventType: string, eventData?: Record<string, unknown>): AnalyticsEvent {
   const net = getNetworkInfo();
+  const parsed = getParsedUA();
   return {
     session_id: getSessionId(),
     id_docente: getDocente(),
@@ -230,6 +289,7 @@ function buildEvent(eventType: string, eventData?: Record<string, unknown>): Ana
     app_version: APP_VERSION,
     user_agent: navigator.userAgent,
     platform: navigator.platform || "unknown",
+    ...parsed,
     language: navigator.language,
     screen_width: screen.width,
     screen_height: screen.height,
@@ -316,6 +376,7 @@ export function getClientInfo(): ClientInfo {
   const duration = Math.round((Date.now() - sessionStart) / 1000);
   const mins = Math.floor(duration / 60);
   const secs = duration % 60;
+  const parsed = getParsedUA();
 
   let pwaInstalled = false;
   if (window.matchMedia("(display-mode: standalone)").matches) {
@@ -327,6 +388,7 @@ export function getClientInfo(): ClientInfo {
     app_version: APP_VERSION,
     user_agent: navigator.userAgent,
     platform: navigator.platform || "Desconocido",
+    ...parsed,
     language: navigator.language,
     screen: `${screen.width}x${screen.height}`,
     viewport: `${window.innerWidth}x${window.innerHeight}`,
@@ -342,6 +404,20 @@ export function getClientInfo(): ClientInfo {
     session_start: new Date(sessionStart).toLocaleString("es-CO"),
     session_duration: `${mins}m ${secs}s`,
   };
+}
+
+export async function resetAnalytics(): Promise<boolean> {
+  try {
+    const response = await fetch(ANALYTICS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "reset" }),
+    });
+    const result = await response.json() as { status: string };
+    return result.status === "success";
+  } catch {
+    return false;
+  }
 }
 
 export async function fetchAnalytics(period: string = "all"): Promise<AnalyticsData | null> {

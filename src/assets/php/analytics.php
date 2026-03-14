@@ -43,7 +43,20 @@ $method = $_SERVER['REQUEST_METHOD'];
 if ($method === 'POST') {
     $input = json_decode(file_get_contents('php://input'), true);
 
-    if (!$input || !isset($input['event_type']) || !isset($input['session_id'])) {
+    if (!$input) {
+        echo json_encode(['status' => 'error', 'message' => 'Datos incompletos']);
+        exit();
+    }
+
+    // Reiniciar estadísticas
+    if (isset($input['action']) && $input['action'] === 'reset') {
+        writeJson($EVENTS_FILE, []);
+        writeJson($SESSIONS_FILE, []);
+        echo json_encode(['status' => 'success', 'message' => 'Estadísticas reiniciadas']);
+        exit();
+    }
+
+    if (!isset($input['event_type']) || !isset($input['session_id'])) {
         echo json_encode(['status' => 'error', 'message' => 'Datos incompletos: se requiere event_type y session_id']);
         exit();
     }
@@ -60,6 +73,14 @@ if ($method === 'POST') {
         'app_version'         => $input['app_version'] ?? null,
         'user_agent'          => $input['user_agent'] ?? null,
         'platform'            => $input['platform'] ?? null,
+        'browser_name'        => $input['browser_name'] ?? null,
+        'browser_version'     => $input['browser_version'] ?? null,
+        'os_name'             => $input['os_name'] ?? null,
+        'os_version'          => $input['os_version'] ?? null,
+        'device_type'         => $input['device_type'] ?? null,
+        'device_vendor'       => $input['device_vendor'] ?? null,
+        'device_model'        => $input['device_model'] ?? null,
+        'cpu_architecture'    => $input['cpu_architecture'] ?? null,
         'language'            => $input['language'] ?? null,
         'screen_width'        => $input['screen_width'] ?? null,
         'screen_height'       => $input['screen_height'] ?? null,
@@ -114,6 +135,11 @@ if ($method === 'POST') {
             'app_version'      => $input['app_version'] ?? null,
             'user_agent'       => $input['user_agent'] ?? null,
             'platform'         => $input['platform'] ?? null,
+            'browser_name'     => $input['browser_name'] ?? null,
+            'browser_version'  => $input['browser_version'] ?? null,
+            'os_name'          => $input['os_name'] ?? null,
+            'os_version'       => $input['os_version'] ?? null,
+            'device_type'      => $input['device_type'] ?? null,
             'ip_address'       => $ip,
         ];
     }
@@ -201,10 +227,16 @@ if ($method === 'POST') {
         $topViews[] = ['view_name' => $name, 'count' => $count];
     }
 
-    // Plataformas
+    // Plataformas (agrupado por SO parseado, con fallback a platform raw)
     $plats = [];
     foreach ($filtered as $e) {
-        $p = $e['platform'] ?? 'Desconocida';
+        $osName = $e['os_name'] ?? null;
+        $osVersion = $e['os_version'] ?? null;
+        if ($osName && $osName !== 'Desconocido') {
+            $p = $osVersion && $osVersion !== 'Desconocido' ? "$osName $osVersion" : $osName;
+        } else {
+            $p = $e['platform'] ?? 'Desconocida';
+        }
         $plats[$p] = ($plats[$p] ?? 0) + 1;
     }
     arsort($plats);
@@ -261,6 +293,11 @@ if ($method === 'POST') {
         'events_count'     => $s['events_count'] ?? 0,
         'app_version'      => $s['app_version'] ?? null,
         'platform'         => $s['platform'] ?? null,
+        'browser_name'     => $s['browser_name'] ?? null,
+        'browser_version'  => $s['browser_version'] ?? null,
+        'os_name'          => $s['os_name'] ?? null,
+        'os_version'       => $s['os_version'] ?? null,
+        'device_type'      => $s['device_type'] ?? null,
         'ip_address'       => $s['ip_address'] ?? null,
     ], array_slice($sortedSessions, 0, 100));
 

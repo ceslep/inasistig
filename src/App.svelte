@@ -13,6 +13,19 @@
 
   let activeView = $state("dashboard");
 
+  // --- History API: gesto/botón atrás vuelve al dashboard en vez de cerrar la PWA ---
+  function handlePopState() {
+    if (showAnalytics) {
+      showAnalytics = false;
+    } else if (activeView !== "dashboard") {
+      activeView = "dashboard";
+    }
+  }
+
+  function pushHistoryState(view: string) {
+    history.pushState({ view }, "", "");
+  }
+
   function handleSyncComplete(e: Event) {
     const { synced } = (e as CustomEvent).detail;
     Swal.fire({
@@ -29,6 +42,9 @@
 
   onMount(() => {
     window.addEventListener("pwa-sync-complete", handleSyncComplete);
+    window.addEventListener("popstate", handlePopState);
+    // Estado base para el dashboard
+    history.replaceState({ view: "dashboard" }, "", "");
     initAnalytics();
     void initVersionCheck();
   });
@@ -36,6 +52,7 @@
   onDestroy(() => {
     if (typeof window !== "undefined") {
       window.removeEventListener("pwa-sync-complete", handleSyncComplete);
+      window.removeEventListener("popstate", handlePopState);
     }
   });
 
@@ -73,6 +90,7 @@
     }
 
     activeView = view;
+    pushHistoryState(view);
     trackViewChange(view);
   };
 
@@ -82,6 +100,7 @@
       AnalyticsModal = module.default;
     }
     showAnalytics = true;
+    pushHistoryState("analytics");
   };
 
   const handleBack = () => {

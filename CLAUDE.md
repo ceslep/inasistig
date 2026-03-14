@@ -39,17 +39,19 @@ Views: `dashboard`, `inasistencia`, `anotador`, `diario`, `planeador`, `observad
 Each module has companion filter/report components (e.g., `InasistenciaFilter.svelte`, `ReportGeneratorInas.svelte`).
 
 ### API & Data Flow
-- **Service layer:** `api/service.ts` — typed fetch wrappers with offline support
-- **Constants:** `src/constants.ts` — all API URLs, spreadsheet IDs, academic periods. Never hardcode URLs.
-- **Backend:** PHP endpoints at `app.iedeoccidente.com` proxying to Google Sheets and MySQL
-- **Offline-first:** IndexedDB queue (`src/lib/offlineQueue.ts`) syncs pending operations on reconnect via `src/lib/networkStore.ts`
+- **No service layer:** API calls are made directly with `fetch` in components. Constants in `src/constants.ts` define all endpoint URLs — never hardcode URLs.
+- **Backend:** PHP endpoints at `app.iedeoccidente.com` with two base paths:
+  - `BASE_URL` (`/ig/`) — read endpoints (get students, teachers, options)
+  - `API_URL_GS` (`/gs/`) — write endpoints (save to Google Sheets)
+- **AI integration:** `AI_PROXY_URL` endpoint + `@openrouter/sdk` for AI features (`ia.svelte`)
+- **Offline-first:** IndexedDB queue (`src/lib/offlineQueue.ts`) enqueues failed POST requests; `src/lib/networkStore.ts` triggers sync on reconnect via `processQueue()`.
 
 ### State Management
-- Svelte 5 runes: `$state()`, `$derived()`, `$props()`
-- Stores: `themeStore.ts` (light/dim/dark with localStorage), `networkStore.ts` (online/offline/syncing)
+- **Components:** Svelte 5 runes (`$state()`, `$derived()`, `$props()`)
+- **Global stores:** `networkStore.ts` and `themeStore.ts` use Svelte 4 `writable()` stores (not runes), imported with `$` prefix in components
 
 ### Theming
-Three themes (light, dim, dark) via CSS custom properties in `app.css`. Apply with Tailwind arbitrary values:
+Three themes (light, dim, dark) via CSS custom properties in `app.css`. Theme class (`dim` or `dark`) applied to `<html>`. Apply with Tailwind arbitrary values:
 ```svelte
 <div class="bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))]">
 ```
@@ -58,11 +60,17 @@ Key variables: `--bg-primary`, `--bg-secondary`, `--text-primary`, `--text-secon
 ### Reusable UI Components
 Located in `src/components/ui/` — Badge, Button, Card, Toast, Skeleton, Tooltip, NetworkStatus. Exported via `index.ts`.
 
+### Version System
+`src/version.ts` defines `APP_VERSION` and `APP_BUILD_DATE`. On load and visibility change, fetches `/inasistig/version.json` to detect updates, then clears service worker caches and force-reloads. Update `APP_VERSION` when deploying.
+
+### Analytics
+`src/lib/analyticsService.ts` batches events and sends to `ANALYTICS_URL`. Session-based tracking with `sendBeacon` on unload. `AnalyticsModal.svelte` displays usage stats (floating button in `App.svelte`).
+
 ### Exports
-Excel (ExcelJS), PDF (jsPDF + jspdf-autotable), file download (file-saver). Vite manually chunks these for bundle optimization.
+Excel (ExcelJS), PDF (jsPDF + jspdf-autotable), file download (file-saver). Vite manually chunks these in `vite.config.ts` for bundle optimization.
 
 ### PWA
-Service worker with auto-update (60min interval). Workbox runtime caching (StaleWhileRevalidate) for API endpoints. Manifest configured for standalone display.
+Service worker with auto-update (Workbox). Runtime caching (StaleWhileRevalidate) for API GET endpoints. Manifest configured for standalone display. `version.json` check forces hard reload on new versions.
 
 ## Code Style
 
@@ -74,6 +82,7 @@ Service worker with auto-update (60min interval). Workbox runtime caching (Stale
 - **Loading states:** `$state(false)` toggled in try/finally blocks
 - **Responsive:** Mobile-first with Tailwind (`w-full sm:w-auto`)
 - **All components must support all three themes**
+- **Icons:** lucide-svelte
 
 ## Checklist Before Committing
 

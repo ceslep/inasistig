@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(npx svelte-check:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebSearch",
+      "WebFetch(domain:docs.uaparser.dev)",
+      "Bash(npm install:*)"
     ],
     "allowedTools": [
       "Read",

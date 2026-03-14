@@ -1,18 +1,18 @@
 /**
- * version.ts - Versionado de la aplicación y auto-actualización de clientes
+ * version.ts - Versionado de la aplicación con aviso al usuario
  *
- * Al detectar una nueva versión, fuerza recarga para que el cliente
- * obtenga los assets más recientes (invalida service worker cache).
+ * Al detectar una nueva versión, muestra un banner no intrusivo.
+ * El usuario decide cuándo actualizar para no perder trabajo en progreso.
  */
 
-export const APP_VERSION = "1.0.2";
-export const APP_BUILD_DATE = "2026-03-13";
+import Swal from "sweetalert2";
+
+export const APP_VERSION = "1.0.3";
+export const APP_BUILD_DATE = "2026-03-14";
 
 const VERSION_STORAGE_KEY = "app_version";
+let updateAvailable = false;
 
-/**
- * Compara dos versiones semver. Retorna true si remote > local.
- */
 function isNewerVersion(local: string, remote: string): boolean {
   const localParts = local.split(".").map(Number);
   const remoteParts = remote.split(".").map(Number);
@@ -26,11 +26,9 @@ function isNewerVersion(local: string, remote: string): boolean {
   return false;
 }
 
-/**
- * Verifica si hay una nueva versión disponible consultando version.json
- * desplegado junto con la app.
- */
 async function checkForUpdate(): Promise<void> {
+  if (updateAvailable) return;
+
   try {
     const response = await fetch("/inasistig/version.json?t=" + Date.now(), {
       cache: "no-store",
@@ -41,26 +39,34 @@ async function checkForUpdate(): Promise<void> {
     const remoteVersion = data.version;
 
     if (isNewerVersion(APP_VERSION, remoteVersion)) {
-      console.log(
-        `[Version] Nueva versión detectada: ${remoteVersion} (actual: ${APP_VERSION})`
-      );
-
-      // Guardar la nueva versión antes de recargar
+      updateAvailable = true;
       localStorage.setItem(VERSION_STORAGE_KEY, remoteVersion);
-
-      // Limpiar caches y recargar
-      await forceHardReload();
+      showUpdatePrompt(remoteVersion);
     }
   } catch {
-    // Silently fail - no interrumpir la app
+    // Silently fail
   }
 }
 
-/**
- * Fuerza la limpieza de caches y service worker, luego recarga.
- */
-async function forceHardReload(): Promise<void> {
-  // Limpiar service worker
+function showUpdatePrompt(newVersion: string): void {
+  Swal.fire({
+    title: "Nueva versión disponible",
+    html: `Hay una actualización disponible <b>(v${newVersion})</b>.<br>Puedes actualizar cuando termines lo que estás haciendo.`,
+    icon: "info",
+    showCancelButton: true,
+    confirmButtonText: "Actualizar ahora",
+    cancelButtonText: "Más tarde",
+    confirmButtonColor: "#6366f1",
+    toast: false,
+    allowOutsideClick: true,
+  }).then((result) => {
+    if (result.isConfirmed) {
+      applyUpdate();
+    }
+  });
+}
+
+async function applyUpdate(): Promise<void> {
   if ("serviceWorker" in navigator) {
     const registrations = await navigator.serviceWorker.getRegistrations();
     for (const registration of registrations) {
@@ -68,7 +74,6 @@ async function forceHardReload(): Promise<void> {
     }
   }
 
-  // Limpiar caches
   if ("caches" in window) {
     const cacheNames = await caches.keys();
     for (const name of cacheNames) {
@@ -76,16 +81,9 @@ async function forceHardReload(): Promise<void> {
     }
   }
 
-  // Forzar recarga completa
   window.location.reload();
 }
 
-/**
- * Inicializa el sistema de versionado.
- * - Cada vez que la app carga, consulta version.json remoto
- * - Si hay versión nueva: limpia todo y recarga
- * - Si no hay conexión o falla, continúa normalmente
- */
 export async function initVersionCheck(): Promise<void> {
   const storedVersion = localStorage.getItem(VERSION_STORAGE_KEY);
 
@@ -93,13 +91,10 @@ export async function initVersionCheck(): Promise<void> {
     localStorage.setItem(VERSION_STORAGE_KEY, APP_VERSION);
   } else if (isNewerVersion(storedVersion, APP_VERSION)) {
     localStorage.setItem(VERSION_STORAGE_KEY, APP_VERSION);
-    console.log(`[Version] App actualizada a ${APP_VERSION}`);
   }
 
-  // Verificar siempre al cargar
   await checkForUpdate();
 
-  // Verificar al volver de segundo plano
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
       checkForUpdate();
