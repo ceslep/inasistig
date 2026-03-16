@@ -1926,46 +1926,117 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
         }
     };
 
-    const generatePDF = async (): Promise<void> => {
+    const generatePDF = async (source?: PlaneadorData): Promise<void> => {
         isGeneratingPdf = true;
-        
+
+        // Datos fuente: planeación guardada o formulario actual
+        const d = source ? {
+            docente: source.docente || '',
+            grado: source.grade || '',
+            subject: source.subject || '',
+            period: source.period || '',
+            dba: source.dba || [],
+            standard: source.standard || [],
+            dba_manual: source.dba_manual || '',
+            competency: source.competency || '',
+            has_piar: source.has_piar ?? false,
+            piar_description: source.piar_description || '',
+            learning_objectives: source.learning_objectives || '',
+            competencias: source.competencias || '',
+            indicadores_logro: source.indicadores_logro || '',
+            exploration: source.exploration || '',
+            exploration_activities: source.exploration_activities || [],
+            tiempo_exploracion: source.tiempo_exploracion || 10,
+            structuring: source.structuring || '',
+            structuring_activities: source.structuring_activities || [],
+            tiempo_estructuracion: source.tiempo_estructuracion || 20,
+            practice: source.practice || '',
+            practice_activities: source.practice_activities || [],
+            tiempo_practica: source.tiempo_practica || 25,
+            transfer: source.transfer || '',
+            transfer_activities: source.transfer_activities || [],
+            tiempo_transferencia: source.tiempo_transferencia || 15,
+            assessment_moment: source.assessment_moment || '',
+            assessment_activities: source.assessment_activities || [],
+            tiempo_valoracion: source.tiempo_valoracion || 10,
+            eval_type: source.eval_type || 'Formativa',
+            eval_modalidades: source.eval_modalidades || [],
+            eval_instrumentos: source.eval_instrumentos || [],
+            eval_criterios: source.eval_criterios || [],
+            eval_evidencias: source.eval_evidencias || [],
+            eval_criteria: source.eval_criteria || '',
+            eval_evidence: source.eval_evidence || '',
+            eval_ponderacion_conceptos: source.eval_ponderacion_conceptos ?? 30,
+            eval_ponderacion_procedimientos: source.eval_ponderacion_procedimientos ?? 40,
+            eval_ponderacion_actitudes: source.eval_ponderacion_actitudes ?? 30,
+            eval_descripcion_auto: source.eval_descripcion_auto || '',
+            resources: source.resources || '',
+            planeacion_tipo: source.planeacion_tipo || '',
+            periodo_academico: source.periodo_academico || '',
+            fecha_inicio: source.fecha_inicio || '',
+            fecha_fin: source.fecha_fin || '',
+            firma_docente: source.firma_docente || '',
+            fecha_firma: source.fecha_firma || '',
+        } : formData;
+
         try {
             const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
                 import('jspdf'),
                 import('jspdf-autotable')
             ]);
-            
+
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
             const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
             const margin = 15;
+            const footerMargin = 20;
             let yPos = 10;
-            
+
             // Colores
             const COLOR_INDIGO: [number, number, number] = [79, 70, 229];
             const COLOR_GRAY_LIGHT: [number, number, number] = [243, 244, 246];
-            const COLOR_GRAY_MEDIUM: [number, number, number] = [209, 213, 219];
-            
+            const COLOR_GREEN: [number, number, number] = [16, 185, 129];
+
+            // Helper: verificar salto de página
+            const checkPageBreak = (requiredSpace: number) => {
+                if (yPos + requiredSpace > pageHeight - footerMargin) {
+                    doc.addPage();
+                    yPos = 15;
+                }
+            };
+
+            // Helper: imprimir texto largo con wrapping y page breaks
+            const addWrappedText = (text: string, x: number, maxWidth: number, lineHeight = 4) => {
+                const lines: string[] = doc.splitTextToSize(text, maxWidth);
+                for (const line of lines) {
+                    checkPageBreak(lineHeight + 2);
+                    doc.text(line, x, yPos);
+                    yPos += lineHeight;
+                }
+            };
+
             // HEADER
             doc.setFillColor(COLOR_INDIGO[0], COLOR_INDIGO[1], COLOR_INDIGO[2]);
             doc.rect(0, 0, pageWidth, 35, 'F');
-            
+
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(18);
             doc.setFont('helvetica', 'bold');
             doc.text('PLANEADOR DE CLASES', margin, 18);
-            
+
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
             doc.text('Según lineamientos MEN - Colombia', margin, 26);
-            
+
             doc.setFontSize(8);
             doc.text('Sistema de Gestión Académica', pageWidth - margin, 18, { align: 'right' });
-            
+
             yPos = 42;
             doc.setTextColor(0, 0, 0);
-            
+
             // Función helper para secciones
             const addSection = (title: string, contentFn: () => void) => {
+                checkPageBreak(25);
                 doc.setFillColor(COLOR_GRAY_LIGHT[0], COLOR_GRAY_LIGHT[1], COLOR_GRAY_LIGHT[2]);
                 doc.rect(margin, yPos - 5, pageWidth - 2 * margin, 8, 'F');
                 doc.setFontSize(12);
@@ -1977,42 +2048,46 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                 contentFn();
                 yPos += 5;
             };
-            
+
+            // Contador de secciones dinámico
+            let sectionNum = 0;
+            const nextSection = () => ++sectionNum;
+
             // 1. INFORMACIÓN BÁSICA
-            addSection('1. INFORMACIÓN BÁSICA', () => {
+            addSection(`${nextSection()}. INFORMACIÓN BÁSICA`, () => {
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'normal');
-                doc.text(`Docente: ${formData.docente || 'No especificado'}`, margin, yPos);
-                doc.text(`Grado: ${formData.grado || 'No especificado'}`, 110, yPos);
+                doc.text(`Docente: ${d.docente || 'No especificado'}`, margin, yPos);
+                doc.text(`Grado: ${d.grado || 'No especificado'}`, 110, yPos);
                 yPos += 6;
-                doc.text(`Materia: ${formData.subject || 'No especificada'}`, margin, yPos);
-                doc.text(`Período: ${formData.period || 'No especificado'}`, 110, yPos);
+                doc.text(`Materia: ${d.subject || 'No especificada'}`, margin, yPos);
+                doc.text(`Período: ${d.period || 'No especificado'}`, 110, yPos);
                 yPos += 8;
             });
-            
+
             // 2. TEMPORALIDAD
-            addSection('2. TEMPORALIDAD', () => {
+            addSection(`${nextSection()}. TEMPORALIDAD`, () => {
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'normal');
-                const tipoPlan = TIPOS_PLANEACION.find(t => t.id === formData.planeacion_tipo);
-                const periodoAcad = getPeriodosPorTipo().find(p => p.id === formData.periodo_academico);
+                const tipoPlan = TIPOS_PLANEACION.find(t => t.id === d.planeacion_tipo);
+                const periodoAcad = PERIODOS_ACADEMICOS.find(p => p.id === d.periodo_academico);
                 doc.text(`Tipo de Planeación: ${tipoPlan?.titulo || 'No especificado'}`, margin, yPos);
                 doc.text(`Período Académico: ${periodoAcad?.label || 'No especificado'}`, 110, yPos);
                 yPos += 6;
-                doc.text(`Fecha Inicio: ${formData.fecha_inicio || 'No especificada'}`, margin, yPos);
-                doc.text(`Fecha Fin: ${formData.fecha_fin || 'No especificada'}`, 110, yPos);
+                doc.text(`Fecha Inicio: ${d.fecha_inicio || 'No especificada'}`, margin, yPos);
+                doc.text(`Fecha Fin: ${d.fecha_fin || 'No especificada'}`, 110, yPos);
                 yPos += 8;
             });
-            
+
             // 3. REFERENTES DE CALIDAD
-            addSection('3. REFERENTES DE CALIDAD (DBA/EBC)', () => {
+            addSection(`${nextSection()}. REFERENTES DE CALIDAD (DBA/EBC)`, () => {
                 // DBA seleccionados
-                const dbasSelected = dbas.filter(d => formData.dba.includes(d.id));
+                const dbasSelected = dbas.filter(dba => d.dba.includes(dba.id));
                 if (dbasSelected.length > 0) {
                     autoTable(doc, {
                         startY: yPos,
                         head: [['Código DBA', 'Descripción']],
-                        body: dbasSelected.map(d => [d.codigo, d.descripcion.substring(0, 150) + (d.descripcion.length > 150 ? '...' : '')]),
+                        body: dbasSelected.map(dba => [dba.codigo, dba.descripcion]),
                         margin: { left: margin, right: margin },
                         headStyles: { fillColor: COLOR_INDIGO, fontSize: 9 },
                         bodyStyles: { fontSize: 8 },
@@ -2020,119 +2095,253 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                     });
                     yPos = (doc as any).lastAutoTable.finalY + 8;
                 }
-                
+
                 // EBC seleccionados
-                const ebcsSelected = ebcs.filter(e => formData.standard.includes(e.id));
+                const ebcsSelected = ebcs.filter(e => d.standard.includes(e.id));
                 if (ebcsSelected.length > 0) {
                     autoTable(doc, {
                         startY: yPos,
                         head: [['Código EBC', 'Descripción']],
-                        body: ebcsSelected.map(e => [e.codigo, e.descripcion.substring(0, 150) + (e.descripcion.length > 150 ? '...' : '')]),
+                        body: ebcsSelected.map(e => [e.codigo, e.descripcion]),
                         margin: { left: margin, right: margin },
-                        headStyles: { fillColor: [16, 185, 129] as [number, number, number], fontSize: 9 },
+                        headStyles: { fillColor: COLOR_GREEN, fontSize: 9 },
                         bodyStyles: { fontSize: 8 },
                         theme: 'striped',
                     });
                     yPos = (doc as any).lastAutoTable.finalY + 8;
                 }
-                
-                if (formData.competency) {
+
+                if (d.competency) {
+                    checkPageBreak(10);
                     doc.setFontSize(10);
-                    doc.text(`Competencia Ciudadana: ${formData.competency}`, margin, yPos);
+                    doc.text(`Competencia Ciudadana: ${d.competency}`, margin, yPos);
                     yPos += 8;
                 }
+
+                // DBA/Estándares manuales
+                if (d.dba_manual) {
+                    checkPageBreak(15);
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Estándares/DBA (manual):', margin, yPos);
+                    yPos += 5;
+                    doc.setFont('helvetica', 'normal');
+                    addWrappedText(d.dba_manual, margin, pageWidth - 2 * margin);
+                    yPos += 4;
+                }
             });
-            
-            // 4. SECUENCIA DIDÁCTICA
-            addSection('4. SECUENCIA DIDÁCTICA', () => {
+
+            // 4. INCLUSIÓN — PIAR (condicional)
+            if (d.has_piar) {
+                addSection(`${nextSection()}. INCLUSIÓN — PIAR`, () => {
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text('Esta planeación incluye ajustes razonables para estudiantes con NEE.', margin, yPos);
+                    yPos += 6;
+                    if (d.piar_description) {
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('Descripción de ajustes:', margin, yPos);
+                        yPos += 5;
+                        doc.setFont('helvetica', 'normal');
+                        addWrappedText(d.piar_description, margin, pageWidth - 2 * margin);
+                        yPos += 4;
+                    }
+                });
+            }
+
+            // 5. SECUENCIA DIDÁCTICA
+            addSection(`${nextSection()}. SECUENCIA DIDÁCTICA`, () => {
                 doc.setFontSize(10);
-                
+
+                // Objetivos de aprendizaje
+                if (d.learning_objectives) {
+                    checkPageBreak(15);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Objetivos de Aprendizaje:', margin, yPos);
+                    yPos += 5;
+                    doc.setFont('helvetica', 'normal');
+                    addWrappedText(d.learning_objectives, margin, pageWidth - 2 * margin);
+                    yPos += 4;
+                }
+
+                // Competencias
+                if (d.competencias) {
+                    checkPageBreak(15);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Competencias:', margin, yPos);
+                    yPos += 5;
+                    doc.setFont('helvetica', 'normal');
+                    addWrappedText(d.competencias, margin, pageWidth - 2 * margin);
+                    yPos += 4;
+                }
+
+                // Momentos de la secuencia
                 const momentos = [
-                    { label: 'Exploración', desc: formData.exploration, tiempo: formData.tiempo_exploracion, acts: formData.exploration_activities },
-                    { label: 'Estructuración', desc: formData.structuring, tiempo: formData.tiempo_estructuracion, acts: formData.structuring_activities },
-                    { label: 'Práctica', desc: formData.practice, tiempo: formData.tiempo_practica, acts: formData.practice_activities },
-                    { label: 'Transferencia', desc: formData.transfer, tiempo: formData.tiempo_transferencia, acts: formData.transfer_activities },
-                    { label: 'Valoración', desc: formData.assessment_moment, tiempo: formData.tiempo_valoracion, acts: formData.assessment_activities },
+                    { label: 'Exploración', desc: d.exploration, tiempo: d.tiempo_exploracion, acts: d.exploration_activities },
+                    { label: 'Estructuración', desc: d.structuring, tiempo: d.tiempo_estructuracion, acts: d.structuring_activities },
+                    { label: 'Práctica', desc: d.practice, tiempo: d.tiempo_practica, acts: d.practice_activities },
+                    { label: 'Transferencia', desc: d.transfer, tiempo: d.tiempo_transferencia, acts: d.transfer_activities },
+                    { label: 'Valoración', desc: d.assessment_moment, tiempo: d.tiempo_valoracion, acts: d.assessment_activities },
                 ];
-                
+
                 for (const momento of momentos) {
                     if (momento.desc || momento.acts.length > 0) {
+                        checkPageBreak(20);
                         doc.setFont('helvetica', 'bold');
                         doc.text(`${momento.label} (${momento.tiempo} min):`, margin, yPos);
                         yPos += 5;
                         doc.setFont('helvetica', 'normal');
                         if (momento.desc) {
-                            const lines = doc.splitTextToSize(momento.desc, pageWidth - 2 * margin);
-                            doc.text(lines, margin, yPos);
-                            yPos += lines.length * 4 + 2;
+                            addWrappedText(momento.desc, margin, pageWidth - 2 * margin);
+                            yPos += 2;
                         }
                         if (momento.acts.length > 0) {
-                            doc.text(`Actividades: ${momento.acts.join(', ')}`, margin, yPos);
-                            yPos += 6;
+                            checkPageBreak(8);
+                            const actsText = `Actividades: ${momento.acts.join(', ')}`;
+                            addWrappedText(actsText, margin, pageWidth - 2 * margin);
                         }
-                        yPos += 3;
+                        yPos += 4;
                     }
                 }
+
+                // Indicadores de logro
+                if (d.indicadores_logro) {
+                    checkPageBreak(15);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Indicadores de Logro:', margin, yPos);
+                    yPos += 5;
+                    doc.setFont('helvetica', 'normal');
+                    addWrappedText(d.indicadores_logro, margin, pageWidth - 2 * margin);
+                    yPos += 4;
+                }
             });
-            
-            // 5. EVALUACIÓN
-            addSection('5. EVALUACIÓN DE APRENDIZAJES', () => {
+
+            // 6. EVALUACIÓN
+            addSection(`${nextSection()}. EVALUACIÓN DE APRENDIZAJES`, () => {
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'normal');
-                doc.text(`Tipo de Evaluación: ${formData.eval_type}`, margin, yPos);
+                doc.text(`Tipo de Evaluación: ${d.eval_type}`, margin, yPos);
                 yPos += 6;
-                
-                if (formData.eval_modalidades.length > 0) {
-                    doc.text(`Modalidades: ${formData.eval_modalidades.join(', ')}`, margin, yPos);
+
+                if (d.eval_modalidades.length > 0) {
+                    checkPageBreak(8);
+                    doc.text(`Modalidades: ${d.eval_modalidades.join(', ')}`, margin, yPos);
                     yPos += 6;
                 }
-                
-                if (formData.eval_instrumentos.length > 0) {
-                    doc.text(`Instrumentos: ${formData.eval_instrumentos.join(', ')}`, margin, yPos);
+
+                if (d.eval_instrumentos.length > 0) {
+                    checkPageBreak(8);
+                    doc.text(`Instrumentos: ${d.eval_instrumentos.join(', ')}`, margin, yPos);
                     yPos += 6;
                 }
-                
-                if (formData.eval_criterios.length > 0) {
-                    doc.text(`Criterios: ${formData.eval_criterios.join(', ')}`, margin, yPos);
+
+                if (d.eval_criterios.length > 0) {
+                    checkPageBreak(8);
+                    doc.text(`Criterios: ${d.eval_criterios.join(', ')}`, margin, yPos);
                     yPos += 6;
                 }
-                
-                if (formData.eval_evidencias.length > 0) {
-                    doc.text(`Evidencias: ${formData.eval_evidencias.join(', ')}`, margin, yPos);
+
+                if (d.eval_evidencias.length > 0) {
+                    checkPageBreak(8);
+                    doc.text(`Evidencias: ${d.eval_evidencias.join(', ')}`, margin, yPos);
                     yPos += 6;
                 }
-                
+
+                // Criterios adicionales (texto libre)
+                if (d.eval_criteria) {
+                    checkPageBreak(15);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Criterios adicionales:', margin, yPos);
+                    yPos += 5;
+                    doc.setFont('helvetica', 'normal');
+                    addWrappedText(d.eval_criteria, margin, pageWidth - 2 * margin);
+                    yPos += 4;
+                }
+
+                // Evidencias adicionales (texto libre)
+                if (d.eval_evidence) {
+                    checkPageBreak(15);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Evidencias adicionales:', margin, yPos);
+                    yPos += 5;
+                    doc.setFont('helvetica', 'normal');
+                    addWrappedText(d.eval_evidence, margin, pageWidth - 2 * margin);
+                    yPos += 4;
+                }
+
+                // Descripción de autoevaluación
+                if (d.eval_descripcion_auto) {
+                    checkPageBreak(15);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Autoevaluación:', margin, yPos);
+                    yPos += 5;
+                    doc.setFont('helvetica', 'normal');
+                    addWrappedText(d.eval_descripcion_auto, margin, pageWidth - 2 * margin);
+                    yPos += 4;
+                }
+
                 // Ponderación
+                checkPageBreak(30);
                 autoTable(doc, {
                     startY: yPos,
                     head: [['Componente', 'Ponderación']],
                     body: [
-                        ['Conceptos', `${formData.eval_ponderacion_conceptos}%`],
-                        ['Procedimientos', `${formData.eval_ponderacion_procedimientos}%`],
-                        ['Actitudes', `${formData.eval_ponderacion_actitudes}%`],
+                        ['Conceptos', `${d.eval_ponderacion_conceptos}%`],
+                        ['Procedimientos', `${d.eval_ponderacion_procedimientos}%`],
+                        ['Actitudes', `${d.eval_ponderacion_actitudes}%`],
                     ],
                     margin: { left: margin, right: margin },
-                        headStyles: { fillColor: COLOR_INDIGO as [number, number, number], fontSize: 9 },
-                        bodyStyles: { fontSize: 9 },
-                        theme: 'striped',
-                    });
-                    yPos = (doc as any).lastAutoTable.finalY + 8;
+                    headStyles: { fillColor: COLOR_INDIGO, fontSize: 9 },
+                    bodyStyles: { fontSize: 9 },
+                    theme: 'striped',
+                });
+                yPos = (doc as any).lastAutoTable.finalY + 8;
             });
-            
-            // 6. RECURSOS DIDÁCTICOS
-            addSection('6. RECURSOS DIDÁCTICOS', () => {
+
+            // 7. RECURSOS DIDÁCTICOS
+            addSection(`${nextSection()}. RECURSOS DIDÁCTICOS`, () => {
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'normal');
-                if (formData.resources) {
-                    const lines = doc.splitTextToSize(formData.resources, pageWidth - 2 * margin);
-                    doc.text(lines, margin, yPos);
-                    yPos += lines.length * 5 + 5;
+                if (d.resources) {
+                    addWrappedText(d.resources, margin, pageWidth - 2 * margin, 5);
+                    yPos += 3;
                 } else {
                     doc.text('No se han seleccionado recursos.', margin, yPos);
                     yPos += 6;
                 }
             });
-            
+
+            // 8. FIRMA DEL DOCENTE (condicional)
+            if (d.firma_docente) {
+                addSection(`${nextSection()}. FIRMA DEL DOCENTE`, () => {
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'normal');
+
+                    if (d.fecha_firma) {
+                        const fechaFirma = new Date(d.fecha_firma).toLocaleDateString('es-CO', {
+                            year: 'numeric', month: 'long', day: 'numeric',
+                        });
+                        doc.text(`Fecha de firma: ${fechaFirma}`, margin, yPos);
+                        yPos += 8;
+                    }
+
+                    checkPageBreak(45);
+                    try {
+                        doc.addImage(d.firma_docente, 'PNG', margin, yPos, 60, 30);
+                        yPos += 34;
+                        doc.setDrawColor(100, 100, 100);
+                        doc.line(margin, yPos, margin + 60, yPos);
+                        yPos += 5;
+                        doc.setFontSize(9);
+                        doc.text(d.docente || 'Docente', margin, yPos);
+                        yPos += 8;
+                    } catch {
+                        doc.text('(Firma digital adjunta)', margin, yPos);
+                        yPos += 8;
+                    }
+                });
+            }
+
             // FOOTER con número de página
             const pageCount = doc.getNumberOfPages();
             for (let i = 1; i <= pageCount; i++) {
@@ -2143,7 +2352,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                 doc.text(`Generado: ${new Date().toLocaleDateString('es-CO')}`, margin, 290);
                 doc.text('Sistema de Gestión Académica - Colombia', pageWidth - margin, 290, { align: 'right' });
             }
-            
+
             pdfUrl = doc.output('bloburl') as unknown as string;
             showPdfPreview = true;
         } catch (error) {
@@ -2368,7 +2577,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                 </button>
                 <!-- Botón PDF -->
                 <button
-                    onclick={generatePDF}
+                    onclick={() => generatePDF()}
                     disabled={isGeneratingPdf}
                     class="p-2 rounded-lg bg-blue-500 hover:bg-blue-400 transition-colors flex items-center gap-2"
                     aria-label="Generar PDF"
@@ -4287,6 +4496,15 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                         <div class="flex gap-2 ml-2">
                                             <button
                                                 type="button"
+                                                onclick={() => generatePDF(planeacion)}
+                                                disabled={isGeneratingPdf}
+                                                class="px-2 py-1 text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded disabled:opacity-50"
+                                                title="Generar PDF"
+                                            >
+                                                PDF
+                                            </button>
+                                            <button
+                                                type="button"
                                                 onclick={() => loadPlaneacionLocal(planeacion)}
                                                 class="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded"
                                             >
@@ -4450,6 +4668,15 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                                     </p>
                                                 </div>
                                                 <div class="flex gap-2 ml-2">
+                                                    <button
+                                                        type="button"
+                                                        onclick={() => generatePDF(planeacion)}
+                                                        disabled={isGeneratingPdf}
+                                                        class="px-2 py-1 text-xs bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded disabled:opacity-50"
+                                                        title="Generar PDF"
+                                                    >
+                                                        PDF
+                                                    </button>
                                                     <button
                                                         type="button"
                                                         onclick={() => loadPlaneacionOnline(planeacion)}

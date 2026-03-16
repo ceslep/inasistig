@@ -4,6 +4,7 @@
   import { ArrowLeft, Wifi, WifiOff, CloudUpload, Loader2, BarChart3 } from "lucide-svelte";
   import Swal from "sweetalert2";
   import Dashboard from "./components/Dashboard.svelte";
+  import Loader from "./components/Loader.svelte";
   import { isOnline, pendingCount, isSyncing } from "./lib/networkStore";
   import { initAnalytics, trackViewChange } from "./lib/analyticsService";
   import { initVersionCheck } from "./version";
@@ -12,6 +13,7 @@
   let AnalyticsModal: ReturnType<typeof $state<typeof import("./components/AnalyticsModal.svelte").default | null>> = $state(null);
 
   let activeView = $state("dashboard");
+  let isLoadingModule = $state(false);
 
   // --- History API: gesto/botón atrás vuelve al dashboard en vez de cerrar la PWA ---
   function handlePopState() {
@@ -69,27 +71,33 @@
       return;
     }
 
-    if (view === "inasistencia" && !InasistenciaForm) {
-      const module = await import("./components/InasistenciaForm.svelte");
-      InasistenciaForm = module.default;
-    } else if (view === "anotador" && !Anotador) {
-      const module = await import("./components/Anotador.svelte");
-      Anotador = module.default;
-    } else if (view === "diario" && !Diario) {
-      const module = await import("./components/Diario.svelte");
-      Diario = module.default;
-    } else if (view === "planeador" && !ClassPlannerForm) {
-      const module = await import("./components/ClassPlannerForm.svelte");
-      ClassPlannerForm = module.default;
-    } else if (view === "observador" && !Observador) {
-      const module = await import("./components/Observador.svelte");
-      Observador = module.default;
-    } else if (view === "piar" && !Piar) {
-      const module = await import("./components/Piar.svelte");
-      Piar = module.default;
+    activeView = view;
+    isLoadingModule = true;
+
+    try {
+      if (view === "inasistencia" && !InasistenciaForm) {
+        const module = await import("./components/InasistenciaForm.svelte");
+        InasistenciaForm = module.default;
+      } else if (view === "anotador" && !Anotador) {
+        const module = await import("./components/Anotador.svelte");
+        Anotador = module.default;
+      } else if (view === "diario" && !Diario) {
+        const module = await import("./components/Diario.svelte");
+        Diario = module.default;
+      } else if (view === "planeador" && !ClassPlannerForm) {
+        const module = await import("./components/ClassPlannerForm.svelte");
+        ClassPlannerForm = module.default;
+      } else if (view === "observador" && !Observador) {
+        const module = await import("./components/Observador.svelte");
+        Observador = module.default;
+      } else if (view === "piar" && !Piar) {
+        const module = await import("./components/Piar.svelte");
+        Piar = module.default;
+      }
+    } finally {
+      isLoadingModule = false;
     }
 
-    activeView = view;
     pushHistoryState(view);
     trackViewChange(view);
   };
@@ -111,9 +119,13 @@
 <main class="w-full min-h-screen">
   {#if activeView === "dashboard"}
     <Dashboard onSelect={handleSelect} />
+  {:else if isLoadingModule}
+    <div class="w-full min-h-screen flex items-center justify-center bg-[rgb(var(--bg-primary))]">
+      <Loader message="Cargando módulo..." />
+    </div>
   {:else if activeView === "inasistencia" && InasistenciaForm}
     <InasistenciaForm onBack={handleBack} />
-{:else if activeView === "anotador" && Anotador}
+  {:else if activeView === "anotador" && Anotador}
     <Anotador onBack={handleBack} />
   {:else if activeView === "diario" && Diario}
     <Diario onBack={handleBack} />
