@@ -482,13 +482,6 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
         formData.tiempo_transferencia = aiSectionsResult.tiempo_transferencia;
         formData.tiempo_valoracion = aiSectionsResult.tiempo_valoracion;
 
-        Swal.fire({
-            icon: "success",
-            title: "Aplicado",
-            text: "Contenido aplicado: 4 secciones, objetivos, competencias, indicadores y tiempos",
-            timer: 3000,
-        });
-
         closeAIPanel();
     };
 
@@ -505,12 +498,6 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
 
     const handleExportLocal = (): void => {
         exportPlaneadoresLocales();
-        Swal.fire({
-            icon: "success",
-            title: "Exportado",
-            text: "Planeaciones exportadas como JSON",
-            timer: 2000,
-        });
     };
 
     const handleImportLocal = (): void => {
@@ -527,11 +514,14 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
             const jsonData = e.target?.result as string;
             const result = importPlaneadoresLocales(jsonData);
             loadPlaneacionesLocales();
-            Swal.fire({
-                icon: result.success ? "success" : "error",
-                title: result.success ? "Importado" : "Error",
-                text: result.message,
-            });
+            if (!result.success) {
+                Swal.fire({
+                    icon: "error",
+                    title: "Error",
+                    text: result.message,
+                    confirmButtonColor: "#ef4444",
+                });
+            }
         };
         reader.readAsText(file);
         input.value = "";
@@ -551,12 +541,6 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
         if (result.isConfirmed) {
             deletePlaneadorLocal(id_local);
             loadPlaneacionesLocales();
-            Swal.fire({
-                icon: "success",
-                title: "Eliminado",
-                text: "Planeación eliminada",
-                timer: 1500,
-            });
         }
     };
 
@@ -574,12 +558,6 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
         if (result.isConfirmed) {
             clearPlaneadoresLocales();
             loadPlaneacionesLocales();
-            Swal.fire({
-                icon: "success",
-                title: "Limpiado",
-                text: "Todas las planeaciones locales eliminadas",
-                timer: 1500,
-            });
         }
     };
 
@@ -606,13 +584,6 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
         
         showLocalPanel = false;
         currentStep = 0;
-        
-        Swal.fire({
-            icon: "success",
-            title: "Cargada",
-            text: "Planeación local cargada para edición",
-            timer: 2000,
-        });
     };
 
     // --- Funciones Planeaciones Online (Google Sheets) ---
@@ -620,14 +591,6 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
         isLoadingOnline = true;
         try {
             planeacionesOnline = await getPlaneador(filtrosBusqueda);
-            if (planeacionesOnline.length === 0) {
-                Swal.fire({
-                    icon: "info",
-                    title: "Sin resultados",
-                    text: "No se encontraron planeaciones con los filtros seleccionados.",
-                    timer: 2000,
-                });
-            }
         } catch (error) {
             console.error("Error buscando planeaciones:", error);
             Swal.fire({
@@ -691,13 +654,6 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
 
         showFiltrosPanel = false;
         currentStep = 0;
-
-        Swal.fire({
-            icon: "success",
-            title: "Cargada",
-            text: "Planeación de Google Sheets cargada para edición",
-            timer: 2000,
-        });
     };
 
     // --- Datos ---
@@ -1416,12 +1372,6 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                 selectedTemas = [];
                 selectedActividades = [];
 
-                Swal.fire({
-                    icon: "success",
-                    title: "Temas cargados",
-                    text: `Se subieron ${jsonData.length} entrada(s) de temas correctamente`,
-                    timer: 2500,
-                });
             } catch (error) {
                 Swal.fire({
                     icon: "error",
@@ -1482,13 +1432,6 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
 
         selectedTemas = [];
         selectedActividades = [];
-
-        Swal.fire({
-            icon: "success",
-            title: "Temas aplicados",
-            text: "Se insertaron los temas en Exploración y las actividades en Estructuración",
-            timer: 2000,
-        });
     }
 
     // --- GENERADOR DE OBJETIVOS AUTOMÁTICO ---
@@ -2467,26 +2410,10 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
             
             if (result.success) {
                 guardadoOnline = true;
-                Swal.fire({
-                    icon: "success",
-                    title: "¡Guardado!",
-                    text:
-                        result.message ||
-                        "Planeación guardada exitosamente según normativa MEN.",
-                    confirmButtonColor: "#10b981",
-                    timer: 3000,
-                });
             }
         } catch (error) {
             console.warn("Backend no disponible, guardando localmente:", error);
-            const savedLocal = savePlaneadorLocal(planeacionData);
-            Swal.fire({
-                icon: "info",
-                title: "Guardado localmente",
-                text: `Sin conexión. La planeación se guardó en el navegador (ID: ${savedLocal.id_local.substring(0, 12)}...).`,
-                confirmButtonColor: "#f59e0b",
-                timer: 4000,
-            });
+            savePlaneadorLocal(planeacionData);
         }
 
         if (guardadoOnline) {
@@ -4996,7 +4923,6 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                         if (!aiSectionsResult) return;
                                         const fullText = `OBJETIVOS:\n${aiSectionsResult.objectives}\n\nCOMPETENCIAS:\n${aiSectionsResult.competencias}\n\nINDICADORES:\n${aiSectionsResult.indicadores}\n\nEXPLORACIÓN:\n${aiSectionsResult.exploration}\n\nESTRUCTURACIÓN:\n${aiSectionsResult.structuring}\n\nPRÁCTICA:\n${aiSectionsResult.practice}\n\nTRANSFERENCIA:\n${aiSectionsResult.transfer}`;
                                         navigator.clipboard.writeText(fullText);
-                                        Swal.fire({ icon: "success", title: "Copiado", text: "Todo el contenido copiado", timer: 1500 });
                                     }}
                                     class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                                 >
