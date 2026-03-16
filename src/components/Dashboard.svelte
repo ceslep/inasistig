@@ -58,7 +58,7 @@
 
   onMount(() => {
     mounted = true;
-    showFeatureAlertDiario = checkFeatureAlertDiarioVisibility(); // Initialize feature alert visibility
+    showFeatureAlertDiario = checkFeatureAlertDiarioVisibility();
   });
 
   const toggleTheme = () => {

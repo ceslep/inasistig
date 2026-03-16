@@ -75,7 +75,8 @@ Service worker with auto-update (Workbox). Runtime caching (StaleWhileRevalidate
 ## Code Style
 
 - **All UI text in Spanish**
-- **Never use `any`** — always use interfaces/types
+- **Never use `any`** — use `interface` for object shapes, `type` for unions/aliases, `unknown` when type is truly unknown
+- **Formatting:** 2-space indent, trailing commas, single quotes, ~100 char max line length, arrow functions for callbacks
 - **Import order:** Svelte builtins → external libs → internal services → constants → stores → assets → components (separated by blank lines)
 - **Naming:** Components PascalCase, functions/vars camelCase, constants UPPER_SNAKE_CASE, interfaces PascalCase, CSS kebab-case
 - **Error handling:** try/catch with SweetAlert2 alerts (messages in Spanish, `confirmButtonColor: "#ef4444"`)
@@ -83,6 +84,7 @@ Service worker with auto-update (Workbox). Runtime caching (StaleWhileRevalidate
 - **Responsive:** Mobile-first with Tailwind (`w-full sm:w-auto`)
 - **All components must support all three themes**
 - **Icons:** lucide-svelte
+- **localStorage keys:** `theme`, `docenteMaterias`, `docenteMateriasDiario`, `lastDocente`, `lastDocenteDiario` — used for persistence across sessions
 
 ## Checklist Before Committing
 
