@@ -53,6 +53,24 @@
     localStorage.getItem("docenteMateriasDiario") || "{}",
   );
 
+  const saveMateriaForDocente = (docente: string, materia: string): void => {
+    if (!docente || !materia) return;
+    if (!docenteMaterias[docente]) {
+      docenteMaterias[docente] = [];
+    }
+    if (!docenteMaterias[docente].includes(materia)) {
+      docenteMaterias[docente] = [...docenteMaterias[docente], materia];
+      localStorage.setItem("docenteMateriasDiario", JSON.stringify(docenteMaterias));
+    }
+  };
+
+  // Guardar materia frecuentemente usada cuando se selecciona
+  $effect(() => {
+    if (selectedDocente && selectedMateria) {
+      saveMateriaForDocente(selectedDocente, selectedMateria);
+    }
+  });
+
   let selectedDocente = "";
   let selectedMateria = "";
   let selectedGrado = "";

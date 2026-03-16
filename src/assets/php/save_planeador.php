@@ -38,7 +38,7 @@ try {
 
     $spreadsheetId = $data['spreadsheetId'];
     $worksheetTitle = $data['worksheetTitle'] ?? 'Planeaciones';
-    $range = $worksheetTitle . '!A1:AW1000';
+    $range = $worksheetTitle . '!A1:AX1000';
 
     $client = new Client();
     $client->setApplicationName('Planeador de Clases');
@@ -107,6 +107,7 @@ try {
         'fecha_inicio',
         'fecha_fin',
         'firma_docente',
+        'fecha_firma',
     ];
 
     // Leer datos existentes
@@ -220,6 +221,8 @@ try {
             isset($planeacion['fecha_fin']) ? $planeacion['fecha_fin'] : '',
             // AV: firma_docente
             isset($planeacion['firma_docente']) ? $planeacion['firma_docente'] : '',
+            // AW: fecha_firma
+            isset($planeacion['fecha_firma']) ? $planeacion['fecha_firma'] : '',
         ];
         $newRows[] = $row;
     }
@@ -232,7 +235,7 @@ try {
 
     // Escribir a Google Sheets
     $totalRows = count($finalRows);
-    $updateRange = $worksheetTitle . '!A1:AW' . $totalRows;
+    $updateRange = $worksheetTitle . '!A1:AX' . $totalRows;
     $body = new ValueRange(['values' => $finalRows]);
     $params = ['valueInputOption' => 'RAW'];
 

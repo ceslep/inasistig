@@ -56,6 +56,24 @@
     localStorage.getItem("docenteMaterias") || "{}",
   );
 
+  const saveMateriaForDocente = (docente: string, materia: string): void => {
+    if (!docente || !materia) return;
+    if (!docenteMaterias[docente]) {
+      docenteMaterias[docente] = [];
+    }
+    if (!docenteMaterias[docente].includes(materia)) {
+      docenteMaterias[docente] = [...docenteMaterias[docente], materia];
+      localStorage.setItem("docenteMaterias", JSON.stringify(docenteMaterias));
+    }
+  };
+
+  // Guardar materia frecuentemente usada cuando se selecciona
+  $effect(() => {
+    if (selectedDocente && selectedMateria) {
+      saveMateriaForDocente(selectedDocente, selectedMateria);
+    }
+  });
+
   // Extraer número del docente cuando tiene patrón "Nombre-número"
   const getDocenteNumber = (docente: string): string | null => {
     const match = docente.match(/-(\d+)$/);

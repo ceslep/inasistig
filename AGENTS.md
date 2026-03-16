@@ -9,133 +9,67 @@ npm run deploy     # Build + deploy to GitHub Pages
 npm run check      # Type checking (svelte-check + tsc)
 ```
 **Single File Check**: `npx svelte-check --tsconfig ./tsconfig.app.json src/path/to/file.svelte`
-**Manual Testing**: No test framework - run `npm run dev` and open `http://localhost:5173`. For single component testing, modify `App.svelte` to import and render only that component.
-**Note**: No explicit lint command - type checking with `svelte-check` is the primary validation.
+**Manual Testing**: No test framework - run `npm run dev` and open `http://localhost:5173`.
 
 ---
 
 ## Stack
 - **Framework**: Svelte 5 + TypeScript + Vite
 - **Styling**: TailwindCSS 4.x with CSS custom properties
-- **Alerts**: SweetAlert2
-- **Exports**: ExcelJS, jsPDF
-- **Backend**: PHP + MySQL
+- **Alerts**: SweetAlert2 | **Exports**: ExcelJS, jsPDF
+- **Backend**: PHP + MySQL (PDO)
 - **Deployment**: GitHub Pages (base: `/inasistig/`)
-
----
-
-## Project Structure
-```
-src/
-├── api/              # API service layer (service.ts)
-├── components/       # Svelte components (PascalCase)
-│   ├── ui/          # Reusable UI components
-│   └── features/    # Feature-specific components
-├── lib/             # Stores (themeStore.ts)
-├── assets/          # Static assets, PHP backend
-├── constants.ts     # App constants (URLs, config)
-├── types.ts         # TypeScript interfaces
-├── app.css          # Global styles + CSS variables
-└── App.svelte       # Root component
-```
 
 ---
 
 ## Code Style
 
-### Import Order (strict)
+### Import Order
 1. Node built-ins (`svelte: onMount`, `svelte:store`)
 2. External libraries (sweetalert2, exceljs, jspdf, lucide-svelte)
 3. Internal services/api
 4. Internal constants
 5. Internal stores
-6. Internal assets/images
-7. Internal components
+6. Internal components
 
 ### TypeScript Rules
-- **NEVER use `any`** - always use interfaces/types
-- Use `interface` for object shapes, `type` for unions/aliases
-- Full function typing required: `const fetchData = async (id: string): Promise<Data[]> => {...}`
+- **NEVER use `any`** - use interfaces/types
+- Full function typing: `const fetchData = async (id: string): Promise<Data[]> => {...}`
 - Use optional chaining (`?.`) and nullish coalescing (`??`)
-- Prefer `unknown` over `any` when type is truly unknown
 
-### Naming Conventions
+### Naming
 | Type | Convention | Example |
 |------|------------|---------|
 | Components | PascalCase | `Dashboard.svelte` |
 | Functions/vars | camelCase | `handleClick` |
-| Interfaces | PascalCase | `Estudiante`, `Inasistencia` |
-| Constants | UPPER_SNAKE_CASE | `API_BASE_URL`, `MAX_FILE_SIZE` |
-| CSS classes | kebab-case | `btn-primary`, `card-shadow` |
-| File names | kebab-case | `api-service.ts`, `theme-store.ts` |
+| Interfaces | PascalCase | `Estudiante` |
+| Constants | UPPER_SNAKE_CASE | `API_BASE_URL` |
+| File names | kebab-case | `api-service.ts` |
 
 ### Formatting
-- Use 2-space indentation
-- Trailing commas in objects/arrays
-- Single quotes for strings
-- Prefer arrow functions for callbacks
+- 2-space indentation, single quotes, trailing commas
 - Max line length: 100 characters
+- Arrow functions for callbacks
 
 ---
 
 ## Svelte 5 Patterns
 
-### State Management
 ```typescript
-// Primitive state
+// State
 let count = $state(0);
-
-// Derived state
 let doubled = $derived(count * 2);
 
-// Props with defaults
+// Props
 let { onBack, title = "Default" }: { onBack: () => void; title?: string } = $props();
 
-// Effect (use sparingly)
-$effect(() => {
-  console.log(count);
-  return () => {}; // cleanup
-});
+// Effects (use sparingly)
+$effect(() => { console.log(count); return () => {}; });
 ```
-
-### Component Structure
-```svelte
-<script lang="ts">
-  // Props
-  let { onBack, title = "Default" }: { onBack: () => void; title?: string } = $props();
-
-  // State
-  let isLoading = $state(false);
-
-  // Derived
-  $: missingFields = !formData.name;
-
-  // Handlers
-  const handleSubmit = async () => { /* ... */ };
-</script>
-
-<div class="component-class">
-  <!-- Template content -->
-</div>
-
-<style>
-  /* Scoped styles - use Tailwind when possible */
-</style>
-```
-
----
-
-## Navigation & Routing
-- SPA with `activeView` state (string-based routing)
-- Views: "dashboard", "registro", "reportes", "configuracion"
-- Consistent `handleBack()` returning to "dashboard"
-- Use Svelte transitions: `fade`, `fly`, `slide`
 
 ---
 
 ## Error Handling
-
-### API Errors
 ```typescript
 try {
   const response = await fetch(url);
@@ -156,89 +90,32 @@ try {
 }
 ```
 
-### Form Validation
-```typescript
-$: validationErrors = (() => {
-  const errors: string[] = [];
-  if (!formData.nombre?.trim()) errors.push("El nombre es requerido");
-  if (formData.edad < 18) errors.push("Debe ser mayor de edad");
-  return errors;
-})();
-
-$: isValid = validationErrors.length === 0;
-```
-
-### Network Error Detection
-```typescript
-const isNetworkError = (error: unknown): boolean => {
-  return error instanceof TypeError && error.message === "Failed to fetch";
-};
-```
-
----
-
-## Loading States
+### Loading States
 ```typescript
 let isLoading = $state(false);
-
-const handleAsyncOperation = async () => {
+const handleOp = async () => {
   isLoading = true;
-  try {
-    await performOperation();
-  } catch (e) {
-    // Error handled above
-  } finally {
-    isLoading = false;
-  }
+  try { await doSomething(); }
+  finally { isLoading = false; }
 };
 ```
 
 ---
 
 ## Theming & CSS
-
-### CSS Variables (app.css)
-```css
-:root {
-  --bg-primary: var(--bg-primary);
-  --bg-secondary: var(--bg-secondary);
-  --text-primary: var(--text-primary);
-  --text-secondary: var(--text-secondary);
-  --card-bg: var(--card-bg);
-  --card-border: var(--card-border);
-  --accent-primary: var(--accent-primary);
-  --border-primary: var(--border-primary);
-}
-```
-
-### Usage
-```svelte
-<div class="bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))]">
-  Content
-</div>
-```
-
-### Guidelines
-- Use CSS variables for theme-aware styling
+- Use CSS variables for theming (`--bg-primary`, `--text-primary`, etc.)
 - Prefer Tailwind utility classes over custom CSS
 - Mobile-first: `class="w-full sm:w-auto"`
-- Use semantic class names
 
 ---
 
 ## API Service
-
-### Service Layer Pattern
 ```typescript
-// src/api/types.ts
 interface ApiResponse<T> {
   status: "success" | "error";
   data?: T;
   message?: string;
 }
-
-// src/api/service.ts
-const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 export const fetchEstudiantes = async (idDocente: string): Promise<Estudiante[]> => {
   const response = await fetch(`${API_BASE_URL}/estudiantes.php?id_docente=${idDocente}`);
@@ -251,14 +128,12 @@ export const fetchEstudiantes = async (idDocente: string): Promise<Estudiante[]>
 
 ### PHP Backend Guidelines
 - Use PDO with prepared statements
-- Validate `id_docente` from session/cookie
 - Return `{"status": "success", "data": [...]}` format
-- Handle CORS for local development
 
 ---
 
 ## Available Skills
-Use the `skill` tool for domain-specific guidance:
+Use `skill` tool for domain-specific guidance:
 - `ui-inasistencias` - UI component standards, button styles, alert patterns
 - `api-inasistig` - PHP backend, MySQL queries, PDO patterns
 - `google-sync` - Google Sheets sync logic and API integration
@@ -274,7 +149,6 @@ Use the `skill` tool for domain-specific guidance:
 - [ ] Mobile-first responsive design
 - [ ] SweetAlert2 for confirmations (destructive actions)
 - [ ] CSS variables for theming (light/dim/dark)
-- [ ] Icons from `lucide-svelte` (import individually)
 
 ---
 
@@ -283,5 +157,5 @@ Use the `skill` tool for domain-specific guidance:
 2. **UI text in Spanish** - all user-facing messages
 3. **Ask before git commits** - don't auto-commit
 4. **localStorage** for user preferences (docente, theme)
-5. **Service worker** for offline read operations
-6. **Confirm destructive actions** with SweetAlert2
+5. **PDO prepared statements** for security in PHP
+6. **Responsive design** for mobile devices

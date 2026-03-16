@@ -30,7 +30,7 @@ try {
     // Spreadsheet ID correcto
     $spreadsheetId = '1nXqDNW_KLlDoXKUENQ-Yg50dHfNRI_vL5r4boYOfbOo';
     $worksheetTitle = 'Planeaciones';
-    $range = $worksheetTitle . '!A1:AW1000';
+    $range = $worksheetTitle . '!A1:AX1000';
 
     $client = new Client();
     $client->setApplicationName('Planeador de Clases');
@@ -75,7 +75,7 @@ try {
         'assessment_activities', 'tiempo_valoracion', 'eval_type', 'eval_modalidades', 'eval_instrumentos',
         'eval_criterios', 'eval_evidencias', 'eval_criteria', 'eval_evidence', 'eval_ponderacion_conceptos',
         'eval_ponderacion_procedimientos', 'eval_ponderacion_actitudes', 'eval_descripcion_auto', 'resources',
-        'planeacion_tipo', 'periodo_academico', 'fecha_inicio', 'fecha_fin', 'firma_docente'
+        'planeacion_tipo', 'periodo_academico', 'fecha_inicio', 'fecha_fin', 'firma_docente', 'fecha_firma'
     ];
 
     // Convertir filas a objetos
