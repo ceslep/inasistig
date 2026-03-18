@@ -1,2298 +1,5435 @@
 <script lang="ts">
-  import { onMount, tick } from "svelte";
-  import { fade, fly, scale } from "svelte/transition";
-  import { cubicOut, elasticOut } from "svelte/easing";
+    import { onMount, tick } from "svelte";
+    import { fade, fly } from "svelte/transition";
+    import Swal from "sweetalert2";
+    import { theme } from "../lib/themeStore";
+    import eieLogo from "../assets/eie.png";
+    import {
+        savePlaneador,
+        getDocentes,
+        getMaterias,
+        getEstudiantes,
+        type PlaneadorData,
+        type PlaneadorFiltros,
+        type NormativaItem,
+        savePlaneadorLocal,
+        getPlaneadoresLocales,
+        getPlaneadorLocal,
+        deletePlaneadorLocal,
+        clearPlaneadoresLocales,
+        exportPlaneadoresLocales,
+        importPlaneadoresLocales,
+        type PlaneadorLocal,
+        uploadTemasDocente,
+        getTemasDocente,
+        type TemaDocenteEntry,
+        getPlaneador,
+    } from "../../api/service";
+    import { URL_DBA_EBC, AI_PROXY_URL } from "../constants";
+    import Piar from "./Piar.svelte";
 
-  let { onBack }: { onBack: () => void } = $props();
+    let { onBack }: { onBack: () => void } = $props();
 
-  // ─── State ───────────────────────────────────────────────
-  let currentStep = $state(0);
-  let isMobile = $state(false);
-  let sidebarOpen = $state(false);
-  let showPdfPreview = $state(false);
-  let isGeneratingPdf = $state(false);
-  let isSaving = $state(false);
-  let savedAnimation = $state(false);
-  let activeTab = $state<"dba" | "ebc" | "piar">("dba");
+    // Estilos reactivos para soporte de temas (light/dim/dark)
+    const ts = $derived({
+        bg: "rgb(var(--bg-primary))",
+        bg2: "rgb(var(--bg-secondary))",
+        bg3: "rgb(var(--bg-tertiary))",
+        text: "rgb(var(--text-primary))",
+        text2: "rgb(var(--text-secondary))",
+        muted: "rgb(var(--text-muted))",
+        border: "rgb(var(--border-primary))",
+        card: "rgb(var(--card-bg))",
+        cardBorder: "rgb(var(--card-border))",
+        accent: "rgb(var(--accent-primary))",
+    });
+    const isDark = $derived($theme !== "light");
 
-  // Moment accordion state
-  let openMoments = $state<Set<number>>(new Set([0]));
+    let isLoading = $state(false);
+    let isLoadingDocentes = $state(false);
+    let isLoadingMaterias = $state(false);
+    let isLoadingEstudiantes = $state(false);
+    let isLoadingDBAs = $state(false);
+    let isLoadingEBCs = $state(false);
 
-  const STEPS = [
-    { id: 0, label: "Datos", icon: "user", color: "#6366f1" },
-    { id: 1, label: "Tiempo", icon: "clock", color: "#0ea5e9" },
-    { id: 2, label: "Referentes", icon: "book", color: "#8b5cf6" },
-    { id: 3, label: "Secuencia", icon: "layers", color: "#f59e0b" },
-    { id: 4, label: "Evaluación", icon: "check-circle", color: "#10b981" },
-    { id: 5, label: "Recursos", icon: "package", color: "#f43f5e" },
-  ];
+    // PIAR Modal
+    let showPiarModal = $state(false);
 
-  const MOMENTO_COLORS = ["#818cf8","#34d399","#fbbf24","#f87171","#a78bfa"];
-  const MOMENTO_BG = ["#1e1b4b","#064e3b","#451a03","#450a0a","#2e1065"];
+    // Local Planeaciones
+    let showLocalPanel = $state(false);
+    let planeacionesLocales = $state<PlaneadorLocal[]>([]);
+    let fileInputRef = $state<HTMLInputElement | undefined>(undefined);
 
-  const MOMENTOS = [
-    { num: 1, name: "Exploración", desc: "Saberes previos y motivación", field: "exploration", time: "tiempo_exploracion" },
-    { num: 2, name: "Estructuración", desc: "Construcción del conocimiento", field: "structuring", time: "tiempo_estructuracion" },
-    { num: 3, name: "Práctica", desc: "Ejercitación colaborativa", field: "practice", time: "tiempo_practica" },
-    { num: 4, name: "Transferencia", desc: "Aplicación en nuevos contextos", field: "transfer", time: "tiempo_transferencia" },
-    { num: 5, name: "Valoración", desc: "Metacognición y evidencias", field: "assessment_moment", time: "tiempo_valoracion" },
-  ];
-
-  const ACTIVIDADES: Record<string, { id: string; label: string }[]> = {
-    exploration: [
-      { id: "preguntas", label: "Preguntas generadoras" },
-      { id: "video", label: "Video introductorio" },
-      { id: "lluvia", label: "Lluvia de ideas" },
-      { id: "imagenes", label: "Análisis de imágenes" },
-      { id: "juego", label: "Dinámica / Juego" },
-      { id: "situacion", label: "Situación problema" },
-    ],
-    structuring: [
-      { id: "exposicion", label: "Exposición magistral" },
-      { id: "mapa", label: "Mapa conceptual" },
-      { id: "demo", label: "Demostración" },
-      { id: "lectura", label: "Lectura guiada" },
-      { id: "sim", label: "Simulación TIC" },
-      { id: "ejemplo", label: "Ejemplificación" },
-    ],
-    practice: [
-      { id: "ejercicios", label: "Ejercicios individuales" },
-      { id: "grupo", label: "Trabajo colaborativo" },
-      { id: "investiga", label: "Investigación" },
-      { id: "proyecto", label: "Proyecto creativo" },
-      { id: "caso", label: "Análisis de casos" },
-      { id: "debate", label: "Debate" },
-    ],
-    transfer: [
-      { id: "real", label: "Problema real" },
-      { id: "exporal", label: "Exposición oral" },
-      { id: "producto", label: "Producto final" },
-      { id: "tarea", label: "Tarea para casa" },
-      { id: "servicio", label: "Servicio comunitario" },
-      { id: "digital", label: "Presentación digital" },
-    ],
-    assessment_moment: [
-      { id: "autoeval", label: "Autoevaluación" },
-      { id: "coeval", label: "Coevaluación" },
-      { id: "metacog", label: "Metacognición" },
-      { id: "rubrica", label: "Rúbrica" },
-      { id: "cierre", label: "Síntesis / Cierre" },
-      { id: "retro", label: "Retroalimentación" },
-    ],
-  };
-
-  type FormData = {
-    docente: string;
-    grado: string;
-    subject: string;
-    period: string;
-    jornada: string;
-    planeacion_tipo: string;
-    periodo_academico: string;
-    fecha_inicio: string;
-    fecha_fin: string;
-    dba: string[];
-    standard: string[];
-    dba_manual: string;
-    has_piar: boolean;
-    piar_tipo: string;
-    piar_description: string;
-    learning_objectives: string;
-    competencias: string;
-    indicadores_logro: string;
-    exploration: string;
-    exploration_activities: string[];
-    tiempo_exploracion: number;
-    structuring: string;
-    structuring_activities: string[];
-    tiempo_estructuracion: number;
-    practice: string;
-    practice_activities: string[];
-    tiempo_practica: number;
-    transfer: string;
-    transfer_activities: string[];
-    tiempo_transferencia: number;
-    assessment_moment: string;
-    assessment_activities: string[];
-    tiempo_valoracion: number;
-    eval_type: string;
-    eval_modalidades: string[];
-    eval_instrumentos: string[];
-    eval_criterios: string[];
-    eval_evidencias: string[];
-    eval_ponderacion_conceptos: number;
-    eval_ponderacion_procedimientos: number;
-    eval_ponderacion_actitudes: number;
-    resources: string;
-    recursos_ids: string[];
-  };
-
-  let formData = $state<FormData>({
-    docente: "",
-    grado: "",
-    subject: "",
-    period: "",
-    jornada: "Mañana",
-    planeacion_tipo: "",
-    periodo_academico: "",
-    fecha_inicio: new Date().toISOString().split("T")[0],
-    fecha_fin: new Date().toISOString().split("T")[0],
-    dba: [],
-    standard: [],
-    dba_manual: "",
-    has_piar: false,
-    piar_tipo: "",
-    piar_description: "",
-    learning_objectives: "",
-    competencias: "",
-    indicadores_logro: "",
-    exploration: "",
-    exploration_activities: [],
-    tiempo_exploracion: 10,
-    structuring: "",
-    structuring_activities: [],
-    tiempo_estructuracion: 20,
-    practice: "",
-    practice_activities: [],
-    tiempo_practica: 25,
-    transfer: "",
-    transfer_activities: [],
-    tiempo_transferencia: 15,
-    assessment_moment: "",
-    assessment_activities: [],
-    tiempo_valoracion: 10,
-    eval_type: "formativa",
-    eval_modalidades: [],
-    eval_instrumentos: [],
-    eval_criterios: [],
-    eval_evidencias: [],
-    eval_ponderacion_conceptos: 30,
-    eval_ponderacion_procedimientos: 40,
-    eval_ponderacion_actitudes: 30,
-    resources: "",
-    recursos_ids: [],
-  });
-
-  // ─── Derived ──────────────────────────────────────────────
-  let tiempoTotal = $derived(
-    formData.tiempo_exploracion +
-    formData.tiempo_estructuracion +
-    formData.tiempo_practica +
-    formData.tiempo_transferencia +
-    formData.tiempo_valoracion
-  );
-
-  let completedSteps = $derived.by(() => {
-    const done = new Set<number>();
-    if (formData.docente && formData.grado && formData.subject) done.add(0);
-    if (formData.planeacion_tipo && formData.periodo_academico) done.add(1);
-    if (formData.dba.length > 0 || formData.standard.length > 0 || formData.dba_manual) done.add(2);
-    if (formData.exploration && formData.structuring && formData.practice && formData.transfer) done.add(3);
-    if (formData.eval_type && formData.eval_modalidades.length > 0) done.add(4);
-    if (formData.resources) done.add(5);
-    return done;
-  });
-
-  let completionPct = $derived(Math.round((completedSteps.size / 6) * 100));
-
-  function getMomentoActivities(field: string): string[] {
-    const map: Record<string, string[]> = {
-      exploration: formData.exploration_activities,
-      structuring: formData.structuring_activities,
-      practice: formData.practice_activities,
-      transfer: formData.transfer_activities,
-      assessment_moment: formData.assessment_activities,
+    // Helper para obtener fecha actual en formato YYYY-MM-DD
+    const getCurrentDate = (): string => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     };
-    return map[field] || [];
-  }
 
-  function getMomentoText(field: string): string {
-    return (formData as Record<string, unknown>)[field] as string || "";
-  }
+    // Online Planeaciones (Google Sheets)
+    let showFiltrosPanel = $state(false);
+    let planeacionesOnline = $state<PlaneadorData[]>([]);
+    let isLoadingOnline = $state(false);
+    let filtrosBusqueda = $state<PlaneadorFiltros>({
+        docente: "",
+        grado: "",
+        materia: "",
+        periodo: "",
+        fechaDesde: getCurrentDate(),
+        fechaHasta: getCurrentDate()
+    });
 
-  function toggleActivity(field: string, id: string) {
-    const keyMap: Record<string, keyof FormData> = {
-      exploration: "exploration_activities",
-      structuring: "structuring_activities",
-      practice: "practice_activities",
-      transfer: "transfer_activities",
-      assessment_moment: "assessment_activities",
+    // PDF Preview
+    let showPdfPreview = $state(false);
+    let pdfUrl = $state<string | null>(null);
+    let isGeneratingPdf = $state(false);
+
+    // Temas del Docente (JSON)
+    let isLoadingTemas = $state(false);
+    let isUploadingTemas = $state(false);
+    let temasDocente = $state<TemaDocenteEntry[]>([]);
+    let temasJsonInputRef = $state<HTMLInputElement | undefined>(undefined);
+    let selectedTemas = $state<string[]>([]);
+    let selectedActividades = $state<string[]>([]);
+    let showTemasSection = $state(true);
+
+    // Firma del docente
+    let showFirmaModal = $state(false);
+    let firmaCanvas = $state<HTMLCanvasElement | null>(null);
+
+    // OpenRouter AI
+    let showAIPanel = $state(false);
+    let isGeneratingAI = $state(false);
+    let aiPrompt = $state("");
+    let aiResult = $state("");
+    let aiSection = $state<"exploration" | "structuring" | "practice" | "transfer">("exploration");
+
+    // Inicializar canvas de firma cuando se abre el modal
+    $effect(() => {
+        if (showFirmaModal && firmaCanvas) {
+            const canvas = firmaCanvas;
+            setTimeout(() => {
+                const ctx = canvas.getContext("2d");
+                if (ctx) {
+                    ctx.lineWidth = 2.5;
+                    ctx.lineCap = "round";
+                    ctx.strokeStyle = "#1e293b";
+
+                    let drawing = false;
+
+                    const getPos = (e: MouseEvent | TouchEvent) => {
+                        const rect = canvas.getBoundingClientRect();
+                        const scaleX = canvas.width / rect.width;
+                        const scaleY = canvas.height / rect.height;
+                        const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+                        const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+                        return {
+                            x: (clientX - rect.left) * scaleX,
+                            y: (clientY - rect.top) * scaleY,
+                        };
+                    };
+
+                    const start = (e: MouseEvent | TouchEvent) => {
+                        e.preventDefault();
+                        drawing = true;
+                        ctx.beginPath();
+                        const p = getPos(e);
+                        ctx.moveTo(p.x, p.y);
+                    };
+
+                    const move = (e: MouseEvent | TouchEvent) => {
+                        if (!drawing) return;
+                        e.preventDefault();
+                        const p = getPos(e);
+                        ctx.lineTo(p.x, p.y);
+                        ctx.stroke();
+                    };
+
+                    const stop = () => {
+                        drawing = false;
+                    };
+
+                    canvas.onmousedown = start;
+                    canvas.onmousemove = move;
+                    canvas.onmouseup = stop;
+                    canvas.onmouseleave = stop;
+                    canvas.ontouchstart = start;
+                    canvas.ontouchmove = move;
+                    canvas.ontouchend = stop;
+                }
+            }, 100);
+        }
+    });
+
+    const guardarFirma = (): void => {
+        if (firmaCanvas) {
+            const canvas = firmaCanvas as HTMLCanvasElement;
+            const dataUrl = canvas.toDataURL("image/png");
+            formData.firma_docente = dataUrl;
+            formData.fecha_firma = new Date().toISOString();
+        }
+        showFirmaModal = false;
     };
-    const key = keyMap[field];
-    const arr = formData[key] as string[];
-    if (arr.includes(id)) {
-      (formData as Record<string, unknown>)[key] = arr.filter(a => a !== id);
-    } else {
-      (formData as Record<string, unknown>)[key] = [...arr, id];
+
+    const limpiarFirma = (): void => {
+        if (firmaCanvas) {
+            const canvas = firmaCanvas as HTMLCanvasElement;
+            const ctx = canvas.getContext("2d");
+            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    };
+
+    // --- OpenRouter AI Functions ---
+    const openAIPanel = (): void => {
+        showAIPanel = true;
+    };
+
+    interface AISections {
+        exploration: string;
+        structuring: string;
+        practice: string;
+        transfer: string;
+        objectives: string;
+        competencias: string;
+        indicadores: string;
+        tiempo_exploracion: number;
+        tiempo_estructuracion: number;
+        tiempo_practica: number;
+        tiempo_transferencia: number;
+        tiempo_valoracion: number;
     }
-    const act = ACTIVIDADES[field]?.find(a => a.id === id);
-    if (act) {
-      const textKey = field as keyof FormData;
-      const current = formData[textKey] as string || "";
-      if (!arr.includes(id)) {
-        (formData as Record<string, unknown>)[textKey] = current
-          ? current + "\n• " + act.label
-          : "• " + act.label;
-      }
+
+    let aiSectionsResult = $state<AISections | null>(null);
+
+    const MAX_AI_RETRIES = 3;
+    let aiAttempt = $state(0);
+
+    interface AIResponseChoice {
+        message?: {
+            content?: string | null;
+            reasoning?: string | null;
+            reasoning_details?: { text?: string }[];
+        };
+        text?: string;
+        finish_reason?: string;
     }
-  }
 
-  function toggleChip<T>(arr: T[], val: T): T[] {
-    return arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val];
-  }
-
-  function toggleMoment(i: number) {
-    const s = new Set(openMoments);
-    s.has(i) ? s.delete(i) : s.add(i);
-    openMoments = s;
-  }
-
-  function setPreset(mins: number) {
-    if (mins === 45) {
-      formData.tiempo_exploracion = 8;
-      formData.tiempo_estructuracion = 12;
-      formData.tiempo_practica = 15;
-      formData.tiempo_transferencia = 6;
-      formData.tiempo_valoracion = 4;
-    } else if (mins === 80) {
-      formData.tiempo_exploracion = 10;
-      formData.tiempo_estructuracion = 20;
-      formData.tiempo_practica = 25;
-      formData.tiempo_transferencia = 15;
-      formData.tiempo_valoracion = 10;
-    } else {
-      formData.tiempo_exploracion = 15;
-      formData.tiempo_estructuracion = 30;
-      formData.tiempo_practica = 40;
-      formData.tiempo_transferencia = 20;
-      formData.tiempo_valoracion = 15;
+    interface AIResponseData {
+        choices?: AIResponseChoice[];
+        output?: { text?: string };
+        generations?: { text?: string; content?: string }[];
+        error?: { message?: string };
     }
-  }
 
-  async function handleSave() {
-    isSaving = true;
-    await new Promise(r => setTimeout(r, 1400));
-    isSaving = false;
-    savedAnimation = true;
-    setTimeout(() => savedAnimation = false, 2500);
-  }
+    /**
+     * Extrae texto útil de la respuesta de la IA (content, reasoning, o reasoning_details)
+     */
+    const extractContent = (data: AIResponseData): string => {
+        if (data.error?.message) return "";
 
-  function prevStep() { if (currentStep > 0) currentStep--; }
-  function nextStep() { if (currentStep < 5) currentStep++; }
+        const choice = data.choices?.[0];
+        if (!choice) {
+            if (data.output?.text) return data.output.text;
+            if (data.generations?.[0]) return data.generations[0].text || data.generations[0].content || "";
+            return "";
+        }
 
-  onMount(() => {
-    const check = () => { isMobile = window.innerWidth < 768; };
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  });
+        // 1. content directo
+        if (choice.message?.content && choice.message.content.trim().length > 10) {
+            return choice.message.content;
+        }
 
-  const TIPOS_PLAN = ["Clase única","Semanal","Quincenal","Mensual","Por período","Semestral","Anual"];
-  const PERIODOS = ["Período 1","Período 2","Período 3","Período 4","Semestre 1","Semestre 2","Anual"];
-  const GRADOS = ["PREESCOLAR","PRIMERO","SEGUNDO","TERCERO","CUARTO","QUINTO","SEXTO","SÉPTIMO","OCTAVO","NOVENO","DÉCIMO","ONCE"];
-  const MATERIAS = ["Matemáticas","Lenguaje","Ciencias Naturales","Ciencias Sociales","Inglés","Ética","Ed. Artística","Ed. Física","Tecnología","Filosofía"];
-  const EVAL_TIPOS = [
-    { id: "diagnostica", label: "Diagnóstica", desc: "Identifica saberes previos" },
-    { id: "formativa", label: "Formativa", desc: "Evalúa el proceso" },
-    { id: "sumativa", label: "Sumativa", desc: "Evalúa resultados finales" },
-  ];
-  const MODALIDADES = ["Heteroevaluación","Coevaluación","Autoevaluación"];
-  const INSTRUMENTOS = ["Rúbrica","Lista de chequeo","Prueba escrita","Proyecto","Exposición oral","Portafolio","Mapa conceptual","Ensayo"];
-  const CRITERIOS = ["Comprensión conceptual","Aplicación","Análisis crítico","Creatividad","Colaboración","Comunicación","Investigación","Pensamiento lógico"];
-  const RECURSOS_CATS = [
-    { id: "tecnologicos", label: "Tecnológicos", color: "#6366f1", items: ["Computador/Tablet","Video beam","Internet/WiFi","Google Classroom","Kahoot/Quizizz","Canva/Genially"] },
-    { id: "impresos", label: "Impresos", color: "#f59e0b", items: ["Guías de trabajo","Fichas de actividades","Cartillas","Rúbricas impresas","Fotocopias","Láminas/Afiches"] },
-    { id: "audiovisuales", label: "Audiovisuales", color: "#10b981", items: ["Videos educativos","Presentaciones","Documentales","Podcasts/Audio","Imágenes/Fotografías"] },
-    { id: "bibliograficos", label: "Bibliográficos", color: "#f43f5e", items: ["Libro de texto","Diccionario","Enciclopedia","Artículo de prensa","Revistas académicas"] },
-  ];
-  let selectedRecursosCat = $state("tecnologicos");
-  const DBA_MOCK = [
-    { id: "d1", code: "DBA 1", text: "Comprende que a partir de la variación de magnitudes es posible predecir comportamientos." },
-    { id: "d2", code: "DBA 2", text: "Interpreta y produce representaciones de datos para responder preguntas estadísticas." },
-    { id: "d3", code: "DBA 3", text: "Reconoce y describe figuras geométricas en el plano a partir de sus propiedades." },
-    { id: "d4", code: "DBA 4", text: "Usa representaciones geométricas para resolver y formular problemas en las matemáticas." },
-  ];
-  const EBC_MOCK = [
-    { id: "e1", code: "EBC 1", text: "Produzco textos escritos que evidencian el conocimiento que tengo de mis lectores." },
-    { id: "e2", code: "EBC 2", text: "Comprendo textos literarios para propiciar el desarrollo de mi capacidad creativa y lúdica." },
-  ];
+        // 2. reasoning (algunos modelos ponen todo aquí)
+        if (choice.message?.reasoning && choice.message.reasoning.trim().length > 10) {
+            return choice.message.reasoning;
+        }
+
+        // 3. reasoning_details
+        if (choice.message?.reasoning_details?.length) {
+            const text = choice.message.reasoning_details.map(d => d.text || "").join("\n");
+            if (text.trim().length > 10) return text;
+        }
+
+        // 4. text directo
+        if (choice.text && choice.text.trim().length > 10) {
+            return choice.text;
+        }
+
+        return "";
+    };
+
+    /**
+     * Intenta extraer las 4 secciones de un texto (JSON o texto libre)
+     */
+    const parseSections = (text: string): AISections | null => {
+        // Validar que no sea código
+        const invalidPatterns = ["<?php", "<?=", "include_once", "require_once", "json_encode", "file_get_contents", "<script"];
+        if (invalidPatterns.some(p => text.toLowerCase().includes(p.toLowerCase()))) {
+            return null;
+        }
+
+        // Intentar parsear JSON
+        let jsonString = text.match(/\{[\s\S]*\}/)?.[0] || "";
+
+        if (!jsonString && text.includes("{")) {
+            jsonString = text.substring(text.indexOf("{")).trim();
+            if (!jsonString.endsWith("}")) {
+                // Cerrar strings abiertos y la llave
+                const lastQuote = jsonString.lastIndexOf('"');
+                if (lastQuote > jsonString.lastIndexOf('":')) {
+                    jsonString = jsonString.substring(0, lastQuote + 1) + "}";
+                } else {
+                    jsonString += '"}';
+                }
+            }
+        }
+
+        if (jsonString) {
+            try {
+                const cleanJson = jsonString
+                    .replace(/[\x00-\x1F\x7F]/g, (c: string) => c === "\n" || c === "\t" ? c : "")
+                    .replace(/,\s*}/g, "}");
+
+                const parsed = JSON.parse(cleanJson) as Record<string, unknown>;
+                if (parsed.exploration && parsed.structuring && parsed.practice && parsed.transfer) {
+                    return {
+                        exploration: String(parsed.exploration),
+                        structuring: String(parsed.structuring),
+                        practice: String(parsed.practice),
+                        transfer: String(parsed.transfer),
+                        objectives: parsed.objectives ? String(parsed.objectives) : "",
+                        competencias: parsed.competencias ? String(parsed.competencias) : "",
+                        indicadores: parsed.indicadores ? String(parsed.indicadores) : "",
+                        tiempo_exploracion: Number(parsed.tiempo_exploracion) || 10,
+                        tiempo_estructuracion: Number(parsed.tiempo_estructuracion) || 20,
+                        tiempo_practica: Number(parsed.tiempo_practica) || 25,
+                        tiempo_transferencia: Number(parsed.tiempo_transferencia) || 15,
+                        tiempo_valoracion: Number(parsed.tiempo_valoracion) || 10,
+                    };
+                }
+            } catch {
+                // JSON parse falló
+            }
+        }
+
+        // Fallback: buscar secciones por keywords en texto libre
+        const sectionMap: Record<string, string> = {};
+        const sectionKeys = [
+            { key: "exploracion", patterns: ["exploración", "exploration", "inicio", "pregunta generadora"] },
+            { key: "estructuracion", patterns: ["estructuración", "structuring", "desarrollo", "concepto principal"] },
+            { key: "practica", patterns: ["práctica", "practice", "ejercicio"] },
+            { key: "transferencia", patterns: ["transferencia", "transfer", "cierre", "aplicación"] },
+        ];
+
+        const lowerText = text.toLowerCase();
+        for (const sec of sectionKeys) {
+            for (const pattern of sec.patterns) {
+                const idx = lowerText.indexOf(pattern);
+                if (idx !== -1) {
+                    // Encontrar el contenido después del patrón
+                    const afterPattern = text.substring(idx);
+                    const nextLineEnd = afterPattern.indexOf("\n\n", pattern.length);
+                    const chunk = nextLineEnd > 0
+                        ? afterPattern.substring(0, nextLineEnd).trim()
+                        : afterPattern.substring(0, 500).trim();
+                    if (chunk.length > 20 && !sectionMap[sec.key]) {
+                        sectionMap[sec.key] = chunk;
+                    }
+                    break;
+                }
+            }
+        }
+
+        if (sectionMap.exploration && sectionMap.structuring && sectionMap.practice && sectionMap.transfer) {
+            return {
+                ...sectionMap,
+                objectives: sectionMap.objectives || "",
+                competencias: sectionMap.competencias || "",
+                indicadores: sectionMap.indicadores || "",
+                tiempo_exploracion: 10,
+                tiempo_estructuracion: 20,
+                tiempo_practica: 25,
+                tiempo_transferencia: 15,
+                tiempo_valoracion: 10,
+            } as AISections;
+        }
+
+        // Último fallback: dividir en 4 partes iguales si hay suficiente texto
+        const lines = text.split("\n").filter((l: string) => l.trim().length > 5);
+        if (lines.length >= 4) {
+            const chunkSize = Math.max(1, Math.ceil(lines.length / 4));
+            return {
+                exploration: lines.slice(0, chunkSize).join("\n"),
+                structuring: lines.slice(chunkSize, chunkSize * 2).join("\n"),
+                practice: lines.slice(chunkSize * 2, chunkSize * 3).join("\n"),
+                transfer: lines.slice(chunkSize * 3).join("\n"),
+                objectives: "", competencias: "", indicadores: "",
+                tiempo_exploracion: 10, tiempo_estructuracion: 20, tiempo_practica: 25, tiempo_transferencia: 15, tiempo_valoracion: 10,
+            };
+        }
+
+        return null;
+    };
+
+    const generateWithAI = async (): Promise<void> => {
+        if (!aiPrompt.trim()) {
+            Swal.fire({
+                icon: "warning",
+                title: "Prompt vacío",
+                text: "Por favor escribe un tema o contexto para generar contenido",
+            });
+            return;
+        }
+
+        isGeneratingAI = true;
+        aiSectionsResult = null;
+        aiResult = "";
+        aiAttempt = 0;
+        
+        try {
+            for (let attempt = 1; attempt <= MAX_AI_RETRIES; attempt++) {
+                aiAttempt = attempt;
+
+                const response = await fetch(AI_PROXY_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        model: "openrouter/free",
+                        max_tokens: 1000,
+                        messages: [
+                            {
+                                role: "system",
+                                content: "Eres un asistente educativo colombiano. Responde ÚNICAMENTE con un JSON válido, sin markdown. Sé conciso, máximo 2 párrafos por sección."
+                            },
+                            {
+                                role: "user",
+                                content: `Genera una secuencia didáctica completa. Responde SOLO con este JSON (sin explicaciones ni markdown):
+{"exploration":"actividad de inicio con pregunta generadora","structuring":"actividad de desarrollo con concepto y guía","practice":"ejercicios prácticos con instrucciones","transfer":"actividad de cierre con preguntas","objectives":"3 objetivos de aprendizaje separados por salto de linea","competencias":"3 competencias a desarrollar separadas por salto de linea","indicadores":"3 indicadores de logro separados por salto de linea","tiempo_exploracion":10,"tiempo_estructuracion":20,"tiempo_practica":25,"tiempo_transferencia":15,"tiempo_valoracion":10}
+
+Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
+                            }
+                        ]
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({})) as { error?: { message?: string } };
+                    if (attempt < MAX_AI_RETRIES) continue;
+                    throw new Error(`Error ${response.status}: ${errorData.error?.message || response.statusText}`);
+                }
+
+                const data = await response.json() as AIResponseData;
+                const content = extractContent(data);
+
+                if (!content || content.trim().length < 50) {
+                    if (attempt < MAX_AI_RETRIES) continue;
+                    throw new Error("La IA no generó contenido suficiente después de varios intentos.");
+                }
+
+                const sections = parseSections(content);
+                if (sections) {
+                    aiSectionsResult = sections;
+                    aiResult = `✅ Contenido generado para las 4 secciones. Revisa y aplica.`;
+                    break;
+                }
+
+                if (attempt < MAX_AI_RETRIES) continue;
+
+                // Último intento: forzar fallback con texto crudo
+                const lines = content.split("\n").filter((l: string) => l.trim().length > 5);
+                if (lines.length >= 4) {
+                    const cs = Math.max(1, Math.ceil(lines.length / 4));
+                    aiSectionsResult = {
+                        exploration: lines.slice(0, cs).join("\n"),
+                        structuring: lines.slice(cs, cs * 2).join("\n"),
+                        practice: lines.slice(cs * 2, cs * 3).join("\n"),
+                        transfer: lines.slice(cs * 3).join("\n"),
+                        objectives: "", competencias: "", indicadores: "",
+                        tiempo_exploracion: 10, tiempo_estructuracion: 20, tiempo_practica: 25, tiempo_transferencia: 15, tiempo_valoracion: 10,
+                    };
+                    aiResult = "⚠️ Contenido generado (formato aproximado). Revisa antes de aplicar.";
+                    break;
+                }
+
+                throw new Error("La IA no devolvió un formato reconocible después de varios intentos.");
+            }
+        } catch (error) {
+            console.error("Error generando con IA:", error);
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: error instanceof Error ? error.message : "Error al generar contenido con IA",
+                confirmButtonColor: "#ef4444"
+            });
+        } finally {
+            isGeneratingAI = false;
+            aiAttempt = 0;
+        }
+    };
+
+    const applyAIResult = (): void => {
+        if (!aiSectionsResult) return;
+
+        // Secuencia didáctica
+        const prefixE = formData.exploration ? formData.exploration + "\n\n" : "";
+        formData.exploration = prefixE + aiSectionsResult.exploration;
+
+        const prefixS = formData.structuring ? formData.structuring + "\n\n" : "";
+        formData.structuring = prefixS + aiSectionsResult.structuring;
+
+        const prefixP = formData.practice ? formData.practice + "\n\n" : "";
+        formData.practice = prefixP + aiSectionsResult.practice;
+
+        const prefixT = formData.transfer ? formData.transfer + "\n\n" : "";
+        formData.transfer = prefixT + aiSectionsResult.transfer;
+
+        // Objetivos, competencias e indicadores
+        if (aiSectionsResult.objectives) {
+            const prefixO = formData.learning_objectives ? formData.learning_objectives + "\n" : "";
+            formData.learning_objectives = prefixO + aiSectionsResult.objectives;
+        }
+        if (aiSectionsResult.competencias) {
+            const prefixC = formData.competencias ? formData.competencias + "\n" : "";
+            formData.competencias = prefixC + aiSectionsResult.competencias;
+        }
+        if (aiSectionsResult.indicadores) {
+            const prefixI = formData.indicadores_logro ? formData.indicadores_logro + "\n" : "";
+            formData.indicadores_logro = prefixI + aiSectionsResult.indicadores;
+        }
+
+        // Tiempos
+        formData.tiempo_exploracion = aiSectionsResult.tiempo_exploracion;
+        formData.tiempo_estructuracion = aiSectionsResult.tiempo_estructuracion;
+        formData.tiempo_practica = aiSectionsResult.tiempo_practica;
+        formData.tiempo_transferencia = aiSectionsResult.tiempo_transferencia;
+        formData.tiempo_valoracion = aiSectionsResult.tiempo_valoracion;
+
+        closeAIPanel();
+    };
+
+    const closeAIPanel = (): void => {
+        showAIPanel = false;
+        aiPrompt = "";
+        aiResult = "";
+        aiSectionsResult = null;
+    };
+
+    const loadPlaneacionesLocales = (): void => {
+        planeacionesLocales = getPlaneadoresLocales();
+    };
+
+    const handleExportLocal = (): void => {
+        exportPlaneadoresLocales();
+    };
+
+    const handleImportLocal = (): void => {
+        fileInputRef?.click();
+    };
+
+    const handleFileSelect = async (event: Event): Promise<void> => {
+        const input = event.target as HTMLInputElement;
+        const file = input.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const jsonData = e.target?.result as string;
+            const result = importPlaneadoresLocales(jsonData);
+            loadPlaneacionesLocales();
+            if (!result.success) {
+                Swal.fire({
+                    icon: "error",
+                    title: "Error",
+                    text: result.message,
+                    confirmButtonColor: "#ef4444",
+                });
+            }
+        };
+        reader.readAsText(file);
+        input.value = "";
+    };
+
+    const handleDeleteLocal = async (id_local: string): Promise<void> => {
+        const result = await Swal.fire({
+            icon: "warning",
+            title: "Eliminar",
+            text: "¿Está seguro de eliminar esta planeación local?",
+            showCancelButton: true,
+            confirmButtonText: "Eliminar",
+            cancelButtonText: "Cancelar",
+            confirmButtonColor: "#ef4444",
+        });
+
+        if (result.isConfirmed) {
+            deletePlaneadorLocal(id_local);
+            loadPlaneacionesLocales();
+        }
+    };
+
+    const handleClearAllLocal = async (): Promise<void> => {
+        const result = await Swal.fire({
+            icon: "warning",
+            title: "Limpiar todo",
+            text: "¿Está seguro de eliminar todas las planeaciones locales?",
+            showCancelButton: true,
+            confirmButtonText: "Limpiar todo",
+            cancelButtonText: "Cancelar",
+            confirmButtonColor: "#ef4444",
+        });
+
+        if (result.isConfirmed) {
+            clearPlaneadoresLocales();
+            loadPlaneacionesLocales();
+        }
+    };
+
+    const loadPlaneacionLocal = (planeacion: PlaneadorLocal): void => {
+        formData.docente = planeacion.docente;
+        formData.grado = planeacion.grade;
+        formData.subject = planeacion.subject;
+        formData.period = planeacion.period;
+        formData.dba = planeacion.dba;
+        formData.standard = planeacion.standard;
+        formData.dba_manual = planeacion.dba_manual || "";
+        formData.competency = planeacion.competency;
+        formData.has_piar = planeacion.has_piar;
+        formData.piar_description = planeacion.piar_description;
+        formData.exploration = planeacion.exploration;
+        formData.structuring = planeacion.structuring;
+        formData.practice = planeacion.practice;
+        formData.transfer = planeacion.transfer;
+        formData.assessment_moment = planeacion.assessment_moment;
+        formData.eval_criteria = planeacion.eval_criteria;
+        formData.eval_evidence = planeacion.eval_evidence;
+        formData.eval_type = planeacion.eval_type;
+        formData.resources = planeacion.resources;
+        
+        showLocalPanel = false;
+        currentStep = 0;
+    };
+
+    // --- Funciones Planeaciones Online (Google Sheets) ---
+    const buscarPlaneacionesOnline = async (): Promise<void> => {
+        isLoadingOnline = true;
+        try {
+            planeacionesOnline = await getPlaneador(filtrosBusqueda);
+        } catch (error) {
+            console.error("Error buscando planeaciones:", error);
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "No se pudieron cargar las planeaciones. Verifique la conexión.",
+                confirmButtonColor: "#ef4444",
+            });
+        } finally {
+            isLoadingOnline = false;
+        }
+    };
+
+    const loadPlaneacionOnline = (planeacion: PlaneadorData): void => {
+        formData.docente = planeacion.docente;
+        formData.grado = planeacion.grade;
+        formData.subject = planeacion.subject;
+        formData.period = planeacion.period;
+        formData.dba = planeacion.dba || [];
+        formData.standard = planeacion.standard || [];
+        formData.dba_manual = planeacion.dba_manual || "";
+        formData.competency = planeacion.competency;
+        formData.has_piar = planeacion.has_piar;
+        formData.piar_description = planeacion.piar_description || "";
+        formData.learning_objectives = planeacion.learning_objectives || "";
+        formData.competencias = planeacion.competencias || "";
+        formData.indicadores_logro = planeacion.indicadores_logro || "";
+        formData.exploration = planeacion.exploration || "";
+        formData.exploration_activities = planeacion.exploration_activities || [];
+        formData.tiempo_exploracion = planeacion.tiempo_exploracion || 10;
+        formData.structuring = planeacion.structuring || "";
+        formData.structuring_activities = planeacion.structuring_activities || [];
+        formData.tiempo_estructuracion = planeacion.tiempo_estructuracion || 20;
+        formData.practice = planeacion.practice || "";
+        formData.practice_activities = planeacion.practice_activities || [];
+        formData.tiempo_practica = planeacion.tiempo_practica || 25;
+        formData.transfer = planeacion.transfer || "";
+        formData.transfer_activities = planeacion.transfer_activities || [];
+        formData.tiempo_transferencia = planeacion.tiempo_transferencia || 15;
+        formData.assessment_moment = planeacion.assessment_moment || "";
+        formData.assessment_activities = planeacion.assessment_activities || [];
+        formData.tiempo_valoracion = planeacion.tiempo_valoracion || 10;
+        formData.eval_type = planeacion.eval_type || "Formativa";
+        formData.eval_modalidades = planeacion.eval_modalidades || [];
+        formData.eval_instrumentos = planeacion.eval_instrumentos || [];
+        formData.eval_criterios = planeacion.eval_criterios || [];
+        formData.eval_evidencias = planeacion.eval_evidencias || [];
+        formData.eval_criteria = planeacion.eval_criteria || "";
+        formData.eval_evidence = planeacion.eval_evidence || "";
+        formData.eval_ponderacion_conceptos = planeacion.eval_ponderacion_conceptos || 30;
+        formData.eval_ponderacion_procedimientos = planeacion.eval_ponderacion_procedimientos || 40;
+        formData.eval_ponderacion_actitudes = planeacion.eval_ponderacion_actitudes || 30;
+        formData.eval_descripcion_auto = planeacion.eval_descripcion_auto || "";
+        formData.resources = planeacion.resources || "";
+        formData.planeacion_tipo = planeacion.planeacion_tipo || "";
+        formData.periodo_academico = planeacion.periodo_academico || "";
+        formData.fecha_inicio = planeacion.fecha_inicio || "";
+        formData.fecha_fin = planeacion.fecha_fin || "";
+        formData.firma_docente = planeacion.firma_docente || "";
+        formData.fecha_firma = planeacion.fecha_firma || "";
+
+        showFiltrosPanel = false;
+        currentStep = 0;
+    };
+
+    // --- Datos ---
+    let docentes = $state<string[]>([]);
+    let materias = $state<{ materia: string }[]>([]);
+    let estudiantes = $state<{ nombre: string; grado: number | string }[]>([]);
+
+    let dbas = $state<NormativaItem[]>([]);
+    let ebcs = $state<NormativaItem[]>([]);
+
+    // --- Búsqueda y Filtros ---
+    let dbaSearch = $state("");
+    let ebcSearch = $state("");
+    let dbaFilterComponente = $state<string | null>(null);
+    let ebcFilterComponente = $state<string | null>(null);
+
+    // Clasificación de componentes por palabras clave
+    const COMPONENTES_KEYWORDS: Record<string, string[]> = {
+        naturaleza: ["naturaleza", "conocimiento", "ciencia", "teórico", "concepto", "fundamento", "evolución", "análisis"],
+        apropiacion: ["apropiación", "uso", "utilizar", "herramienta", "empleo", "manejo", "aplicar"],
+        solucion: ["solución", "problema", "diseñar", "construir", "desarrollar", "crear", "implementar", "proponer"],
+        sociedad: ["sociedad", "impacto", "ambiente", "ético", "comunidad", "cultura", "responsabilidad", "derechos"]
+    };
+
+    function clasificarComponente(texto: string): string {
+        const t = texto.toLowerCase();
+        for (const [comp, palabras] of Object.entries(COMPONENTES_KEYWORDS)) {
+            if (palabras.some(p => t.includes(p))) return comp;
+        }
+        return "general";
+    }
+
+    // Listas derivadas con filtros
+    let filteredDbas = $derived.by(() => {
+        const withComponente = dbas.map(d => ({...d, componente: clasificarComponente(d.descripcion)}));
+        let result = withComponente;
+        if (dbaFilterComponente) {
+            result = result.filter(d => d.componente === dbaFilterComponente);
+        }
+        if (dbaSearch) {
+            const s = dbaSearch.toLowerCase();
+            result = result.filter(d => d.descripcion.toLowerCase().includes(s));
+        }
+        return result;
+    });
+
+    let filteredEbcs = $derived.by(() => {
+        const withComponente = ebcs.map(e => ({...e, componente: clasificarComponente(e.descripcion)}));
+        let result = withComponente;
+        if (ebcFilterComponente) {
+            result = result.filter(e => e.componente === ebcFilterComponente);
+        }
+        if (ebcSearch) {
+            const s = ebcSearch.toLowerCase();
+            result = result.filter(e => e.descripcion.toLowerCase().includes(s));
+        }
+        return result;
+    });
+
+    // Componentes únicos disponibles
+    let dbaComponentes = $derived([...new Set(dbas.map(d => clasificarComponente(d.descripcion)))]);
+    let ebcComponentes = $derived([...new Set(ebcs.map(e => clasificarComponente(e.descripcion)))]);
+
+    // Contadores por componente
+    let dbaCountsByComponente = $derived.by(() => {
+        const counts: Record<string, number> = {};
+        dbas.forEach(d => {
+            const comp = clasificarComponente(d.descripcion);
+            counts[comp] = (counts[comp] || 0) + 1;
+        });
+        return counts;
+    });
+
+    let ebcCountsByComponente = $derived.by(() => {
+        const counts: Record<string, number> = {};
+        ebcs.forEach(e => {
+            const comp = clasificarComponente(e.descripcion);
+            counts[comp] = (counts[comp] || 0) + 1;
+        });
+        return counts;
+    });
+
+    const LABELS_COMPONENTE: Record<string, string> = {
+        naturaleza: "Naturaleza",
+        apropiacion: "Apropiación",
+        solucion: "Solución",
+        sociedad: "Sociedad",
+        general: "General"
+    };
+
+    const COLORES_COMPONENTE: Record<string, { bg: string; text: string }> = {
+        naturaleza: { bg: "bg-blue-100", text: "text-blue-700" },
+        apropiacion: { bg: "bg-green-100", text: "text-green-700" },
+        solucion: { bg: "bg-orange-100", text: "text-orange-700" },
+        sociedad: { bg: "bg-pink-100", text: "text-pink-700" },
+        general: { bg: "bg-gray-100", text: "text-gray-700" }
+    };
+
+    // Materias que NO tienen normativa DBA/EBC
+    const MATERIAS_SIN_NORMATIVA = [
+        "educación artística",
+        "educacion artistica",
+        "educación física",
+        "educacion fisica",
+        "ética",
+        "etica",
+        "religión",
+        "religion",
+        "educación religiosa",
+        "educacion religiosa",
+        "educación ética",
+        "educacion etica",
+        "educación para la ciudadanía",
+        "ciudadanía",
+        "ciudadania",
+        "proyecto de vida",
+        "tecnología",
+        "tecnologia",
+        "informática",
+        "informatica",
+        "artes",
+        "música",
+        "musica",
+        "danza",
+        "teatro",
+        "educación física y deportes",
+        "deportes",
+        "fsica",
+        "fsca",
+    ];
+
+    // Verificar si la materia actual no tiene normativa
+    let materiaSinNormativa = $derived(
+        MATERIAS_SIN_NORMATIVA.some(m => 
+            formData.subject.toLowerCase().includes(m)
+        )
+    );
+
+    // --- LÓGICA Y ESTADO (SVELTE 5 RUNES) ---
+
+    // Estado reactivo para controlar el paso actual del Stepper (0 a 4)
+    let currentStep = $state(0);
+
+    // Estado reactivo principal del formulario
+    // Inicializamos con valores vacíos o por defecto
+    let formData = $state({
+        // 1. Datos Básicos
+        docente: localStorage.getItem("lastDocente") || "",
+        grado: "",
+        subject: "",
+        period: "",
+
+        // 2. Referentes de Calidad (MEN)
+        dba: [] as string[],
+        standard: [] as string[],
+        dba_manual: "",
+        competency: "",
+
+        // 3. Inclusión (PIAR)
+        has_piar: false,
+        piar_description: "",
+
+        // 4. Secuencia Didáctica
+        learning_objectives: "",
+        competencias: "",
+        exploration: "",
+        exploration_activities: [] as string[],
+        structuring: "",
+        structuring_activities: [] as string[],
+        practice: "",
+        practice_activities: [] as string[],
+        transfer: "",
+        transfer_activities: [] as string[],
+        assessment_moment: "",
+        assessment_activities: [] as string[],
+        indicadores_logro: "",
+        
+        // Tiempos estimados
+        tiempo_exploracion: 10,
+        tiempo_estructuracion: 20,
+        tiempo_practica: 25,
+        tiempo_transferencia: 15,
+        tiempo_valoracion: 10,
+
+        // 5. Evaluación y Recursos
+        eval_type: "Formativa",
+        eval_modalidades: [] as string[],
+        eval_instrumentos: [] as string[],
+        eval_criterios: [] as string[],
+        eval_evidencias: [] as string[],
+        eval_criteria: "",
+        eval_evidence: "",
+        eval_ponderacion_conceptos: 30,
+        eval_ponderacion_procedimientos: 40,
+        eval_ponderacion_actitudes: 30,
+        eval_descripcion_auto: "",
+        
+        // 6. Temporalidad
+        resources: "",
+        planeacion_tipo: "",
+        periodo_academico: "",
+        fecha_inicio: getCurrentDate(),
+        fecha_fin: getCurrentDate(),
+        
+        // 7. Firma del docente
+        firma_docente: "",
+        fecha_firma: "",
+    });
+
+    // --- ACTIVIDADES SUGERIDAS POR MOMENTO (Normativa MEN) ---
+    interface ActividadSugerida {
+        id: string;
+        icono: string;
+        titulo: string;
+        descripcion: string;
+        plantilla: string;
+    }
+
+    const ACTIVIDADES_EXPLORACION: ActividadSugerida[] = [
+        { id: "preguntas", icono: "🎯", titulo: "Preguntas generadoras", descripcion: "Preguntas que despiertan el interés y activan conocimientos previos", plantilla: "Se plantea la pregunta generadora: ¿Qué sabemos sobre" },
+        { id: "video", icono: "📺", titulo: "Video introductorio", descripcion: "Recurso audiovisual para introducir el tema", plantilla: "Se presenta un video sobre " },
+        { id: "lluvia", icono: "💡", titulo: "Lluvia de ideas", descripcion: "Recuperación colectiva de saberes previos", plantilla: "Se realiza una lluvia de ideas sobre " },
+        { id: "imagenes", icono: "🖼️", titulo: "Análisis de imágenes", descripcion: "Imágenes o fotografías para generar discusión", plantilla: "Se muestran imágenes relacionadas con " },
+        { id: "juego", icono: "🎮", titulo: "Dinámica/Juego", descripcion: "Actividad lúdica para motivar el aprendizaje", plantilla: "Se realiza una dinámica para " },
+        { id: "situacion", icono: "📌", titulo: "Situación problema", descripcion: "Presentación de un problema real o simulado", plantilla: "Se presenta una situación problemática relacionada con " },
+        { id: "lectura", icono: "📖", titulo: "Lectura inicial", descripcion: "Texto breve para explorar conocimientos", plantilla: "Se realiza una lectura exploratory sobre " },
+        { id: "experiencia", icono: "🗣️", titulo: "Experiencias previas", descripcion: "Diálogo sobre experiencias personales relacionadas", plantilla: "Se invita a compartir experiencias previas sobre " },
+    ];
+
+    const ACTIVIDADES_ESTRUCTURACION: ActividadSugerida[] = [
+        { id: "exposicion", icono: "📝", titulo: "Exposición magistral", descripcion: "Explicación del docente con apoyo de recursos", plantilla: "El docente explica los conceptos de " },
+        { id: "mapa", icono: "🗺️", titulo: "Mapa conceptual", descripcion: "Construcción de mapa conceptual conjunto", plantilla: "Se construye un mapa conceptual sobre " },
+        { id: "demostracion", icono: "🔬", titulo: "Demostración", descripcion: "Demostración práctica del concepto", plantilla: "Se realiza una demostración de " },
+        { id: "lectura_guiada", icono: "📖", titulo: "Lectura guiada", descripcion: "Lectura de texto con orientación del docente", plantilla: "Se realiza lectura guiada de " },
+        { id: "simulacion", icono: "💻", titulo: "Simulación/TIC", descripcion: "Uso de herramientas digitales para ejemplificar", plantilla: "Se utiliza simulación digital para " },
+        { id: "ejemplo", icono: "✏️", titulo: "Ejemplificación", descripcion: "Ejemplos concretos del concepto", plantilla: "Se presentan ejemplos de " },
+        { id: "analogia", icono: "🔗", titulo: "Analogías", descripcion: "Explicación mediante analogías conocidas", plantilla: "Se establecen analogías con " },
+        { id: "definicion", icono: "📋", titulo: "Definición formal", descripcion: "Presentación de definiciones y terminología", plantilla: "Se definen los términos: " },
+    ];
+
+    const ACTIVIDADES_PRACTICA: ActividadSugerida[] = [
+        { id: "ejercicios", icono: "✏️", titulo: "Ejercicios individuales", descripcion: "Práctica individual con ejercicios", plantilla: "Los estudiantes resuelven ejercicios de " },
+        { id: "trabajo_grupo", icono: "👥", titulo: "Trabajo colaborativo", descripcion: "Actividad en pequeños grupos", plantilla: "Se trabaja en grupos para " },
+        { id: "investigacion", icono: "🔍", titulo: "Investigación", descripcion: "Búsqueda de información complementaria", plantilla: "Los estudiantes investigan sobre " },
+        { id: "proyecto", icono: "🎨", titulo: "Proyecto creativo", descripcion: "Creación de producto artístico o académico", plantilla: "Los estudiantes crean un proyecto sobre " },
+        { id: "caso", icono: "📊", titulo: "Análisis de casos", descripcion: "Estudio de casos reales o simulados", plantilla: "Se analizan casos relacionados con " },
+        { id: "laboratorio", icono: "🧪", titulo: "Laboratorio", descripcion: "Práctica experimental", plantilla: "Se realiza práctica de laboratorio sobre " },
+        { id: "debate", icono: "🎤", titulo: "Debate/Discusión", descripcion: "Discusión guiada sobre el tema", plantilla: "Se genera un debate sobre " },
+        { id: "taller", icono: "🔧", titulo: "Taller práctico", descripcion: "Aplicación práctica de conocimientos", plantilla: "Se desarrolla taller de " },
+    ];
+
+    const ACTIVIDADES_TRANSFERENCIA: ActividadSugerida[] = [
+        { id: "problema_real", icono: "🌎", titulo: "Problema real", descripcion: "Aplicación a situaciones de la vida real", plantilla: "Los estudiantes resuelven un problema real: " },
+        { id: "exposicion", icono: "🎤", titulo: "Exposición oral", descripcion: "Presentación de resultados al grupo", plantilla: "Los estudiantes exponen sus hallazgos sobre " },
+        { id: "producto", icono: "📄", titulo: "Producto final", descripcion: "Elaboración de producto tangible", plantilla: "Se elabora el producto: " },
+        { id: "tarea", icono: "🏠", titulo: "Tarea para casa", descripcion: "Actividad para continuar en casa", plantilla: "Se asigna tarea relacionada con " },
+        { id: "servicio", icono: "🤝", titulo: "Servicio comunitario", descripcion: "Aplicación en beneficio de la comunidad", plantilla: "Se vincula con la comunidad para " },
+        { id: "entrevista", icono: "🗣️", titulo: "Entrevista", descripcion: "Recolección de información externa", plantilla: "Los estudiantes realizan entrevistas sobre " },
+        { id: "experimento", icono: "🔬", titulo: "Experimento", descripcion: "Experimentación autónoma", plantilla: "Los estudiantes experimentan con " },
+        { id: "presentacion", icono: "📽️", titulo: "Presentación digital", descripcion: "Creación de presentación multimedia", plantilla: "Se crea presentación digital sobre " },
+    ];
+
+    const ACTIVIDADES_VALORACION: ActividadSugerida[] = [
+        { id: "autoeval", icono: "📝", titulo: "Autoevaluación", descripcion: "Reflexión del estudiante sobre su propio aprendizaje", plantilla: "Los estudiantes reflexionan sobre lo aprendido: ¿Qué aprendí?" },
+        { id: "coeval", icono: "👥", titulo: "Coevaluación", descripcion: "Evaluación entre compañeros", plantilla: "Se realiza coevaluación del trabajo en equipo" },
+        { id: "metacog", icono: "💭", titulo: "Metacognición", descripcion: "Reflexión sobre el proceso de aprendizaje", plantilla: "Se promueve la metacognición: ¿Cómo aprendí?" },
+        { id: "rubrica", icono: "📋", titulo: "Rúbrica", descripcion: "Evaluación con criterios definidos", plantilla: "Se evalúa según rúbrica de " },
+        { id: "portafolio", icono: "📁", titulo: "Portafolio", descripcion: "Recopilación de evidencias de aprendizaje", plantilla: "Se recopilfan evidencias en portafolio" },
+        { id: "cierre", icono: "✅", titulo: "Síntesis/Cierre", descripcion: "Resumen de aprendizajes logrados", plantilla: "Se realiza síntesis de los aprendizajes: " },
+        { id: "retroalimentacion", icono: "💬", titulo: "Retroalimentación", descripcion: "Retroalimentación grupal e individual", plantilla: "Se ofrece retroalimentación sobre " },
+        { id: "prueba", icono: "📋", titulo: "Prueba corta", descripcion: "Evaluación breve de conocimientos", plantilla: "Se aplica prueba corta de " },
+    ];
+
+    // --- DATOS PARA EVALUACIÓN (Decreto 1290) ---
+    
+    // Tipos de evaluación
+    const TIPOS_EVALUACION = [
+        { id: "diagnostica", icono: "🔍", titulo: "Diagnóstica", descripcion: "Identifica conocimientos previos al inicio", color: "blue" },
+        { id: "formativa", icono: "📈", titulo: "Formativa", descripcion: "Evalúa durante el proceso de aprendizaje", color: "green" },
+        { id: "sumativa", icono: "🎯", titulo: "Sumativa", descripcion: "Evalúa resultados al final del período", color: "purple" },
+    ];
+
+    // Modalidades de evaluación (Decreto 1290)
+    const MODALIDADES_EVALUACION = [
+        { id: "heteroevaluacion", icono: "👨‍🏫", titulo: "Heteroevaluación", descripcion: "El docente evalúa al estudiante" },
+        { id: "coevaluacion", icono: "👥", titulo: "Coevaluación", descripcion: "Los estudiantes se evalúan entre sí" },
+        { id: "autoevaluacion", icono: "🙋", titulo: "Autoevaluación", descripcion: "El estudiante se evalúa a sí mismo" },
+    ];
+
+    // Instrumentos de evaluación
+    const INSTRUMENTOS_EVALUACION = [
+        { id: "rubrica", icono: "📋", titulo: "Rúbrica", descripcion: "Criterios con niveles de desempeño" },
+        { id: "lista_chequeo", icono: "☑️", titulo: "Lista de chequeo", descripcion: "Verificación de criterios binaria" },
+        { id: "escala_valoracion", icono: "📊", titulo: "Escala de valoración", descripcion: "Niveles cualitativos o numéricos" },
+        { id: "prueba_escrita", icono: "📝", titulo: "Prueba escrita", descripcion: "Examen escrito de conocimientos" },
+        { id: "proyecto", icono: "🎨", titulo: "Proyecto", descripcion: "Trabajo extendedo" },
+        { id: "prueba_computador", icono: "💻", titulo: "Prueba computador", descripcion: "Examen práctico de conocimientos" },
+        { id: "portafolio", icono: "📁", titulo: "Portafolio", descripcion: "Colección de evidencias" },
+        { id: "exposicion_oral", icono: "🎤", titulo: "Exposición oral", descripcion: "Presentación verbal" },
+        { id: "mapa_conceptual", icono: "🗺️", titulo: "Mapa conceptual", descripcion: "Representación visual de conceptos" },
+        { id: "ensayo", icono: "✍️", titulo: "Ensayo", descripcion: "Texto argumentativo" },
+        { id: "cuaderno_campo", icono: "📓", titulo: "Cuaderno de campo", descripcion: "Registro de observaciones" },
+        { id: "diario_reflexivo", icono: "📓", titulo: "Diario reflexivo", descripcion: "Reflexión escrita del proceso" },
+        { id: "video", icono: "🎬", titulo: "Producción audiovisual", descripcion: "Video o contenido multimedia" },
+    ];
+
+    // Criterios de evaluación
+    const CRITERIOS_EVALUACION = [
+        { id: "comprension_conceptual", icono: "💡", titulo: "Comprensión conceptual", descripcion: "Entiende y explica conceptos" },
+        { id: "aplicacion", icono: "🔧", titulo: "Aplicación", descripcion: "Utiliza conocimientos en situaciones nuevas" },
+        { id: "analisis_critico", icono: "🔍", titulo: "Análisis crítico", descripcion: "Descompone y examina información" },
+        { id: "creatividad", icono: "🎨", titulo: "Creatividad", descripcion: "Propone soluciones innovadoras" },
+        { id: "colaboracion", icono: "🤝", titulo: "Colaboración", descripcion: "Trabaja efectivamente en equipo" },
+        { id: "comunicacion", icono: "💬", titulo: "Comunicación", descripcion: "Expresa ideas con claridad" },
+        { id: "investigacion", icono: "🔬", titulo: "Investigación", descripcion: "Busca y procesa información" },
+        { id: "pensamiento_logico", icono: "🧠", titulo: "Pensamiento lógico", descripcion: "Razona de manera estructurada" },
+        { id: "actitudinal", icono: "❤️", titulo: "Competencia actitudinal", descripcion: "Valores y actitudes" },
+        { id: "autonomia", icono: "🚀", titulo: "Autonomía", descripcion: "Trabaja de forma independiente" },
+    ];
+
+    // Evidencias de aprendizaje
+    const EVIDENCIAS_APRENDIZAJE = [
+        { id: "mapa_conceptual", icono: "🗺️", titulo: "Mapa conceptual" },
+        { id: "exposicion_oral", icono: "🎤", titulo: "Exposición oral" },
+        { id: "proyecto_final", icono: "🎨", titulo: "Proyecto final" },
+        { id: "prueba_escrita", icono: "📝", titulo: "Prueba escrita" },
+        { id: "portafolio", icono: "📁", titulo: "Portafolio" },
+        { id: "ensayo", icono: "✍️", titulo: "Ensayo" },
+        { id: "video", icono: "🎬", titulo: "Producción audiovisual" },
+        { id: "informe", icono: "📄", titulo: "Informe técnico" },
+        { id: "presentacion_digital", icono: "📽️", titulo: "Presentación digital" },
+        { id: "laboratorio", icono: "🧪", titulo: "Informe de laboratorio" },
+        { id: "diario_reflexivo", icono: "📓", titulo: "Diario reflexivo" },
+        { id: "trabajo_grupo", icono: "👥", titulo: "Trabajo colaborativo" },
+    ];
+
+    // Escala de valoración Decreto 1290
+    const ESCALA_VALORACION = [
+        { valor: 1.0, label: "Bajo", descripcion: "No alcanza los aprendizajes básicos" },
+        { valor: 2.0, label: "Básico", descripcion: "Alcanza los aprendizajes mínimos" },
+        { valor: 3.0, label: "Satisfactorio", descripcion: "Alcanza los aprendizajes esperados" },
+        { valor: 4.0, label: "Alto", descripcion: "Supera los aprendizajes esperados" },
+        { valor: 5.0, label: "Superior", descripcion: "Demuestra excelencianlos aprendizajes" },
+    ];
+
+    // --- DATOS PARA RECURSOS DIDÁCTICOS ---
+    
+    // Categorías de recursos
+    const CATEGORIAS_RECURSOS = [
+        { id: "tecnologicos", icono: "💻", titulo: "Tecnológicos", descripcion: "Equipos y herramientas digitales" },
+        { id: "impresos", icono: "📄", titulo: "Impresos", descripcion: "Materiales escritos y fotocopiados" },
+        { id: "audiovisuales", icono: "📺", titulo: "Audiovisuales", descripcion: "Videos, presentaciones y audio" },
+        { id: "bibliograficos", icono: "📚", titulo: "Bibliográficos", descripcion: "Libros y publicaciones" },
+        { id: "laboratorio", icono: "🧪", titulo: "Laboratorio", descripcion: "Materiales científicos" },
+        { id: "ludicos", icono: "🎮", titulo: "Juegos/Lúdicos", descripcion: "Juegos educativos" },
+        { id: "entorno", icono: "🌳", titulo: "Entorno", descripcion: "Recursos del medio ambiente" },
+        { id: "colombia_aprende", icono: "🇨🇴", titulo: "Colombia Aprende", descripcion: "Recursos oficiales del MEN" },
+    ];
+
+    // Recursos por categoría
+    const RECURSOS_POR_CATEGORIA: Record<string, { id: string; icono: string; titulo: string; descripcion: string }[]> = {
+        tecnologicos: [
+            { id: "computador", icono: "💻", titulo: "Computador/Tablet", descripcion: "Equipo de cómputo para actividades" },
+            { id: "video_beam", icono: "📽️", titulo: "Video Beam/Proyector", descripcion: "Equipo de proyección" },
+            { id: "internet", icono: "🌐", titulo: "Internet/WiFi", descripcion: "Conexión a internet" },
+            { id: "smarttv", icono: "📺", titulo: "Smart TV", descripcion: "Televisor inteligente" },
+            { id: "celular", icono: "📱", titulo: "Celular", descripcion: "Dispositivo móvil" },
+            { id: "classroom", icono: "🏫", titulo: "Google Classroom", descripcion: "Plataforma educativa Google" },
+            { id: "moodle", icono: "🎓", titulo: "Moodle", descripcion: "Plataforma LMS institucional" },
+            { id: "teams", icono: "👥", titulo: "Microsoft Teams", descripcion: "Plataforma de Microsoft" },
+            { id: "kahoot", icono: "🎯", titulo: "Kahoot/Quizizz", descripcion: "Herramientas de evaluación gamificada" },
+            { id: "canva", icono: "🎨", titulo: "Canva/Genially", descripcion: "Diseño gráfico digital" },
+            { id: "excel", icono: "📊", titulo: "Excel/Word", descripcion: "Paquete de oficina" },
+            { id: "youtube", icono: "▶️", titulo: "YouTube/Educaplay", descripcion: "Videos educativos" },
+        ],
+        impresos: [
+            { id: "guias", icono: "📄", titulo: "Guías de trabajo", descripcion: "Hojas de actividades" },
+            { id: "fichas", icono: "📋", titulo: "Fichas de actividades", descripcion: "Tarjetas con ejercicios" },
+            { id: "cartillas", icono: "📚", titulo: "Cartillas", descripcion: "Material educativo impreso" },
+            { id: "hojas_ejercicios", icono: "✏️", titulo: "Hojas de ejercicios", descripcion: "Ejercicios impresos" },
+            { id: "rubricas", icono: "📝", titulo: "Rúbricas impresas", descripcion: "Criterios de evaluación" },
+            { id: "fotocopias", icono: "🖨️", titulo: "Fotocopias", descripcion: "Material fotocopiado" },
+            { id: "cuaderno_actividades", icono: "📓", titulo: "Cuaderno de actividades", descripcion: "Cuaderno laboral" },
+            { id: "laminas", icono: "🖼️", titulo: "Láminas/Afiches", descripcion: "Material visual grande" },
+        ],
+        audiovisuales: [
+            { id: "videos", icono: "🎬", titulo: "Videos educativos", descripcion: "Contenido audiovisual" },
+            { id: "presentaciones", icono: "📽️", titulo: "Presentaciones", descripcion: "PowerPoint/Canva" },
+            { id: "documentales", icono: "🎥", titulo: "Documentales", descripcion: "Videos documentales" },
+            { id: "podcasts", icono: "🎧", titulo: "Podcasts/Audio", descripcion: "Contenido de audio" },
+            { id: "canciones", icono: "🎵", titulo: "Canciones educativas", descripcion: "Música con contenido" },
+            { id: "imagenes", icono: "🖼️", titulo: "Imágenes/Fotografías", descripcion: "Recursos visuales" },
+            { id: "animaciones", icono: "✨", titulo: "Animaciones", descripcion: "Contenido animado" },
+        ],
+        bibliograficos: [
+            { id: "libro_texto", icono: "📖", titulo: "Libro de texto", descripcion: "Texto escolar oficial" },
+            { id: "diccionario", icono: "📕", titulo: "Diccionario", descripcion: "Diccionario de la lengua" },
+            { id: "enciclopedia", icono: "📗", titulo: "Enciclopedia", descripcion: "Referencia general" },
+            { id: "prensa", icono: "📰", titulo: "Artículo de prensa", descripcion: "Noticias y artículos" },
+            { id: "revistas", icono: "📒", titulo: "Revistas académicas", descripcion: "Publicaciones científicas" },
+            { id: "lecturas", icono: "📚", titulo: "Lecturas complementarias", descripcion: "Textos adicionales" },
+            { id: "comics", icono: "📓", titulo: "Cómics/Libros ilustrados", descripcion: "Narrativa visual" },
+        ],
+        laboratorio: [
+            { id: "material_didactico", icono: "🔬", titulo: "Material didáctico", descripcion: "Materiales de apoyo" },
+            { id: "instrumentos", icono: "📏", titulo: "Instrumentos de medición", descripcion: "Regla, transportador, etc." },
+            { id: "reactivos", icono: "🧪", titulo: "Reactivos/Químicos", descripcion: "Materiales de química" },
+            { id: "modelos", icono: "🧬", titulo: "Modelo anatómico", descripcion: "Réplicas del cuerpo" },
+            { id: "microscopio", icono: "🔍", titulo: "Microscopio", descripcion: "Equipo óptico" },
+            { id: "muestras", icono: "🦠", titulo: "Specimen/Muestras", descripcion: "Muestras biológicas" },
+            { id: "balanza", icono: "⚖️", titulo: "Balanza", descripcion: "Instrumento de peso" },
+        ],
+        ludicos: [
+            { id: "juegos_mesa", icono: "🎲", titulo: "Juegos de mesa", descripcion: "Juegos de tablero" },
+            { id: "flashcards", icono: "🃏", titulo: "Flashcards/Tarjetas", descripcion: "Tarjetas de memoria" },
+            { id: "domino", icono: "🎯", titulo: "Dominó educativo", descripcion: "Dominó temático" },
+            { id: "tangram", icono: "🧩", titulo: "Tangram/Geoplano", descripcion: "Material geométrico" },
+            { id: "rompecabezas", icono: "🧩", titulo: "Rompecabezas", descripcion: "Piezas encajables" },
+            { id: "dados", icono: "🎲", titulo: "Dados/Juegos de azar", descripcion: "Dados temáticos" },
+            { id: " Lego", icono: "🧱", titulo: "Lego/Bloques", descripcion: "Construcción" },
+        ],
+        entorno: [
+            { id: "materiales_naturales", icono: "🍂", titulo: "Materiales naturales", descripcion: "Recursos naturales" },
+            { id: "plantas", icono: "🌱", titulo: "Planta/Material vegetal", descripcion: "Recursos vegetales" },
+            { id: "mapas", icono: "🗺️", titulo: "Mapa/Globo terráqueo", descripcion: "Recursos geográficos" },
+            { id: "campo", icono: "🌳", titulo: "Campo/Jardín escolar", descripcion: "Espacio exterior" },
+            { id: "minerales", icono: "🪨", titulo: "Minerales/Rocas", descripcion: "Recursos geológicos" },
+            { id: "herramientas", icono: "🔧", titulo: "Herramientas básicas", descripcion: "Utensilios" },
+        ],
+        colombia_aprende: [
+            { id: "plataforma_colombia", icono: "🌐", titulo: "Plataforma Colombia Aprende", descripcion: "Portal oficial MEN" },
+            { id: "recursos_men", icono: "📚", titulo: "Recursos educativos MEN", descripcion: "Materiales oficiales" },
+            { id: "conectividad", icono: "📶", titulo: "Conectividad escolar", descripcion: "Internet educativo" },
+            { id: "biblioteca_digital", icono: "📖", titulo: "Biblioteca digital", descripcion: "Recursos digitales" },
+            { id: "aula_horizontal", icono: "🏫", titulo: "Aula Horizontal", descripcion: "Plataforma educativa" },
+            { id: "recursos_cyd", icono: "🇨🇴", titulo: "Cátedra de la Paz", descripcion: "Recursos de convivencia" },
+        ],
+    };
+
+    // Estado para recursos
+    let recursosCategorias = $state<string[]>([]);
+    let recursosSeleccionados = $state<string[]>([]);
+    let recursoPersonalizado = $state("");
+    let recursosPersonalizadosLista = $state<string[]>([]);
+
+    // --- DATOS PARA TEMPORALIDAD (Paso 6) ---
+    
+    // Tipos de planeación
+    const TIPOS_PLANEACION = [
+        { id: "clase_unica", icono: "📅", titulo: "Clase única", descripcion: "Una sesión de clase (45-120 min)", dias: 1 },
+        { id: "semanal", icono: "📅", titulo: "Semanal", descripcion: "Planeación para una semana", dias: 7 },
+        { id: "quincenal", icono: "📅", titulo: "Quincenal", descripcion: "Planeación para 15 días", dias: 15 },
+        { id: "mensual", icono: "📅", titulo: "Mensual", descripcion: "Planeación para un mes", dias: 30 },
+        { id: "bimestral", icono: "📅", titulo: "Bimestral", descripcion: "Período de 2 meses", dias: 60 },
+        { id: "trimestral", icono: "📅", titulo: "Trimestral/Período", descripcion: "Período académico (10-12 semanas)", dias: 90 },
+        { id: "semestral", icono: "📅", titulo: "Semestral", descripcion: "Semestre completo (20 semanas)", dias: 180 },
+        { id: "anual", icono: "📅", titulo: "Anual", descripcion: "Año lectivo completo", dias: 200 },
+    ];
+
+    // Períodos académicos
+    const PERIODOS_ACADEMICOS = [
+        { id: "p1", label: "Período 1", tipo: "trimestral" },
+        { id: "p2", label: "Período 2", tipo: "trimestral" },
+        { id: "p3", label: "Período 3", tipo: "trimestral" },
+        { id: "p4", label: "Período 4", tipo: "trimestral" },
+        { id: "sem1", label: "Semestre 1", tipo: "semestral" },
+        { id: "sem2", label: "Semestre 2", tipo: "semestral" },
+        { id: "anual", label: "Año lectivo", tipo: "anual" },
+    ];
+
+    // Funciones de temporalidad
+    function calcularDuracion(fechaInicio: string, fechaFin: string): { dias: number; semanas: number } {
+        if (!fechaInicio || !fechaFin) return { dias: 0, semanas: 0 };
+        
+        const inicio = new Date(fechaInicio);
+        const fin = new Date(fechaFin);
+        const diffTime = fin.getTime() - inicio.getTime();
+        const diffDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        return {
+            dias: diffDias + 1, // Incluir día de inicio
+            semanas: Math.ceil((diffDias + 1) / 7)
+        };
+    }
+
+    let duracionCalculada = $derived(calcularDuracion(formData.fecha_inicio, formData.fecha_fin));
+
+    function getPeriodosPorTipo(): { id: string; label: string }[] {
+        const tipo = TIPOS_PLANEACION.find(t => t.id === formData.planeacion_tipo);
+        if (!tipo) return PERIODOS_ACADEMICOS;
+        
+        if (tipo.dias <= 7) {
+            return PERIODOS_ACADEMICOS.filter(p => p.tipo === 'trimestral' || p.tipo === 'semestral' || p.tipo === 'anual');
+        } else if (tipo.dias <= 30) {
+            return PERIODOS_ACADEMICOS.filter(p => p.tipo === 'trimestral' || p.tipo === 'anual');
+        } else if (tipo.dias <= 90) {
+            return PERIODOS_ACADEMICOS.filter(p => p.tipo === 'trimestral');
+        } else if (tipo.dias <= 180) {
+            return PERIODOS_ACADEMICOS.filter(p => p.tipo === 'semestral');
+        }
+        return PERIODOS_ACADEMICOS;
+    }
+
+    // --- PLANTILLAS PARA OBJETIVOS E INDICADORES ---
+    const PLANTILLAS_OBJETIVO = [
+        "El estudiante comprenderá el concepto de [TEMA] mediante [RECURSO]",
+        "El estudiante aplicará [PROCEDIMIENTO] para resolver situaciones relacionadas con [TEMA]",
+        "El estudiante analizará [CONTENIDO] identificando sus componentes principales",
+        "El estudiante creará [PRODUCTO] demostrando dominio del tema",
+        "El estudiante valorará la importancia de [TEMA] en su contexto",
+    ];
+
+    const PLANTILLAS_INDICADOR = [
+        "Identifica correctamente los conceptos de [TEMA]",
+        "Resuelve correctamente los ejercicios propuestos",
+        "Participa activamente en las actividades colaborativas",
+        "Entrega el producto esperado en el tiempo indicado",
+        "Demuestra comprensión mediante [EVIDENCIA]",
+    ];
+
+    // --- FUNCIONES AUXILIARES ---
+    
+    function getTema(): string {
+        return formData.subject || "el tema";
+    }
+
+    function agregarActividad(momento: string, actividad: ActividadSugerida) {
+        const tema = getTema();
+        
+        if (momento === 'exploration' && !formData.exploration_activities.includes(actividad.id)) {
+            formData.exploration_activities = [...formData.exploration_activities, actividad.id];
+            // Auto-llenar descripción
+            const textoPlantilla = actividad.plantilla.replace(/\[TEMA\]/g, tema);
+            if (formData.exploration) {
+                formData.exploration += "\n• " + textoPlantilla;
+            } else {
+                formData.exploration = "• " + textoPlantilla;
+            }
+        } else if (momento === 'structuring' && !formData.structuring_activities.includes(actividad.id)) {
+            formData.structuring_activities = [...formData.structuring_activities, actividad.id];
+            const textoPlantilla = actividad.plantilla.replace(/\[TEMA\]/g, tema);
+            if (formData.structuring) {
+                formData.structuring += "\n• " + textoPlantilla;
+            } else {
+                formData.structuring = "• " + textoPlantilla;
+            }
+        } else if (momento === 'practice' && !formData.practice_activities.includes(actividad.id)) {
+            formData.practice_activities = [...formData.practice_activities, actividad.id];
+            const textoPlantilla = actividad.plantilla.replace(/\[TEMA\]/g, tema);
+            if (formData.practice) {
+                formData.practice += "\n• " + textoPlantilla;
+            } else {
+                formData.practice = "• " + textoPlantilla;
+            }
+        } else if (momento === 'transfer' && !formData.transfer_activities.includes(actividad.id)) {
+            formData.transfer_activities = [...formData.transfer_activities, actividad.id];
+            const textoPlantilla = actividad.plantilla.replace(/\[TEMA\]/g, tema);
+            if (formData.transfer) {
+                formData.transfer += "\n• " + textoPlantilla;
+            } else {
+                formData.transfer = "• " + textoPlantilla;
+            }
+        } else if (momento === 'assessment' && !formData.assessment_activities.includes(actividad.id)) {
+            formData.assessment_activities = [...formData.assessment_activities, actividad.id];
+            const textoPlantilla = actividad.plantilla.replace(/\[TEMA\]/g, tema);
+            if (formData.assessment_moment) {
+                formData.assessment_moment += "\n• " + textoPlantilla;
+            } else {
+                formData.assessment_moment = "• " + textoPlantilla;
+            }
+        }
+    }
+
+    function quitarActividad(momento: string, actividadId: string) {
+        if (momento === 'exploration') {
+            formData.exploration_activities = formData.exploration_activities.filter(id => id !== actividadId);
+        } else if (momento === 'structuring') {
+            formData.structuring_activities = formData.structuring_activities.filter(id => id !== actividadId);
+        } else if (momento === 'practice') {
+            formData.practice_activities = formData.practice_activities.filter(id => id !== actividadId);
+        } else if (momento === 'transfer') {
+            formData.transfer_activities = formData.transfer_activities.filter(id => id !== actividadId);
+        } else if (momento === 'assessment') {
+            formData.assessment_activities = formData.assessment_activities.filter(id => id !== actividadId);
+        }
+    }
+
+    function getActividadSeleccionada(momento: string, actividadId: string): ActividadSugerida | undefined {
+        const actividades = momento === 'exploration' ? ACTIVIDADES_EXPLORACION
+            : momento === 'structuring' ? ACTIVIDADES_ESTRUCTURACION
+            : momento === 'practice' ? ACTIVIDADES_PRACTICA
+            : momento === 'transfer' ? ACTIVIDADES_TRANSFERENCIA
+            : ACTIVIDADES_VALORACION;
+        return actividades.find(a => a.id === actividadId);
+    }
+
+    // --- COMPETENCIAS SUGERIDAS ---
+    const COMPETENCIAS_SUGERIDAS = [
+        "Pensamiento crítico y análisis",
+        "Comunicación efectiva (oral/escrita)",
+        "Colaboración y trabajo en equipo",
+        "Uso de herramientas tecnológicas (TIC)",
+        "Competencias ciudadanas",
+        "Creatividad e innovación",
+        "Resolución de problemas",
+        "Aprendizaje autónomo",
+        "Investigación y pensamiento científico",
+        "Competencias laborales generales"
+    ];
+
+    function agregarCompetencia(comp: string) {
+        if (formData.competencias) {
+            if (!formData.competencias.includes(comp)) {
+                formData.competencias += "\n• " + comp;
+            }
+        } else {
+            formData.competencias = "• " + comp;
+        }
+    }
+
+    // --- INDICADORES DE LOGRO SUGERIDOS ---
+    const INDICADORES_SUGERIDOS = [
+        "Identifica correctamente los conceptos del tema",
+        "Explica con sus propias palabras los conceptos aprendidos",
+        "Resuelve correctamente los ejercicios propuestos",
+        "Aplica los conocimientos en situaciones nuevas",
+        "Participa activamente en las actividades colaborativas",
+        "Entrega el producto esperado en el tiempo indicado",
+        "Demuestra comprensión mediante exposición oral",
+        "Elabora productos escritos de calidad",
+        "Utiliza correctamente herramientas y recursos",
+        "Reflexiona sobre su proceso de aprendizaje"
+    ];
+
+    let indicadoresSeleccionados = $state<string[]>([]);
+
+    function toggleIndicador(indicador: string) {
+        if (indicadoresSeleccionados.includes(indicador)) {
+            indicadoresSeleccionados = indicadoresSeleccionados.filter(i => i !== indicador);
+        } else {
+            indicadoresSeleccionados = [...indicadoresSeleccionados, indicador];
+        }
+        // Actualizar formData
+        formData.indicadores_logro = indicadoresSeleccionados.map(i => "• " + i).join("\n");
+    }
+
+    // --- TEMAS DEL DOCENTE (DERIVADOS Y FUNCIONES) ---
+
+    let temasParaGradoPeriodo = $derived.by(() => {
+        if (!formData.grado || !formData.periodo_academico) return [];
+        const grado = formData.grado.toLowerCase().trim();
+        const periodo = formData.periodo_academico.toLowerCase().trim();
+        return temasDocente.filter(
+            (t) => t.grado.toLowerCase().trim() === grado && t.periodo.toLowerCase().trim() === periodo
+        );
+    });
+
+    let temasDisponibles = $derived.by(() => {
+        const all = temasParaGradoPeriodo.flatMap((t) => t.temas);
+        return [...new Set(all)];
+    });
+
+    let actividadesDisponibles = $derived.by(() => {
+        const all = temasParaGradoPeriodo.flatMap((t) => t.actividades);
+        return [...new Set(all)];
+    });
+
+    let actividadesFromTemas = $derived.by(() => {
+        return temasParaGradoPeriodo
+            .flatMap((t) => t.actividades)
+            .filter(Boolean)
+            .join("\n");
+    });
+
+    $effect(() => {
+        const loadTemas = async () => {
+            if (currentStep !== 3 || !formData.docente) return;
+            isLoadingTemas = true;
+            try {
+                temasDocente = await getTemasDocente(formData.docente);
+            } catch (error) {
+                console.error("Error cargando temas del docente:", error);
+                temasDocente = [];
+            } finally {
+                isLoadingTemas = false;
+            }
+        };
+        loadTemas();
+    });
+
+    async function handleTemasFileUpload(event: Event): Promise<void> {
+        const input = event.target as HTMLInputElement;
+        const file = input.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const jsonData = JSON.parse(e.target?.result as string);
+                if (!Array.isArray(jsonData)) {
+                    throw new Error("El archivo debe contener un array JSON");
+                }
+                for (const entry of jsonData) {
+                    if (
+                        typeof entry.grado !== "string" ||
+                        typeof entry.periodo !== "string" ||
+                        !Array.isArray(entry.temas) ||
+                        !Array.isArray(entry.actividades)
+                    ) {
+                        throw new Error(
+                            "Cada entrada debe tener: grado (string), periodo (string), temas (string[]), actividades (string[])"
+                        );
+                    }
+                }
+
+                isUploadingTemas = true;
+                await uploadTemasDocente(formData.docente, jsonData as TemaDocenteEntry[]);
+                temasDocente = jsonData as TemaDocenteEntry[];
+                selectedTemas = [];
+                selectedActividades = [];
+
+            } catch (error) {
+                Swal.fire({
+                    icon: "error",
+                    title: "Error al cargar temas",
+                    text: error instanceof Error ? error.message : "Formato de archivo inválido",
+                    confirmButtonColor: "#ef4444",
+                });
+            } finally {
+                isUploadingTemas = false;
+            }
+        };
+        reader.readAsText(file);
+        input.value = "";
+    }
+
+    function toggleTema(tema: string): void {
+        if (selectedTemas.includes(tema)) {
+            selectedTemas = selectedTemas.filter((t) => t !== tema);
+        } else {
+            selectedTemas = [...selectedTemas, tema];
+        }
+    }
+
+    function toggleActividad(actividad: string): void {
+        if (selectedActividades.includes(actividad)) {
+            selectedActividades = selectedActividades.filter((a) => a !== actividad);
+        } else {
+            selectedActividades = [...selectedActividades, actividad];
+        }
+    }
+
+    function aplicarTemasSeleccionados(): void {
+        if (selectedTemas.length === 0 && selectedActividades.length === 0) return;
+
+        // Aplicar temas en exploración
+        if (selectedTemas.length > 0) {
+            const temasText = selectedTemas.map((t) => `• ${t}`).join("\n");
+            const prefix = "📚 Mis Temas:\n";
+
+            if (formData.exploration) {
+                formData.exploration += "\n" + prefix + temasText;
+            } else {
+                formData.exploration = prefix + temasText;
+            }
+        }
+
+        // Aplicar actividades seleccionadas en estructuración
+        if (selectedActividades.length > 0) {
+            const actText = selectedActividades.map((a) => `• ${a}`).join("\n");
+            const actPrefix = "📋 Mis Actividades:\n";
+            
+            if (formData.structuring) {
+                formData.structuring += "\n" + actPrefix + actText;
+            } else {
+                formData.structuring = actPrefix + actText;
+            }
+        }
+
+        selectedTemas = [];
+        selectedActividades = [];
+    }
+
+    // --- GENERADOR DE OBJETIVOS AUTOMÁTICO ---
+    function generarObjetivos() {
+        const tema = getTema();
+        const objetivos = [
+            `• El estudiante comprenderá el concepto de ${tema} mediante explicación magistral y ejemplos`,
+            `• El estudiante aplicará procedimientos relacionados con ${tema} en ejercicios prácticos`,
+            `• El estudiante analizará situaciones problemáticas relacionadas con ${tema}`,
+            `• El estudiante valorará la importancia de ${tema} en su contexto personal y social`
+        ];
+        formData.learning_objectives = objetivos.join("\n");
+    }
+
+    // --- PRESETS DE TIEMPO ---
+    function setTiempoPreset(preset: "corto" | "estandar" | "extendido") {
+        if (preset === "corto") {
+            formData.tiempo_exploracion = 8;
+            formData.tiempo_estructuracion = 15;
+            formData.tiempo_practica = 15;
+            formData.tiempo_transferencia = 5;
+            formData.tiempo_valoracion = 2;
+        } else if (preset === "estandar") {
+            formData.tiempo_exploracion = 10;
+            formData.tiempo_estructuracion = 20;
+            formData.tiempo_practica = 25;
+            formData.tiempo_transferencia = 15;
+            formData.tiempo_valoracion = 10;
+        } else {
+            formData.tiempo_exploracion = 15;
+            formData.tiempo_estructuracion = 30;
+            formData.tiempo_practica = 40;
+            formData.tiempo_transferencia = 20;
+            formData.tiempo_valoracion = 15;
+        }
+    }
+
+    // --- LIMPIAR DESCRIPCIONES ---
+    function limpiarDescripcion(momento: string) {
+        if (momento === 'exploration') {
+            formData.exploration = "";
+            formData.exploration_activities = [];
+        } else if (momento === 'structuring') {
+            formData.structuring = "";
+            formData.structuring_activities = [];
+        } else if (momento === 'practice') {
+            formData.practice = "";
+            formData.practice_activities = [];
+        } else if (momento === 'transfer') {
+            formData.transfer = "";
+            formData.transfer_activities = [];
+        } else if (momento === 'assessment') {
+            formData.assessment_moment = "";
+            formData.assessment_activities = [];
+        }
+    }
+
+    // --- FUNCIONES DE EVALUACIÓN ---
+
+    // Toggle modalidad
+    function toggleModalidad(modalidadId: string) {
+        if (formData.eval_modalidades.includes(modalidadId)) {
+            formData.eval_modalidades = formData.eval_modalidades.filter(m => m !== modalidadId);
+        } else {
+            formData.eval_modalidades = [...formData.eval_modalidades, modalidadId];
+        }
+        autoGenerarDescripcionEval();
+    }
+
+    // Toggle instrumento
+    function toggleInstrumento(instrumentoId: string) {
+        if (formData.eval_instrumentos.includes(instrumentoId)) {
+            formData.eval_instrumentos = formData.eval_instrumentos.filter(i => i !== instrumentoId);
+        } else {
+            formData.eval_instrumentos = [...formData.eval_instrumentos, instrumentoId];
+        }
+        autoGenerarDescripcionEval();
+    }
+
+    // Toggle criterio
+    function toggleCriterio(criterioId: string) {
+        if (formData.eval_criterios.includes(criterioId)) {
+            formData.eval_criterios = formData.eval_criterios.filter(c => c !== criterioId);
+        } else {
+            formData.eval_criterios = [...formData.eval_criterios, criterioId];
+        }
+        autoGenerarDescripcionEval();
+    }
+
+    // Toggle evidencia
+    function toggleEvidencia(evidenciaId: string) {
+        if (formData.eval_evidencias.includes(evidenciaId)) {
+            formData.eval_evidencias = formData.eval_evidencias.filter(e => e !== evidenciaId);
+        } else {
+            formData.eval_evidencias = [...formData.eval_evidencias, evidenciaId];
+        }
+        autoGenerarDescripcionEval();
+    }
+
+    // Auto-generar descripción de evaluación
+    function autoGenerarDescripcionEval() {
+        const tipo = TIPOS_EVALUACION.find(t => t.id === formData.eval_type);
+        const tipoTexto = tipo ? `${tipo.icono} ${tipo.titulo}` : "Evaluación";
+        
+        const modalidades = formData.eval_modalidades.map(m => {
+            const mod = MODALIDADES_EVALUACION.find(x => x.id === m);
+            return mod ? `${mod.icono} ${mod.titulo}` : m;
+        });
+        
+        const instrumentos = formData.eval_instrumentos.map(i => {
+            const inst = INSTRUMENTOS_EVALUACION.find(x => x.id === i);
+            return inst ? `${inst.icono} ${inst.titulo}` : i;
+        });
+        
+        const criterios = formData.eval_criterios.map(c => {
+            const crit = CRITERIOS_EVALUACION.find(x => x.id === c);
+            return crit ? crit.titulo : c;
+        });
+        
+        const evidencias = formData.eval_evidencias.map(e => {
+            const ev = EVIDENCIAS_APRENDIZAJE.find(x => x.id === e);
+            return ev ? ev.titulo : e;
+        });
+
+        let descripcion = `Se aplicará ${tipoTexto}`;
+        
+        if (modalidades.length > 0) {
+            descripcion += ` con ${modalidades.join(", ")}`;
+        }
+        
+        if (instrumentos.length > 0) {
+            descripcion += `. Instrumentos: ${instrumentos.join(", ")}`;
+        }
+        
+        if (criterios.length > 0) {
+            descripcion += `. Se evaluará: ${criterios.join(", ")}`;
+        }
+        
+        if (evidencias.length > 0) {
+            descripcion += `. Evidencias esperadas: ${evidencias.join(", ")}`;
+        }
+        
+        descripcion += `. Ponderación: Conceptos ${formData.eval_ponderacion_conceptos}%, Procedimientos ${formData.eval_ponderacion_procedimientos}%, Actitudes ${formData.eval_ponderacion_actitudes}%`;
+        
+        formData.eval_descripcion_auto = descripcion;
+        formData.eval_criteria = criterios.join(", ");
+        formData.eval_evidence = evidencias.join(", ");
+    }
+
+    // Resetear evaluación
+    function resetearEvaluacion() {
+        formData.eval_modalidades = [];
+        formData.eval_instrumentos = [];
+        formData.eval_criterios = [];
+        formData.eval_evidencias = [];
+        formData.eval_descripcion_auto = "";
+        formData.eval_criteria = "";
+        formData.eval_evidence = "";
+    }
+
+    // --- FUNCIONES DE RECURSOS DIDÁCTICOS ---
+
+    // Toggle categoría
+    function toggleCategoria(categoriaId: string) {
+        if (recursosCategorias.includes(categoriaId)) {
+            recursosCategorias = recursosCategorias.filter(c => c !== categoriaId);
+        } else {
+            recursosCategorias = [...recursosCategorias, categoriaId];
+        }
+    }
+
+    // Toggle recurso
+    function toggleRecurso(recursoId: string) {
+        if (recursosSeleccionados.includes(recursoId)) {
+            recursosSeleccionados = recursosSeleccionados.filter(r => r !== recursoId);
+        } else {
+            recursosSeleccionados = [...recursosSeleccionados, recursoId];
+        }
+        generarDescripcionRecursos();
+    }
+
+    // Agregar recurso personalizado
+    function agregarRecursoPersonalizado() {
+        if (recursoPersonalizado.trim() && !recursosPersonalizadosLista.includes(recursoPersonalizado.trim())) {
+            recursosPersonalizadosLista = [...recursosPersonalizadosLista, recursoPersonalizado.trim()];
+            recursoPersonalizado = "";
+            generarDescripcionRecursos();
+        }
+    }
+
+    // Quitar recurso personalizado
+    function quitarRecursoPersonalizado(recurso: string) {
+        recursosPersonalizadosLista = recursosPersonalizadosLista.filter(r => r !== recurso);
+        generarDescripcionRecursos();
+    }
+
+    // Generar descripción de recursos
+    function generarDescripcionRecursos() {
+        const recursos: string[] = [];
+        
+        // Agregar recursos por categoría
+        recursosSeleccionados.forEach(id => {
+            for (const categoria of Object.values(RECURSOS_POR_CATEGORIA)) {
+                const recurso = categoria.find(r => r.id === id);
+                if (recurso) {
+                    recursos.push(`• ${recurso.icono} ${recurso.titulo}`);
+                    break;
+                }
+            }
+        });
+        
+        // Agregar recursos personalizados
+        recursosPersonalizadosLista.forEach(r => {
+            recursos.push(`• 📌 ${r}`);
+        });
+        
+        formData.resources = recursos.join("\n");
+    }
+
+    // Resetear recursos
+    function resetearRecursos() {
+        recursosCategorias = [];
+        recursosSeleccionados = [];
+        recursoPersonalizado = "";
+        recursosPersonalizadosLista = [];
+        formData.resources = "";
+    }
+
+    // Contador de recursos por categoría
+    function getCountPorCategoria(categoriaId: string): number {
+        const recursos = RECURSOS_POR_CATEGORIA[categoriaId] || [];
+        return recursos.filter(r => recursosSeleccionados.includes(r.id)).length;
+    }
+
+    let tiempoTotal = $derived(
+        formData.tiempo_exploracion + formData.tiempo_estructuracion + 
+        formData.tiempo_practica + formData.tiempo_transferencia + formData.tiempo_valoracion
+    );
+
+    // Materias por docente
+    let docenteMaterias: Record<string, string[]> = JSON.parse(
+        localStorage.getItem("docenteMaterias") || "{}",
+    );
+
+    const saveMateriaForDocente = (docente: string, materia: string): void => {
+        if (!docente || !materia) return;
+        if (!docenteMaterias[docente]) {
+            docenteMaterias[docente] = [];
+        }
+        if (!docenteMaterias[docente].includes(materia)) {
+            docenteMaterias[docente] = [...docenteMaterias[docente], materia];
+            localStorage.setItem("docenteMaterias", JSON.stringify(docenteMaterias));
+        }
+    };
+
+    // Guardar materia frecuentemente usada cuando se selecciona
+    $effect(() => {
+        if (formData.docente && formData.subject) {
+            saveMateriaForDocente(formData.docente, formData.subject);
+        }
+    });
+
+    let selectedMaterias = $state<{ materia: string; horas: string }[]>([]);
+
+    // Verificar si el docente tiene "-"
+    let docenteHasDash = $derived(formData.docente.includes("-"));
+
+    const GRADOS_SIN_GUION = [
+        { value: "SEXTO", label: "SEXTO" },
+        { value: "SEPTIMO", label: "SEPTIMO" },
+        { value: "OCTAVO", label: "OCTAVO" },
+        { value: "NOVENO", label: "NOVENO" },
+        { value: "DECIMO", label: "DECIMO" },
+        { value: "ONCE", label: "ONCE" },
+    ];
+
+    const GRADOS_CON_GUION = [
+        { value: "PREESCOLAR", label: "PREESCOLAR" },
+        { value: "PRIMERO", label: "PRIMERO" },
+        { value: "SEGUNDO", label: "SEGUNDO" },
+        { value: "TERCERO", label: "TERCERO" },
+        { value: "CUARTO", label: "CUARTO" },
+        { value: "QUINTO", label: "QUINTO" },
+    ];
+
+    // Extraer número del docente cuando tiene patrón "Nombre-número"
+    const getDocenteNumber = (docente: string): string | null => {
+        const match = docente.match(/-(\d+)$/);
+        return match ? match[1] : null;
+    };
+
+    interface GradoOption {
+        value: string;
+        label: string;
+    }
+
+    // Persistencia de materias por docente
+    $effect(() => {
+        if (formData.docente) {
+            localStorage.setItem("lastDocente", formData.docente);
+        }
+    });
+
+    // Materias ordenadas por docente
+    let materiasSorted = $derived(
+        formData.docente
+            ? [...materias].sort((a, b) => {
+                  const aSaved = docenteMaterias[formData.docente]?.includes(
+                      a.materia,
+                  );
+                  const bSaved = docenteMaterias[formData.docente]?.includes(
+                      b.materia,
+                  );
+                  if (aSaved && !bSaved) return -1;
+                  if (!aSaved && bSaved) return 1;
+                  return a.materia.localeCompare(b.materia);
+              })
+            : materias,
+    );
+
+    const standardOptions = [
+        "Comprendo textos literarios para propiciar el desarrollo de mi capacidad creativa...",
+        "Produzco textos orales y escritos que evidencian el conocimiento alcanzado...",
+    ];
+
+    // Lógica derivada para validación simple (ejemplo)
+    let isStepValid = $derived.by(() => {
+        if (currentStep === 0)
+            return formData.docente !== "" && formData.grado !== "";
+        if (currentStep === 1)
+            return formData.planeacion_tipo !== "" && formData.periodo_academico !== "";
+        if (currentStep === 2) return formData.standard.length > 0;
+        return true;
+    });
+
+    // Progreso general del formulario
+    const stepLabels = ['Datos', 'Tiempo', 'Referentes', 'Didáctica', 'Evaluación', 'Recursos'];
+    const formProgress = $derived.by(() => {
+        const checks = [
+            formData.docente !== '',
+            formData.grado !== '',
+            formData.subject !== '',
+            formData.planeacion_tipo !== '',
+            formData.periodo_academico !== '',
+            formData.standard.length > 0,
+            formData.dba.length > 0 || formData.dba_manual !== '',
+            formData.learning_objectives !== '',
+            formData.exploration !== '',
+            formData.structuring !== '',
+            formData.practice !== '',
+            formData.transfer !== '',
+            formData.eval_criterios.length > 0 || formData.eval_criteria !== '',
+            formData.eval_evidencias.length > 0 || formData.eval_evidence !== '',
+            formData.resources !== '',
+        ];
+        return Math.round((checks.filter(Boolean).length / checks.length) * 100);
+    });
+
+    // Grados únicos de los estudiantes filtrados por docente
+    let docenteNumber = $derived(getDocenteNumber(formData.docente));
+
+    const gradoOrder: Record<string, number> = {
+        PREESCOLAR: 0,
+        PRIMERO: 1,
+        SEGUNDO: 2,
+        TERCERO: 3,
+        CUARTO: 4,
+        QUINTO: 5,
+        SEXTO: 6,
+        SEPTIMO: 7,
+        OCTAVO: 8,
+        NOVENO: 9,
+        DECIMO: 10,
+        ONCE: 11,
+    };
+
+    let filteredGrados = $derived.by((): GradoOption[] => {
+        if (docenteNumber) {
+            return GRADOS_CON_GUION;
+        }
+        return GRADOS_SIN_GUION;
+    });
+
+    // Funciones de navegación
+    function nextStep() {
+        if (currentStep < 5) currentStep++;
+    }
+
+    function prevStep() {
+        if (currentStep > 0) currentStep--;
+    }
+
+    // Scroll al inicio al cambiar de step
+    let isFirstRender = true;
+    $effect(() => {
+        currentStep;
+        if (isFirstRender) {
+            isFirstRender = false;
+            return;
+        }
+        tick().then(() => {
+            document.getElementById('planner-form-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    function toggleDBA(dba: string) {
+        if (formData.dba.includes(dba)) {
+            formData.dba = formData.dba.filter((d) => d !== dba);
+        } else {
+            formData.dba = [...formData.dba, dba];
+        }
+    }
+
+    function toggleEBC(ebc: string) {
+        if (formData.standard.includes(ebc)) {
+            formData.standard = formData.standard.filter((e) => e !== ebc);
+        } else {
+            formData.standard = [...formData.standard, ebc];
+        }
+    }
+
+    $effect(() => {
+        const loadNormativa = async () => {
+            if (!formData.subject || !formData.grado) {
+                dbas = [];
+                ebcs = [];
+                return;
+            }
+
+            isLoadingDBAs = true;
+            isLoadingEBCs = true;
+            try {
+                const materia = formData.subject.toLowerCase().trim();
+                const grado = formData.grado.toLowerCase().trim();
+
+                const [dbasResponse, ebcsResponse] = await Promise.all([
+                    fetch(`${URL_DBA_EBC}?tipo=DBA&materia=${materia}&grado=${grado}`),
+                    fetch(`${URL_DBA_EBC}?tipo=EBC&materia=${materia}&grado=${grado}`),
+                ]);
+
+                const [dbasJson, ebcsJson] = await Promise.all([
+                    dbasResponse.json(),
+                    ebcsResponse.json(),
+                ]);
+
+                const transformar = (json: any, tipo: string): NormativaItem[] => {
+                    const items = json?.data?.[0]?.dbas || [];
+                    return items.map((texto: string, i: number) => ({
+                        id: texto,
+                        codigo: `${tipo} ${i + 1}`,
+                        descripcion: texto
+                    }));
+                };
+
+                dbas = transformar(dbasJson, "DBA");
+                ebcs = transformar(ebcsJson, "EBC");
+            } catch (error) {
+                console.error("Error cargando Normativa:", error);
+                dbas = [];
+                ebcs = [];
+            } finally {
+                isLoadingDBAs = false;
+                isLoadingEBCs = false;
+            }
+        };
+        loadNormativa();
+    });
+
+    // Effect para establecer valor por defecto en dba_manual cuando no hay normativa
+    $effect(() => {
+        const tieneNormativaCargada = dbas.length > 0 || ebcs.length > 0;
+        if (materiaSinNormativa || !tieneNormativaCargada) {
+            // Si no hay normativa cargada y dba_manual está vacío, establecer默认值
+            if (!formData.dba_manual?.trim()) {
+                formData.dba_manual = "No Disponible";
+            }
+        }
+    });
+
+    // Carga de datos
+    const loadData = async () => {
+        isLoadingDocentes = true;
+        isLoadingMaterias = true;
+        isLoadingEstudiantes = true;
+        try {
+            const [docentesData, materiasData, estudiantesData] =
+                await Promise.all([
+                    getDocentes(),
+                    getMaterias(),
+                    getEstudiantes(),
+                ]);
+            docentes = docentesData;
+            materias = materiasData;
+            estudiantes = estudiantesData;
+        } catch (error) {
+            console.error("Error cargando datos:", error);
+        } finally {
+            isLoadingDocentes = false;
+            isLoadingMaterias = false;
+            isLoadingEstudiantes = false;
+        }
+    };
+
+    const generatePDF = async (source?: PlaneadorData): Promise<void> => {
+        isGeneratingPdf = true;
+
+        // Datos fuente: planeación guardada o formulario actual
+        const d = source ? {
+            docente: source.docente || '',
+            grado: source.grade || '',
+            subject: source.subject || '',
+            period: source.period || '',
+            dba: source.dba || [],
+            standard: source.standard || [],
+            dba_manual: source.dba_manual || '',
+            competency: source.competency || '',
+            has_piar: source.has_piar ?? false,
+            piar_description: source.piar_description || '',
+            learning_objectives: source.learning_objectives || '',
+            competencias: source.competencias || '',
+            indicadores_logro: source.indicadores_logro || '',
+            exploration: source.exploration || '',
+            exploration_activities: source.exploration_activities || [],
+            tiempo_exploracion: source.tiempo_exploracion || 10,
+            structuring: source.structuring || '',
+            structuring_activities: source.structuring_activities || [],
+            tiempo_estructuracion: source.tiempo_estructuracion || 20,
+            practice: source.practice || '',
+            practice_activities: source.practice_activities || [],
+            tiempo_practica: source.tiempo_practica || 25,
+            transfer: source.transfer || '',
+            transfer_activities: source.transfer_activities || [],
+            tiempo_transferencia: source.tiempo_transferencia || 15,
+            assessment_moment: source.assessment_moment || '',
+            assessment_activities: source.assessment_activities || [],
+            tiempo_valoracion: source.tiempo_valoracion || 10,
+            eval_type: source.eval_type || 'Formativa',
+            eval_modalidades: source.eval_modalidades || [],
+            eval_instrumentos: source.eval_instrumentos || [],
+            eval_criterios: source.eval_criterios || [],
+            eval_evidencias: source.eval_evidencias || [],
+            eval_criteria: source.eval_criteria || '',
+            eval_evidence: source.eval_evidence || '',
+            eval_ponderacion_conceptos: source.eval_ponderacion_conceptos ?? 30,
+            eval_ponderacion_procedimientos: source.eval_ponderacion_procedimientos ?? 40,
+            eval_ponderacion_actitudes: source.eval_ponderacion_actitudes ?? 30,
+            eval_descripcion_auto: source.eval_descripcion_auto || '',
+            resources: source.resources || '',
+            planeacion_tipo: source.planeacion_tipo || '',
+            periodo_academico: source.periodo_academico || '',
+            fecha_inicio: source.fecha_inicio || '',
+            fecha_fin: source.fecha_fin || '',
+            firma_docente: source.firma_docente || '',
+            fecha_firma: source.fecha_firma || '',
+        } : formData;
+
+        try {
+            const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+                import('jspdf'),
+                import('jspdf-autotable')
+            ]);
+
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 15;
+            const footerMargin = 20;
+            let yPos = 10;
+
+            // Colores por sección
+            const COLOR_INDIGO: [number, number, number] = [79, 70, 229];
+            const COLOR_GRAY_LIGHT: [number, number, number] = [243, 244, 246];
+            const COLOR_GREEN: [number, number, number] = [16, 185, 129];
+            const COLOR_AMBER: [number, number, number] = [245, 158, 11];
+            const COLOR_ROSE: [number, number, number] = [244, 63, 94];
+            const COLOR_CYAN: [number, number, number] = [6, 182, 212];
+            const COLOR_VIOLET: [number, number, number] = [139, 92, 246];
+            const COLOR_EMERALD: [number, number, number] = [5, 150, 105];
+            const COLOR_ORANGE: [number, number, number] = [234, 88, 12];
+
+            // Funciones helper para el PDF
+            const checkPageBreak = (requiredSpace: number) => {
+                if (yPos + requiredSpace > pageHeight - footerMargin) {
+                    doc.addPage();
+                    yPos = 15;
+                }
+            };
+
+            const addWrappedText = (text: string, x: number, maxWidth: number, lineHeight = 4) => {
+                const lines: string[] = doc.splitTextToSize(text, maxWidth);
+                for (const line of lines) {
+                    checkPageBreak(lineHeight + 2);
+                    doc.text(line, x, yPos);
+                    yPos += lineHeight;
+                }
+            };
+
+            // Colores para cada sección
+            const SECTION_COLORS = [
+                COLOR_INDIGO,
+                COLOR_EMERALD,
+                COLOR_AMBER,
+                COLOR_CYAN,
+                COLOR_ROSE,
+                COLOR_VIOLET,
+                COLOR_ORANGE,
+                COLOR_GREEN,
+                COLOR_AMBER,
+            ];
+
+            // Logo - usar importación directa de Vite
+            const logoBase64 = eieLogo;
+
+            // HEADER
+            doc.setFillColor(COLOR_INDIGO[0], COLOR_INDIGO[1], COLOR_INDIGO[2]);
+            doc.rect(0, 0, pageWidth, 40, 'F');
+
+            doc.setTextColor(255, 255, 255);
+            
+            // Logo de la institución (usando base64)
+            const logoWidth = 22;
+            const logoHeight = 22;
+            const logoX = margin;
+            const logoY = 9;
+            
+            if (logoBase64) {
+                try {
+                    doc.addImage(logoBase64, 'PNG', logoX, logoY, logoWidth, logoHeight);
+                } catch {
+                    // Si falla el logo, solo mostrar texto
+                }
+            }
+
+            // Título y texto del header
+            const textStartX = logoBase64 ? margin + logoWidth + 5 : margin;
+            
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.text('PLANEADOR DE CLASES', textStartX, 16);
+
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text('I.E. Instituto Guática', textStartX, 23);
+            doc.text('Guática, Risaralda', textStartX, 29);
+            doc.text('Según lineamientos MEN - Colombia', textStartX, 35);
+
+            // Información a la derecha
+            doc.setFontSize(8);
+            doc.text(`Fecha: ${new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth - margin, 14, { align: 'right' });
+            doc.text('Sistema de Gestión Académica', pageWidth - margin, 20, { align: 'right' });
+            doc.text('Planeación Académica', pageWidth - margin, 26, { align: 'right' });
+
+            yPos = 48;
+            doc.setTextColor(0, 0, 0);
+
+            // Contador de secciones dinámico
+            let sectionNum = 0;
+            const nextSection = () => ++sectionNum;
+
+            // Función helper para secciones con colores variados
+            const addSection = (title: string, contentFn: () => void) => {
+                checkPageBreak(25);
+                const sectionColor = SECTION_COLORS[(sectionNum - 1) % SECTION_COLORS.length];
+                doc.setFillColor(sectionColor[0], sectionColor[1], sectionColor[2]);
+                doc.rect(margin, yPos - 5, pageWidth - 2 * margin, 10, 'F');
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(255, 255, 255);
+                doc.text(title, margin + 3, yPos + 2);
+                yPos += 14;
+                doc.setTextColor(0, 0, 0);
+                contentFn();
+                yPos += 5;
+            };
+
+            // 1. INFORMACIÓN BÁSICA
+            addSection(`${nextSection()}. INFORMACIÓN BÁSICA`, () => {
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                doc.text(`Docente: ${d.docente || 'No especificado'}`, margin, yPos);
+                doc.text(`Grado: ${d.grado || 'No especificado'}`, 110, yPos);
+                yPos += 6;
+                doc.text(`Materia: ${d.subject || 'No especificada'}`, margin, yPos);
+                doc.text(`Período: ${d.period || 'No especificado'}`, 110, yPos);
+                yPos += 8;
+            });
+
+            // 2. TEMPORALIDAD
+            addSection(`${nextSection()}. TEMPORALIDAD`, () => {
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                const tipoPlan = TIPOS_PLANEACION.find(t => t.id === d.planeacion_tipo);
+                const periodoAcad = PERIODOS_ACADEMICOS.find(p => p.id === d.periodo_academico);
+                doc.text(`Tipo de Planeación: ${tipoPlan?.titulo || 'No especificado'}`, margin, yPos);
+                doc.text(`Período Académico: ${periodoAcad?.label || 'No especificado'}`, 110, yPos);
+                yPos += 6;
+                doc.text(`Fecha Inicio: ${d.fecha_inicio || 'No especificada'}`, margin, yPos);
+                doc.text(`Fecha Fin: ${d.fecha_fin || 'No especificada'}`, 110, yPos);
+                yPos += 8;
+            });
+
+            // 3. REFERENTES DE CALIDAD
+            addSection(`${nextSection()}. REFERENTES DE CALIDAD (DBA/EBC)`, () => {
+                // DBA seleccionados
+                const dbasSelected = dbas.filter(dba => d.dba.includes(dba.id));
+                if (dbasSelected.length > 0) {
+                    autoTable(doc, {
+                        startY: yPos,
+                        head: [['Código DBA', 'Descripción']],
+                        body: dbasSelected.map(dba => [dba.codigo, dba.descripcion]),
+                        margin: { left: margin, right: margin },
+                        headStyles: { fillColor: COLOR_INDIGO, fontSize: 9 },
+                        bodyStyles: { fontSize: 8 },
+                        theme: 'striped',
+                    });
+                    yPos = (doc as any).lastAutoTable.finalY + 8;
+                }
+
+                // EBC seleccionados
+                const ebcsSelected = ebcs.filter(e => d.standard.includes(e.id));
+                if (ebcsSelected.length > 0) {
+                    autoTable(doc, {
+                        startY: yPos,
+                        head: [['Código EBC', 'Descripción']],
+                        body: ebcsSelected.map(e => [e.codigo, e.descripcion]),
+                        margin: { left: margin, right: margin },
+                        headStyles: { fillColor: COLOR_GREEN, fontSize: 9 },
+                        bodyStyles: { fontSize: 8 },
+                        theme: 'striped',
+                    });
+                    yPos = (doc as any).lastAutoTable.finalY + 8;
+                }
+
+                if (d.competency) {
+                    checkPageBreak(10);
+                    doc.setFontSize(10);
+                    doc.text(`Competencia Ciudadana: ${d.competency}`, margin, yPos);
+                    yPos += 8;
+                }
+
+                // DBA/Estándares manuales
+                if (d.dba_manual) {
+                    checkPageBreak(15);
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Estándares/DBA (manual):', margin, yPos);
+                    yPos += 5;
+                    doc.setFont('helvetica', 'normal');
+                    addWrappedText(d.dba_manual, margin, pageWidth - 2 * margin);
+                    yPos += 4;
+                }
+            });
+
+            // 4. INCLUSIÓN — PIAR (condicional)
+            if (d.has_piar) {
+                addSection(`${nextSection()}. INCLUSIÓN — PIAR`, () => {
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text('Esta planeación incluye ajustes razonables para estudiantes con NEE.', margin, yPos);
+                    yPos += 6;
+                    if (d.piar_description) {
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('Descripción de ajustes:', margin, yPos);
+                        yPos += 5;
+                        doc.setFont('helvetica', 'normal');
+                        addWrappedText(d.piar_description, margin, pageWidth - 2 * margin);
+                        yPos += 4;
+                    }
+                });
+            }
+
+            // 5. SECUENCIA DIDÁCTICA
+            addSection(`${nextSection()}. SECUENCIA DIDÁCTICA`, () => {
+                doc.setFontSize(10);
+
+                // Objetivos de aprendizaje - DESTACADO
+                if (d.learning_objectives) {
+                    checkPageBreak(30);
+                    const objColor: [number, number, number] = [59, 130, 246]; // Azul
+                    doc.setFillColor(objColor[0], objColor[1], objColor[2]);
+                    doc.roundedRect(margin, yPos - 3, pageWidth - 2 * margin, 10, 2, 2, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('OBJETIVOS DE APRENDIZAJE', margin + 3, yPos + 4);
+                    yPos += 13;
+                    doc.setTextColor(0, 0, 0);
+                    doc.setFont('helvetica', 'normal');
+                    addWrappedText(d.learning_objectives, margin, pageWidth - 2 * margin);
+                    yPos += 6;
+                }
+
+                // Competencias - DESTACADO
+                if (d.competencias) {
+                    checkPageBreak(30);
+                    const compColor: [number, number, number] = [16, 185, 129]; // Verde esmeralda
+                    doc.setFillColor(compColor[0], compColor[1], compColor[2]);
+                    doc.roundedRect(margin, yPos - 3, pageWidth - 2 * margin, 10, 2, 2, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('COMPETENCIAS', margin + 3, yPos + 4);
+                    yPos += 13;
+                    doc.setTextColor(0, 0, 0);
+                    doc.setFont('helvetica', 'normal');
+                    addWrappedText(d.competencias, margin, pageWidth - 2 * margin);
+                    yPos += 6;
+                }
+
+                // Momentos de la secuencia
+                const momentos = [
+                    { label: 'Exploración', desc: d.exploration, tiempo: d.tiempo_exploracion, acts: d.exploration_activities },
+                    { label: 'Estructuración', desc: d.structuring, tiempo: d.tiempo_estructuracion, acts: d.structuring_activities },
+                    { label: 'Práctica', desc: d.practice, tiempo: d.tiempo_practica, acts: d.practice_activities },
+                    { label: 'Transferencia', desc: d.transfer, tiempo: d.tiempo_transferencia, acts: d.transfer_activities },
+                    { label: 'Valoración', desc: d.assessment_moment, tiempo: d.tiempo_valoracion, acts: d.assessment_activities },
+                ];
+
+                for (const momento of momentos) {
+                    if (momento.desc || momento.acts.length > 0) {
+                        checkPageBreak(20);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text(`${momento.label} (${momento.tiempo} min):`, margin, yPos);
+                        yPos += 5;
+                        doc.setFont('helvetica', 'normal');
+                        if (momento.desc) {
+                            addWrappedText(momento.desc, margin, pageWidth - 2 * margin);
+                            yPos += 2;
+                        }
+                        if (momento.acts.length > 0) {
+                            checkPageBreak(8);
+                            const actsText = `Actividades: ${momento.acts.join(', ')}`;
+                            addWrappedText(actsText, margin, pageWidth - 2 * margin);
+                        }
+                        yPos += 4;
+                    }
+                }
+
+                // Indicadores de logro - DESTACADO
+                if (d.indicadores_logro) {
+                    checkPageBreak(35);
+                    // Recuadro destacado para indicadores
+                    const indColor: [number, number, number] = [139, 92, 246]; // Violeta
+                    doc.setFillColor(indColor[0], indColor[1], indColor[2]);
+                    doc.roundedRect(margin, yPos - 3, pageWidth - 2 * margin, 12, 2, 2, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('INDICADORES DE LOGRO', margin + 3, yPos + 4);
+                    yPos += 15;
+                    doc.setTextColor(0, 0, 0);
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'normal');
+                    addWrappedText(d.indicadores_logro, margin, pageWidth - 2 * margin);
+                    yPos += 8;
+                }
+            });
+
+            // 6. EVALUACIÓN
+            addSection(`${nextSection()}. EVALUACIÓN DE APRENDIZAJES`, () => {
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                doc.text(`Tipo de Evaluación: ${d.eval_type}`, margin, yPos);
+                yPos += 6;
+
+                if (d.eval_modalidades.length > 0) {
+                    checkPageBreak(8);
+                    doc.text(`Modalidades: ${d.eval_modalidades.join(', ')}`, margin, yPos);
+                    yPos += 6;
+                }
+
+                if (d.eval_instrumentos.length > 0) {
+                    checkPageBreak(8);
+                    doc.text(`Instrumentos: ${d.eval_instrumentos.join(', ')}`, margin, yPos);
+                    yPos += 6;
+                }
+
+                if (d.eval_criterios.length > 0) {
+                    checkPageBreak(8);
+                    doc.text(`Criterios: ${d.eval_criterios.join(', ')}`, margin, yPos);
+                    yPos += 6;
+                }
+
+                if (d.eval_evidencias.length > 0) {
+                    checkPageBreak(8);
+                    doc.text(`Evidencias: ${d.eval_evidencias.join(', ')}`, margin, yPos);
+                    yPos += 6;
+                }
+
+                // Criterios adicionales (texto libre)
+                if (d.eval_criteria) {
+                    checkPageBreak(15);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Criterios adicionales:', margin, yPos);
+                    yPos += 5;
+                    doc.setFont('helvetica', 'normal');
+                    addWrappedText(d.eval_criteria, margin, pageWidth - 2 * margin);
+                    yPos += 4;
+                }
+
+                // Evidencias adicionales (texto libre)
+                if (d.eval_evidence) {
+                    checkPageBreak(15);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Evidencias adicionales:', margin, yPos);
+                    yPos += 5;
+                    doc.setFont('helvetica', 'normal');
+                    addWrappedText(d.eval_evidence, margin, pageWidth - 2 * margin);
+                    yPos += 4;
+                }
+
+                // Descripción de autoevaluación
+                if (d.eval_descripcion_auto) {
+                    checkPageBreak(15);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Autoevaluación:', margin, yPos);
+                    yPos += 5;
+                    doc.setFont('helvetica', 'normal');
+                    addWrappedText(d.eval_descripcion_auto, margin, pageWidth - 2 * margin);
+                    yPos += 4;
+                }
+
+                // Ponderación
+                checkPageBreak(30);
+                autoTable(doc, {
+                    startY: yPos,
+                    head: [['Componente', 'Ponderación']],
+                    body: [
+                        ['Conceptos', `${d.eval_ponderacion_conceptos}%`],
+                        ['Procedimientos', `${d.eval_ponderacion_procedimientos}%`],
+                        ['Actitudes', `${d.eval_ponderacion_actitudes}%`],
+                    ],
+                    margin: { left: margin, right: margin },
+                    headStyles: { fillColor: COLOR_INDIGO, fontSize: 9 },
+                    bodyStyles: { fontSize: 9 },
+                    theme: 'striped',
+                });
+                yPos = (doc as any).lastAutoTable.finalY + 8;
+            });
+
+            // 7. RECURSOS DIDÁCTICOS
+            addSection(`${nextSection()}. RECURSOS DIDÁCTICOS`, () => {
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                if (d.resources) {
+                    addWrappedText(d.resources, margin, pageWidth - 2 * margin, 5);
+                    yPos += 3;
+                } else {
+                    doc.text('No se han seleccionado recursos.', margin, yPos);
+                    yPos += 6;
+                }
+            });
+
+            // 8. FIRMA DEL DOCENTE (condicional)
+            if (d.firma_docente) {
+                addSection(`${nextSection()}. FIRMA DEL DOCENTE`, () => {
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'normal');
+
+                    if (d.fecha_firma) {
+                        const fechaFirma = new Date(d.fecha_firma).toLocaleDateString('es-CO', {
+                            year: 'numeric', month: 'long', day: 'numeric',
+                        });
+                        doc.text(`Fecha de firma: ${fechaFirma}`, margin, yPos);
+                        yPos += 8;
+                    }
+
+                    checkPageBreak(45);
+                    try {
+                        doc.addImage(d.firma_docente, 'PNG', margin, yPos, 60, 30);
+                        yPos += 34;
+                        doc.setDrawColor(100, 100, 100);
+                        doc.line(margin, yPos, margin + 60, yPos);
+                        yPos += 5;
+                        doc.setFontSize(9);
+                        doc.text(d.docente || 'Docente', margin, yPos);
+                        yPos += 8;
+                    } catch {
+                        doc.text('(Firma digital adjunta)', margin, yPos);
+                        yPos += 8;
+                    }
+                });
+            }
+
+            // FOOTER con número de página
+            const pageCount = doc.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(128, 128, 128);
+                doc.text(`Página ${i} de ${pageCount}`, pageWidth / 2, 290, { align: 'center' });
+                doc.text(`Generado: ${new Date().toLocaleDateString('es-CO')}`, margin, 290);
+                doc.text('Sistema de Gestión Académica - Colombia', pageWidth - margin, 290, { align: 'right' });
+            }
+
+            pdfUrl = doc.output('bloburl') as unknown as string;
+            showPdfPreview = true;
+        } catch (error) {
+            console.error('Error generando PDF:', error);
+            await Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudo generar el PDF. Intente nuevamente.',
+                confirmButtonColor: '#ef4444',
+            });
+        } finally {
+            isGeneratingPdf = false;
+        }
+    };
+
+    onMount(() => {
+        loadData();
+    });
+
+    async function handleSubmit() {
+        isLoading = true;
+        let guardadoOnline = false;
+        
+        const planeacionData: PlaneadorData = {
+            id: `PL_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            fecha_creacion: new Date().toISOString().split('T')[0],
+            docente: formData.docente,
+            institution: "",
+            campus: "",
+            grade: formData.grado,
+            subject: formData.subject,
+            period: formData.period,
+            dba: formData.dba,
+            standard: formData.standard,
+            dba_manual: formData.dba_manual,
+            competency: formData.competency,
+            has_piar: formData.has_piar,
+            piar_description: formData.piar_description,
+            learning_objectives: formData.learning_objectives,
+            competencias: formData.competencias,
+            indicadores_logro: formData.indicadores_logro,
+            exploration: formData.exploration,
+            exploration_activities: formData.exploration_activities,
+            tiempo_exploracion: formData.tiempo_exploracion,
+            structuring: formData.structuring,
+            structuring_activities: formData.structuring_activities,
+            tiempo_estructuracion: formData.tiempo_estructuracion,
+            practice: formData.practice,
+            practice_activities: formData.practice_activities,
+            tiempo_practica: formData.tiempo_practica,
+            transfer: formData.transfer,
+            transfer_activities: formData.transfer_activities,
+            tiempo_transferencia: formData.tiempo_transferencia,
+            assessment_moment: formData.assessment_moment,
+            assessment_activities: formData.assessment_activities,
+            tiempo_valoracion: formData.tiempo_valoracion,
+            eval_type: formData.eval_type,
+            eval_modalidades: formData.eval_modalidades,
+            eval_instrumentos: formData.eval_instrumentos,
+            eval_criterios: formData.eval_criterios,
+            eval_evidencias: formData.eval_evidencias,
+            eval_criteria: formData.eval_criteria,
+            eval_evidence: formData.eval_evidence,
+            eval_ponderacion_conceptos: formData.eval_ponderacion_conceptos,
+            eval_ponderacion_procedimientos: formData.eval_ponderacion_procedimientos,
+            eval_ponderacion_actitudes: formData.eval_ponderacion_actitudes,
+            eval_descripcion_auto: formData.eval_descripcion_auto,
+            resources: formData.resources,
+            planeacion_tipo: formData.planeacion_tipo,
+            periodo_academico: formData.periodo_academico,
+            fecha_inicio: formData.fecha_inicio,
+            fecha_fin: formData.fecha_fin,
+            firma_docente: formData.firma_docente,
+            fecha_firma: formData.fecha_firma,
+        };
+
+        interface ValidationResult {
+            errors: string[];
+            firstStep: number;
+        }
+
+        const validatePlaneacion = (data: PlaneadorData): ValidationResult => {
+            const errors: string[] = [];
+            let firstStep = 0;
+
+            // Step 0: Datos básicos
+            if (!data.docente?.trim()) {
+                errors.push("Seleccione un docente");
+                if (firstStep === 0) firstStep = 0;
+            }
+            if (!data.grade?.trim()) {
+                errors.push("Seleccione un grado");
+                if (firstStep === 0) firstStep = 0;
+            }
+            if (!data.subject?.trim()) {
+                errors.push("Seleccione una materia");
+                if (firstStep === 0) firstStep = 0;
+            }
+            if (!data.period?.trim()) {
+                errors.push("Seleccione un período académico");
+                if (firstStep === 0) firstStep = 0;
+            }
+
+            // Step 1: Temporalidad (Fechas reales)
+            if (!data.fecha_inicio?.trim()) {
+                errors.push("Ingrese fecha de inicio");
+                if (firstStep === 0) firstStep = 1;
+            }
+            if (!data.fecha_fin?.trim()) {
+                errors.push("Ingrese fecha de fin");
+                if (firstStep === 0) firstStep = 1;
+            }
+
+            // Step 2: Normativa (DBA/EBC) - HACER OPCIONAL
+            // Por ahora commenting esta validación para que sea opcional
+            /*
+            const tieneNormativaCargada = dbas.length > 0 || ebcs.length > 0;
+            if (materiaSinNormativa || !tieneNormativaCargada) {
+                // Verificar que haya algo en dba_manual
+                const dbaManualTrim = data.dba_manual?.trim() || "";
+                if (!dbaManualTrim || dbaManualTrim === "No Disponible") {
+                    errors.push("Escriba los estándares/temas en 'Entrada Manual de Estándares'");
+                    if (firstStep <= 1) firstStep = 2;
+                }
+            } else {
+                // Validación normal cuando hay normativa cargada
+                if (!data.dba?.length) {
+                    errors.push("Seleccione al menos un DBA");
+                    if (firstStep <= 1) firstStep = 2;
+                }
+                if (!data.standard?.length) {
+                    errors.push("Seleccione al menos un EBC");
+                    if (firstStep <= 1) firstStep = 2;
+                }
+
+                // Verificar que los IDs seleccionados sean válidos
+                if (data.dba?.length) {
+                    const dbaIds = new Set(dbas.map((d) => d.id));
+                    if (data.dba.some((id) => !dbaIds.has(id))) {
+                        errors.push("Un DBA seleccionado no corresponde al grado/área actual");
+                        if (firstStep <= 1) firstStep = 2;
+                    }
+                }
+                if (data.standard?.length) {
+                    const ebcIds = new Set(ebcs.map((e) => e.id));
+                    if (data.standard.some((id) => !ebcIds.has(id))) {
+                        errors.push("Un EBC seleccionado no corresponde al área actual");
+                        if (firstStep <= 1) firstStep = 2;
+                    }
+                }
+            }
+            */
+
+            // Step 3: Secuencia didáctica (4 momentos)
+            if (!data.exploration?.trim()) {
+                errors.push("Complete la fase de Exploración");
+                if (firstStep <= 2) firstStep = 3;
+            }
+            if (!data.structuring?.trim()) {
+                errors.push("Complete la fase de Estructuración");
+                if (firstStep <= 2) firstStep = 3;
+            }
+            if (!data.practice?.trim()) {
+                errors.push("Complete la fase de Práctica");
+                if (firstStep <= 2) firstStep = 3;
+            }
+            if (!data.transfer?.trim()) {
+                errors.push("Complete la fase de Transferencia");
+                if (firstStep <= 2) firstStep = 3;
+            }
+
+            // Step 4: Evaluación
+            if (!data.eval_type?.trim()) {
+                errors.push("Seleccione un tipo de evaluación");
+                if (firstStep <= 3) firstStep = 4;
+            }
+            if (!data.eval_criteria?.trim()) {
+                errors.push("Ingrese los criterios de evaluación");
+                if (firstStep <= 3) firstStep = 4;
+            }
+
+            // Step 5: Recursos
+            if (!data.resources?.trim()) {
+                errors.push("Describa los recursos didácticos");
+                if (firstStep <= 4) firstStep = 5;
+            }
+
+            // Step 5: Temporalidad - Período Académico
+            if (!data.periodo_academico?.trim()) {
+                errors.push("Seleccione el Período Académico");
+                if (firstStep <= 0) firstStep = 1;
+            }
+
+            // Step 5: Recursos
+            if (!data.resources?.trim()) {
+                errors.push("Describa los recursos didácticos");
+                if (firstStep <= 4) firstStep = 5;
+            }
+
+            return { errors, firstStep };
+        };
+
+        // Primero validamos
+        const validation = validatePlaneacion(planeacionData);
+        
+        if (validation.errors.length > 0) {
+            // Ir al primer step con error y mostrar mensaje
+            currentStep = validation.firstStep;
+            
+            // Scroll al step correspondiente
+            setTimeout(() => {
+                const stepElement = document.getElementById(`step-${validation.firstStep}`);
+                if (stepElement) {
+                    stepElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                
+                // Scroll adicional a sección específica si falta periodo académico
+                if (validation.errors.some(e => e.includes('Período Académico'))) {
+                    const periodoSection = document.getElementById('periodo-academico-section');
+                    if (periodoSection) {
+                        periodoSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        // Agregar borde deerror temporalmente
+                        periodoSection.classList.add('border-red-500', 'ring-2', 'ring-red-300');
+                        setTimeout(() => {
+                            periodoSection.classList.remove('border-red-500', 'ring-2', 'ring-red-300');
+                        }, 3000);
+                    }
+                }
+            }, 100);
+            
+            const result = await Swal.fire({
+                icon: 'warning',
+                title: 'Campos incompletos',
+                html: validation.errors.map(e => `• ${e}`).join('<br>'),
+                showCancelButton: true,
+                confirmButtonText: 'Completar campos',
+                cancelButtonText: 'Guardar de todos modos',
+                confirmButtonColor: '#f59e0b',
+                cancelButtonColor: '#64748b'
+            });
+
+            if (result.isDismissed) {
+                // Solo continuar si es "Guardar de todos modos" (dismiss='cancel')
+                // Si es ESC, X o backdrop, volver al formulario
+                if (result.dismiss !== Swal.DismissReason.cancel) {
+                    return;
+                }
+                // Usuario eligió "Guardar de todos modos" - continuar
+            }
+        }
+
+        // Ahora sí intentamos guardar (solo errores de red/backend aquí)
+        try {
+            const result = await savePlaneador(planeacionData);
+            
+            if (result.success) {
+                guardadoOnline = true;
+            }
+        } catch (error) {
+            console.warn("Backend no disponible, guardando localmente:", error);
+            savePlaneadorLocal(planeacionData);
+            await Swal.fire({
+                icon: 'info',
+                title: 'Guardado sin conexión',
+                text: 'La planeación se guardó localmente. Se sincronizará cuando haya conexión a internet.',
+                confirmButtonColor: '#3b82f6',
+                timer: 3000,
+                timerProgressBar: true
+            });
+        }
+
+        if (guardadoOnline) {
+            // Reset form
+            formData = {
+                docente: localStorage.getItem("lastDocente") || "",
+                grado: "",
+                subject: "",
+                period: "",
+                dba: [],
+                standard: [],
+                dba_manual: "",
+                competency: "",
+                has_piar: false,
+                piar_description: "",
+                learning_objectives: "",
+                competencias: "",
+                exploration: "",
+                exploration_activities: [],
+                structuring: "",
+                structuring_activities: [],
+                practice: "",
+                practice_activities: [],
+                transfer: "",
+                transfer_activities: [],
+                assessment_moment: "",
+                assessment_activities: [],
+                indicadores_logro: "",
+                tiempo_exploracion: 10,
+                tiempo_estructuracion: 20,
+                tiempo_practica: 25,
+                tiempo_transferencia: 15,
+                tiempo_valoracion: 10,
+                eval_type: "Formativa",
+                eval_modalidades: [],
+                eval_instrumentos: [],
+                eval_criterios: [],
+                eval_evidencias: [],
+                eval_criteria: "",
+                eval_evidence: "",
+                eval_ponderacion_conceptos: 30,
+                eval_ponderacion_procedimientos: 40,
+                eval_ponderacion_actitudes: 30,
+                eval_descripcion_auto: "",
+                resources: "",
+                planeacion_tipo: "",
+                periodo_academico: "",
+                fecha_inicio: getCurrentDate(),
+                fecha_fin: getCurrentDate(),
+                firma_docente: "",
+                fecha_firma: "",
+            };
+            currentStep = 0;
+        }
+    }
 </script>
 
-<!-- ══════════════════════════════════════════════════════════ -->
-<!-- MARKUP -->
-<!-- ══════════════════════════════════════════════════════════ -->
+<div
+    class="min-h-screen p-3 md:p-8 font-sans transition-colors duration-300"
+    style="background-color: {ts.bg}; color: {ts.text}"
+>
+    <!-- Contenedor Principal Premium -->
+    <div
+        id="planner-form-top"
+        class="max-w-4xl mx-auto rounded-2xl shadow-2xl overflow-hidden transition-colors duration-300"
+        style="background-color: {ts.card}; border: 1px solid {ts.cardBorder}"
+    >
+        <!-- Línea decorativa -->
+        <div class="h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
 
-<div class="planner-root">
-  <!-- ── Ambient background ──────────────────────────────── -->
-  <div class="ambient-bg" aria-hidden="true">
-    <div class="orb orb-1"></div>
-    <div class="orb orb-2"></div>
-    <div class="orb orb-3"></div>
-    <div class="grid-overlay"></div>
-  </div>
-
-  <!-- ── App shell ────────────────────────────────────────── -->
-  <div class="app-shell">
-
-    <!-- ── Top bar ──────────────────────────────────────────── -->
-    <header class="topbar glass-strong">
-      <div class="topbar-left">
-        <button class="icon-btn subtle" onclick={onBack} title="Volver">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="15 18 9 12 15 6"/>
-          </svg>
-        </button>
-        <div class="brand-mark">
-          <div class="brand-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-            </svg>
-          </div>
-          <div class="brand-text">
-            <span class="brand-name">Planeador</span>
-            <span class="brand-sub">I.E. Instituto Guática</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Progress pill (mobile) -->
-      {#if isMobile}
-        <div class="progress-pill">
-          <div class="progress-pill-fill" style="width: {completionPct}%"></div>
-          <span class="progress-pill-text">{completionPct}%</span>
-        </div>
-      {/if}
-
-      <nav class="topbar-actions">
-        {#if savedAnimation}
-          <div class="saved-toast" transition:fly={{ y: -6, duration: 300 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-            Guardado
-          </div>
-        {/if}
-        <button class="icon-btn subtle" title="Vista previa PDF">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <line x1="16" y1="13" x2="8" y2="13"/>
-            <line x1="16" y1="17" x2="8" y2="17"/>
-          </svg>
-        </button>
-        <button class="btn-save-top {isSaving ? 'saving' : ''}" onclick={handleSave}>
-          {#if isSaving}
-            <svg class="spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
-            Guardando…
-          {:else}
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            Guardar
-          {/if}
-        </button>
-        {#if isMobile}
-          <button class="icon-btn accent" onclick={() => sidebarOpen = !sidebarOpen} title="Resumen">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-            </svg>
-          </button>
-        {/if}
-      </nav>
-    </header>
-
-    <!-- ── Step rail ────────────────────────────────────────── -->
-    <div class="step-rail glass">
-      {#each STEPS as step, i}
-        <button
-          class="step-item {currentStep === i ? 'active' : ''} {completedSteps.has(i) ? 'done' : ''}"
-          onclick={() => currentStep = i}
-          title={step.label}
+        <!-- Header -->
+        <header
+            class="bg-gradient-to-r from-indigo-700 via-indigo-600 to-violet-600 text-white px-4 sm:px-6 py-4 sm:py-5 flex justify-between items-center"
         >
-          <div class="step-bullet" style="--step-color: {step.color}">
-            {#if completedSteps.has(i)}
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-            {:else}
-              <span>{i + 1}</span>
-            {/if}
-          </div>
-          <span class="step-label">{step.label}</span>
-          {#if i < STEPS.length - 1}
-            <div class="step-connector {completedSteps.has(i) ? 'done' : ''}"></div>
-          {/if}
-        </button>
-      {/each}
-    </div>
-
-    <!-- ── Main content ─────────────────────────────────────── -->
-    <div class="content-area">
-      <div class="content-grid">
-
-        <!-- ── FORM PANEL ──────────────────────────────────── -->
-        <main class="form-panel">
-
-          <!-- ══ STEP 0: DATOS BÁSICOS ══ -->
-          {#if currentStep === 0}
-            <div class="form-card" in:fly={{ y: 16, duration: 350, easing: cubicOut }}>
-              <div class="card-header">
-                <div class="card-header-icon" style="background: #6366f120; color: #818cf8">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                </div>
-                <div>
-                  <h2 class="card-title">Información de la clase</h2>
-                  <p class="card-desc">Datos de identificación y contexto institucional</p>
-                </div>
-              </div>
-              <div class="card-body">
-                <div class="field-grid-2">
-                  <div class="field">
-                    <label class="field-label">Docente <span class="req">*</span></label>
-                    <input class="field-input" bind:value={formData.docente} placeholder="Nombre completo del docente" />
-                  </div>
-                  <div class="field">
-                    <label class="field-label">Jornada</label>
-                    <select class="field-input" bind:value={formData.jornada}>
-                      {#each ["Mañana","Tarde","Nocturna","Única","Sabatina"] as j}
-                        <option>{j}</option>
-                      {/each}
-                    </select>
-                  </div>
-                </div>
-                <div class="field-grid-2">
-                  <div class="field">
-                    <label class="field-label">Grado <span class="req">*</span></label>
-                    <select class="field-input" bind:value={formData.grado}>
-                      <option value="">Seleccione grado</option>
-                      {#each GRADOS as g}<option>{g}</option>{/each}
-                    </select>
-                  </div>
-                  <div class="field">
-                    <label class="field-label">Asignatura <span class="req">*</span></label>
-                    <select class="field-input" bind:value={formData.subject}>
-                      <option value="">Seleccione asignatura</option>
-                      {#each MATERIAS as m}<option>{m}</option>{/each}
-                    </select>
-                  </div>
-                </div>
-                <div class="field-grid-2">
-                  <div class="field">
-                    <label class="field-label">Área (Ley 115)</label>
-                    <select class="field-input">
-                      <option>Matemáticas</option>
-                      <option>Humanidades</option>
-                      <option>Ciencias Naturales</option>
-                      <option>Ciencias Sociales</option>
-                      <option>Educación Artística</option>
-                    </select>
-                  </div>
-                  <div class="field">
-                    <label class="field-label">Período académico</label>
-                    <select class="field-input" bind:value={formData.period}>
-                      <option value="">Seleccione</option>
-                      {#each PERIODOS as p}<option>{p}</option>{/each}
-                    </select>
-                  </div>
-                </div>
-              </div>
+            <div>
+                <h1 class="text-base sm:text-xl font-bold tracking-tight flex items-center gap-2.5">
+                    <span class="p-1.5 bg-white/15 rounded-lg text-lg">📚</span>
+                    Planeador de Clases MEN
+                </h1>
+                <p class="text-indigo-200 text-xs mt-1 font-medium tracking-wide">
+                    Estándares Básicos de Competencias · DBA · Colombia
+                </p>
             </div>
-
-          <!-- ══ STEP 1: TEMPORALIDAD ══ -->
-          {:else if currentStep === 1}
-            <div class="form-card" in:fly={{ y: 16, duration: 350, easing: cubicOut }}>
-              <div class="card-header">
-                <div class="card-header-icon" style="background: #0ea5e920; color: #38bdf8">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                </div>
-                <div>
-                  <h2 class="card-title">Temporalidad</h2>
-                  <p class="card-desc">Duración, tipo y período de la planeación</p>
-                </div>
-              </div>
-              <div class="card-body">
-                <div class="field">
-                  <label class="field-label">Tipo de planeación <span class="req">*</span></label>
-                  <div class="chip-grid-4">
-                    {#each TIPOS_PLAN as t}
-                      <button
-                        class="type-chip {formData.planeacion_tipo === t ? 'selected' : ''}"
-                        onclick={() => formData.planeacion_tipo = t}
-                      >{t}</button>
-                    {/each}
-                  </div>
-                </div>
-                <div class="field-grid-2">
-                  <div class="field">
-                    <label class="field-label">Fecha inicio</label>
-                    <input class="field-input" type="date" bind:value={formData.fecha_inicio} />
-                  </div>
-                  <div class="field">
-                    <label class="field-label">Fecha fin</label>
-                    <input class="field-input" type="date" bind:value={formData.fecha_fin} />
-                  </div>
-                </div>
-                <div class="field">
-                  <label class="field-label">Período académico <span class="req">*</span></label>
-                  <div class="periodo-row">
-                    {#each PERIODOS as p}
-                      <button
-                        class="periodo-pill {formData.periodo_academico === p ? 'selected' : ''}"
-                        onclick={() => formData.periodo_academico = p}
-                      >{p}</button>
-                    {/each}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          <!-- ══ STEP 2: REFERENTES ══ -->
-          {:else if currentStep === 2}
-            <div class="form-card" in:fly={{ y: 16, duration: 350, easing: cubicOut }}>
-              <div class="card-header">
-                <div class="card-header-icon" style="background: #8b5cf620; color: #a78bfa">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                </div>
-                <div>
-                  <h2 class="card-title">Referentes de calidad</h2>
-                  <p class="card-desc">DBA, estándares y ajustes inclusivos</p>
-                </div>
-              </div>
-
-              <!-- Tabs -->
-              <div class="card-tabs">
-                {#each [["dba","DBA"],["ebc","Estándares EBC"],["piar","PIAR"]] as [id, label]}
-                  <button
-                    class="card-tab {activeTab === id ? 'active' : ''}"
-                    onclick={() => activeTab = id as "dba"|"ebc"|"piar"}
-                  >{label}</button>
-                {/each}
-              </div>
-
-              <div class="card-body">
-                {#if activeTab === "dba"}
-                  <div class="search-box">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input type="text" placeholder="Buscar en los DBA..." class="search-input" />
-                  </div>
-                  <div class="dba-list">
-                    {#each DBA_MOCK as dba}
-                      <label class="dba-row {formData.dba.includes(dba.id) ? 'checked' : ''}">
-                        <input
-                          type="checkbox"
-                          class="dba-checkbox"
-                          checked={formData.dba.includes(dba.id)}
-                          onchange={() => formData.dba = toggleChip(formData.dba, dba.id)}
-                        />
-                        <div class="dba-content">
-                          <span class="dba-code">{dba.code}</span>
-                          <p class="dba-text">{dba.text}</p>
-                        </div>
-                      </label>
-                    {/each}
-                  </div>
-
-                {:else if activeTab === "ebc"}
-                  <div class="dba-list">
-                    {#each EBC_MOCK as ebc}
-                      <label class="dba-row ebc {formData.standard.includes(ebc.id) ? 'checked' : ''}">
-                        <input
-                          type="checkbox"
-                          class="dba-checkbox"
-                          checked={formData.standard.includes(ebc.id)}
-                          onchange={() => formData.standard = toggleChip(formData.standard, ebc.id)}
-                        />
-                        <div class="dba-content">
-                          <span class="dba-code ebc">{ebc.code}</span>
-                          <p class="dba-text">{ebc.text}</p>
-                        </div>
-                      </label>
-                    {/each}
-                  </div>
-                  <div class="field" style="margin-top:1rem">
-                    <label class="field-label">Estándar manual (si no aparece en la lista)</label>
-                    <textarea class="field-input" rows="3" bind:value={formData.dba_manual} placeholder="Escriba el estándar o DBA correspondiente..."></textarea>
-                  </div>
-
-                {:else}
-                  <div class="piar-toggle-row">
-                    <div>
-                      <p class="piar-toggle-title">Ajustes razonables (PIAR)</p>
-                      <p class="piar-toggle-desc">Decreto 1421 de 2017 — esta planeación requiere adaptaciones curriculares</p>
-                    </div>
-                    <button
-                      class="toggle-btn {formData.has_piar ? 'on' : ''}"
-                      onclick={() => formData.has_piar = !formData.has_piar}
-                      role="switch"
-                      aria-checked={formData.has_piar}
-                    >
-                      <span class="toggle-thumb"></span>
-                    </button>
-                  </div>
-                  {#if formData.has_piar}
-                    <div transition:fly={{ y: 8, duration: 250 }}>
-                      <div class="field">
-                        <label class="field-label">Tipo de condición</label>
-                        <div class="chip-flow">
-                          {#each ["Visual","Auditiva","Cognitiva","Motriz","Múltiple","Talento excepcional"] as t}
-                            <button
-                              class="flow-chip {formData.piar_tipo === t ? 'selected' : ''}"
-                              onclick={() => formData.piar_tipo = t}
-                            >{t}</button>
-                          {/each}
-                        </div>
-                      </div>
-                      <div class="field">
-                        <label class="field-label">Descripción del ajuste</label>
-                        <textarea class="field-input" rows="4" bind:value={formData.piar_description} placeholder="Describa los ajustes específicos para cada momento de la clase..."></textarea>
-                      </div>
-                    </div>
-                  {/if}
-                {/if}
-              </div>
-            </div>
-
-          <!-- ══ STEP 3: SECUENCIA ══ -->
-          {:else if currentStep === 3}
-            <div class="form-card" in:fly={{ y: 16, duration: 350, easing: cubicOut }}>
-              <div class="card-header">
-                <div class="card-header-icon" style="background: #f59e0b20; color: #fbbf24">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-                </div>
-                <div class="card-header-main">
-                  <h2 class="card-title">Secuencia didáctica</h2>
-                  <p class="card-desc">5 momentos pedagógicos MEN</p>
-                </div>
-                <button class="ai-trigger-btn" title="Generar con IA">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                  IA
+            <div class="flex items-center gap-1.5">
+                <!-- Botón Firma -->
+                <button
+                    onclick={() => showFirmaModal = true}
+                    class="p-2 rounded-xl transition-all duration-200 flex items-center gap-2 text-sm font-medium
+                        {formData.firma_docente
+                            ? 'bg-emerald-500/90 hover:bg-emerald-400 shadow-sm'
+                            : 'bg-amber-500/90 hover:bg-amber-400 shadow-sm'}"
+                    aria-label="Firmar planeación"
+                    title={formData.firma_docente ? 'Firma guardada · Click para modificar' : 'Firmar planeación'}
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                    </svg>
+                    <span class="hidden sm:inline text-xs">{formData.firma_docente ? 'Firmado' : 'Firmar'}</span>
                 </button>
-              </div>
+                <!-- Botón PDF -->
+                <button
+                    onclick={() => generatePDF()}
+                    disabled={isGeneratingPdf}
+                    class="p-2 rounded-xl bg-sky-500/90 hover:bg-sky-400 transition-all duration-200 flex items-center gap-2 text-sm font-medium shadow-sm disabled:opacity-60"
+                    aria-label="Generar PDF"
+                    title="Generar PDF"
+                >
+                    {#if isGeneratingPdf}
+                        <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    {:else}
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    {/if}
+                    <span class="hidden sm:inline text-xs">PDF</span>
+                </button>
+                <!-- Botón Volver -->
+                <button
+                    onclick={onBack}
+                    class="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200"
+                    aria-label="Volver al Dashboard"
+                    title="Volver al Dashboard"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </header>
 
-              <!-- Objetivos row -->
-              <div class="card-body" style="padding-bottom: 0">
-                <div class="field-grid-2">
-                  <div class="field">
-                    <label class="field-label">Objetivos de aprendizaje</label>
-                    <textarea class="field-input" rows="2" bind:value={formData.learning_objectives} placeholder="El estudiante será capaz de..."></textarea>
-                  </div>
-                  <div class="field">
-                    <label class="field-label">Indicadores de logro</label>
-                    <textarea class="field-input" rows="2" bind:value={formData.indicadores_logro} placeholder="El estudiante demuestra..."></textarea>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Time bar -->
-              <div class="time-strip">
-                <div class="time-bar-visual">
-                  {#each [
-                    { t: formData.tiempo_exploracion, c: "#818cf8", label: "Exploración" },
-                    { t: formData.tiempo_estructuracion, c: "#34d399", label: "Estructuración" },
-                    { t: formData.tiempo_practica, c: "#fbbf24", label: "Práctica" },
-                    { t: formData.tiempo_transferencia, c: "#f87171", label: "Transf." },
-                    { t: formData.tiempo_valoracion, c: "#a78bfa", label: "Valoración" },
-                  ] as seg}
+        <!-- Stepper Indicator -->
+        <div class="flex items-center px-3 md:px-6 py-3 border-b overflow-x-auto gap-1 transition-colors duration-300" style="background-color: {ts.bg2}; border-color: {ts.border}">
+            {#each stepLabels as label, index}
+                <button
+                    type="button"
+                    onclick={() => currentStep = index}
+                    class="flex flex-col items-center flex-shrink-0 focus:outline-none group px-1"
+                >
                     <div
-                      class="time-seg-bar"
-                      style="flex: {seg.t}; background: {seg.c}"
-                      title="{seg.label}: {seg.t} min"
-                    ></div>
-                  {/each}
-                </div>
-                <div class="time-legend">
-                  {#each [
-                    { t: formData.tiempo_exploracion, c: "#818cf8", label: "Exploración" },
-                    { t: formData.tiempo_estructuracion, c: "#34d399", label: "Estructuración" },
-                    { t: formData.tiempo_practica, c: "#fbbf24", label: "Práctica" },
-                    { t: formData.tiempo_transferencia, c: "#f87171", label: "Transferencia" },
-                    { t: formData.tiempo_valoracion, c: "#a78bfa", label: "Valoración" },
-                  ] as seg}
-                    <span class="time-legend-item" style="color: {seg.c}">{seg.label} {seg.t}m</span>
-                  {/each}
-                  <span class="time-total-badge">Total: {tiempoTotal} min</span>
-                </div>
-                <div class="time-presets">
-                  {#each [[45,"45m"],[80,"80m"],[120,"120m"]] as [mins, label]}
-                    <button class="preset-btn" onclick={() => setPreset(mins as number)}>{label}</button>
-                  {/each}
-                </div>
-              </div>
-
-              <!-- Momentos accordion -->
-              <div class="momentos-list">
-                {#each MOMENTOS as m, i}
-                  {@const acts = getMomentoActivities(m.field)}
-                  {@const text = getMomentoText(m.field)}
-                  {@const isOpen = openMoments.has(i)}
-                  {@const isFilled = text.trim().length > 0}
-                  <div class="momento-card {isOpen ? 'open' : ''}">
-                    <button class="momento-header" onclick={() => toggleMoment(i)}>
-                      <div class="momento-bullet" style="background: {MOMENTO_COLORS[i]}20; color: {MOMENTO_COLORS[i]}; border: 1px solid {MOMENTO_COLORS[i]}40">
-                        {m.num}
-                      </div>
-                      <div class="momento-meta">
-                        <span class="momento-name">{m.name}</span>
-                        <span class="momento-desc">{m.desc}</span>
-                      </div>
-                      <div class="momento-right">
-                        <span class="momento-time-pill" style="background: {MOMENTO_COLORS[i]}15; color: {MOMENTO_COLORS[i]}">
-                          {(formData as Record<string, unknown>)[m.time] as number} min
-                        </span>
-                        {#if isFilled}
-                          <div class="filled-dot" style="background: {MOMENTO_COLORS[i]}"></div>
+                        class="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all duration-200 cursor-pointer
+                            {currentStep === index ? 'bg-indigo-600 text-white ring-2 ring-indigo-200 ring-offset-1' : ''}
+                            {currentStep > index ? 'bg-emerald-500 text-white' : ''}
+                            {currentStep < index ? (isDark ? 'bg-slate-700 text-slate-400 group-hover:bg-indigo-900/50 group-hover:text-indigo-400' : 'bg-slate-200 text-slate-500 group-hover:bg-indigo-100 group-hover:text-indigo-600') : ''}"
+                    >
+                        {#if currentStep > index}
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                            </svg>
                         {:else}
-                          <div class="empty-dot"></div>
+                            {index + 1}
                         {/if}
-                        <svg class="chevron {isOpen ? 'open' : ''}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                      </div>
-                    </button>
-                    {#if isOpen}
-                      <div class="momento-body" transition:fly={{ y: -6, duration: 200, easing: cubicOut }}>
-                        <div class="time-mini-row">
-                          <label class="mini-label">Tiempo (min)</label>
-                          <input
-                            type="number"
-                            class="time-mini-input"
-                            min="1" max="90"
-                            bind:value={(formData as Record<string, unknown>)[m.time]}
-                          />
+                    </div>
+                    <span class="hidden sm:block text-[9px] md:text-[10px] mt-1 font-medium whitespace-nowrap transition-colors
+                        {currentStep === index ? (isDark ? 'text-indigo-400' : 'text-indigo-700') : ''}" style="{currentStep !== index ? `color: ${ts.muted}` : ''}">
+                        {label}
+                    </span>
+                </button>
+                {#if index < 5}
+                    <div class="flex-1 h-0.5 rounded-full min-w-[12px] mx-0.5" style="background-color: {ts.border}">
+                        <div
+                            class="h-full bg-indigo-400 rounded-full transition-all duration-500"
+                            style="width: {currentStep > index ? '100%' : '0%'}"
+                        ></div>
+                    </div>
+                {/if}
+            {/each}
+        </div>
+
+        <!-- Mobile step label -->
+        <div class="sm:hidden px-4 py-2 text-center border-b" style="background-color: {ts.bg2}; border-color: {ts.border}">
+            <span class="text-xs font-semibold" style="color: {ts.text2}">Paso {currentStep + 1} de 6 · {stepLabels[currentStep]}</span>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="px-4 md:px-6 py-2.5 border-b" style="background-color: {ts.bg2}; border-color: {ts.border}">
+            <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[11px] font-medium tracking-wide uppercase" style="color: {ts.muted}">Progreso general</span>
+                <span class="text-xs font-bold {formProgress === 100 ? 'text-emerald-500' : ''}" style="{formProgress < 100 ? `color: ${ts.accent}` : ''}">
+                    {formProgress}%
+                </span>
+            </div>
+            <div class="w-full h-2 rounded-full overflow-hidden" style="background-color: {ts.border}">
+                <div
+                    class="h-full rounded-full transition-all duration-700 ease-out {formProgress === 100 ? 'bg-gradient-to-r from-emerald-500 to-green-400' : 'bg-gradient-to-r from-indigo-600 to-violet-500'}"
+                    style="width: {formProgress}%"
+                ></div>
+            </div>
+        </div>
+
+        <!-- Form Body -->
+        <form
+            class="p-6 md:p-10 space-y-6"
+            onsubmit={(e) => {
+                e.preventDefault();
+                handleSubmit();
+            }}
+        >
+            <!-- PASO 1: DATOS BÁSICOS -->
+            {#if currentStep === 0}
+                <div id="step-0" class="space-y-5 animate-fade-in">
+                    <div>
+                        <h2
+                            class="text-lg md:text-xl font-semibold tracking-tight border-l-4 border-indigo-500 pl-3"
+                            style="color: {isDark ? 'rgb(165 180 252)' : 'rgb(55 48 163)'}"
+                        >
+                            📋 Información de la Clase
+                        </h2>
+                        <p class="text-sm mt-1 pl-4" style="color: {ts.muted}">Docente, grado y asignatura</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label
+                                for="docente"
+                                class="block text-sm font-medium mb-1.5"
+                                style="color: {ts.text2}"
+                                >Docente</label
+                            >
+                            <select
+                                id="docente"
+                                bind:value={formData.docente}
+                                disabled={isLoadingDocentes}
+                                class="w-full rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 p-2.5 disabled:opacity-50 transition-shadow duration-200"
+                                style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                            >
+                                <option value=""
+                                    >{isLoadingDocentes
+                                        ? "Cargando..."
+                                        : "Seleccione docente"}</option
+                                >
+                                {#each docentes as docente}
+                                    <option value={docente}>{docente}</option>
+                                {/each}
+                            </select>
                         </div>
-                        <div class="actvs-label">Actividades sugeridas:</div>
-                        <div class="actvs-row">
-                          {#each ACTIVIDADES[m.field] || [] as act}
+                        <div>
+                            <label
+                                for="grado"
+                                class="block text-sm font-medium mb-1.5"
+                                style="color: {ts.text2}"
+                                >Grado</label
+                            >
+                            <select
+                                id="grado"
+                                bind:value={formData.grado}
+                                disabled={isLoadingEstudiantes}
+                                class="w-full rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 p-2.5 disabled:opacity-50 transition-shadow duration-200"
+                                style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                            >
+                                <option value=""
+                                    >{isLoadingEstudiantes
+                                        ? "Cargando..."
+                                        : "Seleccione grado"}</option
+                                >
+                                {#each filteredGrados as g}
+                                    <option value={g.value}>{g.label}</option>
+                                {/each}
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label
+                                for="materia"
+                                class="block text-sm font-medium mb-1.5"
+                                style="color: {ts.text2}"
+                                >Asignatura / Área</label
+                            >
+                            {#if docenteHasDash}
+                                <div
+                                    class="rounded-lg p-2.5 flex flex-col lg:flex-row lg:flex-wrap gap-2"
+                                    style="border: 1px solid {ts.border}"
+                                >
+                                    {#each materiasSorted as materia}
+                                        {@const isSaved = docenteMaterias[
+                                            formData.docente
+                                        ]?.includes(materia.materia)}
+                                        {@const selectedIndex =
+                                            selectedMaterias.findIndex(
+                                                (m) =>
+                                                    m.materia ===
+                                                    materia.materia,
+                                            )}
+                                        {@const isSelected = selectedIndex >= 0}
+                                        <label
+                                            class="flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all duration-200 {isSelected
+                                                ? (isDark ? 'border-indigo-400 bg-indigo-500/15' : 'border-indigo-500 bg-indigo-50')
+                                                : 'border-transparent hover:bg-indigo-500/5'}"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onchange={(e) => {
+                                                    if (
+                                                        e.currentTarget.checked
+                                                    ) {
+                                                        selectedMaterias = [
+                                                            ...selectedMaterias,
+                                                            {
+                                                                materia:
+                                                                    materia.materia,
+                                                                horas: "",
+                                                            },
+                                                        ];
+                                                    } else {
+                                                        selectedMaterias =
+                                                            selectedMaterias.filter(
+                                                                (m) =>
+                                                                    m.materia !==
+                                                                    materia.materia,
+                                                            );
+                                                    }
+                                                }}
+                                                class="w-4 h-4 rounded text-indigo-600"
+                                            />
+                                            <span class="text-sm">
+                                                {isSaved
+                                                    ? "⭐ "
+                                                    : ""}{materia.materia}
+                                            </span>
+                                        </label>
+                                    {/each}
+                                </div>
+                            {:else}
+                                <select
+                                    id="materia"
+                                    bind:value={formData.subject}
+                                    disabled={isLoadingMaterias}
+                                    class="w-full rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 p-2.5 disabled:opacity-50 transition-shadow duration-200"
+                                    style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                >
+                                    <option value=""
+                                        >{isLoadingMaterias
+                                            ? "Cargando..."
+                                            : "Seleccione materia"}</option
+                                    >
+                                    {#each materiasSorted as materia}
+                                        {@const isSaved = docenteMaterias[
+                                            formData.docente
+                                        ]?.includes(materia.materia)}
+                                        <option value={materia.materia}>
+                                            {isSaved
+                                                ? "⭐ "
+                                                : ""}{materia.materia}
+                                        </option>
+                                    {/each}
+                                </select>
+                            {/if}
+                        </div>
+                    </div>
+                </div>
+            {/if}
+
+            <!-- PASO 3: REFERENTES DE CALIDAD (MEN) -->
+            {#if currentStep === 2}
+                <div id="step-2" class="space-y-6 animate-fade-in">
+                    <div>
+                        <h2
+                            class="text-lg md:text-xl font-semibold tracking-tight border-l-4 border-indigo-500 pl-3" style="color: {isDark ? 'rgb(165 180 252)' : 'rgb(55 48 163)'}"
+                        >
+                            📚 Referentes de Calidad (Normativa)
+                        </h2>
+                        <p class="text-sm mt-1 pl-4" style="color: {ts.muted}">DBA y Estándares Básicos de Competencias</p>
+                    </div>
+
+                    <!-- DBA Selection -->
+                    {#if !formData.subject || !formData.grado}
+                        <div class="p-6 rounded-xl border transition-colors duration-200 {isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200'}">
+                            <div class="flex items-center gap-3">
+                                <div class="p-3 bg-amber-100 rounded-full">
+                                    <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold {isDark ? 'text-amber-400' : 'text-amber-800'}">Selección requerida</h3>
+                                    <p class="text-sm {isDark ? 'text-amber-300' : 'text-amber-700'}">Seleccione un grado y una materia en el paso anterior para ver los DBA disponibles.</p>
+                                </div>
+                            </div>
+                        </div>
+                    {:else if isLoadingDBAs}
+                        <div class="p-6 rounded-xl border transition-colors duration-200" style="background-color: {ts.card}; border-color: {ts.cardBorder}">
+                            <div class="flex items-center gap-3 mb-4">
+                                <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                                </svg>
+                                <h3 class="font-semibold" style="color: {ts.text}">Derechos Básicos de Aprendizaje (DBA)</h3>
+                            </div>
+                            <div class="space-y-3">
+                                {#each Array(4) as _, i}
+                                    <div class="animate-pulse flex gap-3">
+                                        <div class="w-5 h-5 rounded" style="background-color: {ts.bg3}"></div>
+                                        <div class="flex-1 space-y-2">
+                                            <div class="h-4 rounded w-1/4" style="background-color: {ts.bg3}"></div>
+                                            <div class="h-3 rounded w-3/4" style="background-color: {ts.bg2}"></div>
+                                        </div>
+                                    </div>
+                                {/each}
+                            </div>
+                        </div>
+                    {:else if dbas.length === 0}
+                        <!-- Modo manual cuando no hay normativa -->
+                        <div class="p-6 rounded-xl border transition-colors duration-200 {isDark ? 'bg-blue-500/10 border-blue-500/30' : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'}">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="p-3 bg-blue-100 rounded-full">
+                                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold {isDark ? 'text-blue-400' : 'text-blue-800'}">Entrada Manual de Estándares</h3>
+                                    <p class="text-sm {isDark ? 'text-blue-300' : 'text-blue-700'}">Esta materia no tiene DBA/EBC en la base de datos. Escriba los estándares y temas que abordará.</p>
+                                </div>
+                            </div>
+                            <textarea
+                                bind:value={formData.dba_manual}
+                                placeholder="No Disponible - Escriba los estándares y temas que abordará..."
+                                class="w-full h-40 p-4 text-sm border-2 rounded-xl focus:ring-2 transition-all resize-none {isDark ? 'border-blue-500/30 focus:border-blue-400 focus:ring-blue-500/20' : 'border-blue-200 focus:border-blue-400 focus:ring-blue-100'}" style="background-color: {ts.bg2}; color: {ts.text}"
+                            ></textarea>
+                            <p class="text-xs text-blue-600 mt-2">
+                                💡 Escriba los aprendizajes esperados, competencias y contenidos que abordará en esta planeación.
+                            </p>
+                        </div>
+                    {:else}
+                        <!-- DBA Section -->
+                        <div class="rounded-xl border overflow-hidden transition-colors duration-200" style="background-color: {ts.card}; border-color: {ts.cardBorder}">
+                            <!-- Header -->
+                            <div class="p-4 border-b transition-colors duration-200 {isDark ? 'bg-indigo-500/10' : 'bg-gradient-to-r from-indigo-50 to-purple-50'}" style="border-color: {ts.border}">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="p-2 bg-indigo-100 rounded-lg">
+                                            <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-bold" style="color: {ts.text}">Derechos Básicos de Aprendizaje (DBA)</h3>
+                                            <p class="text-xs text-gray-500">Marco normativo: Resolución 0256 de 2016</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-medium px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full">
+                                            {dbas.length} disponibles
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Search Input -->
+                                <div class="relative">
+                                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                    <input 
+                                        type="text"
+                                        bind:value={dbaSearch}
+                                        placeholder="Buscar en descripción..."
+                                        class="w-full pl-10 pr-10 py-2.5 text-sm rounded-lg border focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 transition-all outline-none" style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                    />
+                                    {#if dbaSearch}
+                                        <button 
+                                            onclick={() => dbaSearch = ""} 
+                                            aria-label="Limpiar búsqueda"
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                    {/if}
+                                </div>
+                            </div>
+
+                            <!-- Filter Chips -->
+                            <div class="p-4 border-b transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <button
+                                        type="button"
+                                        onclick={() => dbaFilterComponente = null}
+                                        class="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200
+                                               {dbaFilterComponente === null 
+                                                   ? 'bg-indigo-600 text-white shadow-md' 
+                                                   : (isDark ? 'bg-white/5 text-gray-300 hover:bg-white/10 border border-white/10' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200')}"
+                                    >
+                                        Todos ({dbas.length})
+                                    </button>
+                                    {#each dbaComponentes as comp}
+                                        {@const count = dbaCountsByComponente[comp] || 0}
+                                        <button 
+                                            type="button"
+                                            onclick={() => dbaFilterComponente = comp}
+                                            class="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 capitalize
+                                                   {dbaFilterComponente === comp 
+                                                       ? 'bg-indigo-600 text-white shadow-md' 
+                                                       : (isDark ? 'bg-white/5 text-gray-300 hover:bg-white/10 border border-white/10' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200')}"
+                                        >
+                                            {LABELS_COMPONENTE[comp] || comp} ({count})
+                                        </button>
+                                    {/each}
+                                </div>
+                            </div>
+
+                            <!-- Results Count -->
+                            <div class="px-4 py-2 border-b transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                                <p class="text-xs" style="color: {ts.muted}">
+                                    Mostrando <span class="font-semibold text-indigo-600">{filteredDbas.length}</span> de <span class="font-semibold">{dbas.length}</span> resultados
+                                    {#if dbaFilterComponente}
+                                        <span class="text-gray-400"> · Filtrado por: {LABELS_COMPONENTE[dbaFilterComponente] || dbaFilterComponente}</span>
+                                    {/if}
+                                </p>
+                            </div>
+
+                            <!-- Items List -->
+                            <div class="max-h-96 overflow-y-auto divide-y" style="--tw-divide-opacity: 1; border-color: {ts.border}">
+                                {#each filteredDbas as dba, index}
+                                    {@const isSelected = formData.dba.includes(dba.id)}
+                                    {@const compColor = COLORES_COMPONENTE[dba.componente] || COLORES_COMPONENTE.general}
+                                    <span 
+                                        class="flex items-start gap-3 p-4 cursor-pointer transition-all duration-200 {isSelected ? (isDark ? 'bg-indigo-500/15' : 'bg-indigo-50') : ''}" style="background-color: {isSelected ? '' : ts.card}"
+                                    >
+                                        <div class="relative flex-shrink-0 mt-0.5">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={isSelected}
+                                                onchange={() => toggleDBA(dba.id)}
+                                                class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer transition-all"
+                                            />
+                                        </div>
+                                        
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2 mb-2 flex-wrap">
+                                                <span class="px-2 py-1 text-xs font-bold rounded-md bg-indigo-100 text-indigo-700">
+                                                    {dba.codigo}
+                                                </span>
+                                                <span class="px-2 py-1 text-xs font-medium rounded-md capitalize {compColor.bg} {compColor.text}">
+                                                    {LABELS_COMPONENTE[dba.componente] || dba.componente}
+                                                </span>
+                                            </div>
+                                            <p class="text-sm leading-relaxed line-clamp-3" style="color: {ts.text2}">
+                                                {dba.descripcion}
+                                            </p>
+                                        </div>
+                                    </span>
+                                {/each}
+                            </div>
+
+                            <!-- Empty Filter Results -->
+                            {#if filteredDbas.length === 0 && dbaSearch}
+                                <div class="p-8 text-center">
+                                    <div class="p-4 rounded-full inline-flex mb-4" style="background-color: {ts.bg3}">
+                                        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </div>
+                                    <p class="font-medium" style="color: {ts.text2}">No se encontraron resultados</p>
+                                    <p class="text-sm mt-1" style="color: {ts.muted}">Intente con otros términos de búsqueda</p>
+                                    <button 
+                                        type="button"
+                                        onclick={() => { dbaSearch = ""; dbaFilterComponente = null; }}
+                                        class="mt-4 px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+                                    >
+                                        Limpiar filtros
+                                    </button>
+                                </div>
+                            {/if}
+                        </div>
+                    {/if}
+
+                    <!-- Estándares EBC -->
+                    {#if !formData.subject || !formData.grado}
+                        <div class="p-6 rounded-xl border transition-colors duration-200 {isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200'}">
+                            <div class="flex items-center gap-3">
+                                <div class="p-3 bg-amber-100 rounded-full">
+                                    <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold {isDark ? 'text-amber-400' : 'text-amber-800'}">Selección requerida</h3>
+                                    <p class="text-sm {isDark ? 'text-amber-300' : 'text-amber-700'}">Seleccione un grado y una materia en el paso anterior para ver los EBC disponibles.</p>
+                                </div>
+                            </div>
+                        </div>
+                    {:else if isLoadingEBCs}
+                        <div class="p-6 rounded-xl border transition-colors duration-200" style="background-color: {ts.card}; border-color: {ts.cardBorder}">
+                            <div class="flex items-center gap-3 mb-4">
+                                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                                </svg>
+                                <h3 class="font-semibold" style="color: {ts.text}">Estándares Básicos de Competencia (EBC)</h3>
+                            </div>
+                            <div class="space-y-3">
+                                {#each Array(4) as _, i}
+                                    <div class="animate-pulse flex gap-3">
+                                        <div class="w-5 h-5 rounded" style="background-color: {ts.bg3}"></div>
+                                        <div class="flex-1 space-y-2">
+                                            <div class="h-4 rounded w-1/4" style="background-color: {ts.bg3}"></div>
+                                            <div class="h-3 rounded w-3/4" style="background-color: {ts.bg2}"></div>
+                                        </div>
+                                    </div>
+                                {/each}
+                            </div>
+                        </div>
+                    {:else if ebcs.length === 0}
+                        <!-- Modo manual cuando no hay normativa (usar el mismo textarea de DBA) -->
+                        <div class="p-6 rounded-xl border transition-colors duration-200 {isDark ? 'bg-blue-500/10 border-blue-500/30' : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'}">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="p-3 bg-blue-100 rounded-full">
+                                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold {isDark ? 'text-blue-400' : 'text-blue-800'}">Sin estándares en la base de datos</h3>
+                                    <p class="text-sm {isDark ? 'text-blue-300' : 'text-blue-700'}">Use el campo de arriba para escribir manualmente los estándares y temas.</p>
+                                </div>
+                            </div>
+                        </div>
+                    {:else}
+                        <!-- EBC Section -->
+                        <div class="rounded-xl border overflow-hidden transition-colors duration-200" style="background-color: {ts.card}; border-color: {ts.cardBorder}">
+                            <!-- Header -->
+                            <div class="p-4 border-b transition-colors duration-200 {isDark ? 'bg-purple-500/10' : 'bg-gradient-to-r from-purple-50 to-pink-50'}" style="border-color: {ts.border}">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="p-2 bg-purple-100 rounded-lg">
+                                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-bold" style="color: {ts.text}">Estándares Básicos de Competencia (EBC)</h3>
+                                            <p class="text-xs text-gray-500">Estándares curriculares MEN</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-medium px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
+                                            {ebcs.length} disponibles
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Search Input -->
+                                <div class="relative">
+                                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                    </svg>
+                                    <input 
+                                        type="text"
+                                        bind:value={ebcSearch}
+                                        placeholder="Buscar en descripción..."
+                                        class="w-full pl-10 pr-10 py-2.5 text-sm rounded-lg border focus:border-purple-500 focus:ring-2 focus:ring-purple-500/30 transition-all outline-none" style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                    />
+                                    {#if ebcSearch}
+                                        <button 
+                                            onclick={() => ebcSearch = ""} 
+                                            aria-label="Limpiar búsqueda"
+                                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                    {/if}
+                                </div>
+                            </div>
+
+                            <!-- Filter Chips -->
+                            <div class="p-4 border-b transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <button
+                                        type="button"
+                                        onclick={() => ebcFilterComponente = null}
+                                        class="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200
+                                               {ebcFilterComponente === null 
+                                                   ? 'bg-purple-600 text-white shadow-md' 
+                                                   : (isDark ? 'bg-white/5 text-gray-300 hover:bg-white/10 border border-white/10' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200')}"
+                                    >
+                                        Todos ({ebcs.length})
+                                    </button>
+                                    {#each ebcComponentes as comp}
+                                        {@const count = ebcCountsByComponente[comp] || 0}
+                                        <button 
+                                            type="button"
+                                            onclick={() => ebcFilterComponente = comp}
+                                            class="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 capitalize
+                                                   {ebcFilterComponente === comp 
+                                                       ? 'bg-purple-600 text-white shadow-md' 
+                                                       : (isDark ? 'bg-white/5 text-gray-300 hover:bg-white/10 border border-white/10' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200')}"
+                                        >
+                                            {LABELS_COMPONENTE[comp] || comp} ({count})
+                                        </button>
+                                    {/each}
+                                </div>
+                            </div>
+
+                            <!-- Results Count -->
+                            <div class="px-4 py-2 border-b transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                                <p class="text-xs" style="color: {ts.muted}">
+                                    Mostrando <span class="font-semibold text-purple-600">{filteredEbcs.length}</span> de <span class="font-semibold">{ebcs.length}</span> resultados
+                                    {#if ebcFilterComponente}
+                                        <span class="text-gray-400"> · Filtrado por: {LABELS_COMPONENTE[ebcFilterComponente] || ebcFilterComponente}</span>
+                                    {/if}
+                                </p>
+                            </div>
+
+                            <!-- Items List -->
+                            <div class="max-h-80 overflow-y-auto divide-y" style="--tw-divide-opacity: 1; border-color: {ts.border}">
+                                {#each filteredEbcs as ebc, index}
+                                    {@const isSelected = formData.standard.includes(ebc.id)}
+                                    {@const compColor = COLORES_COMPONENTE[ebc.componente] || COLORES_COMPONENTE.general}
+                                    <span 
+                                        class="flex items-start gap-3 p-4 cursor-pointer transition-all duration-200 {isSelected ? (isDark ? 'bg-purple-500/15' : 'bg-purple-50') : ''}" style="background-color: {isSelected ? '' : ts.card}"
+                                    >
+                                        <div class="relative flex-shrink-0 mt-0.5">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={isSelected}
+                                                onchange={() => toggleEBC(ebc.id)}
+                                                class="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer transition-all"
+                                            />
+                                        </div>
+                                        
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2 mb-2 flex-wrap">
+                                                <span class="px-2 py-1 text-xs font-bold rounded-md bg-purple-100 text-purple-700">
+                                                    {ebc.codigo}
+                                                </span>
+                                                <span class="px-2 py-1 text-xs font-medium rounded-md capitalize {compColor.bg} {compColor.text}">
+                                                    {LABELS_COMPONENTE[ebc.componente] || ebc.componente}
+                                                </span>
+                                            </div>
+                                            <p class="text-sm leading-relaxed line-clamp-3" style="color: {ts.text2}">
+                                                {ebc.descripcion}
+                                            </p>
+                                        </div>
+                                    </span>
+                                {/each}
+                            </div>
+
+                            <!-- Empty Filter Results -->
+                            {#if filteredEbcs.length === 0 && ebcSearch}
+                                <div class="p-8 text-center">
+                                    <div class="p-4 rounded-full inline-flex mb-4" style="background-color: {ts.bg3}">
+                                        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </div>
+                                    <p class="font-medium" style="color: {ts.text2}">No se encontraron resultados</p>
+                                    <p class="text-sm mt-1" style="color: {ts.muted}">Intente con otros términos de búsqueda</p>
+                                    <button 
+                                        type="button"
+                                        onclick={() => { ebcSearch = ""; ebcFilterComponente = null; }}
+                                        class="mt-4 px-4 py-2 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                                    >
+                                        Limpiar filtros
+                                    </button>
+                                </div>
+                            {/if}
+                        </div>
+                    {/if}
+
+                    <!-- PIAR Toggle -->
+                    <div
+                        class="flex items-center justify-between p-4 rounded-lg border transition-colors {isDark ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-yellow-50 border-yellow-200'}"
+                    >
+                        <div>
+                            <h3 class="font-semibold {isDark ? 'text-yellow-400' : 'text-yellow-800'}">
+                                Ajustes Razonables (PIAR)
+                            </h3>
+                            <p class="text-xs {isDark ? 'text-yellow-300' : 'text-yellow-700'}">
+                                ¿Requiere adaptaciones curriculares para
+                                estudiantes con discapacidad?
+                            </p>
+                        </div>
+                        <label
+                            for="has_piar"
+                            class="relative inline-flex items-center cursor-pointer"
+                        >
+                            <input
+                                id="has_piar"
+                                type="checkbox"
+                                bind:checked={formData.has_piar}
+                                class="sr-only peer"
+                            />
+                            <div
+                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"
+                            ></div>
+                        </label>
+                    </div>
+
+                    {#if formData.has_piar}
+                        <div class="space-y-4">
+                            <label
+                                for="piar_description"
+                                class="block text-sm font-medium" style="color: {ts.text2}"
+                            >Descripción de Ajustes Razonables</label>
+                            <textarea
+                                id="piar_description"
+                                bind:value={formData.piar_description}
+                                class="w-full rounded-lg shadow-sm focus:border-yellow-500 focus:ring-2 focus:ring-yellow-500/30 p-3 transition-shadow" style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                placeholder="Describa los ajustes razonables específicos (Decreto 1421 de 2017)..."
+                                rows="3"
+                            ></textarea>
+                            
+                            <!-- Botón para abrir PIAR completo -->
                             <button
-                              class="actv-chip {acts.includes(act.id) ? 'selected' : ''}"
-                              style="{acts.includes(act.id) ? `background:${MOMENTO_COLORS[i]}20;border-color:${MOMENTO_COLORS[i]}60;color:${MOMENTO_COLORS[i]}` : ''}"
-                              onclick={() => toggleActivity(m.field, act.id)}
-                            >{act.label}</button>
-                          {/each}
+                                type="button"
+                                onclick={() => showPiarModal = true}
+                                class="flex items-center justify-center gap-2 w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-semibold rounded-lg shadow-md transition-all duration-200"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                Crear Acta PIAR Completa
+                            </button>
+                            
+                            <p class="text-xs text-gray-500 text-center">
+                                Genere un documento oficial completo con firma digital para el estudiante
+                            </p>
+                        </div>
+                    {/if}
+                </div>
+            {/if}
+
+            <!-- PASO 4: SECUENCIA DIDÁCTICA -->
+            {#if currentStep === 3}
+                <div id="step-3" class="space-y-6 animate-fade-in">
+                    <div>
+                        <h2 class="text-lg md:text-xl font-semibold tracking-tight border-l-4 border-indigo-500 pl-3" style="color: {isDark ? 'rgb(165 180 252)' : 'rgb(55 48 163)'}">
+                            🧩 Secuencia Didáctica
+                        </h2>
+                        <p class="text-sm mt-1 pl-4" style="color: {ts.muted}">Objetivos, actividades y momentos pedagógicos</p>
+                    </div>
+
+                    <!-- Sección: Cargar Mis Temas JSON -->
+                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'}">
+                        <div class="flex items-center justify-between flex-wrap gap-3">
+                            <div>
+                                <h3 class="font-bold flex items-center gap-2 {isDark ? 'text-amber-400' : 'text-amber-800'}">
+                                    📂 Mis Temas Personalizados
+                                </h3>
+                                <p class="text-xs mt-1 {isDark ? 'text-amber-300' : 'text-amber-600'}">
+                                    Carga tu JSON con temas y actividades propias
+                                </p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input
+                                    type="file"
+                                    accept=".json"
+                                    bind:this={temasJsonInputRef}
+                                    onchange={handleTemasFileUpload}
+                                    class="hidden"
+                                />
+                                <button
+                                    type="button"
+                                    onclick={() => temasJsonInputRef?.click()}
+                                    disabled={isUploadingTemas}
+                                    class="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white rounded-lg font-medium text-sm transition-colors flex items-center gap-2"
+                                >
+                                    {isUploadingTemas ? '⏳ Subiendo...' : '📤 Subir JSON'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {#if temasDocente.length > 0}
+                            <div class="mt-4 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-medium text-amber-700">
+                                        ✅ Temas cargados ({temasDocente.length} entradas)
+                                    </span>
+                                    <span class="text-xs text-gray-500">
+                                        Selecciona un grado y período para ver temas
+                                    </span>
+                                </div>
+                                
+                                <!-- Selector de Grado y Período -->
+                                <div class="flex flex-wrap gap-2 items-center">
+                                    <select
+                                        bind:value={formData.grado}
+                                        class="text-sm px-3 py-2 rounded-lg border focus:ring-amber-500 focus:border-amber-500 transition-shadow" style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                    >
+                                        <option value="">Seleccionar Grado</option>
+                                        {#each [...new Set(temasDocente.map(t => t.grado))] as grado}
+                                            <option value={grado}>{grado}</option>
+                                        {/each}
+                                    </select>
+                                    
+                                    <select
+                                        bind:value={formData.periodo_academico}
+                                        class="text-sm px-3 py-2 rounded-lg border focus:ring-amber-500 focus:border-amber-500 transition-shadow" style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                    >
+                                        <option value="">Seleccionar Período</option>
+                                        {#each [...new Set(temasDocente.map(t => t.periodo))] as periodo}
+                                            <option value={periodo}>{periodo}</option>
+                                        {/each}
+                                    </select>
+
+                                    {#if selectedTemas.length > 0 || selectedActividades.length > 0}
+                                        <button
+                                            type="button"
+                                            onclick={aplicarTemasSeleccionados}
+                                            class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium text-sm transition-colors"
+                                        >
+                                            ✅ Aplicar ({selectedTemas.length + selectedActividades.length})
+                                        </button>
+                                    {/if}
+                                </div>
+
+                                <!-- Temas Disponibles -->
+                                {#if temasDisponibles.length > 0}
+                                    <div class="p-3 rounded-lg border transition-colors" style="background-color: {ts.card}; border-color: {isDark ? 'rgba(245,158,11,0.2)' : ''}">
+                                        <span class="text-xs font-medium mb-2 block" style="color: {ts.text2}">
+                                            Temas disponibles (click para seleccionar):
+                                        </span>
+                                        <div class="flex flex-wrap gap-2">
+                                            {#each temasDisponibles as tema}
+                                                {@const selected = selectedTemas.includes(tema)}
+                                                <button
+                                                    type="button"
+                                                    onclick={() => toggleTema(tema)}
+                                                    class="px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200
+                                                        {selected ? 'bg-amber-600 text-white shadow-md' : (isDark ? 'bg-white/5 text-gray-300 hover:bg-amber-500/15 border border-white/10' : 'bg-gray-100 text-gray-700 hover:bg-amber-100 border border-gray-200')}"
+                                                >
+                                                    {selected ? '✓ ' : '+ '}{tema}
+                                                </button>
+                                            {/each}
+                                        </div>
+                                    </div>
+                                {/if}
+
+                                <!-- Actividades Disponibles -->
+                                {#if actividadesDisponibles.length > 0}
+                                    <div class="p-3 rounded-lg border transition-colors" style="background-color: {ts.card}; border-color: {isDark ? 'rgba(168,85,247,0.2)' : ''}">
+                                        <span class="text-xs font-medium mb-2 block {isDark ? 'text-purple-400' : 'text-purple-700'}">
+                                            Actividades disponibles (click para seleccionar):
+                                        </span>
+                                        <div class="flex flex-wrap gap-2">
+                                            {#each actividadesDisponibles as actividad}
+                                                {@const selected = selectedActividades.includes(actividad)}
+                                                <button
+                                                    type="button"
+                                                    onclick={() => toggleActividad(actividad)}
+                                                    class="px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200
+                                                        {selected ? 'bg-purple-600 text-white shadow-md' : (isDark ? 'bg-white/5 text-gray-300 hover:bg-purple-500/15 border border-white/10' : 'bg-gray-100 text-gray-700 hover:bg-purple-100 border border-gray-200')}"
+                                                >
+                                                    {selected ? '✓ ' : '+ '}{actividad}
+                                                </button>
+                                            {/each}
+                                        </div>
+                                    </div>
+                                {/if}
+
+                                <!-- Resumen por grado/período -->
+                                <details class="group">
+                                    <summary class="text-xs cursor-pointer hover:text-amber-600 flex items-center gap-1" style="color: {ts.muted}">
+                                        <span class="group-open:rotate-90 transition-transform">▶</span>
+                                        Ver todas las entradas ({temasDocente.length})
+                                    </summary>
+                                    <div class="mt-2 max-h-40 overflow-y-auto space-y-1">
+                                        {#each temasDocente as entry}
+                                            <div class="text-xs p-2 rounded border" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                                                <span class="font-medium text-indigo-700">{entry.grado}</span> - 
+                                                <span class="font-medium text-green-700">{entry.periodo}</span>
+                                                <span class="text-gray-500"> ({entry.temas.length} temas)</span>
+                                            </div>
+                                        {/each}
+                                    </div>
+                                </details>
+                            </div>
+                        {:else if isLoadingTemas}
+                            <div class="mt-3 text-center text-sm" style="color: {ts.muted}">
+                                ⏳ Cargando temas...
+                            </div>
+                        {:else}
+                            <div class="mt-3 text-xs p-3 rounded-lg" style="color: {ts.muted}; background-color: {ts.card}">
+                                <strong>Formato esperado del JSON:</strong>
+                                <pre class="mt-1 p-2 rounded text-xs overflow-x-auto" style="background-color: {ts.bg3}; color: {ts.text}">{`[
+  {
+    "grado": "6",
+    "periodo": "Período 1",
+    "temas": ["Tema 1", "Tema 2"],
+    "actividades": ["Actividad 1", "Actividad 2"]
+  }
+]`}</pre>
+                            </div>
+                        {/if}
+                    </div>
+
+                    <!-- Botón Generador IA -->
+                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-violet-500/10 border-violet-500/30' : 'bg-gradient-to-r from-violet-50 to-purple-50 border-violet-200'}">
+                        <div class="flex items-center justify-between flex-wrap gap-3">
+                            <div>
+                                <h3 class="font-bold flex items-center gap-2 {isDark ? 'text-violet-400' : 'text-violet-800'}">
+                                    🤖 Generador con IA
+                                </h3>
+                                <p class="text-xs mt-1 {isDark ? 'text-violet-300' : 'text-violet-600'}">
+                                    Genera contenido para tus actividades usando OpenRouter (gratuito)
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onclick={openAIPanel}
+                                class="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium text-sm transition-colors flex items-center gap-2 shadow-md"
+                            >
+                                🚀 Abrir Generador IA
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Objetivos y Competencias -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-blue-500/10 border-blue-500/30' : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'}">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-bold {isDark ? 'text-blue-400' : 'text-blue-800'}">🎯 Objetivos de Aprendizaje</span>
+                                <button 
+                                    type="button"
+                                    onclick={generarObjetivos}
+                                    class="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-1 shadow-sm"
+                                    title="Generar objetivos automáticamente"
+                                >
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                    </svg>
+                                    Auto-generar
+                                </button>
+                            </div>
+                            <textarea
+                                bind:value={formData.learning_objectives}
+                                rows="3"
+                                class="w-full text-sm rounded-lg focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-shadow {isDark ? 'border-blue-500/20' : 'border-blue-200'}" style="background-color: {ts.bg2}; color: {ts.text}"
+                                placeholder="El estudiante será capaz de... (O usa el botón para auto-generar)"
+                            ></textarea>
+                        </div>
+                        
+                        <!-- Competencias con chips -->
+                        <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-green-500/10 border-green-500/30' : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'}">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-bold {isDark ? 'text-green-400' : 'text-green-800'}">🤝 Competencias a Desarrollar</span>
+                            </div>
+                            <!-- Chips de competencias -->
+                            <div class="flex flex-wrap gap-1.5 mb-2">
+                                {#each COMPETENCIAS_SUGERIDAS.slice(0, 5) as comp}
+                                    <button 
+                                        type="button"
+                                        onclick={() => agregarCompetencia(comp)}
+                                        class="text-xs px-2 py-1 bg-white hover:bg-green-100 text-green-700 rounded-full border border-green-200 transition-colors"
+                                        title="Agregar competencia"
+                                    >
+                                        + {comp.split(' ')[0]}
+                                    </button>
+                                {/each}
+                            </div>
+                            <textarea
+                                bind:value={formData.competencias}
+                                rows="3"
+                                class="w-full text-sm rounded-lg focus:ring-2 focus:ring-green-500/30 focus:border-green-500 transition-shadow {isDark ? 'border-green-500/20' : 'border-green-200'}" style="background-color: {ts.bg2}; color: {ts.text}"
+                                placeholder="Competencias... (Usa los chips de arriba)"
+                            ></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Indicadores de Logro con chips -->
+                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-purple-500/10 border-purple-500/30' : 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200'}">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-bold {isDark ? 'text-purple-400' : 'text-purple-800'}">📊 Indicadores de Logro</span>
+                        </div>
+                        <!-- Chips de indicadores -->
+                        <div class="flex flex-wrap gap-1.5 mb-3">
+                            {#each INDICADORES_SUGERIDOS as indicador}
+                                {@const selected = indicadoresSeleccionados.includes(indicador)}
+                                <button 
+                                    type="button"
+                                    onclick={() => toggleIndicador(indicador)}
+                                    class="text-xs px-2.5 py-1 rounded-full border transition-all duration-200 {selected ? 'bg-purple-600 text-white border-purple-600 shadow-sm' : 'bg-white text-purple-700 border-purple-200 hover:bg-purple-50'}"
+                                    title="Click para seleccionar"
+                                >
+                                    {selected ? '✓ ' : '+ '}{indicador.split(' ').slice(0, 3).join(' ')}...
+                                </button>
+                            {/each}
                         </div>
                         <textarea
-                          class="field-input momento-textarea"
-                          rows="3"
-                          bind:value={(formData as Record<string, unknown>)[m.field]}
-                          placeholder="Haz clic en las actividades de arriba o escribe aquí..."
+                            bind:value={formData.indicadores_logro}
+                            rows="2"
+                            class="w-full text-sm rounded-lg focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-shadow {isDark ? 'border-purple-500/20' : 'border-purple-200'}" style="background-color: {ts.bg2}; color: {ts.text}"
+                            placeholder="Indicadores... (Selecciona los chips de arriba o escribe)"
                         ></textarea>
-                      </div>
-                    {/if}
-                  </div>
-                {/each}
-              </div>
-            </div>
-
-          <!-- ══ STEP 4: EVALUACIÓN ══ -->
-          {:else if currentStep === 4}
-            <div class="form-card" in:fly={{ y: 16, duration: 350, easing: cubicOut }}>
-              <div class="card-header">
-                <div class="card-header-icon" style="background: #10b98120; color: #34d399">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                </div>
-                <div>
-                  <h2 class="card-title">Evaluación de aprendizajes</h2>
-                  <p class="card-desc">Decreto 1290 — criterios, instrumentos y ponderación</p>
-                </div>
-              </div>
-              <div class="card-body">
-                <div class="field">
-                  <label class="field-label">Tipo de evaluación</label>
-                  <div class="eval-tipo-row">
-                    {#each EVAL_TIPOS as t}
-                      <button
-                        class="eval-tipo-card {formData.eval_type === t.id ? 'selected' : ''}"
-                        onclick={() => formData.eval_type = t.id}
-                      >
-                        <span class="eval-tipo-name">{t.label}</span>
-                        <span class="eval-tipo-desc">{t.desc}</span>
-                      </button>
-                    {/each}
-                  </div>
-                </div>
-                <div class="field">
-                  <label class="field-label">Modalidades</label>
-                  <div class="chip-flow">
-                    {#each MODALIDADES as m}
-                      <button
-                        class="flow-chip {formData.eval_modalidades.includes(m) ? 'selected' : ''}"
-                        onclick={() => formData.eval_modalidades = toggleChip(formData.eval_modalidades, m)}
-                      >{m}</button>
-                    {/each}
-                  </div>
-                </div>
-                <div class="field">
-                  <label class="field-label">Instrumentos</label>
-                  <div class="chip-flow">
-                    {#each INSTRUMENTOS as inst}
-                      <button
-                        class="flow-chip {formData.eval_instrumentos.includes(inst) ? 'selected' : ''}"
-                        onclick={() => formData.eval_instrumentos = toggleChip(formData.eval_instrumentos, inst)}
-                      >{inst}</button>
-                    {/each}
-                  </div>
-                </div>
-                <div class="field">
-                  <label class="field-label">Criterios de evaluación</label>
-                  <div class="chip-flow">
-                    {#each CRITERIOS as c}
-                      <button
-                        class="flow-chip {formData.eval_criterios.includes(c) ? 'selected' : ''}"
-                        onclick={() => formData.eval_criterios = toggleChip(formData.eval_criterios, c)}
-                      >{c}</button>
-                    {/each}
-                  </div>
-                </div>
-                <!-- Ponderación -->
-                <div class="field">
-                  <label class="field-label">Ponderación — total: {formData.eval_ponderacion_conceptos + formData.eval_ponderacion_procedimientos + formData.eval_ponderacion_actitudes}%</label>
-                  <div class="ponder-block">
-                    {#each [
-                      { label: "Conceptos", key: "eval_ponderacion_conceptos", color: "#818cf8" },
-                      { label: "Procedimientos", key: "eval_ponderacion_procedimientos", color: "#34d399" },
-                      { label: "Actitudes", key: "eval_ponderacion_actitudes", color: "#fbbf24" },
-                    ] as row}
-                      <div class="ponder-row">
-                        <span class="ponder-label">{row.label}</span>
-                        <input
-                          type="range" min="0" max="100" step="5"
-                          bind:value={(formData as Record<string, unknown>)[row.key]}
-                          class="ponder-range"
-                          style="accent-color: {row.color}"
-                        />
-                        <span class="ponder-val" style="color: {row.color}">{(formData as Record<string, unknown>)[row.key]}%</span>
-                      </div>
-                    {/each}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          <!-- ══ STEP 5: RECURSOS ══ -->
-          {:else if currentStep === 5}
-            <div class="form-card" in:fly={{ y: 16, duration: 350, easing: cubicOut }}>
-              <div class="card-header">
-                <div class="card-header-icon" style="background: #f43f5e20; color: #fb7185">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-                </div>
-                <div>
-                  <h2 class="card-title">Recursos didácticos</h2>
-                  <p class="card-desc">Materiales, herramientas y medios</p>
-                </div>
-              </div>
-              <div class="card-body">
-                <div class="field">
-                  <label class="field-label">Categoría</label>
-                  <div class="res-cats">
-                    {#each RECURSOS_CATS as cat}
-                      <button
-                        class="res-cat-btn {selectedRecursosCat === cat.id ? 'selected' : ''}"
-                        style="{selectedRecursosCat === cat.id ? `border-color:${cat.color}; color:${cat.color}; background:${cat.color}15` : ''}"
-                        onclick={() => selectedRecursosCat = cat.id}
-                      >
-                        <span class="res-cat-dot" style="background:{cat.color}"></span>
-                        {cat.label}
-                      </button>
-                    {/each}
-                  </div>
-                </div>
-                <div class="field">
-                  <label class="field-label">Recursos disponibles</label>
-                  <div class="chip-flow">
-                    {#each RECURSOS_CATS.find(c => c.id === selectedRecursosCat)?.items || [] as item}
-                      <button
-                        class="flow-chip {formData.recursos_ids.includes(item) ? 'selected' : ''}"
-                        onclick={() => formData.recursos_ids = toggleChip(formData.recursos_ids, item)}
-                      >{item}</button>
-                    {/each}
-                  </div>
-                </div>
-                <div class="field">
-                  <label class="field-label">Recursos adicionales / personalizados</label>
-                  <textarea class="field-input" rows="3" bind:value={formData.resources} placeholder="Describe otros recursos que utilizarás..."></textarea>
-                </div>
-                <!-- Summary -->
-                {#if formData.recursos_ids.length > 0}
-                  <div class="resources-summary">
-                    <p class="res-summary-label">Recursos seleccionados ({formData.recursos_ids.length})</p>
-                    <div class="chip-flow">
-                      {#each formData.recursos_ids as r}
-                        <span class="res-summary-chip">
-                          {r}
-                          <button onclick={() => formData.recursos_ids = formData.recursos_ids.filter(x => x !== r)}>×</button>
-                        </span>
-                      {/each}
                     </div>
-                  </div>
-                {/if}
-              </div>
-            </div>
-          {/if}
 
-          <!-- ── Bottom nav ─────────────────────────────────── -->
-          <div class="bottom-nav glass">
-            <button class="nav-btn-ghost" onclick={prevStep} disabled={currentStep === 0}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-              Anterior
-            </button>
-            <div class="nav-pips">
-              {#each STEPS as _, i}
-                <button
-                  class="nav-pip {i === currentStep ? 'active' : ''} {completedSteps.has(i) ? 'done' : ''}"
-                  onclick={() => currentStep = i}
-                ></button>
-              {/each}
-            </div>
-            {#if currentStep < 5}
-              <button class="nav-btn-primary" onclick={nextStep}>
-                Siguiente
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 6 15 12 9 18"/></svg>
-              </button>
-            {:else}
-              <button class="nav-btn-primary success" onclick={handleSave}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                Guardar planeación
-              </button>
+                    <!-- Tiempos por momento con presets -->
+                    <div class="p-4 rounded-xl border transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-sm font-semibold" style="color: {ts.text2}">⏱️ Distribución del Tiempo</span>
+                            <!-- Presets de tiempo -->
+                            <div class="flex gap-2">
+                                <button 
+                                    type="button"
+                                    onclick={() => setTiempoPreset("corto")}
+                                    class="text-xs px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+                                    title="Clase corta (45 min)"
+                                >
+                                    🔵 Corta (45m)
+                                </button>
+                                <button 
+                                    type="button"
+                                    onclick={() => setTiempoPreset("estandar")}
+                                    class="text-xs px-3 py-1.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors"
+                                    title="Clase estándar (80 min)"
+                                >
+                                    🟣 Estándar (80m)
+                                </button>
+                                <button 
+                                    type="button"
+                                    onclick={() => setTiempoPreset("extendido")}
+                                    class="text-xs px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
+                                    title="Clase extendida (120 min)"
+                                >
+                                    🟢 Extendida (120m)
+                                </button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+                            <div>
+                                <span class="text-xs block mb-1" style="color: {ts.muted}">Exploración</span>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" bind:value={formData.tiempo_exploracion} min="1" max="60" class="w-14 text-sm p-1.5 rounded border focus:ring-indigo-500 focus:border-indigo-500" style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}" />
+                                    <span class="text-xs" style="color: {ts.muted}">min</span>
+                                </div>
+                                <div class="w-full rounded-full h-1.5 mt-1" style="background-color: {ts.bg3}">
+                                    <div class="bg-blue-500 h-1.5 rounded-full" style="width: {(formData.tiempo_exploracion / 120) * 100}%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="text-xs block mb-1" style="color: {ts.muted}">Estructuración</span>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" bind:value={formData.tiempo_estructuracion} min="1" max="60" class="w-14 text-sm p-1.5 rounded border focus:ring-indigo-500 focus:border-indigo-500" style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}" />
+                                    <span class="text-xs" style="color: {ts.muted}">min</span>
+                                </div>
+                                <div class="w-full rounded-full h-1.5 mt-1" style="background-color: {ts.bg3}">
+                                    <div class="bg-indigo-500 h-1.5 rounded-full" style="width: {(formData.tiempo_estructuracion / 120) * 100}%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="text-xs block mb-1" style="color: {ts.muted}">Práctica</span>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" bind:value={formData.tiempo_practica} min="1" max="60" class="w-14 text-sm p-1.5 rounded border focus:ring-indigo-500 focus:border-indigo-500" style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}" />
+                                    <span class="text-xs" style="color: {ts.muted}">min</span>
+                                </div>
+                                <div class="w-full rounded-full h-1.5 mt-1" style="background-color: {ts.bg3}">
+                                    <div class="bg-purple-500 h-1.5 rounded-full" style="width: {(formData.tiempo_practica / 120) * 100}%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="text-xs block mb-1" style="color: {ts.muted}">Transferencia</span>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" bind:value={formData.tiempo_transferencia} min="1" max="60" class="w-14 text-sm p-1.5 rounded border focus:ring-indigo-500 focus:border-indigo-500" style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}" />
+                                    <span class="text-xs" style="color: {ts.muted}">min</span>
+                                </div>
+                                <div class="w-full rounded-full h-1.5 mt-1" style="background-color: {ts.bg3}">
+                                    <div class="bg-orange-500 h-1.5 rounded-full" style="width: {(formData.tiempo_transferencia / 120) * 100}%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="text-xs block mb-1" style="color: {ts.muted}">Valoración</span>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" bind:value={formData.tiempo_valoracion} min="1" max="60" class="w-14 text-sm p-1.5 rounded border focus:ring-indigo-500 focus:border-indigo-500" style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}" />
+                                    <span class="text-xs" style="color: {ts.muted}">min</span>
+                                </div>
+                                <div class="w-full rounded-full h-1.5 mt-1" style="background-color: {ts.bg3}">
+                                    <div class="bg-green-500 h-1.5 rounded-full" style="width: {(formData.tiempo_valoracion / 120) * 100}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Momentos de la Clase con Actividades Interactivas -->
+                    <div class="space-y-4">
+                        <!-- MOMENTO 1: EXPLORACIÓN -->
+                        <div class="rounded-xl border overflow-hidden transition-colors" style="background-color: {ts.card}; border-color: {ts.cardBorder}">
+                            <div class="p-4 border-b transition-colors {isDark ? 'bg-blue-500/10' : 'bg-gradient-to-r from-blue-50 to-indigo-50'}" style="border-color: {ts.border}">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <span class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">1</span>
+                                        <div>
+                                            <h3 class="font-bold" style="color: {ts.text}">Exploración (Inicio)</h3>
+                                            <p class="text-xs" style="color: {ts.muted}">Recuperar saberes previos y generar motivación</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-sm text-blue-600 font-medium">{formData.tiempo_exploracion} min</span>
+                                </div>
+                            </div>
+                            <div class="p-4 space-y-4">
+                                <!-- Actividades sugeridas -->
+                                <div>
+                                    <span class="text-xs font-medium mb-2 block" style="color: {ts.text2}">🎯 Haz click para agregar actividades:</span>
+                                    <div class="flex flex-wrap gap-2">
+                                        {#each ACTIVIDADES_EXPLORACION as act}
+                                            {@const selected = formData.exploration_activities.includes(act.id)}
+                                            <button
+                                                type="button"
+                                                onclick={() => selected ? quitarActividad('exploration', act.id) : agregarActividad('exploration', act)}
+                                                class="px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5
+                                                    {selected ? 'bg-blue-600 text-white shadow-md' : (isDark ? 'bg-white/5 text-gray-300 hover:bg-blue-500/15 border border-white/10' : 'bg-gray-100 text-gray-700 hover:bg-blue-100 border border-gray-200')}"
+                                            >
+                                                <span>{act.icono}</span>
+                                                <span>{act.titulo}</span>
+                                            </button>
+                                        {/each}
+                                    </div>
+                                </div>
+                                <!-- Descripción -->
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-medium" style="color: {ts.text2}">Descripción de actividades:</span>
+                                    <button
+                                        type="button"
+                                        onclick={() => limpiarDescripcion('exploration')}
+                                        class="text-xs px-2 py-1 text-red-600 hover:bg-red-50 rounded transition-colors flex items-center gap-1"
+                                        title="Limpiar todo"
+                                    >
+                                        🗑️ Limpiar
+                                    </button>
+                                </div>
+                                <textarea
+                                    bind:value={formData.exploration}
+                                    rows="3"
+                                    class="w-full text-sm rounded-lg focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-shadow" style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                    placeholder="👆 Click en las actividades de arriba para auto-completar..."
+                                ></textarea>
+                            </div>
+                        </div>
+
+                        <!-- MOMENTO 2: ESTRUCTURACIÓN -->
+                        <div class="rounded-xl border overflow-hidden transition-colors" style="background-color: {ts.card}; border-color: {ts.cardBorder}">
+                            <div class="p-4 border-b transition-colors {isDark ? 'bg-indigo-500/10' : 'bg-gradient-to-r from-indigo-50 to-purple-50'}" style="border-color: {ts.border}">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <span class="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-sm">2</span>
+                                        <div>
+                                            <h3 class="font-bold" style="color: {ts.text}">Estructuración (Desarrollo)</h3>
+                                            <p class="text-xs" style="color: {ts.muted}">Construcción y reconstrucción del conocimiento</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-sm text-indigo-600 font-medium">{formData.tiempo_estructuracion} min</span>
+                                </div>
+                            </div>
+                            <div class="p-4 space-y-4">
+                                <div>
+                                    <span class="text-xs font-medium mb-2 block" style="color: {ts.text2}">📚 Haz click para agregar actividades:</span>
+                                    <div class="flex flex-wrap gap-2">
+                                        {#each ACTIVIDADES_ESTRUCTURACION as act}
+                                            {@const selected = formData.structuring_activities.includes(act.id)}
+                                            <button
+                                                type="button"
+                                                onclick={() => selected ? quitarActividad('structuring', act.id) : agregarActividad('structuring', act)}
+                                                class="px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5
+                                                    {selected ? 'bg-indigo-600 text-white shadow-md' : (isDark ? 'bg-white/5 text-gray-300 hover:bg-indigo-500/15 border border-white/10' : 'bg-gray-100 text-gray-700 hover:bg-indigo-100 border border-gray-200')}"
+                                            >
+                                                <span>{act.icono}</span>
+                                                <span>{act.titulo}</span>
+                                            </button>
+                                        {/each}
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-medium" style="color: {ts.text2}">Descripción de actividades:</span>
+                                    <button
+                                        type="button"
+                                        onclick={() => limpiarDescripcion('structuring')}
+                                        class="text-xs px-2 py-1 text-red-600 hover:bg-red-50 rounded transition-colors flex items-center gap-1"
+                                        title="Limpiar todo"
+                                    >
+                                        🗑️ Limpiar
+                                    </button>
+                                </div>
+                                <textarea
+                                    bind:value={formData.structuring}
+                                    rows="3"
+                                    class="w-full text-sm rounded-lg focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-shadow" style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                    placeholder="👆 Click en las actividades de arriba para auto-completar..."
+                                ></textarea>
+                            </div>
+                        </div>
+
+                        <!-- MOMENTO 3: PRÁCTICA -->
+                        <div class="rounded-xl border overflow-hidden transition-colors" style="background-color: {ts.card}; border-color: {ts.cardBorder}">
+                            <div class="p-4 border-b transition-colors {isDark ? 'bg-purple-500/10' : 'bg-gradient-to-r from-purple-50 to-pink-50'}" style="border-color: {ts.border}">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <span class="w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">3</span>
+                                        <div>
+                                            <h3 class="font-bold" style="color: {ts.text}">Práctica (Aplicación)</h3>
+                                            <p class="text-xs" style="color: {ts.muted}">Ejercitación y trabajo colaborativo</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-sm text-purple-600 font-medium">{formData.tiempo_practica} min</span>
+                                </div>
+                            </div>
+                            <div class="p-4 space-y-4">
+                                <div>
+                                    <span class="text-xs font-medium mb-2 block" style="color: {ts.text2}">✏️ Haz click para agregar actividades:</span>
+                                    <div class="flex flex-wrap gap-2">
+                                        {#each ACTIVIDADES_PRACTICA as act}
+                                            {@const selected = formData.practice_activities.includes(act.id)}
+                                            <button
+                                                type="button"
+                                                onclick={() => selected ? quitarActividad('practice', act.id) : agregarActividad('practice', act)}
+                                                class="px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5
+                                                    {selected ? 'bg-purple-600 text-white shadow-md' : (isDark ? 'bg-white/5 text-gray-300 hover:bg-purple-500/15 border border-white/10' : 'bg-gray-100 text-gray-700 hover:bg-purple-100 border border-gray-200')}"
+                                            >
+                                                <span>{act.icono}</span>
+                                                <span>{act.titulo}</span>
+                                            </button>
+                                        {/each}
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-medium" style="color: {ts.text2}">Descripción de actividades:</span>
+                                    <button
+                                        type="button"
+                                        onclick={() => limpiarDescripcion('practice')}
+                                        class="text-xs px-2 py-1 text-red-600 hover:bg-red-50 rounded transition-colors flex items-center gap-1"
+                                        title="Limpiar todo"
+                                    >
+                                        🗑️ Limpiar
+                                    </button>
+                                </div>
+                                <textarea
+                                    bind:value={formData.practice}
+                                    rows="3"
+                                    class="w-full text-sm rounded-lg focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-shadow" style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                    placeholder="👆 Click en las actividades de arriba para auto-completar..."
+                                ></textarea>
+                            </div>
+                        </div>
+
+                        <!-- MOMENTO 4: TRANSFERENCIA -->
+                        <div class="rounded-xl border overflow-hidden transition-colors" style="background-color: {ts.card}; border-color: {ts.cardBorder}">
+                            <div class="p-4 border-b transition-colors {isDark ? 'bg-orange-500/10' : 'bg-gradient-to-r from-orange-50 to-amber-50'}" style="border-color: {ts.border}">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <span class="w-8 h-8 bg-orange-600 text-white rounded-full flex items-center justify-center font-bold text-sm">4</span>
+                                        <div>
+                                            <h3 class="font-bold" style="color: {ts.text}">Transferencia (Cierre)</h3>
+                                            <p class="text-xs" style="color: {ts.muted}">Aplicación en nuevos contextos</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-sm text-orange-600 font-medium">{formData.tiempo_transferencia} min</span>
+                                </div>
+                            </div>
+                            <div class="p-4 space-y-4">
+                                <div>
+                                    <span class="text-xs font-medium mb-2 block" style="color: {ts.text2}">🌎 Haz click para agregar actividades:</span>
+                                    <div class="flex flex-wrap gap-2">
+                                        {#each ACTIVIDADES_TRANSFERENCIA as act}
+                                            {@const selected = formData.transfer_activities.includes(act.id)}
+                                            <button
+                                                type="button"
+                                                onclick={() => selected ? quitarActividad('transfer', act.id) : agregarActividad('transfer', act)}
+                                                class="px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5
+                                                    {selected ? 'bg-orange-600 text-white shadow-md' : (isDark ? 'bg-white/5 text-gray-300 hover:bg-orange-500/15 border border-white/10' : 'bg-gray-100 text-gray-700 hover:bg-orange-100 border border-gray-200')}"
+                                            >
+                                                <span>{act.icono}</span>
+                                                <span>{act.titulo}</span>
+                                            </button>
+                                        {/each}
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-medium" style="color: {ts.text2}">Descripción de actividades:</span>
+                                    <button
+                                        type="button"
+                                        onclick={() => limpiarDescripcion('transfer')}
+                                        class="text-xs px-2 py-1 text-red-600 hover:bg-red-50 rounded transition-colors flex items-center gap-1"
+                                        title="Limpiar todo"
+                                    >
+                                        🗑️ Limpiar
+                                    </button>
+                                </div>
+                                <textarea
+                                    bind:value={formData.transfer}
+                                    rows="3"
+                                    class="w-full text-sm rounded-lg focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-shadow" style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                    placeholder="👆 Click en las actividades de arriba para auto-completar..."
+                                ></textarea>
+                            </div>
+                        </div>
+
+                        <!-- MOMENTO 5: VALORACIÓN -->
+                        <div class="rounded-xl border overflow-hidden transition-colors" style="background-color: {ts.card}; border-color: {ts.cardBorder}">
+                            <div class="p-4 border-b transition-colors {isDark ? 'bg-green-500/10' : 'bg-gradient-to-r from-green-50 to-teal-50'}" style="border-color: {ts.border}">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <span class="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">5</span>
+                                        <div>
+                                            <h3 class="font-bold" style="color: {ts.text}">Valoración (Evaluación)</h3>
+                                            <p class="text-xs" style="color: {ts.muted}">Metacognición y evidencia de aprendizaje</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-sm text-green-600 font-medium">{formData.tiempo_valoracion} min</span>
+                                </div>
+                            </div>
+                            <div class="p-4 space-y-4">
+                                <div>
+                                    <span class="text-xs font-medium mb-2 block" style="color: {ts.text2}">📋 Haz click para agregar actividades:</span>
+                                    <div class="flex flex-wrap gap-2">
+                                        {#each ACTIVIDADES_VALORACION as act}
+                                            {@const selected = formData.assessment_activities.includes(act.id)}
+                                            <button
+                                                type="button"
+                                                onclick={() => selected ? quitarActividad('assessment', act.id) : agregarActividad('assessment', act)}
+                                                class="px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5
+                                                    {selected ? 'bg-green-600 text-white shadow-md' : (isDark ? 'bg-white/5 text-gray-300 hover:bg-green-500/15 border border-white/10' : 'bg-gray-100 text-gray-700 hover:bg-green-100 border border-gray-200')}"
+                                            >
+                                                <span>{act.icono}</span>
+                                                <span>{act.titulo}</span>
+                                            </button>
+                                        {/each}
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-medium" style="color: {ts.text2}">Descripción de actividades:</span>
+                                    <button
+                                        type="button"
+                                        onclick={() => limpiarDescripcion('assessment')}
+                                        class="text-xs px-2 py-1 text-red-600 hover:bg-red-50 rounded transition-colors flex items-center gap-1"
+                                        title="Limpiar todo"
+                                    >
+                                        🗑️ Limpiar
+                                    </button>
+                                </div>
+                                <textarea
+                                    bind:value={formData.assessment_moment}
+                                    rows="3"
+                                    class="w-full text-sm rounded-lg focus:ring-2 focus:ring-green-500/30 focus:border-green-500 transition-shadow" style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                    placeholder="👆 Click en las actividades de arriba para auto-completar..."
+                                ></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Resumen visual -->
+                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200'}">
+                        <h4 class="font-semibold mb-3 text-sm {isDark ? 'text-indigo-400' : 'text-indigo-800'}">📊 Resumen de la Secuencia Didáctica</h4>
+                        <div class="grid grid-cols-5 gap-2 text-center">
+                            <div class="p-2 rounded-lg shadow-sm transition-colors" style="background-color: {ts.card}">
+                                <div class="text-xs" style="color: {ts.muted}">Exploración</div>
+                                <div class="font-bold text-blue-600">{formData.tiempo_exploracion}m</div>
+                                <div class="text-xs" style="color: {ts.muted}">{formData.exploration_activities.length} acts</div>
+                            </div>
+                            <div class="p-2 rounded-lg shadow-sm transition-colors" style="background-color: {ts.card}">
+                                <div class="text-xs" style="color: {ts.muted}">Estructuración</div>
+                                <div class="font-bold text-indigo-600">{formData.tiempo_estructuracion}m</div>
+                                <div class="text-xs" style="color: {ts.muted}">{formData.structuring_activities.length} acts</div>
+                            </div>
+                            <div class="p-2 rounded-lg shadow-sm transition-colors" style="background-color: {ts.card}">
+                                <div class="text-xs" style="color: {ts.muted}">Práctica</div>
+                                <div class="font-bold text-purple-600">{formData.tiempo_practica}m</div>
+                                <div class="text-xs" style="color: {ts.muted}">{formData.practice_activities.length} acts</div>
+                            </div>
+                            <div class="p-2 rounded-lg shadow-sm transition-colors" style="background-color: {ts.card}">
+                                <div class="text-xs" style="color: {ts.muted}">Transferencia</div>
+                                <div class="font-bold text-orange-600">{formData.tiempo_transferencia}m</div>
+                                <div class="text-xs" style="color: {ts.muted}">{formData.transfer_activities.length} acts</div>
+                            </div>
+                            <div class="p-2 rounded-lg shadow-sm transition-colors" style="background-color: {ts.card}">
+                                <div class="text-xs" style="color: {ts.muted}">Valoración</div>
+                                <div class="font-bold text-green-600">{formData.tiempo_valoracion}m</div>
+                                <div class="text-xs" style="color: {ts.muted}">{formData.assessment_activities.length} acts</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             {/if}
-          </div>
-        </main>
 
-        <!-- ── SIDEBAR ─────────────────────────────────────── -->
-        <aside class="sidebar {isMobile && !sidebarOpen ? 'hidden' : ''}">
+            <!-- PASO 5: EVALUACIÓN -->
+            {#if currentStep === 4}
+                <div id="step-4" class="space-y-6 animate-fade-in">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-lg md:text-xl font-semibold tracking-tight border-l-4 border-indigo-500 pl-3" style="color: {isDark ? 'rgb(165 180 252)' : 'rgb(55 48 163)'}">
+                                📊 Evaluación de Aprendizajes
+                            </h2>
+                            <p class="text-sm mt-1" style="color: {ts.muted}">
+                                🎯 Sistema interactivo - ¡Selecciona y listo!
+                            </p>
+                        </div>
+                        <button 
+                            type="button"
+                            onclick={resetearEvaluacion}
+                            class="text-xs px-3 py-1.5 rounded-lg transition-colors {isDark ? 'bg-red-500/15 hover:bg-red-500/25 text-red-400' : 'bg-red-100 hover:bg-red-200 text-red-700'}"
+                        >
+                            🔄 Reiniciar
+                        </button>
+                    </div>
 
-          <!-- Completeness card -->
-          <div class="side-card glass">
-            <div class="completion-header">
-              <span class="completion-pct">{completionPct}%</span>
-              <span class="completion-label">completado</span>
-            </div>
-            <div class="completion-ring-wrap">
-              <svg class="completion-ring" width="72" height="72" viewBox="0 0 72 72">
-                <circle cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/>
-                <circle
-                  cx="36" cy="36" r="28"
-                  fill="none"
-                  stroke="url(#ringGrad)"
-                  stroke-width="5"
-                  stroke-linecap="round"
-                  stroke-dasharray="{2 * Math.PI * 28}"
-                  stroke-dashoffset="{2 * Math.PI * 28 * (1 - completionPct / 100)}"
-                  transform="rotate(-90 36 36)"
-                  style="transition: stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1)"
-                />
-                <defs>
-                  <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stop-color="#818cf8"/>
-                    <stop offset="100%" stop-color="#34d399"/>
-                  </linearGradient>
-                </defs>
-              </svg>
-            </div>
-            <div class="completion-checklist">
-              {#each STEPS as step, i}
-                <div class="check-row {completedSteps.has(i) ? 'done' : ''}">
-                  <div class="check-icon">
-                    {#if completedSteps.has(i)}
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    <!-- TIPO DE EVALUACIÓN -->
+                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-blue-500/10 border-blue-500/30' : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'}">
+                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-blue-400' : 'text-blue-800'}">🔍 Tipo de Evaluación (Decreto 1290)</span>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {#each TIPOS_EVALUACION as tipo}
+                                {@const selected = formData.eval_type === tipo.id}
+                                <button
+                                    type="button"
+                                    onclick={() => { formData.eval_type = tipo.id; autoGenerarDescripcionEval(); }}
+                                    class="p-4 rounded-xl border-2 transition-all duration-200 text-left {selected 
+                                        ? 'border-blue-500 bg-white shadow-lg ring-2 ring-blue-200' 
+                                        : (isDark ? 'border-white/10 bg-white/5 hover:border-blue-500/40 hover:bg-white/10' : 'border-gray-200 bg-white/50 hover:border-blue-300 hover:bg-white')}"
+                                >
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-2xl">{tipo.icono}</span>
+                                        <span class="font-bold {selected ? (isDark ? 'text-blue-400' : 'text-blue-700') : ''}" style="{!selected ? `color: ${ts.text}` : ''}">{tipo.titulo}</span>
+                                    </div>
+                                    <p class="text-xs" style="color: {ts.muted}">{tipo.descripcion}</p>
+                                </button>
+                            {/each}
+                        </div>
+                    </div>
+
+                    <!-- MODALIDADES DE EVALUACIÓN -->
+                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-green-500/10 border-green-500/30' : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'}">
+                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-green-400' : 'text-green-800'}">🎓 Modalidades de Evaluación (Artículo 6 - Decreto 1290)</span>
+                        <div class="flex flex-wrap gap-3">
+                            {#each MODALIDADES_EVALUACION as mod}
+                                {@const selected = formData.eval_modalidades.includes(mod.id)}
+                                <button
+                                    type="button"
+                                    onclick={() => toggleModalidad(mod.id)}
+                                    class="px-4 py-2.5 rounded-xl border-2 transition-all duration-200 flex items-center gap-2 {selected 
+                                        ? 'bg-green-600 border-green-600 text-white shadow-lg' 
+                                        : (isDark ? 'bg-white/5 border-white/10 text-gray-300 hover:border-green-500/40 hover:bg-green-500/10' : 'bg-white border-gray-200 text-gray-700 hover:border-green-300 hover:bg-green-50')}"
+                                >
+                                    <span class="text-lg">{mod.icono}</span>
+                                    <span class="font-medium">{mod.titulo}</span>
+                                    {#if selected}
+                                        <span class="ml-1">✓</span>
+                                    {/if}
+                                </button>
+                            {/each}
+                        </div>
+                    </div>
+
+                    <!-- INSTRUMENTOS DE EVALUACIÓN -->
+                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-purple-500/10 border-purple-500/30' : 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200'}">
+                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-purple-400' : 'text-purple-800'}">📋 Instrumentos de Evaluación - Click para seleccionar:</span>
+                        <div class="flex flex-wrap gap-2">
+                            {#each INSTRUMENTOS_EVALUACION as inst}
+                                {@const selected = formData.eval_instrumentos.includes(inst.id)}
+                                <button
+                                    type="button"
+                                    onclick={() => toggleInstrumento(inst.id)}
+                                    class="px-3 py-2 rounded-lg border-2 transition-all duration-200 flex items-center gap-1.5 text-sm {selected 
+                                        ? 'bg-purple-600 border-purple-600 text-white shadow-md' 
+                                        : (isDark ? 'bg-white/5 border-white/10 text-gray-300 hover:border-purple-500/40 hover:bg-purple-500/10' : 'bg-white border-gray-200 text-gray-700 hover:border-purple-300 hover:bg-purple-50')}"
+                                >
+                                    <span>{inst.icono}</span>
+                                    <span>{inst.titulo}</span>
+                                </button>
+                            {/each}
+                        </div>
+                    </div>
+
+                    <!-- CRITERIOS DE EVALUACIÓN -->
+                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-orange-500/10 border-orange-500/30' : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200'}">
+                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-orange-400' : 'text-orange-800'}">🎯 Criterios de Evaluación - Selecciona los que aplicarás:</span>
+                        <div class="flex flex-wrap gap-2">
+                            {#each CRITERIOS_EVALUACION as crit}
+                                {@const selected = formData.eval_criterios.includes(crit.id)}
+                                <button
+                                    type="button"
+                                    onclick={() => toggleCriterio(crit.id)}
+                                    class="px-3 py-2 rounded-lg border-2 transition-all duration-200 flex items-center gap-1.5 text-sm {selected 
+                                        ? 'bg-orange-600 border-orange-600 text-white shadow-md' 
+                                        : (isDark ? 'bg-white/5 border-white/10 text-gray-300 hover:border-orange-500/40 hover:bg-orange-500/10' : 'bg-white border-gray-200 text-gray-700 hover:border-orange-300 hover:bg-orange-50')}"
+                                >
+                                    <span>{crit.icono}</span>
+                                    <span>{crit.titulo}</span>
+                                </button>
+                            {/each}
+                        </div>
+                    </div>
+
+                    <!-- EVIDENCIAS DE APRENDIZAJE -->
+                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-gradient-to-r from-cyan-50 to-teal-50 border-cyan-200'}">
+                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-cyan-400' : 'text-cyan-800'}">📦 Evidencias de Aprendizaje - Productos esperados:</span>
+                        <div class="flex flex-wrap gap-2">
+                            {#each EVIDENCIAS_APRENDIZAJE as ev}
+                                {@const selected = formData.eval_evidencias.includes(ev.id)}
+                                <button
+                                    type="button"
+                                    onclick={() => toggleEvidencia(ev.id)}
+                                    class="px-3 py-2 rounded-lg border-2 transition-all duration-200 flex items-center gap-1.5 text-sm {selected
+                                        ? 'bg-cyan-600 border-cyan-600 text-white shadow-md'
+                                        : (isDark ? 'bg-white/5 border-white/10 text-gray-300 hover:border-cyan-500/40 hover:bg-cyan-500/10' : 'bg-white border-gray-200 text-gray-700 hover:border-cyan-300 hover:bg-cyan-50')}"
+                                >
+                                    <span>{ev.icono}</span>
+                                    <span>{ev.titulo}</span>
+                                </button>
+                            {/each}
+                        </div>
+                    </div>
+
+                    <!-- PONDERACIÓN -->
+                    <div class="p-4 rounded-xl border transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                        <span class="text-sm font-bold mb-4 block" style="color: {ts.text}">⚖️ Ponderación (Debe sumar 100%)</span>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-sm" style="color: {ts.text2}">📚 Conceptos</span>
+                                    <span class="text-sm font-bold text-blue-600">{formData.eval_ponderacion_conceptos}%</span>
+                                </div>
+                                <input 
+                                    type="range" 
+                                    bind:value={formData.eval_ponderacion_conceptos}
+                                    min="0" max="100"
+                                    class="w-full h-2 rounded-lg appearance-none cursor-pointer accent-blue-600" style="background-color: {ts.bg3}"
+                                    onchange={autoGenerarDescripcionEval}
+                                />
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-sm" style="color: {ts.text2}">🔧 Procedimientos</span>
+                                    <span class="text-sm font-bold text-purple-600">{formData.eval_ponderacion_procedimientos}%</span>
+                                </div>
+                                <input 
+                                    type="range" 
+                                    bind:value={formData.eval_ponderacion_procedimientos}
+                                    min="0" max="100"
+                                    class="w-full h-2 rounded-lg appearance-none cursor-pointer accent-purple-600" style="background-color: {ts.bg3}"
+                                    onchange={autoGenerarDescripcionEval}
+                                />
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-sm" style="color: {ts.text2}">❤️ Actitudes</span>
+                                    <span class="text-sm font-bold text-green-600">{formData.eval_ponderacion_actitudes}%</span>
+                                </div>
+                                <input 
+                                    type="range" 
+                                    bind:value={formData.eval_ponderacion_actitudes}
+                                    min="0" max="100"
+                                    class="w-full h-2 rounded-lg appearance-none cursor-pointer accent-green-600" style="background-color: {ts.bg3}"
+                                    onchange={autoGenerarDescripcionEval}
+                                />
+                            </div>
+                        </div>
+                        <div class="mt-3 text-center">
+                            <span class="text-sm font-bold {formData.eval_ponderacion_conceptos + formData.eval_ponderacion_procedimientos + formData.eval_ponderacion_actitudes === 100 ? 'text-green-600' : 'text-red-600'}">
+                                Total: {formData.eval_ponderacion_conceptos + formData.eval_ponderacion_procedimientos + formData.eval_ponderacion_actitudes}%
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- ESCALA DE VALORACIÓN -->
+                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200'}">
+                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-amber-400' : 'text-amber-800'}">📊 Escala de Valoración (Decreto 1290)</span>
+                        <div class="grid grid-cols-5 gap-2">
+                            {#each ESCALA_VALORACION as escala}
+                                <div class="text-center p-2 rounded-lg border transition-colors {isDark ? 'border-amber-500/20' : 'border-amber-200'}" style="background-color: {ts.card}">
+                                    <div class="text-lg font-bold text-amber-600">{escala.valor}</div>
+                                    <div class="text-xs font-medium" style="color: {ts.text2}">{escala.label}</div>
+                                </div>
+                            {/each}
+                        </div>
+                    </div>
+
+                    <!-- DESCRIPCIÓN AUTO-GENERADA -->
+                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200'}">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-bold {isDark ? 'text-indigo-400' : 'text-indigo-800'}">📝 Descripción de Evaluación (Auto-generada)</span>
+                            <button 
+                                type="button"
+                                onclick={autoGenerarDescripcionEval}
+                                class="text-xs px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded transition-colors"
+                            >
+                                🔄 Actualizar
+                            </button>
+                        </div>
+                        <textarea
+                            bind:value={formData.eval_descripcion_auto}
+                            rows="4"
+                            class="w-full text-sm rounded-lg focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-shadow {isDark ? 'border-indigo-500/20' : 'border-indigo-200'}" style="background-color: {ts.bg2}; color: {ts.text}"
+                            placeholder="👆 Selecciona las opciones de arriba para auto-generar la descripción..."
+                        ></textarea>
+                    </div>
+
+                    <!-- RESUMEN VISUAL -->
+                    <div class="p-4 rounded-xl border transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                        <h4 class="font-semibold mb-3 text-sm" style="color: {ts.text}">📋 Resumen de la Evaluación</h4>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                            <div class="p-3 rounded-lg shadow-sm transition-colors" style="background-color: {ts.card}">
+                                <div class="text-xs" style="color: {ts.muted}">Tipo</div>
+                                <div class="font-bold text-blue-600">{TIPOS_EVALUACION.find(t => t.id === formData.eval_type)?.titulo || 'No seleccionado'}</div>
+                            </div>
+                            <div class="p-3 rounded-lg shadow-sm transition-colors" style="background-color: {ts.card}">
+                                <div class="text-xs" style="color: {ts.muted}">Modalidades</div>
+                                <div class="font-bold text-green-600">{formData.eval_modalidades.length}</div>
+                            </div>
+                            <div class="p-3 rounded-lg shadow-sm transition-colors" style="background-color: {ts.card}">
+                                <div class="text-xs" style="color: {ts.muted}">Instrumentos</div>
+                                <div class="font-bold text-purple-600">{formData.eval_instrumentos.length}</div>
+                            </div>
+                            <div class="p-3 rounded-lg shadow-sm transition-colors" style="background-color: {ts.card}">
+                                <div class="text-xs" style="color: {ts.muted}">Evidencias</div>
+                                <div class="font-bold text-cyan-600">{formData.eval_evidencias.length}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {/if}
+
+            <!-- PASO 6: RECURSOS DIDÁCTICOS -->
+            {#if currentStep === 5}
+                <div id="step-5" class="space-y-6 animate-fade-in">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-lg md:text-xl font-semibold tracking-tight border-l-4 border-indigo-500 pl-3" style="color: {isDark ? 'rgb(165 180 252)' : 'rgb(55 48 163)'}">
+                                📦 Recursos Didácticos
+                            </h2>
+                            <p class="text-sm mt-1" style="color: {ts.muted}">
+                                🎯 Sistema interactivo - ¡Selecciona los recursos y listo!
+                            </p>
+                        </div>
+                        <button 
+                            type="button"
+                            onclick={resetearRecursos}
+                            class="text-xs px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
+                        >
+                            🔄 Reiniciar
+                        </button>
+                    </div>
+
+                    <!-- CATEGORÍAS DE RECURSOS -->
+                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-gradient-to-r from-cyan-50 to-blue-50 border-cyan-200'}">
+                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-cyan-400' : 'text-cyan-800'}">📂 Categorías de Recursos - Selecciona una o varias:</span>
+                        <div class="flex flex-wrap gap-2">
+                            {#each CATEGORIAS_RECURSOS as cat}
+                                {@const selected = recursosCategorias.includes(cat.id)}
+                                {@const count = getCountPorCategoria(cat.id)}
+                                <button
+                                    type="button"
+                                    onclick={() => toggleCategoria(cat.id)}
+                                    class="px-4 py-2.5 rounded-xl border-2 transition-all duration-200 flex items-center gap-2 {selected 
+                                        ? 'bg-cyan-600 border-cyan-600 text-white shadow-lg' 
+                                        : (isDark ? 'bg-white/5 border-white/10 text-gray-300 hover:border-cyan-500/40 hover:bg-cyan-500/10' : 'bg-white border-gray-200 text-gray-700 hover:border-cyan-300 hover:bg-cyan-50')}"
+                                >
+                                    <span class="text-lg">{cat.icono}</span>
+                                    <span class="font-medium">{cat.titulo}</span>
+                                    {#if count > 0}
+                                        <span class="ml-1 px-2 py-0.5 bg-white/20 rounded-full text-xs">{count}</span>
+                                    {/if}
+                                </button>
+                            {/each}
+                        </div>
+                    </div>
+
+                    <!-- RECURSOS POR CATEGORÍA SELECCIONADA -->
+                    {#if recursosCategorias.length > 0}
+                        <div class="space-y-4">
+                            {#each recursosCategorias as catId}
+                                {@const categoria = CATEGORIAS_RECURSOS.find(c => c.id === catId)}
+                                {@const recursos = RECURSOS_POR_CATEGORIA[catId] || []}
+                                <div class="p-4 rounded-xl border transition-colors" style="background-color: {ts.card}; border-color: {ts.cardBorder}">
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <span class="text-xl">{categoria?.icono}</span>
+                                        <h3 class="font-bold" style="color: {ts.text}">{categoria?.titulo}</h3>
+                                        <span class="text-xs" style="color: {ts.muted}">({recursos.filter(r => recursosSeleccionados.includes(r.id)).length} seleccionados)</span>
+                                    </div>
+                                    <div class="flex flex-wrap gap-2">
+                                        {#each recursos as recurso}
+                                            {@const selected = recursosSeleccionados.includes(recurso.id)}
+                                            <button
+                                                type="button"
+                                                onclick={() => toggleRecurso(recurso.id)}
+                                                class="px-3 py-2 rounded-lg border-2 transition-all duration-200 flex items-center gap-1.5 text-sm {selected 
+                                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' 
+                                                    : (isDark ? 'bg-white/5 border-white/10 text-gray-300 hover:border-indigo-500/40 hover:bg-indigo-500/10' : 'bg-gray-50 border-gray-200 text-gray-700 hover:border-indigo-300 hover:bg-indigo-50')}"
+                                                title={recurso.descripcion}
+                                            >
+                                                <span>{recurso.icono}</span>
+                                                <span>{recurso.titulo}</span>
+                                            </button>
+                                        {/each}
+                                    </div>
+                                </div>
+                            {/each}
+                        </div>
                     {:else}
-                      <div class="check-empty"></div>
+                        <div class="p-4 rounded-xl border text-center transition-colors {isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50 border-amber-200'}">
+                            <p class="{isDark ? 'text-amber-400' : 'text-amber-700'}">👆 Selecciona una categoría arriba para ver los recursos disponibles</p>
+                        </div>
                     {/if}
-                  </div>
-                  <span>{step.label}</span>
-                </div>
-              {/each}
-            </div>
-          </div>
 
-          <!-- Recent -->
-          <div class="side-card glass">
-            <div class="side-section-title">Planeaciones recientes</div>
-            {#each [
-              { abbr: "MAT", label: "Matemáticas · 8°", meta: "P1 · hace 2 días", color: "#818cf8" },
-              { abbr: "LEN", label: "Lenguaje · 7°", meta: "P2 · hace 5 días", color: "#34d399" },
-              { abbr: "CN", label: "Ciencias · 9°", meta: "P2 · hace 1 sem.", color: "#fbbf24" },
-            ] as item}
-              <div class="recent-item">
-                <div class="recent-thumb" style="background:{item.color}20;color:{item.color}">{item.abbr}</div>
-                <div class="recent-info">
-                  <span class="recent-name">{item.label}</span>
-                  <span class="recent-meta">{item.meta}</span>
+                    <!-- RECURSOS PERSONALIZADOS -->
+                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-orange-500/10 border-orange-500/30' : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200'}">
+                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-orange-400' : 'text-orange-800'}">➕ Agregar Recurso Personalizado</span>
+                        <div class="flex gap-2">
+                            <input
+                                type="text"
+                                bind:value={recursoPersonalizado}
+                                placeholder="Escribe un recurso no listed..."
+                                class="flex-1 rounded-lg focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 p-2.5 transition-shadow {isDark ? 'border-orange-500/20' : 'border-orange-200'}"
+                                style="background-color: {ts.bg2}; color: {ts.text}"
+                                onkeydown={(e) => e.key === 'Enter' && agregarRecursoPersonalizado()}
+                            />
+                            <button
+                                type="button"
+                                onclick={agregarRecursoPersonalizado}
+                                class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors"
+                            >
+                                Agregar
+                            </button>
+                        </div>
+                        {#if recursosPersonalizadosLista.length > 0}
+                            <div class="flex flex-wrap gap-2 mt-3">
+                                {#each recursosPersonalizadosLista as recurso}
+                                    <span class="px-3 py-1.5 border rounded-full text-sm flex items-center gap-1 {isDark ? 'bg-white/5 border-orange-500/20 text-orange-400' : 'bg-white border-orange-200 text-orange-700'}">
+                                        📌 {recurso}
+                                        <button 
+                                            type="button"
+                                            onclick={() => quitarRecursoPersonalizado(recurso)}
+                                            class="ml-1 text-orange-400 hover:text-orange-600"
+                                        >
+                                            ×
+                                        </button>
+                                    </span>
+                                {/each}
+                            </div>
+                        {/if}
+                    </div>
+
+                    <!-- RECURSOS SELECCIONADOS -->
+                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200'}">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-sm font-bold {isDark ? 'text-indigo-400' : 'text-indigo-800'}">📝 Recursos Seleccionados (Auto-generados)</span>
+                            <button 
+                                type="button"
+                                onclick={generarDescripcionRecursos}
+                                class="text-xs px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded transition-colors"
+                            >
+                                🔄 Actualizar
+                            </button>
+                        </div>
+                        {#if recursosSeleccionados.length > 0 || recursosPersonalizadosLista.length > 0}
+                            <div class="p-3 rounded-lg border max-h-48 overflow-y-auto transition-colors" style="background-color: {ts.card}; border-color: {ts.cardBorder}">
+                                {#each recursosSeleccionados as recursoId}
+                                    {@const recurso = Object.values(RECURSOS_POR_CATEGORIA).flat().find(r => r.id === recursoId)}
+                                    {#if recurso}
+                                        <div class="flex items-center gap-2 py-1 border-b last:border-0" style="border-color: {ts.border}">
+                                            <span>{recurso.icono}</span>
+                                            <span class="text-sm" style="color: {ts.text2}">{recurso.titulo}</span>
+                                        </div>
+                                    {/if}
+                                {/each}
+                                {#each recursosPersonalizadosLista as recurso}
+                                    <div class="flex items-center gap-2 py-1 border-b last:border-0" style="border-color: {ts.border}">
+                                        <span>📌</span>
+                                        <span class="text-sm" style="color: {ts.text2}">{recurso}</span>
+                                    </div>
+                                {/each}
+                            </div>
+                        {:else}
+                            <p class="text-sm text-center py-4" style="color: {ts.muted}">👆 Selecciona recursos de las categorías de arriba</p>
+                        {/if}
+                    </div>
+
+                    <!-- RESUMEN VISUAL -->
+                    <div class="p-4 rounded-xl border transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                        <h4 class="font-semibold mb-3 text-sm" style="color: {ts.text}">📊 Resumen de Recursos</h4>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                            <div class="p-3 rounded-lg shadow-sm transition-colors" style="background-color: {ts.card}">
+                                <div class="text-xs" style="color: {ts.muted}">Categorías</div>
+                                <div class="font-bold text-cyan-600">{recursosCategorias.length}</div>
+                            </div>
+                            <div class="p-3 rounded-lg shadow-sm transition-colors" style="background-color: {ts.card}">
+                                <div class="text-xs" style="color: {ts.muted}">Recursos</div>
+                                <div class="font-bold text-indigo-600">{recursosSeleccionados.length}</div>
+                            </div>
+                            <div class="p-3 rounded-lg shadow-sm transition-colors" style="background-color: {ts.card}">
+                                <div class="text-xs" style="color: {ts.muted}">Personalizados</div>
+                                <div class="font-bold text-orange-600">{recursosPersonalizadosLista.length}</div>
+                            </div>
+                            <div class="p-3 rounded-lg shadow-sm transition-colors" style="background-color: {ts.card}">
+                                <div class="text-xs" style="color: {ts.muted}">Total</div>
+                                <div class="font-bold text-green-600">{recursosSeleccionados.length + recursosPersonalizadosLista.length}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MENSAJE FINAL -->
+                    <div class="p-4 rounded-xl border text-center transition-colors {isDark ? 'bg-green-500/10 border-green-500/30' : 'bg-green-50 border-green-200'}">
+                        <p class="font-medium text-lg {isDark ? 'text-green-400' : 'text-green-800'}">
+                            🎉 ¡Planeación lista para generar!
+                        </p>
+                        <p class="text-xs mt-1 {isDark ? 'text-green-300' : 'text-green-600'}">
+                            Al guardar, se generará un PDF alineado con los formatos institucionales y normativa MEN.
+                        </p>
+                    </div>
                 </div>
-                <button class="recent-load">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            {/if}
+
+            <!-- PASO 2: TEMPORALIDAD -->
+            {#if currentStep === 1}
+                <div id="step-1" class="space-y-6 animate-fade-in">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-lg md:text-xl font-semibold tracking-tight border-l-4 border-indigo-500 pl-3" style="color: {isDark ? 'rgb(165 180 252)' : 'rgb(55 48 163)'}">
+                                ⏱️ Temporalidad y Fechas Reales
+                            </h2>
+                            <p class="text-sm mt-1" style="color: {ts.muted}">
+                                🎯 Define la duración y período de tu planeación
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- TIPO DE PLANEACIÓN -->
+                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-violet-500/10 border-violet-500/30' : 'bg-gradient-to-r from-violet-50 to-purple-50 border-violet-200'}">
+                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-violet-400' : 'text-violet-800'}">📅 Tipo de Planeación - Selecciona:</span>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {#each TIPOS_PLANEACION as tipo}
+                                {@const selected = formData.planeacion_tipo === tipo.id}
+                                <button
+                                    type="button"
+                                    onclick={() => formData.planeacion_tipo = tipo.id}
+                                    class="p-3 rounded-xl border-2 transition-all duration-200 text-left {selected
+                                        ? 'border-violet-500 bg-white shadow-lg ring-2 ring-violet-200'
+                                        : (isDark ? 'border-white/10 bg-white/5 hover:border-violet-500/40 hover:bg-white/10' : 'border-gray-200 bg-white/50 hover:border-violet-300 hover:bg-white')}"
+                                >
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-xl">{tipo.icono}</span>
+                                        <span class="font-bold text-sm {selected ? (isDark ? 'text-violet-400' : 'text-violet-700') : ''}" style="{!selected ? `color: ${ts.text}` : ''}">{tipo.titulo}</span>
+                                    </div>
+                                    <p class="text-xs" style="color: {ts.muted}">{tipo.descripcion}</p>
+                                </button>
+                            {/each}
+                        </div>
+                    </div>
+
+                    <!-- FECHAS REALES -->
+                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-blue-500/10 border-blue-500/30' : 'bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-200'}">
+                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-blue-400' : 'text-blue-800'}">📆 Fechas Reales (yyyy-mm-dd)</span>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="fecha_inicio" class="block text-sm font-medium mb-1" style="color: {ts.text2}">📥 Fecha Inicio</label>
+                                <input
+                                    id="fecha_inicio"
+                                    type="date"
+                                    bind:value={formData.fecha_inicio}
+                                    class="w-full rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 p-2.5 transition-shadow"
+                                    style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                />
+                            </div>
+                            <div>
+                                <label for="fecha_fin" class="block text-sm font-medium mb-1" style="color: {ts.text2}">📤 Fecha Fin</label>
+                                <input
+                                    id="fecha_fin"
+                                    type="date"
+                                    bind:value={formData.fecha_fin}
+                                    class="w-full rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 p-2.5 transition-shadow"
+                                    style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- DURACIÓN CALCULADA -->
+                        {#if formData.fecha_inicio && formData.fecha_fin}
+                            <div class="mt-4 p-3 rounded-lg border transition-colors {isDark ? 'border-blue-500/20' : 'border-blue-200'}" style="background-color: {ts.card}">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm font-medium" style="color: {ts.text2}">⏱️ Duración calculada:</span>
+                                    <span class="text-lg font-bold text-blue-600">
+                                        {duracionCalculada.dias} días ({duracionCalculada.semanas} semanas académicas)
+                                    </span>
+                                </div>
+                            </div>
+                        {/if}
+                    </div>
+
+                    <!-- PERÍODO ACADÉMICO -->
+                    <div id="periodo-academico-section" class="p-4 rounded-xl border transition-colors {isDark ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200'}">
+                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-emerald-400' : 'text-emerald-800'}">📚 Período Académico - Selecciona:</span>
+                        <div class="flex flex-wrap gap-2">
+                            {#each getPeriodosPorTipo() as periodo}
+                                {@const selected = formData.periodo_academico === periodo.id}
+                                <button
+                                    type="button"
+                                    onclick={() => formData.periodo_academico = periodo.id}
+                                    class="px-4 py-2.5 rounded-xl border-2 transition-all duration-200 {selected
+                                        ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg'
+                                        : (isDark ? 'bg-white/5 border-white/10 text-gray-300 hover:border-emerald-500/40 hover:bg-emerald-500/10' : 'bg-white border-gray-200 text-gray-700 hover:border-emerald-300 hover:bg-emerald-50')}"
+                                >
+                                    <span class="font-medium">{periodo.label}</span>
+                                </button>
+                            {/each}
+                        </div>
+                    </div>
+
+                    <!-- RESUMEN VISUAL -->
+                    <div class="p-4 rounded-xl border transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                        <h4 class="font-semibold mb-3 text-sm" style="color: {ts.text}">📊 Resumen de Temporalidad</h4>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                            <div class="p-3 rounded-lg shadow-sm transition-colors" style="background-color: {ts.card}">
+                                <div class="text-xs" style="color: {ts.muted}">Tipo</div>
+                                <div class="font-bold text-violet-600 text-sm">{TIPOS_PLANEACION.find(t => t.id === formData.planeacion_tipo)?.titulo || 'No seleccionado'}</div>
+                            </div>
+                            <div class="p-3 rounded-lg shadow-sm transition-colors" style="background-color: {ts.card}">
+                                <div class="text-xs" style="color: {ts.muted}">Período</div>
+                                <div class="font-bold text-emerald-600 text-sm">{getPeriodosPorTipo().find(p => p.id === formData.periodo_academico)?.label || 'No seleccionado'}</div>
+                            </div>
+                            <div class="p-3 rounded-lg shadow-sm transition-colors" style="background-color: {ts.card}">
+                                <div class="text-xs" style="color: {ts.muted}">Días</div>
+                                <div class="font-bold text-blue-600">{duracionCalculada.dias || 0}</div>
+                            </div>
+                            <div class="p-3 rounded-lg shadow-sm transition-colors" style="background-color: {ts.card}">
+                                <div class="text-xs" style="color: {ts.muted}">Semanas</div>
+                                <div class="font-bold text-purple-600">{duracionCalculada.semanas || 0}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            {/if}
+
+            <!-- Panel de Planeaciones Locales -->
+            <div class="mt-6 rounded-xl border overflow-hidden transition-colors {isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50 border-amber-200'}">
+                <button
+                    type="button"
+                    onclick={() => { showLocalPanel = !showLocalPanel; if (showLocalPanel) loadPlaneacionesLocales(); }}
+                    class="w-full px-4 py-3 flex items-center justify-between transition-colors text-left {isDark ? 'bg-amber-500/15 hover:bg-amber-500/25' : 'bg-amber-100 hover:bg-amber-200'}"
+                >
+                    <span class="flex items-center gap-2 font-medium {isDark ? 'text-amber-400' : 'text-amber-800'}">
+                        <span>📂</span> Planeaciones Locales ({planeacionesLocales.length}/100)
+                    </span>
+                    <span class="{isDark ? 'text-amber-400' : 'text-amber-600'}">{showLocalPanel ? '▼' : '▶'}</span>
                 </button>
-              </div>
-            {/each}
-            <div class="side-actions">
-              <button class="side-action-btn">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                Duplicar
-              </button>
-              <button class="side-action-btn">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                Importar
-              </button>
-              <button class="side-action-btn">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Exportar
-              </button>
+
+                {#if showLocalPanel}
+                    <div class="p-4 space-y-4">
+                        {#if planeacionesLocales.length === 0}
+                            <p class="{isDark ? 'text-amber-400' : 'text-amber-700'} text-center py-4">No hay planeaciones guardadas localmente.</p>
+                        {:else}
+                            <div class="max-h-64 overflow-y-auto space-y-2">
+                                {#each planeacionesLocales as planeacion, index}
+                                    <div class="flex items-center justify-between p-3 rounded-lg border transition-colors" style="background-color: {ts.card}; border-color: {ts.cardBorder}">
+                                        <div class="flex-1 min-w-0">
+                                            <p class="font-medium text-sm truncate" style="color: {ts.text}">
+                                                {planeacion.subject || 'Sin materia'} - {planeacion.grade || 'Sin grado'}
+                                            </p>
+                                            <p class="text-xs" style="color: {ts.muted}">
+                                                {new Date(planeacion.fecha_local).toLocaleString('es-CO')}
+                                            </p>
+                                        </div>
+                                        <div class="flex gap-2 ml-2">
+                                            <button
+                                                type="button"
+                                                onclick={() => generatePDF(planeacion)}
+                                                disabled={isGeneratingPdf}
+                                                class="px-2 py-1 text-xs rounded disabled:opacity-50 transition-colors {isDark ? 'bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400' : 'bg-indigo-100 hover:bg-indigo-200 text-indigo-700'}"
+                                                title="Generar PDF"
+                                            >
+                                                PDF
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onclick={() => loadPlaneacionLocal(planeacion)}
+                                                class="px-2 py-1 text-xs rounded transition-colors {isDark ? 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-400' : 'bg-blue-100 hover:bg-blue-200 text-blue-700'}"
+                                            >
+                                                Cargar
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onclick={() => handleDeleteLocal(planeacion.id_local)}
+                                                class="px-2 py-1 text-xs rounded transition-colors {isDark ? 'bg-red-500/20 hover:bg-red-500/30 text-red-400' : 'bg-red-100 hover:bg-red-200 text-red-700'}"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    </div>
+                                {/each}
+                            </div>
+                        {/if}
+
+                        <div class="flex flex-wrap gap-2 pt-2 border-t" style="border-color: {ts.border}">
+                            <button
+                                type="button"
+                                onclick={handleExportLocal}
+                                disabled={planeacionesLocales.length === 0}
+                                class="px-3 py-1.5 text-sm rounded-lg disabled:opacity-50 transition-colors {isDark ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400' : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'}"
+                            >
+                                📥 Exportar JSON
+                            </button>
+                            <button
+                                type="button"
+                                onclick={handleImportLocal}
+                                class="px-3 py-1.5 text-sm rounded-lg transition-colors {isDark ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-400' : 'bg-purple-100 hover:bg-purple-200 text-purple-700'}"
+                            >
+                                📤 Importar JSON
+                            </button>
+                            <button
+                                type="button"
+                                onclick={handleClearAllLocal}
+                                disabled={planeacionesLocales.length === 0}
+                                class="px-3 py-1.5 text-sm rounded-lg disabled:opacity-50 transition-colors {isDark ? 'bg-red-500/20 hover:bg-red-500/30 text-red-400' : 'bg-red-100 hover:bg-red-200 text-red-700'}"
+                            >
+                                🗑️ Limpiar todo
+                            </button>
+                            <input
+                                type="file"
+                                accept=".json"
+                                bind:this={fileInputRef}
+                                onchange={handleFileSelect}
+                                class="hidden"
+                            />
+                        </div>
+                    </div>
+                {/if}
             </div>
-          </div>
 
-          <!-- Mobile close -->
-          {#if isMobile && sidebarOpen}
-            <button class="close-sidebar" onclick={() => sidebarOpen = false} transition:fade={{ duration: 200 }}>
-              Cerrar panel
-            </button>
-          {/if}
-        </aside>
+            <!-- Panel de Planeaciones Online (Google Sheets) -->
+            <div class="mt-4 rounded-xl border overflow-hidden transition-colors {isDark ? 'bg-blue-500/10 border-blue-500/30' : 'bg-blue-50 border-blue-200'}">
+                <button
+                    type="button"
+                    onclick={() => { showFiltrosPanel = !showFiltrosPanel; if (showFiltrosPanel && planeacionesOnline.length === 0) buscarPlaneacionesOnline(); }}
+                    class="w-full px-4 py-3 flex items-center justify-between transition-colors text-left {isDark ? 'bg-blue-500/15 hover:bg-blue-500/25' : 'bg-blue-100 hover:bg-blue-200'}"
+                >
+                    <span class="flex items-center gap-2 font-medium {isDark ? 'text-blue-400' : 'text-blue-800'}">
+                        <span>☁️</span> Planeaciones en la Nube ({planeacionesOnline.length})
+                    </span>
+                    <span class="{isDark ? 'text-blue-400' : 'text-blue-600'}">{showFiltrosPanel ? '▼' : '▶'}</span>
+                </button>
 
-      </div>
+                {#if showFiltrosPanel}
+                    <div class="p-4 space-y-4">
+                        <!-- Filtros -->
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium mb-1 {isDark ? 'text-blue-400' : 'text-blue-700'}">Docente</label>
+                                <input
+                                    type="text"
+                                    bind:value={filtrosBusqueda.docente}
+                                    placeholder="Buscar por nombre..."
+                                    class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-1 focus:ring-blue-500/30 focus:border-blue-400 transition-shadow"
+                                    style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium mb-1 {isDark ? 'text-blue-400' : 'text-blue-700'}">Grado</label>
+                                <input
+                                    type="text"
+                                    bind:value={filtrosBusqueda.grado}
+                                    placeholder="Ej: 6, 7, 8..."
+                                    class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-1 focus:ring-blue-500/30 focus:border-blue-400 transition-shadow"
+                                    style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium mb-1 {isDark ? 'text-blue-400' : 'text-blue-700'}">Materia</label>
+                                <input
+                                    type="text"
+                                    bind:value={filtrosBusqueda.materia}
+                                    placeholder="Buscar materia..."
+                                    class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-1 focus:ring-blue-500/30 focus:border-blue-400 transition-shadow"
+                                    style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium mb-1 {isDark ? 'text-blue-400' : 'text-blue-700'}">Período</label>
+                                <input
+                                    type="text"
+                                    bind:value={filtrosBusqueda.periodo}
+                                    placeholder="Ej: Periodo 1..."
+                                    class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-1 focus:ring-blue-500/30 focus:border-blue-400 transition-shadow"
+                                    style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium mb-1 {isDark ? 'text-blue-400' : 'text-blue-700'}">Desde fecha</label>
+                                <input
+                                    type="date"
+                                    bind:value={filtrosBusqueda.fechaDesde}
+                                    class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-1 focus:ring-blue-500/30 focus:border-blue-400 transition-shadow"
+                                    style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium mb-1 {isDark ? 'text-blue-400' : 'text-blue-700'}">Hasta fecha</label>
+                                <input
+                                    type="date"
+                                    bind:value={filtrosBusqueda.fechaHasta}
+                                    class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-1 focus:ring-blue-500/30 focus:border-blue-400 transition-shadow"
+                                    style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                />
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            onclick={buscarPlaneacionesOnline}
+                            disabled={isLoadingOnline}
+                            class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {#if isLoadingOnline}
+                                <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                                Buscando...
+                            {:else}
+                                🔍 Buscar Planeaciones
+                            {/if}
+                        </button>
+
+                        <!-- Resultados -->
+                        {#if planeacionesOnline.length > 0}
+                            <div class="border-t pt-4" style="border-color: {ts.border}">
+                                <p class="text-sm font-medium mb-2 {isDark ? 'text-blue-400' : 'text-blue-700'}">
+                                    {planeacionesOnline.length} planeación(es) encontrada(s)
+                                </p>
+                                <div class="max-h-80 overflow-y-auto space-y-2">
+                                    {#each planeacionesOnline as planeacion}
+                                        <div class="p-3 rounded-lg border transition-colors" style="background-color: {ts.card}; border-color: {ts.cardBorder}">
+                                            <div class="flex items-start justify-between">
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="font-medium text-sm" style="color: {ts.text}">
+                                                        {planeacion.subject || 'Sin materia'} - Grado {planeacion.grade || 'N/A'}
+                                                    </p>
+                                                    <p class="text-xs" style="color: {ts.muted}">
+                                                        📅 {planeacion.fecha_creacion || 'Sin fecha'}
+                                                        👤 {planeacion.docente || 'Sin docente'}
+                                                        📅 Período: {planeacion.period || planeacion.periodo_academico || 'N/A'}
+                                                    </p>
+                                                </div>
+                                                <div class="flex gap-2 ml-2">
+                                                    <button
+                                                        type="button"
+                                                        onclick={() => generatePDF(planeacion)}
+                                                        disabled={isGeneratingPdf}
+                                                        class="px-2 py-1 text-xs rounded disabled:opacity-50 transition-colors {isDark ? 'bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400' : 'bg-indigo-100 hover:bg-indigo-200 text-indigo-700'}"
+                                                        title="Generar PDF"
+                                                    >
+                                                        PDF
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onclick={() => loadPlaneacionOnline(planeacion)}
+                                                        class="px-2 py-1 text-xs rounded transition-colors {isDark ? 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-400' : 'bg-blue-100 hover:bg-blue-200 text-blue-700'}"
+                                                    >
+                                                        📥 Cargar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {/each}
+                                </div>
+                            </div>
+                        {:else if !isLoadingOnline}
+                            <p class="text-center py-2 text-sm {isDark ? 'text-blue-400' : 'text-blue-600'}">
+                                Use los filtros y haga clic en "Buscar Planeaciones"
+                            </p>
+                        {/if}
+                    </div>
+                {/if}
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="flex flex-col sm:flex-row justify-between gap-2 pt-6 border-t" style="border-color: {ts.border}">
+                <button
+                    type="button"
+                    disabled={currentStep === 0}
+                    onclick={prevStep}
+                    class="w-full sm:w-auto px-5 sm:px-6 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] flex items-center justify-center gap-2 {isDark ? 'bg-white/10 text-gray-300 hover:bg-white/15' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    Anterior
+                </button>
+
+                {#if currentStep < 5}
+                    <button
+                        type="button"
+                        onclick={nextStep}
+                        class="w-full sm:w-auto px-5 sm:px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white shadow-md hover:shadow-lg active:scale-[0.97] flex items-center justify-center gap-2"
+                    >
+                        Siguiente
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                {:else}
+                    <button
+                        type="submit"
+                        disabled={isLoading}
+                        class="w-full sm:w-auto px-5 sm:px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-md hover:shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97]"
+                    >
+                        {#if isLoading}
+                            <svg
+                                class="animate-spin h-4 w-4"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                            >
+                                <circle
+                                    class="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    stroke-width="4"
+                                ></circle>
+                                <path
+                                    class="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                ></path>
+                            </svg>
+                            Guardando...
+                        {:else}
+                            <span>💾</span> Guardar Planeación
+                        {/if}
+                    </button>
+                {/if}
+            </div>
+        </form>
     </div>
-  </div>
 
-  <!-- Mobile sidebar overlay -->
-  {#if isMobile && sidebarOpen}
-    <button class="sidebar-overlay" onclick={() => sidebarOpen = false} transition:fade={{ duration: 200 }} aria-label="Cerrar sidebar"></button>
-  {/if}
+    <!-- PDF Preview Modal -->
+    {#if showPdfPreview && pdfUrl}
+        <div 
+            class="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 bg-black/60 backdrop-blur-sm"
+            transition:fade={{ duration: 200 }}
+        >
+            <div class="relative rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden" style="background-color: {ts.card}">
+                <div class="flex items-center justify-between p-3 sm:p-4 bg-indigo-600 text-white flex-shrink-0">
+                    <h3 class="font-bold text-sm sm:text-lg flex items-center gap-2 truncate">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <span class="hidden sm:inline">Vista Previa PDF - Planeador de Clases</span>
+                        <span class="sm:hidden">Vista Previa PDF</span>
+                    </h3>
+                    <div class="flex gap-2 flex-shrink-0">
+                        <a
+                            href={pdfUrl}
+                            download={`Planeacion_${formData.subject || 'clases'}_${formData.grado || ''}.pdf`}
+                            class="px-3 sm:px-4 py-2 bg-green-500 hover:bg-green-400 text-white rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                            Descargar
+                        </a>
+                        <button 
+                            onclick={() => showPdfPreview = false}
+                            class="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg text-sm font-medium transition-colors"
+                        >
+                            Cerrar
+                        </button>
+                    </div>
+                </div>
+                <iframe 
+                    src={pdfUrl} 
+                    title="Vista Previa PDF" 
+                    class="flex-1 w-full border-none" style="background-color: {ts.bg2}"
+                ></iframe>
+            </div>
+        </div>
+    {/if}
+
+    <!-- Firma Modal -->
+    {#if showFirmaModal}
+        <div 
+            class="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4"
+            transition:fade={{ duration: 200 }}
+        >
+            <!-- Backdrop -->
+            <button 
+                type="button"
+                class="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-default"
+                onclick={() => showFirmaModal = false}
+                aria-label="Cerrar modal"
+            ></button>
+            
+            <!-- Modal Content -->
+            <div 
+                class="relative rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
+                style="background-color: {ts.card}"
+                transition:fly={{ y: 20, duration: 300 }}
+            >
+                <!-- Header -->
+                <div class="flex items-center justify-between p-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white flex-shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-white/20 rounded-lg">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="font-bold text-lg">Firma del Docente</h2>
+                            <p class="text-xs text-amber-100">Dibuja tu firma en el canvas</p>
+                        </div>
+                    </div>
+                    <button 
+                        type="button"
+                        onclick={() => showFirmaModal = false}
+                        class="p-1 hover:bg-white/20 rounded-lg transition-colors"
+                        aria-label="Cerrar modal de firma"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Canvas de Firma -->
+                <div class="p-4" style="color: {ts.text}">
+                    <div class="border-2 border-dashed rounded-lg mb-4" style="border-color: {ts.border}; background-color: {ts.bg2}">
+                        <canvas 
+                            bind:this={firmaCanvas}
+                            width="500"
+                            height="150"
+                            class="w-full touch-none cursor-crosshair"
+                        ></canvas>
+                    </div>
+                    
+                    {#if formData.firma_docente}
+                        <div class="mb-4">
+                            <p class="text-xs mb-1" style="color: {ts.muted}">Firma actual:</p>
+                            <img src={formData.firma_docente} alt="Firma actual" class="h-16 border rounded" style="border-color: {ts.border}; background-color: {ts.bg2}" />
+                        </div>
+                    {/if}
+
+                    <!-- Botones -->
+                    <div class="flex gap-2">
+                        <button
+                            type="button"
+                            onclick={limpiarFirma}
+                            class="flex-1 px-4 py-2 rounded-lg font-medium transition-colors"
+                            style="background-color: {ts.bg3}; color: {ts.text2}"
+                        >
+                            Limpiar
+                        </button>
+                        <button
+                            type="button"
+                            onclick={guardarFirma}
+                            class="flex-1 px-4 py-2 bg-green-500 hover:bg-green-400 text-white rounded-lg font-medium transition-colors"
+                        >
+                            Guardar Firma
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- PIAR Modal -->
+    {#if showPiarModal}
+        <div 
+            class="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4"
+            transition:fade={{ duration: 200 }}
+        >
+            <!-- Backdrop -->
+            <button 
+                type="button"
+                class="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-default"
+                onclick={() => showPiarModal = false}
+                aria-label="Cerrar modal"
+            ></button>
+            
+            <!-- Modal Content -->
+            <div 
+                class="relative rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col"
+                style="background-color: {ts.card}"
+                transition:fly={{ y: 20, duration: 300 }}
+            >
+                <!-- Header -->
+                <div class="flex items-center justify-between p-4 bg-slate-800 text-white flex-shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-slate-700 rounded-lg">
+                            <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="font-bold text-lg">Registro PIAR Completo</h2>
+                            <p class="text-xs text-slate-400">Acta de Ajustes Razonables - Decreto 1421 de 2017</p>
+                        </div>
+                    </div>
+                    <button 
+                        type="button"
+                        onclick={() => showPiarModal = false}
+                        class="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+                        aria-label="Cerrar modal"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Content -->
+                <div class="flex-1 overflow-y-auto" style="background-color: {ts.bg2}">
+                    <Piar onBack={() => showPiarModal = false} />
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- AI Panel Modal -->
+    {#if showAIPanel}
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4">
+            <!-- Backdrop -->
+            <button
+                type="button"
+                class="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-default"
+                onclick={closeAIPanel}
+                aria-label="Cerrar panel"
+            ></button>
+
+            <!-- Modal Content -->
+            <div
+                class="relative rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
+                style="background-color: {ts.card}"
+                transition:fly={{ y: 20, duration: 300 }}
+            >
+                <!-- Header -->
+                <div class="flex items-center justify-between p-4 bg-gradient-to-r from-violet-600 to-purple-600 text-white flex-shrink-0">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-white/20 rounded-lg">
+                            <span class="text-xl">🤖</span>
+                        </div>
+                        <div>
+                            <h2 class="font-bold text-lg">Generador de Contenido con IA</h2>
+                            <p class="text-xs text-violet-200">OpenRouter - Modelo gratuito</p>
+                        </div>
+                    </div>
+                    <button 
+                        type="button"
+                        onclick={closeAIPanel}
+                        class="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                        aria-label="Cerrar panel"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Content -->
+                <div class="flex-1 overflow-y-auto p-6 space-y-4" style="color: {ts.text}">
+                    <!-- Info -->
+                    <div class="flex items-center gap-2 p-3 rounded-xl border {isDark ? 'bg-violet-500/10 border-violet-500/30' : 'bg-violet-50 border-violet-200'}">
+                        <span class="text-lg">✨</span>
+                        <p class="text-xs {isDark ? 'text-violet-300' : 'text-violet-700'}">
+                            Escribe el tema y la IA generará contenido para las <strong>4 secciones</strong> de la secuencia didáctica automáticamente.
+                        </p>
+                    </div>
+
+                    <!-- Prompt Input -->
+                    <div>
+                        <span class="text-sm font-bold mb-2 block" style="color: {ts.text2}">
+                            📝 Describe el tema o contexto:
+                        </span>
+                        <textarea
+                            bind:value={aiPrompt}
+                            rows="3"
+                            class="w-full px-4 py-3 rounded-xl border-2 focus:border-violet-500 focus:ring-2 focus:ring-violet-200 transition-all text-sm"
+                            style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                            placeholder="Ej: La fotosíntesis en plantas para grado 7°, enfoque práctico..."
+                        ></textarea>
+                    </div>
+
+                    <!-- Generate Button -->
+                    <button
+                        type="button"
+                        onclick={generateWithAI}
+                        disabled={isGeneratingAI || !aiPrompt.trim()}
+                        class="w-full py-3 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg"
+                    >
+                        {#if isGeneratingAI}
+                            <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Generando...{aiAttempt > 1 ? ` (intento ${aiAttempt}/3)` : ''}
+                        {:else}
+                            ⚡ Generar Secuencia Didáctica Completa
+                        {/if}
+                    </button>
+
+                    <!-- Results: 4 sections preview -->
+                    {#if aiSectionsResult}
+                        <div class="space-y-3">
+                            <span class="text-sm font-bold block" style="color: {ts.text2}">
+                                📄 Resultado generado:
+                            </span>
+
+                            <!-- Objetivos, Competencias, Indicadores -->
+                            {#if aiSectionsResult.objectives || aiSectionsResult.competencias || aiSectionsResult.indicadores}
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                    {#if aiSectionsResult.objectives}
+                                        <div class="rounded-xl border p-3 {isDark ? 'bg-blue-500/10 border-blue-500/30' : 'bg-blue-50 border-blue-200'}">
+                                            <span class="text-[11px] font-bold {isDark ? 'text-blue-300' : 'text-blue-700'} uppercase block mb-1">🎯 Objetivos</span>
+                                            <p class="text-xs whitespace-pre-wrap" style="color: {ts.text2}">{aiSectionsResult.objectives}</p>
+                                        </div>
+                                    {/if}
+                                    {#if aiSectionsResult.competencias}
+                                        <div class="rounded-xl border p-3 {isDark ? 'bg-green-500/10 border-green-500/30' : 'bg-green-50 border-green-200'}">
+                                            <span class="text-[11px] font-bold {isDark ? 'text-green-300' : 'text-green-700'} uppercase block mb-1">🤝 Competencias</span>
+                                            <p class="text-xs whitespace-pre-wrap" style="color: {ts.text2}">{aiSectionsResult.competencias}</p>
+                                        </div>
+                                    {/if}
+                                    {#if aiSectionsResult.indicadores}
+                                        <div class="rounded-xl border p-3 {isDark ? 'bg-purple-500/10 border-purple-500/30' : 'bg-purple-50 border-purple-200'}">
+                                            <span class="text-[11px] font-bold {isDark ? 'text-purple-300' : 'text-purple-700'} uppercase block mb-1">📊 Indicadores</span>
+                                            <p class="text-xs whitespace-pre-wrap" style="color: {ts.text2}">{aiSectionsResult.indicadores}</p>
+                                        </div>
+                                    {/if}
+                                </div>
+                            {/if}
+
+                            <!-- Tiempos -->
+                            <div class="flex flex-wrap gap-2 p-3 rounded-xl border {isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50 border-amber-200'}">
+                                <span class="text-[11px] font-bold {isDark ? 'text-amber-300' : 'text-amber-700'} w-full mb-1">⏱️ Distribución del tiempo (minutos)</span>
+                                <span class="text-xs px-2 py-1 rounded-full bg-violet-100 text-violet-700 font-medium">Exploración: {aiSectionsResult.tiempo_exploracion}</span>
+                                <span class="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">Estructuración: {aiSectionsResult.tiempo_estructuracion}</span>
+                                <span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 font-medium">Práctica: {aiSectionsResult.tiempo_practica}</span>
+                                <span class="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-700 font-medium">Transferencia: {aiSectionsResult.tiempo_transferencia}</span>
+                                <span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 font-medium">Valoración: {aiSectionsResult.tiempo_valoracion}</span>
+                                <span class="text-xs px-2 py-1 rounded-full bg-gray-200 text-gray-700 font-bold">Total: {aiSectionsResult.tiempo_exploracion + aiSectionsResult.tiempo_estructuracion + aiSectionsResult.tiempo_practica + aiSectionsResult.tiempo_transferencia + aiSectionsResult.tiempo_valoracion} min</span>
+                            </div>
+                            
+                            <!-- Secciones de la secuencia -->
+                            {#each [
+                                { key: "exploration", label: "🔍 Exploración", color: "violet" },
+                                { key: "structuring", label: "📝 Estructuración", color: "blue" },
+                                { key: "practice", label: "💪 Práctica", color: "green" },
+                                { key: "transfer", label: "🚀 Transferencia", color: "orange" },
+                            ] as section}
+                                <div class="rounded-xl border-2 border-{section.color}-200 overflow-hidden">
+                                    <div class="px-3 py-2 bg-{section.color}-50 border-b border-{section.color}-200">
+                                        <span class="text-xs font-bold text-{section.color}-700">{section.label}</span>
+                                    </div>
+                                    <div class="p-3">
+                                        <p class="text-sm whitespace-pre-wrap" style="color: {ts.text2}">{aiSectionsResult[section.key as keyof AISections]}</p>
+                                    </div>
+                                </div>
+                            {/each}
+                            
+                            <!-- Action Buttons -->
+                            <div class="flex gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onclick={() => {
+                                        if (!aiSectionsResult) return;
+                                        const fullText = `OBJETIVOS:\n${aiSectionsResult.objectives}\n\nCOMPETENCIAS:\n${aiSectionsResult.competencias}\n\nINDICADORES:\n${aiSectionsResult.indicadores}\n\nEXPLORACIÓN:\n${aiSectionsResult.exploration}\n\nESTRUCTURACIÓN:\n${aiSectionsResult.structuring}\n\nPRÁCTICA:\n${aiSectionsResult.practice}\n\nTRANSFERENCIA:\n${aiSectionsResult.transfer}`;
+                                        navigator.clipboard.writeText(fullText);
+                                    }}
+                                    class="flex-1 py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                                    style="background-color: {ts.bg3}; color: {ts.text2}"
+                                >
+                                    📋 Copiar todo
+                                </button>
+                                <button
+                                    type="button"
+                                    onclick={applyAIResult}
+                                    class="flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                                >
+                                    ✅ Aplicar todo al formulario
+                                </button>
+                            </div>
+                        </div>
+                    {/if}
+                </div>
+            </div>
+        </div>
+    {/if}
 </div>
 
-<!-- ══════════════════════════════════════════════════════════ -->
-<!-- STYLES -->
-<!-- ══════════════════════════════════════════════════════════ -->
 <style>
-  /* ── Reset / Root ─────────────────────────────────────── */
-  :global(*, *::before, *::after) { box-sizing: border-box; }
-
-  .planner-root {
-    --c-bg: #0a0a0f;
-    --c-surface: #12121a;
-    --c-surface-2: #1a1a26;
-    --c-surface-3: #222236;
-    --c-border: rgba(255,255,255,0.07);
-    --c-border-2: rgba(255,255,255,0.12);
-    --c-text: #e8e8f0;
-    --c-text-2: #9090a8;
-    --c-text-3: #5a5a7a;
-    --c-accent: #818cf8;
-    --c-accent-2: #34d399;
-    --c-gold: #fbbf24;
-    --c-danger: #f87171;
-    --radius: 12px;
-    --radius-sm: 8px;
-    --radius-pill: 100px;
-    min-height: 100vh;
-    background: var(--c-bg);
-    color: var(--c-text);
-    font-family: 'DM Sans', 'Instrument Sans', system-ui, sans-serif;
-    position: relative;
-    overflow-x: hidden;
-  }
-
-  /* ── Ambient background ───────────────────────────────── */
-  .ambient-bg {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 0;
-    overflow: hidden;
-  }
-  .orb {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(80px);
-    opacity: 0.25;
-    animation: orbFloat 12s ease-in-out infinite;
-  }
-  .orb-1 {
-    width: 500px; height: 500px;
-    background: radial-gradient(circle, #4f46e5, transparent);
-    top: -200px; left: -100px;
-    animation-delay: 0s;
-  }
-  .orb-2 {
-    width: 400px; height: 400px;
-    background: radial-gradient(circle, #0891b2, transparent);
-    top: 40%; right: -150px;
-    animation-delay: -4s;
-  }
-  .orb-3 {
-    width: 350px; height: 350px;
-    background: radial-gradient(circle, #7c3aed, transparent);
-    bottom: -100px; left: 30%;
-    animation-delay: -8s;
-  }
-  @keyframes orbFloat {
-    0%, 100% { transform: translateY(0) scale(1); }
-    50% { transform: translateY(-30px) scale(1.05); }
-  }
-  .grid-overlay {
-    position: absolute;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
-    background-size: 40px 40px;
-  }
-
-  /* ── Glass ────────────────────────────────────────────── */
-  .glass {
-    background: rgba(18, 18, 28, 0.6);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--c-border);
-  }
-  .glass-strong {
-    background: rgba(18, 18, 28, 0.85);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid var(--c-border);
-  }
-
-  /* ── App shell ────────────────────────────────────────── */
-  .app-shell {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-  }
-
-  /* ── Topbar ───────────────────────────────────────────── */
-  .topbar {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 1.5rem;
-    height: 56px;
-    border-top: none;
-    border-left: none;
-    border-right: none;
-    border-radius: 0;
-  }
-  .topbar-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .brand-mark {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .brand-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: var(--radius-sm);
-    background: linear-gradient(135deg, #4f46e5, #7c3aed);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  .brand-icon svg { stroke: #fff; }
-  .brand-text {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-  }
-  .brand-name {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--c-text);
-    letter-spacing: -0.01em;
-  }
-  .brand-sub {
-    font-size: 11px;
-    color: var(--c-text-3);
-  }
-  .topbar-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .progress-pill {
-    flex: 1;
-    max-width: 120px;
-    height: 20px;
-    border-radius: 100px;
-    background: var(--c-surface-3);
-    position: relative;
-    overflow: hidden;
-    margin: 0 12px;
-  }
-  .progress-pill-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #4f46e5, #818cf8);
-    border-radius: 100px;
-    transition: width 0.5s cubic-bezier(.4,0,.2,1);
-  }
-  .progress-pill-text {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    font-weight: 600;
-    color: #fff;
-  }
-  .saved-toast {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--c-accent-2);
-    background: rgba(52,211,153,0.1);
-    border: 1px solid rgba(52,211,153,0.25);
-    border-radius: var(--radius-pill);
-    padding: 4px 10px;
-  }
-  .icon-btn {
-    width: 34px;
-    height: 34px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--c-border);
-    background: transparent;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.15s;
-    color: var(--c-text-2);
-  }
-  .icon-btn.subtle { border-color: transparent; }
-  .icon-btn:hover {
-    background: var(--c-surface-3);
-    border-color: var(--c-border-2);
-    color: var(--c-text);
-  }
-  .icon-btn.accent {
-    background: rgba(99,102,241,0.15);
-    border-color: rgba(99,102,241,0.3);
-    color: var(--c-accent);
-  }
-  .btn-save-top {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0 14px;
-    height: 34px;
-    border-radius: var(--radius-sm);
-    border: 1px solid rgba(99,102,241,0.4);
-    background: rgba(99,102,241,0.15);
-    color: var(--c-accent);
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-family: inherit;
-  }
-  .btn-save-top:hover {
-    background: rgba(99,102,241,0.25);
-    border-color: rgba(99,102,241,0.6);
-  }
-  .btn-save-top.saving {
-    opacity: 0.7;
-    cursor: default;
-  }
-  .spin {
-    animation: spin 1s linear infinite;
-  }
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
-  /* ── Step rail ────────────────────────────────────────── */
-  .step-rail {
-    display: flex;
-    align-items: center;
-    padding: 0 1.5rem;
-    height: 52px;
-    border-top: none;
-    border-left: none;
-    border-right: none;
-    border-radius: 0;
-    border-top: 1px solid var(--c-border);
-    overflow-x: auto;
-    scrollbar-width: none;
-    gap: 0;
-  }
-  .step-rail::-webkit-scrollbar { display: none; }
-  .step-item {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    cursor: pointer;
-    background: none;
-    border: none;
-    padding: 0;
-    flex-shrink: 0;
-  }
-  .step-bullet {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    border: 1.5px solid var(--c-border-2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--c-text-3);
-    transition: all 0.25s;
-    background: var(--c-surface);
-    flex-shrink: 0;
-  }
-  .step-item.active .step-bullet {
-    background: var(--step-color, #6366f1);
-    border-color: var(--step-color, #6366f1);
-    color: #fff;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--step-color, #6366f1) 25%, transparent);
-  }
-  .step-item.done .step-bullet {
-    background: rgba(52,211,153,0.15);
-    border-color: rgba(52,211,153,0.4);
-    color: var(--c-accent-2);
-  }
-  .step-label {
-    font-size: 11px;
-    color: var(--c-text-3);
-    margin-left: 6px;
-    font-weight: 500;
-    transition: color 0.2s;
-    white-space: nowrap;
-  }
-  .step-item.active .step-label { color: var(--c-text); }
-  .step-item.done .step-label { color: var(--c-text-2); }
-  .step-connector {
-    width: 28px;
-    height: 1px;
-    background: var(--c-border-2);
-    margin: 0 6px;
-    transition: background 0.3s;
-    flex-shrink: 0;
-  }
-  .step-connector.done { background: rgba(52,211,153,0.35); }
-
-  /* ── Content ──────────────────────────────────────────── */
-  .content-area {
-    flex: 1;
-    padding: 1.5rem;
-    max-width: 1100px;
-    margin: 0 auto;
-    width: 100%;
-  }
-  .content-grid {
-    display: grid;
-    grid-template-columns: 1fr 280px;
-    gap: 1.25rem;
-    align-items: start;
-  }
-  @media (max-width: 900px) {
-    .content-grid { grid-template-columns: 1fr; }
-  }
-
-  /* ── Form card ────────────────────────────────────────── */
-  .form-panel { display: flex; flex-direction: column; gap: 1rem; }
-  .form-card {
-    background: var(--c-surface);
-    border: 1px solid var(--c-border);
-    border-radius: var(--radius);
-    overflow: hidden;
-  }
-  .card-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--c-border);
-    background: var(--c-surface-2);
-  }
-  .card-header-main { flex: 1; }
-  .card-header-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  .card-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--c-text);
-    letter-spacing: -0.01em;
-    margin: 0;
-  }
-  .card-desc {
-    font-size: 11px;
-    color: var(--c-text-3);
-    margin: 2px 0 0;
-  }
-  .card-body { padding: 20px; }
-
-  /* ── Tabs ─────────────────────────────────────────────── */
-  .card-tabs {
-    display: flex;
-    border-bottom: 1px solid var(--c-border);
-    padding: 0 20px;
-    background: var(--c-surface-2);
-  }
-  .card-tab {
-    padding: 10px 16px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--c-text-3);
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
-    cursor: pointer;
-    transition: all 0.15s;
-    font-family: inherit;
-  }
-  .card-tab:hover { color: var(--c-text-2); }
-  .card-tab.active {
-    color: var(--c-accent);
-    border-bottom-color: var(--c-accent);
-  }
-
-  /* ── Fields ───────────────────────────────────────────── */
-  .field { margin-bottom: 16px; }
-  .field:last-child { margin-bottom: 0; }
-  .field-label {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--c-text-2);
-    margin-bottom: 6px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-  .req { color: #f87171; font-size: 10px; }
-  .field-input {
-    width: 100%;
-    background: var(--c-surface-3);
-    border: 1px solid var(--c-border);
-    border-radius: var(--radius-sm);
-    padding: 9px 12px;
-    font-size: 13px;
-    color: var(--c-text);
-    font-family: inherit;
-    transition: border-color 0.15s, box-shadow 0.15s;
-    resize: vertical;
-    line-height: 1.6;
-  }
-  .field-input:focus {
-    outline: none;
-    border-color: rgba(99,102,241,0.5);
-    box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
-  }
-  .field-input::placeholder { color: var(--c-text-3); }
-  .field-input option {
-    background: var(--c-surface-2);
-    color: var(--c-text);
-  }
-  .field-grid-2 {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
-    margin-bottom: 16px;
-  }
-  @media (max-width: 520px) {
-    .field-grid-2 { grid-template-columns: 1fr; }
-  }
-
-  /* ── Chips ────────────────────────────────────────────── */
-  .chip-grid-4 {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
-    margin-top: 4px;
-  }
-  @media (max-width: 520px) {
-    .chip-grid-4 { grid-template-columns: repeat(2, 1fr); }
-  }
-  .type-chip {
-    padding: 8px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--c-border);
-    background: var(--c-surface-3);
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--c-text-2);
-    cursor: pointer;
-    transition: all 0.15s;
-    text-align: center;
-    font-family: inherit;
-  }
-  .type-chip:hover { border-color: var(--c-border-2); color: var(--c-text); }
-  .type-chip.selected {
-    background: rgba(99,102,241,0.15);
-    border-color: rgba(99,102,241,0.4);
-    color: var(--c-accent);
-  }
-  .chip-flow {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 4px;
-  }
-  .flow-chip {
-    padding: 5px 12px;
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--c-border);
-    background: var(--c-surface-3);
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--c-text-2);
-    cursor: pointer;
-    transition: all 0.15s;
-    font-family: inherit;
-    white-space: nowrap;
-  }
-  .flow-chip:hover { border-color: var(--c-border-2); color: var(--c-text); }
-  .flow-chip.selected {
-    background: rgba(99,102,241,0.15);
-    border-color: rgba(99,102,241,0.4);
-    color: var(--c-accent);
-  }
-  .periodo-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 4px;
-  }
-  .periodo-pill {
-    padding: 6px 14px;
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--c-border);
-    background: var(--c-surface-3);
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--c-text-2);
-    cursor: pointer;
-    transition: all 0.15s;
-    font-family: inherit;
-  }
-  .periodo-pill:hover { border-color: var(--c-border-2); color: var(--c-text); }
-  .periodo-pill.selected {
-    background: rgba(99,102,241,0.15);
-    border-color: rgba(99,102,241,0.5);
-    color: var(--c-accent);
-  }
-
-  /* ── DBA list ─────────────────────────────────────────── */
-  .search-box {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--c-surface-3);
-    border: 1px solid var(--c-border);
-    border-radius: var(--radius-sm);
-    padding: 8px 12px;
-    margin-bottom: 12px;
-  }
-  .search-box svg { flex-shrink: 0; color: var(--c-text-3); }
-  .search-input {
-    flex: 1;
-    background: none;
-    border: none;
-    outline: none;
-    font-size: 13px;
-    color: var(--c-text);
-    font-family: inherit;
-  }
-  .search-input::placeholder { color: var(--c-text-3); }
-  .dba-list { display: flex; flex-direction: column; gap: 2px; }
-  .dba-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 10px;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: background 0.15s;
-    border: 1px solid transparent;
-  }
-  .dba-row:hover { background: var(--c-surface-2); }
-  .dba-row.checked {
-    background: rgba(99,102,241,0.06);
-    border-color: rgba(99,102,241,0.15);
-  }
-  .dba-checkbox {
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-    margin-top: 2px;
-    accent-color: var(--c-accent);
-    cursor: pointer;
-  }
-  .dba-content { flex: 1; min-width: 0; }
-  .dba-code {
-    display: inline-block;
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--c-accent);
-    background: rgba(99,102,241,0.12);
-    border: 1px solid rgba(99,102,241,0.2);
-    border-radius: 4px;
-    padding: 1px 6px;
-    margin-bottom: 4px;
-    letter-spacing: 0.02em;
-  }
-  .dba-code.ebc { color: var(--c-accent-2); background: rgba(52,211,153,0.1); border-color: rgba(52,211,153,0.2); }
-  .dba-text {
-    font-size: 12px;
-    color: var(--c-text-2);
-    line-height: 1.6;
-  }
-  .dba-row.ebc.checked { background: rgba(52,211,153,0.06); border-color: rgba(52,211,153,0.15); }
-
-  /* ── PIAR ─────────────────────────────────────────────── */
-  .piar-toggle-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 12px;
-    background: var(--c-surface-2);
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--c-border);
-    margin-bottom: 16px;
-  }
-  .piar-toggle-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--c-text);
-    margin: 0 0 2px;
-  }
-  .piar-toggle-desc {
-    font-size: 11px;
-    color: var(--c-text-3);
-    margin: 0;
-  }
-  .toggle-btn {
-    width: 40px;
-    height: 22px;
-    border-radius: var(--radius-pill);
-    background: var(--c-surface-3);
-    border: 1px solid var(--c-border-2);
-    cursor: pointer;
-    position: relative;
-    transition: all 0.25s;
-    flex-shrink: 0;
-    padding: 0;
-  }
-  .toggle-btn.on {
-    background: rgba(99,102,241,0.3);
-    border-color: rgba(99,102,241,0.5);
-  }
-  .toggle-thumb {
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: var(--c-text-3);
-    top: 2px;
-    left: 2px;
-    transition: all 0.25s cubic-bezier(.4,0,.2,1);
-  }
-  .toggle-btn.on .toggle-thumb {
-    left: 20px;
-    background: var(--c-accent);
-  }
-
-  /* ── Momentos ─────────────────────────────────────────── */
-  .time-strip {
-    border-top: 1px solid var(--c-border);
-    border-bottom: 1px solid var(--c-border);
-    padding: 12px 20px;
-    background: var(--c-surface-2);
-  }
-  .time-bar-visual {
-    height: 8px;
-    border-radius: 100px;
-    overflow: hidden;
-    display: flex;
-    gap: 2px;
-    margin-bottom: 6px;
-  }
-  .time-seg-bar {
-    border-radius: 2px;
-    transition: flex 0.4s cubic-bezier(.4,0,.2,1);
-    min-width: 4px;
-  }
-  .time-legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-  .time-legend-item { font-size: 10px; font-weight: 500; }
-  .time-total-badge {
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--c-text-2);
-    background: var(--c-surface-3);
-    border: 1px solid var(--c-border);
-    border-radius: var(--radius-pill);
-    padding: 1px 8px;
-    margin-left: auto;
-  }
-  .time-presets {
-    display: flex;
-    gap: 6px;
-  }
-  .preset-btn {
-    padding: 3px 10px;
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--c-border-2);
-    background: var(--c-surface-3);
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--c-text-2);
-    cursor: pointer;
-    transition: all 0.15s;
-    font-family: inherit;
-  }
-  .preset-btn:hover {
-    border-color: var(--c-accent);
-    color: var(--c-accent);
-    background: rgba(99,102,241,0.1);
-  }
-  .momentos-list {
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .momento-card {
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--c-border);
-    background: var(--c-surface);
-    overflow: hidden;
-    transition: border-color 0.2s;
-  }
-  .momento-card.open { border-color: var(--c-border-2); }
-  .momento-header {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    text-align: left;
-    font-family: inherit;
-    transition: background 0.15s;
-  }
-  .momento-header:hover { background: var(--c-surface-2); }
-  .momento-bullet {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-  .momento-meta { flex: 1; min-width: 0; }
-  .momento-name {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--c-text);
-  }
-  .momento-desc {
-    display: block;
-    font-size: 10px;
-    color: var(--c-text-3);
-    margin-top: 1px;
-  }
-  .momento-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-  .momento-time-pill {
-    font-size: 10px;
-    font-weight: 700;
-    border-radius: var(--radius-pill);
-    padding: 2px 8px;
-    border: 1px solid transparent;
-  }
-  .filled-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    opacity: 0.8;
-  }
-  .empty-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    border: 1.5px solid var(--c-border-2);
-  }
-  .chevron { color: var(--c-text-3); transition: transform 0.25s cubic-bezier(.4,0,.2,1); }
-  .chevron.open { transform: rotate(180deg); }
-  .momento-body {
-    padding: 12px 14px;
-    border-top: 1px solid var(--c-border);
-    background: var(--c-surface-2);
-  }
-  .time-mini-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 10px;
-  }
-  .mini-label { font-size: 11px; color: var(--c-text-3); flex: 1; }
-  .time-mini-input {
-    width: 60px;
-    background: var(--c-surface-3);
-    border: 1px solid var(--c-border);
-    border-radius: 6px;
-    padding: 4px 8px;
-    font-size: 12px;
-    color: var(--c-text);
-    text-align: center;
-    font-family: inherit;
-  }
-  .time-mini-input:focus { outline: none; border-color: rgba(99,102,241,0.5); }
-  .actvs-label {
-    font-size: 10px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--c-text-3);
-    margin-bottom: 6px;
-  }
-  .actvs-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
-  .actv-chip {
-    padding: 4px 10px;
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--c-border);
-    background: var(--c-surface);
-    font-size: 11px;
-    color: var(--c-text-2);
-    cursor: pointer;
-    transition: all 0.15s;
-    font-family: inherit;
-    white-space: nowrap;
-  }
-  .actv-chip:hover { border-color: var(--c-border-2); color: var(--c-text); }
-  .momento-textarea { font-size: 12px; min-height: 72px; }
-  .ai-trigger-btn {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 10px;
-    border-radius: var(--radius-pill);
-    border: 1px solid rgba(99,102,241,0.3);
-    background: rgba(99,102,241,0.1);
-    color: var(--c-accent);
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s;
-    font-family: inherit;
-    white-space: nowrap;
-    margin-left: auto;
-  }
-  .ai-trigger-btn:hover { background: rgba(99,102,241,0.2); border-color: rgba(99,102,241,0.5); }
-
-  /* ── Evaluación ───────────────────────────────────────── */
-  .eval-tipo-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-top: 4px;
-  }
-  @media (max-width: 520px) {
-    .eval-tipo-row { grid-template-columns: 1fr; }
-  }
-  .eval-tipo-card {
-    padding: 12px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--c-border);
-    background: var(--c-surface-3);
-    cursor: pointer;
-    text-align: left;
-    transition: all 0.15s;
-    font-family: inherit;
-  }
-  .eval-tipo-card:hover { border-color: var(--c-border-2); }
-  .eval-tipo-card.selected {
-    border-color: rgba(99,102,241,0.4);
-    background: rgba(99,102,241,0.1);
-  }
-  .eval-tipo-name {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--c-text);
-    margin-bottom: 3px;
-  }
-  .eval-tipo-desc {
-    display: block;
-    font-size: 11px;
-    color: var(--c-text-3);
-  }
-  .ponder-block {
-    background: var(--c-surface-2);
-    border: 1px solid var(--c-border);
-    border-radius: var(--radius-sm);
-    padding: 12px;
-    margin-top: 4px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .ponder-row { display: flex; align-items: center; gap: 10px; }
-  .ponder-label { font-size: 11px; color: var(--c-text-2); width: 110px; flex-shrink: 0; }
-  .ponder-range { flex: 1; height: 4px; cursor: pointer; }
-  .ponder-val { font-size: 12px; font-weight: 700; width: 32px; text-align: right; flex-shrink: 0; }
-
-  /* ── Recursos ─────────────────────────────────────────── */
-  .res-cats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-  .res-cat-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--c-border);
-    background: var(--c-surface-3);
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--c-text-2);
-    cursor: pointer;
-    transition: all 0.15s;
-    font-family: inherit;
-  }
-  .res-cat-btn:hover { border-color: var(--c-border-2); color: var(--c-text); }
-  .res-cat-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  .resources-summary {
-    padding: 12px;
-    background: var(--c-surface-2);
-    border: 1px solid var(--c-border);
-    border-radius: var(--radius-sm);
-    margin-top: 8px;
-  }
-  .res-summary-label {
-    font-size: 10px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--c-text-3);
-    margin: 0 0 8px;
-  }
-  .res-summary-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 10px;
-    border-radius: var(--radius-pill);
-    background: rgba(52,211,153,0.1);
-    border: 1px solid rgba(52,211,153,0.2);
-    font-size: 11px;
-    color: var(--c-accent-2);
-    margin: 2px;
-  }
-  .res-summary-chip button {
-    background: none;
-    border: none;
-    color: var(--c-text-3);
-    cursor: pointer;
-    font-size: 13px;
-    line-height: 1;
-    padding: 0;
-  }
-
-  /* ── Bottom nav ───────────────────────────────────────── */
-  .bottom-nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    border-radius: var(--radius);
-  }
-  .nav-pips { display: flex; gap: 5px; }
-  .nav-pip {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    border: none;
-    background: var(--c-surface-3);
-    cursor: pointer;
-    transition: all 0.2s;
-    padding: 0;
-  }
-  .nav-pip.active {
-    width: 20px;
-    border-radius: var(--radius-pill);
-    background: var(--c-accent);
-  }
-  .nav-pip.done { background: var(--c-accent-2); opacity: 0.5; }
-  .nav-btn-ghost {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0 14px;
-    height: 36px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--c-border);
-    background: transparent;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--c-text-2);
-    cursor: pointer;
-    transition: all 0.15s;
-    font-family: inherit;
-  }
-  .nav-btn-ghost:hover:not(:disabled) { background: var(--c-surface-2); border-color: var(--c-border-2); color: var(--c-text); }
-  .nav-btn-ghost:disabled { opacity: 0.3; cursor: default; }
-  .nav-btn-primary {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0 18px;
-    height: 36px;
-    border-radius: var(--radius-sm);
-    border: 1px solid rgba(99,102,241,0.4);
-    background: linear-gradient(135deg, #4f46e5, #6366f1);
-    font-size: 12px;
-    font-weight: 600;
-    color: #fff;
-    cursor: pointer;
-    transition: all 0.2s;
-    box-shadow: 0 4px 14px rgba(99,102,241,0.3);
-    font-family: inherit;
-  }
-  .nav-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,0.4); }
-  .nav-btn-primary:active { transform: scale(0.98); }
-  .nav-btn-primary.success {
-    background: linear-gradient(135deg, #059669, #10b981);
-    border-color: rgba(16,185,129,0.4);
-    box-shadow: 0 4px 14px rgba(16,185,129,0.3);
-  }
-
-  /* ── Sidebar ──────────────────────────────────────────── */
-  .sidebar {
-    position: sticky;
-    top: 108px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    transition: transform 0.3s cubic-bezier(.4,0,.2,1), opacity 0.3s;
-  }
-  .sidebar.hidden {
-    position: fixed;
-    top: 0;
-    right: -320px;
-    bottom: 0;
-    width: 300px;
-    overflow-y: auto;
-    background: var(--c-surface);
-    z-index: 200;
-    padding: 1rem;
-  }
-  @media (max-width: 900px) {
-    .sidebar {
-      position: fixed;
-      top: 0;
-      right: -320px;
-      bottom: 0;
-      width: 300px;
-      overflow-y: auto;
-      background: var(--c-surface);
-      border-left: 1px solid var(--c-border);
-      z-index: 200;
-      padding: 1rem;
-      transition: right 0.3s cubic-bezier(.4,0,.2,1);
+    /* Animación simple para la transición entre pasos */
+    .animate-fade-in {
+        animation: fadeIn 0.4s ease-out;
     }
-    .sidebar.hidden { right: -320px; }
-    .sidebar:not(.hidden) { right: 0; }
-  }
-  .sidebar-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.6);
-    z-index: 199;
-    border: none;
-    cursor: pointer;
-  }
-  .side-card {
-    border-radius: var(--radius);
-    overflow: hidden;
-    padding: 16px;
-  }
-  .completion-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 12px;
-  }
-  .completion-pct {
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--c-text);
-    letter-spacing: -0.03em;
-  }
-  .completion-label {
-    font-size: 11px;
-    color: var(--c-text-3);
-  }
-  .completion-ring-wrap {
-    display: flex;
-    justify-content: center;
-    margin: -4px 0 12px;
-  }
-  .completion-ring {
-    overflow: visible;
-  }
-  .completion-checklist {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .check-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 11px;
-    color: var(--c-text-3);
-    transition: color 0.2s;
-  }
-  .check-row.done { color: var(--c-text-2); }
-  .check-icon {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    border: 1.5px solid var(--c-border-2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    transition: all 0.2s;
-  }
-  .check-row.done .check-icon {
-    background: rgba(52,211,153,0.15);
-    border-color: rgba(52,211,153,0.4);
-    color: var(--c-accent-2);
-  }
-  .check-empty {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--c-border-2);
-  }
-  .side-section-title {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--c-text-3);
-    margin-bottom: 12px;
-  }
-  .recent-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--c-border);
-    cursor: pointer;
-    transition: opacity 0.15s;
-  }
-  .recent-item:last-of-type { border-bottom: none; }
-  .recent-item:hover { opacity: 0.8; }
-  .recent-thumb {
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-  .recent-info { flex: 1; min-width: 0; }
-  .recent-name {
-    display: block;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--c-text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .recent-meta { font-size: 10px; color: var(--c-text-3); }
-  .recent-load {
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    border: 1px solid var(--c-border);
-    background: transparent;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: var(--c-text-3);
-    transition: all 0.15s;
-  }
-  .recent-load:hover { background: var(--c-surface-2); color: var(--c-text); }
-  .side-actions {
-    display: flex;
-    gap: 6px;
-    margin-top: 12px;
-    flex-wrap: wrap;
-  }
-  .side-action-btn {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 10px;
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--c-border);
-    background: var(--c-surface-3);
-    font-size: 10px;
-    font-weight: 500;
-    color: var(--c-text-2);
-    cursor: pointer;
-    transition: all 0.15s;
-    font-family: inherit;
-  }
-  .side-action-btn:hover { border-color: var(--c-border-2); color: var(--c-text); }
-  .close-sidebar {
-    width: 100%;
-    padding: 10px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--c-border);
-    background: var(--c-surface-3);
-    font-size: 12px;
-    color: var(--c-text-2);
-    cursor: pointer;
-    margin-top: 8px;
-    font-family: inherit;
-  }
 
-  /* ── Responsive ───────────────────────────────────────── */
-  @media (max-width: 768px) {
-    .content-area { padding: 1rem 0.75rem; }
-    .card-body { padding: 14px; }
-    .topbar { padding: 0 1rem; }
-    .step-rail { padding: 0 1rem; }
-    .step-label { display: none; }
-    .step-connector { width: 16px; }
-  }
-  @media (max-width: 480px) {
-    .card-header { padding: 12px 14px; }
-    .card-header-icon { display: none; }
-  }
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Scrollbar personalizado para temas oscuros */
+    :global(html.dim) ::-webkit-scrollbar,
+    :global(html.dark) ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    :global(html.dim) ::-webkit-scrollbar-track,
+    :global(html.dark) ::-webkit-scrollbar-track {
+        background: rgb(var(--bg-secondary));
+    }
+    :global(html.dim) ::-webkit-scrollbar-thumb,
+    :global(html.dark) ::-webkit-scrollbar-thumb {
+        background: rgb(var(--border-primary));
+        border-radius: 4px;
+    }
+    :global(html.dim) ::-webkit-scrollbar-thumb:hover,
+    :global(html.dark) ::-webkit-scrollbar-thumb:hover {
+        background: rgb(var(--text-muted));
+    }
 </style>
