@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "./lib/styles/tom-select.css";
+@import "./lib/styles/flatpickr.css";
 
 /* Custom theme switching with inline styles */
 :root {

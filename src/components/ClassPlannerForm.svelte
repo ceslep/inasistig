@@ -27,6 +27,8 @@
     } from "../../api/service";
     import { URL_DBA_EBC, AI_PROXY_URL } from "../constants";
     import Piar from "./Piar.svelte";
+    import TomSelect from "./TomSelect.svelte";
+    import DatePicker from "./DatePicker.svelte";
 
     let { onBack }: { onBack: () => void } = $props();
 
@@ -2944,22 +2946,14 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                 style="color: {ts.text2}"
                                 >Docente</label
                             >
-                            <select
-                                id="docente"
+                            <TomSelect
                                 bind:value={formData.docente}
+                                options={docentes.map((d) => ({ value: d, label: d }))}
+                                placeholder={isLoadingDocentes ? "Cargando..." : "Seleccione docente"}
                                 disabled={isLoadingDocentes}
-                                class="w-full rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 p-2.5 disabled:opacity-50 transition-shadow duration-200"
-                                style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
-                            >
-                                <option value=""
-                                    >{isLoadingDocentes
-                                        ? "Cargando..."
-                                        : "Seleccione docente"}</option
-                                >
-                                {#each docentes as docente}
-                                    <option value={docente}>{docente}</option>
-                                {/each}
-                            </select>
+                                create={true}
+                                class="w-full"
+                            />
                         </div>
                         <div>
                             <label
@@ -2968,22 +2962,13 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                 style="color: {ts.text2}"
                                 >Grado</label
                             >
-                            <select
-                                id="grado"
+                            <TomSelect
                                 bind:value={formData.grado}
+                                options={filteredGrados.map((g) => ({ value: g.value, label: g.label }))}
+                                placeholder={isLoadingEstudiantes ? "Cargando..." : "Seleccione grado"}
                                 disabled={isLoadingEstudiantes}
-                                class="w-full rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 p-2.5 disabled:opacity-50 transition-shadow duration-200"
-                                style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
-                            >
-                                <option value=""
-                                    >{isLoadingEstudiantes
-                                        ? "Cargando..."
-                                        : "Seleccione grado"}</option
-                                >
-                                {#each filteredGrados as g}
-                                    <option value={g.value}>{g.label}</option>
-                                {/each}
-                            </select>
+                                class="w-full"
+                            />
                         </div>
                         <div class="md:col-span-2">
                             <label
@@ -3048,29 +3033,18 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                     {/each}
                                 </div>
                             {:else}
-                                <select
-                                    id="materia"
+                                <TomSelect
                                     bind:value={formData.subject}
+                                    options={materiasSorted.map((m) => {
+                                        const isSaved = docenteMaterias[formData.docente]?.includes(m.materia);
+                                        return { value: m.materia, label: m.materia, favorite: isSaved };
+                                    })}
+                                    placeholder={isLoadingMaterias ? "Cargando..." : "Seleccione materia"}
                                     disabled={isLoadingMaterias}
-                                    class="w-full rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 p-2.5 disabled:opacity-50 transition-shadow duration-200"
-                                    style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
-                                >
-                                    <option value=""
-                                        >{isLoadingMaterias
-                                            ? "Cargando..."
-                                            : "Seleccione materia"}</option
-                                    >
-                                    {#each materiasSorted as materia}
-                                        {@const isSaved = docenteMaterias[
-                                            formData.docente
-                                        ]?.includes(materia.materia)}
-                                        <option value={materia.materia}>
-                                            {isSaved
-                                                ? "⭐ "
-                                                : ""}{materia.materia}
-                                        </option>
-                                    {/each}
-                                </select>
+                                    create={true}
+                                    showFavorite={true}
+                                    class="w-full"
+                                />
                             {/if}
                         </div>
                     </div>
@@ -3601,25 +3575,19 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                 
                                 <!-- Selector de Grado y Período -->
                                 <div class="flex flex-wrap gap-2 items-center">
-                                    <select
+                                    <TomSelect
                                         bind:value={formData.grado}
-                                        class="text-sm px-3 py-2 rounded-lg border focus:ring-amber-500 focus:border-amber-500 transition-shadow" style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
-                                    >
-                                        <option value="">Seleccionar Grado</option>
-                                        {#each [...new Set(temasDocente.map(t => t.grado))] as grado}
-                                            <option value={grado}>{grado}</option>
-                                        {/each}
-                                    </select>
+                                        options={[...new Set(temasDocente.map(t => t.grado))].map((g) => ({ value: g, label: g }))}
+                                        placeholder="Seleccionar Grado"
+                                        class="sm:w-48"
+                                    />
                                     
-                                    <select
+                                    <TomSelect
                                         bind:value={formData.periodo_academico}
-                                        class="text-sm px-3 py-2 rounded-lg border focus:ring-amber-500 focus:border-amber-500 transition-shadow" style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
-                                    >
-                                        <option value="">Seleccionar Período</option>
-                                        {#each [...new Set(temasDocente.map(t => t.periodo))] as periodo}
-                                            <option value={periodo}>{periodo}</option>
-                                        {/each}
-                                    </select>
+                                        options={[...new Set(temasDocente.map(t => t.periodo))].map((p) => ({ value: p, label: p }))}
+                                        placeholder="Seleccionar Período"
+                                        class="sm:w-48"
+                                    />
 
                                     {#if selectedTemas.length > 0 || selectedActividades.length > 0}
                                         <button
@@ -4662,26 +4630,23 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
 
                     <!-- FECHAS REALES -->
                     <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-blue-500/10 border-blue-500/30' : 'bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-200'}">
-                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-blue-400' : 'text-blue-800'}">📆 Fechas Reales (yyyy-mm-dd)</span>
+                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-blue-400' : 'text-blue-800'}">📆 Fechas Reales</span>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label for="fecha_inicio" class="block text-sm font-medium mb-1" style="color: {ts.text2}">📥 Fecha Inicio</label>
-                                <input
-                                    id="fecha_inicio"
-                                    type="date"
+                                <DatePicker
                                     bind:value={formData.fecha_inicio}
-                                    class="w-full rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 p-2.5 transition-shadow"
-                                    style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                    placeholder="Seleccione fecha"
+                                    dateFormat="Y-m-d"
                                 />
                             </div>
                             <div>
                                 <label for="fecha_fin" class="block text-sm font-medium mb-1" style="color: {ts.text2}">📤 Fecha Fin</label>
-                                <input
-                                    id="fecha_fin"
-                                    type="date"
+                                <DatePicker
                                     bind:value={formData.fecha_fin}
-                                    class="w-full rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 p-2.5 transition-shadow"
-                                    style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                    placeholder="Seleccione fecha"
+                                    dateFormat="Y-m-d"
+                                    minDate={formData.fecha_inicio}
                                 />
                             </div>
                         </div>
@@ -4898,20 +4863,20 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                             </div>
                             <div>
                                 <label class="block text-xs font-medium mb-1 {isDark ? 'text-blue-400' : 'text-blue-700'}">Desde fecha</label>
-                                <input
-                                    type="date"
+                                <DatePicker
                                     bind:value={filtrosBusqueda.fechaDesde}
-                                    class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-1 focus:ring-blue-500/30 focus:border-blue-400 transition-shadow"
-                                    style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
+                                    placeholder="Desde"
+                                    dateFormat="Y-m-d"
                                 />
                             </div>
                             <div>
                                 <label class="block text-xs font-medium mb-1 {isDark ? 'text-blue-400' : 'text-blue-700'}">Hasta fecha</label>
-                                <input
-                                    type="date"
+                                <DatePicker
                                     bind:value={filtrosBusqueda.fechaHasta}
+                                    placeholder="Hasta"
+                                    dateFormat="Y-m-d"
+                                    minDate={filtrosBusqueda.fechaDesde}
                                     class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-1 focus:ring-blue-500/30 focus:border-blue-400 transition-shadow"
-                                    style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
                                 />
                             </div>
                         </div>
