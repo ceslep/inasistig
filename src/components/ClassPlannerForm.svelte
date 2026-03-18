@@ -4821,8 +4821,9 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                         <!-- Filtros -->
                         <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                             <div>
-                                <label class="block text-xs font-medium mb-1 {isDark ? 'text-blue-400' : 'text-blue-700'}">Docente</label>
+                                <label for="filtro-docente" class="block text-xs font-medium mb-1 {isDark ? 'text-blue-400' : 'text-blue-700'}">Docente</label>
                                 <input
+                                    id="filtro-docente"
                                     type="text"
                                     bind:value={filtrosBusqueda.docente}
                                     placeholder="Buscar por nombre..."
@@ -4831,8 +4832,9 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                 />
                             </div>
                             <div>
-                                <label class="block text-xs font-medium mb-1 {isDark ? 'text-blue-400' : 'text-blue-700'}">Grado</label>
+                                <label for="filtro-grado" class="block text-xs font-medium mb-1 {isDark ? 'text-blue-400' : 'text-blue-700'}">Grado</label>
                                 <input
+                                    id="filtro-grado"
                                     type="text"
                                     bind:value={filtrosBusqueda.grado}
                                     placeholder="Ej: 6, 7, 8..."
@@ -4841,8 +4843,9 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                 />
                             </div>
                             <div>
-                                <label class="block text-xs font-medium mb-1 {isDark ? 'text-blue-400' : 'text-blue-700'}">Materia</label>
+                                <label for="filtro-materia" class="block text-xs font-medium mb-1 {isDark ? 'text-blue-400' : 'text-blue-700'}">Materia</label>
                                 <input
+                                    id="filtro-materia"
                                     type="text"
                                     bind:value={filtrosBusqueda.materia}
                                     placeholder="Buscar materia..."
@@ -4851,8 +4854,9 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                 />
                             </div>
                             <div>
-                                <label class="block text-xs font-medium mb-1 {isDark ? 'text-blue-400' : 'text-blue-700'}">Período</label>
+                                <label for="filtro-periodo" class="block text-xs font-medium mb-1 {isDark ? 'text-blue-400' : 'text-blue-700'}">Período</label>
                                 <input
+                                    id="filtro-periodo"
                                     type="text"
                                     bind:value={filtrosBusqueda.periodo}
                                     placeholder="Ej: Periodo 1..."
@@ -4861,6 +4865,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                 />
                             </div>
                             <div>
+                                <!-- svelte-ignore a11y_label_has_associated_control -->
                                 <label class="block text-xs font-medium mb-1 {isDark ? 'text-blue-400' : 'text-blue-700'}">Desde fecha</label>
                                 <DatePicker
                                     bind:value={filtrosBusqueda.fechaDesde}
@@ -4869,6 +4874,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                 />
                             </div>
                             <div>
+                                <!-- svelte-ignore a11y_label_has_associated_control -->
                                 <label class="block text-xs font-medium mb-1 {isDark ? 'text-blue-400' : 'text-blue-700'}">Hasta fecha</label>
                                 <DatePicker
                                     bind:value={filtrosBusqueda.fechaHasta}

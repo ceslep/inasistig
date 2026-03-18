@@ -30,16 +30,23 @@
     Anotación: string;
   }
 
-  let docentes: string[] = [];
-  let materias: { materia: string }[] = [];
-  let estudiantes: { nombre: string; grado: number | string }[] = [];
-  let anotadorData: AnotadorData[] = [];
-  let filteredData: AnotadorData[] = [];
+  let docentes: string[] = $state([]);
+  let materias: { materia: string }[] = $state([]);
+  let estudiantes: { nombre: string; grado: number | string }[] = $state([]);
+  let anotadorData: AnotadorData[] = $state([]);
+  let filteredData: AnotadorData[] = $state([]);
 
   let isLoading = false;
-  let isLoadingData = false;
+  let isLoadingData = $state(false);
 
-  // Load heavy libraries dynamically
+  let docenteMaterias: Record<string, string[]> = $state(JSON.parse(
+    localStorage.getItem("docenteMaterias") || "{}",
+  ));
+
+  let selectedDocente = $state("");
+  let selectedMateria = $state("");
+  let selectedGrado = $state("");
+
   const loadPdfLibraries = async () => {
     if (!jsPDF || !autoTable) {
       const [jspdfModule, autoTableModule] = await Promise.all([
@@ -50,10 +57,6 @@
       autoTable = autoTableModule.default;
     }
   };
-
-  let docenteMaterias: Record<string, string[]> = JSON.parse(
-    localStorage.getItem("docenteMaterias") || "{}",
-  );
 
   const saveMateriaForDocente = (docente: string, materia: string): void => {
     if (!docente || !materia) return;
@@ -66,7 +69,6 @@
     }
   };
 
-  // Guardar materia frecuentemente usada cuando se selecciona
   $effect(() => {
     if (selectedDocente && selectedMateria) {
       saveMateriaForDocente(selectedDocente, selectedMateria);
@@ -80,22 +82,18 @@
   };
 
   // Verificar si el docente tiene "-"
-  $: docenteHasDash = selectedDocente.includes("-");
+  let docenteHasDash = $derived(selectedDocente.includes("-"));
 
   // Filtrar grupos según el número del docente
-  $: docenteNumber = getDocenteNumber(selectedDocente);
+  let docenteNumber = $derived(getDocenteNumber(selectedDocente));
 
-  $: filteredGrados = docenteNumber
+  let filteredGrados = $derived(docenteNumber
     ? [...new Set(estudiantes.map((e) => e.grado.toString()))].filter((g) =>
         g.startsWith(`${docenteNumber}-`),
       )
     : [...new Set(estudiantes.map((e) => e.grado.toString()))].filter((g) =>
         !g.includes('-')
-      );
-
-  let selectedDocente = "";
-  let selectedMateria = "";
-  let selectedGrado = "";
+      ));
 
   // Inicializar con el docente pasado desde Anotador.svelte
   onMount(() => {
@@ -492,12 +490,12 @@
   };
 
   // Calcular totales y materias destacadas
-  $: totalHoras = filteredData.reduce((sum, item) => {
+  let totalHoras = $derived(filteredData.reduce((sum, item) => {
     const horas = parseFloat(item["Horas"] || "0");
     return sum + (isNaN(horas) ? 0 : horas);
-  }, 0);
+  }, 0));
 
-  $: sortedMaterias = selectedDocente
+  let sortedMaterias = $derived(selectedDocente
     ? [...materias].sort((a, b) => {
         const aSaved = docenteMaterias[selectedDocente]?.includes(a.materia);
         const bSaved = docenteMaterias[selectedDocente]?.includes(b.materia);
@@ -505,9 +503,9 @@
         if (!aSaved && bSaved) return 1;
         return a.materia.localeCompare(b.materia);
       })
-    : materias;
+    : materias);
 
-  $: styles = {
+  let styles = $derived({
     bg: "rgb(var(--bg-primary))",
     text: "rgb(var(--text-primary))",
     label: "rgb(var(--text-secondary))",
@@ -516,7 +514,7 @@
     cardBg: "rgb(var(--card-bg))",
     cardBorder: "rgb(var(--card-border))",
     inputBg: "rgb(var(--bg-secondary))",
-  };
+  });
 </script>
 
 <div
@@ -525,8 +523,8 @@
   aria-modal="true"
   aria-labelledby="modal-title"
   tabindex="-1"
-  on:click|self={onClose}
-  on:keydown={(e) => e.key === "Escape" && onClose()}
+  onclick={(e) => e.target === e.currentTarget && onClose()}
+  onkeydown={(e) => e.key === "Escape" && onClose()}
 >
   <div
     class="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-2xl"
@@ -554,7 +552,7 @@
         </div>
       </div>
       <button
-        on:click={onClose}
+        onclick={onClose}
         class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         aria-label="Cerrar ventana de reportes"
         title="Cerrar"
@@ -650,7 +648,7 @@
 
         <div class="flex gap-3 mt-4">
           <button
-            on:click={handleFilter}
+            onclick={handleFilter}
             disabled={isLoadingData}
             class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
           >
@@ -663,7 +661,7 @@
             {/if}
           </button>
           <button
-            on:click={handleClearFilters}
+            onclick={handleClearFilters}
             class="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition-colors flex items-center gap-2"
             style="color: {styles.text};"
           >
@@ -671,7 +669,7 @@
             Limpiar
           </button>
           <button
-            on:click={generatePDF}
+            onclick={generatePDF}
             disabled={filteredData.length === 0}
             class="ml-auto px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition-colors flex items-center gap-2"
           >
