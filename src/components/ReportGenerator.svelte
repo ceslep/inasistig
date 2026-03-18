@@ -18,8 +18,7 @@
   } from "../constants";
   import eieLogo from "../assets/eie.png";
 
-  export let onClose: () => void;
-  export let initialDocente: string = "";
+  let { onClose, initialDocente = "" }: { onClose: () => void; initialDocente?: string } = $props();
 
   interface AnotadorData {
     "Marca Temporal": string;

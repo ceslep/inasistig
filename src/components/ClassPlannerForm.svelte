@@ -3976,7 +3976,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
 
                         <!-- MOMENTO 3: PRÁCTICA -->
                         <div class="rounded-xl border overflow-hidden transition-colors" style="background-color: {ts.card}; border-color: {ts.cardBorder}">
-                            <div class="p-4 border-b transition-colors {isDark ? 'bg-purple-500/10' : 'bg-gradient-to-r from-purple-50 to-pink-50'}" style="border-color: {ts.border}">
+                            <div class="p-4 border-b transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-3">
                                         <span class="w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">3</span>
@@ -3997,8 +3997,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                             <button
                                                 type="button"
                                                 onclick={() => selected ? quitarActividad('practice', act.id) : agregarActividad('practice', act)}
-                                                class="px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5
-                                                    {selected ? 'bg-purple-600 text-white shadow-md' : (isDark ? 'bg-white/5 text-gray-300 hover:bg-purple-500/15 border border-white/10' : 'bg-gray-100 text-gray-700 hover:bg-purple-100 border border-gray-200')}"
+                                                class="px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5 {selected ? 'bg-purple-600 text-white shadow-md' : 'border transition-colors hover:opacity-80'}" style="background-color: {selected ? '' : ts.bg2}; border-color: {selected ? '' : ts.border}; color: {selected ? '' : ts.text}"
                                             >
                                                 <span>{act.icono}</span>
                                                 <span>{act.titulo}</span>
@@ -4028,7 +4027,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
 
                         <!-- MOMENTO 4: TRANSFERENCIA -->
                         <div class="rounded-xl border overflow-hidden transition-colors" style="background-color: {ts.card}; border-color: {ts.cardBorder}">
-                            <div class="p-4 border-b transition-colors {isDark ? 'bg-orange-500/10' : 'bg-gradient-to-r from-orange-50 to-amber-50'}" style="border-color: {ts.border}">
+                            <div class="p-4 border-b transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-3">
                                         <span class="w-8 h-8 bg-orange-600 text-white rounded-full flex items-center justify-center font-bold text-sm">4</span>
@@ -4050,7 +4049,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                                 type="button"
                                                 onclick={() => selected ? quitarActividad('transfer', act.id) : agregarActividad('transfer', act)}
                                                 class="px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5
-                                                    {selected ? 'bg-orange-600 text-white shadow-md' : (isDark ? 'bg-white/5 text-gray-300 hover:bg-orange-500/15 border border-white/10' : 'bg-gray-100 text-gray-700 hover:bg-orange-100 border border-gray-200')}"
+                                                    {selected ? 'bg-orange-600 text-white shadow-md' : 'border transition-colors hover:opacity-80'}" style="background-color: {selected ? '' : ts.bg2}; border-color: {selected ? '' : ts.border}; color: {selected ? '' : ts.text}"
                                             >
                                                 <span>{act.icono}</span>
                                                 <span>{act.titulo}</span>
@@ -4080,7 +4079,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
 
                         <!-- MOMENTO 5: VALORACIÓN -->
                         <div class="rounded-xl border overflow-hidden transition-colors" style="background-color: {ts.card}; border-color: {ts.cardBorder}">
-                            <div class="p-4 border-b transition-colors {isDark ? 'bg-green-500/10' : 'bg-gradient-to-r from-green-50 to-teal-50'}" style="border-color: {ts.border}">
+                            <div class="p-4 border-b transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-3">
                                         <span class="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">5</span>
@@ -4102,7 +4101,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                                 type="button"
                                                 onclick={() => selected ? quitarActividad('assessment', act.id) : agregarActividad('assessment', act)}
                                                 class="px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-1.5
-                                                    {selected ? 'bg-green-600 text-white shadow-md' : (isDark ? 'bg-white/5 text-gray-300 hover:bg-green-500/15 border border-white/10' : 'bg-gray-100 text-gray-700 hover:bg-green-100 border border-gray-200')}"
+                                                    {selected ? 'bg-green-600 text-white shadow-md' : 'border transition-colors hover:opacity-80'}" style="background-color: {selected ? '' : ts.bg2}; border-color: {selected ? '' : ts.border}; color: {selected ? '' : ts.text}"
                                             >
                                                 <span>{act.icono}</span>
                                                 <span>{act.titulo}</span>
@@ -4132,8 +4131,8 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                     </div>
 
                     <!-- Resumen visual -->
-                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200'}">
-                        <h4 class="font-semibold mb-3 text-sm {isDark ? 'text-indigo-400' : 'text-indigo-800'}">📊 Resumen de la Secuencia Didáctica</h4>
+                    <div class="p-4 rounded-xl border transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                        <h4 class="font-semibold mb-3 text-sm text-indigo-500" style="color: {ts.text}">📊 Resumen de la Secuencia Didáctica</h4>
                         <div class="grid grid-cols-5 gap-2 text-center">
                             <div class="p-2 rounded-lg shadow-sm transition-colors" style="background-color: {ts.card}">
                                 <div class="text-xs" style="color: {ts.muted}">Exploración</div>
@@ -4170,7 +4169,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                 <div id="step-4" class="space-y-6 animate-fade-in">
                     <div class="flex items-center justify-between">
                         <div>
-                            <h2 class="text-lg md:text-xl font-semibold tracking-tight border-l-4 border-indigo-500 pl-3" style="color: {isDark ? 'rgb(165 180 252)' : 'rgb(55 48 163)'}">
+                            <h2 class="text-lg md:text-xl font-semibold tracking-tight border-l-4 border-indigo-500 pl-3" style="color: {ts.text}">
                                 📊 Evaluación de Aprendizajes
                             </h2>
                             <p class="text-sm mt-1" style="color: {ts.muted}">
@@ -4180,15 +4179,15 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                         <button 
                             type="button"
                             onclick={resetearEvaluacion}
-                            class="text-xs px-3 py-1.5 rounded-lg transition-colors {isDark ? 'bg-red-500/15 hover:bg-red-500/25 text-red-400' : 'bg-red-100 hover:bg-red-200 text-red-700'}"
+                            class="text-xs px-3 py-1.5 rounded-lg transition-colors border hover:opacity-80" style="background-color: {ts.bg3}; border-color: {ts.border}; color: {ts.text}"
                         >
                             🔄 Reiniciar
                         </button>
                     </div>
 
                     <!-- TIPO DE EVALUACIÓN -->
-                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-blue-500/10 border-blue-500/30' : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'}">
-                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-blue-400' : 'text-blue-800'}">🔍 Tipo de Evaluación (Decreto 1290)</span>
+                    <div class="p-4 rounded-xl border transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                        <span class="text-sm font-bold mb-3 block text-blue-500" style="color: {ts.text}">🔍 Tipo de Evaluación (Decreto 1290)</span>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                             {#each TIPOS_EVALUACION as tipo}
                                 {@const selected = formData.eval_type === tipo.id}
@@ -4196,12 +4195,12 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                     type="button"
                                     onclick={() => { formData.eval_type = tipo.id; autoGenerarDescripcionEval(); }}
                                     class="p-4 rounded-xl border-2 transition-all duration-200 text-left {selected 
-                                        ? 'border-blue-500 bg-white shadow-lg ring-2 ring-blue-200' 
-                                        : (isDark ? 'border-white/10 bg-white/5 hover:border-blue-500/40 hover:bg-white/10' : 'border-gray-200 bg-white/50 hover:border-blue-300 hover:bg-white')}"
+                                        ? 'border-blue-500 shadow-lg ring-2 ring-blue-200' 
+                                        : 'hover:border-blue-500/40 block'}" style="background-color: {selected ? ts.bg : ts.bg3}; border-color: {selected ? '' : ts.border};"
                                 >
                                     <div class="flex items-center gap-2 mb-1">
                                         <span class="text-2xl">{tipo.icono}</span>
-                                        <span class="font-bold {selected ? (isDark ? 'text-blue-400' : 'text-blue-700') : ''}" style="{!selected ? `color: ${ts.text}` : ''}">{tipo.titulo}</span>
+                                        <span class="font-bold {selected ? 'text-blue-500' : ''}" style="{!selected ? `color: ${ts.text}` : ''}">{tipo.titulo}</span>
                                     </div>
                                     <p class="text-xs" style="color: {ts.muted}">{tipo.descripcion}</p>
                                 </button>
@@ -4210,8 +4209,8 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                     </div>
 
                     <!-- MODALIDADES DE EVALUACIÓN -->
-                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-green-500/10 border-green-500/30' : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'}">
-                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-green-400' : 'text-green-800'}">🎓 Modalidades de Evaluación (Artículo 6 - Decreto 1290)</span>
+                    <div class="p-4 rounded-xl border transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                        <span class="text-sm font-bold mb-3 block text-green-500" style="color: {ts.text}">🎓 Modalidades de Evaluación (Artículo 6 - Decreto 1290)</span>
                         <div class="flex flex-wrap gap-3">
                             {#each MODALIDADES_EVALUACION as mod}
                                 {@const selected = formData.eval_modalidades.includes(mod.id)}
@@ -4220,7 +4219,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                     onclick={() => toggleModalidad(mod.id)}
                                     class="px-4 py-2.5 rounded-xl border-2 transition-all duration-200 flex items-center gap-2 {selected 
                                         ? 'bg-green-600 border-green-600 text-white shadow-lg' 
-                                        : (isDark ? 'bg-white/5 border-white/10 text-gray-300 hover:border-green-500/40 hover:bg-green-500/10' : 'bg-white border-gray-200 text-gray-700 hover:border-green-300 hover:bg-green-50')}"
+                                        : 'hover:opacity-80'}" style="background-color: {selected ? '' : ts.bg3}; border-color: {selected ? '' : ts.border}; color: {selected ? '' : ts.text}"
                                 >
                                     <span class="text-lg">{mod.icono}</span>
                                     <span class="font-medium">{mod.titulo}</span>
@@ -4233,8 +4232,8 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                     </div>
 
                     <!-- INSTRUMENTOS DE EVALUACIÓN -->
-                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-purple-500/10 border-purple-500/30' : 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200'}">
-                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-purple-400' : 'text-purple-800'}">📋 Instrumentos de Evaluación - Click para seleccionar:</span>
+                    <div class="p-4 rounded-xl border transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                        <span class="text-sm font-bold mb-3 block text-purple-500" style="color: {ts.text}">📋 Instrumentos de Evaluación - Click para seleccionar:</span>
                         <div class="flex flex-wrap gap-2">
                             {#each INSTRUMENTOS_EVALUACION as inst}
                                 {@const selected = formData.eval_instrumentos.includes(inst.id)}
@@ -4243,7 +4242,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                     onclick={() => toggleInstrumento(inst.id)}
                                     class="px-3 py-2 rounded-lg border-2 transition-all duration-200 flex items-center gap-1.5 text-sm {selected 
                                         ? 'bg-purple-600 border-purple-600 text-white shadow-md' 
-                                        : (isDark ? 'bg-white/5 border-white/10 text-gray-300 hover:border-purple-500/40 hover:bg-purple-500/10' : 'bg-white border-gray-200 text-gray-700 hover:border-purple-300 hover:bg-purple-50')}"
+                                        : 'hover:opacity-80'}" style="background-color: {selected ? '' : ts.bg3}; border-color: {selected ? '' : ts.border}; color: {selected ? '' : ts.text}"
                                 >
                                     <span>{inst.icono}</span>
                                     <span>{inst.titulo}</span>
@@ -4253,8 +4252,8 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                     </div>
 
                     <!-- CRITERIOS DE EVALUACIÓN -->
-                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-orange-500/10 border-orange-500/30' : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200'}">
-                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-orange-400' : 'text-orange-800'}">🎯 Criterios de Evaluación - Selecciona los que aplicarás:</span>
+                    <div class="p-4 rounded-xl border transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                        <span class="text-sm font-bold mb-3 block text-orange-500" style="color: {ts.text}">🎯 Criterios de Evaluación - Selecciona los que aplicarás:</span>
                         <div class="flex flex-wrap gap-2">
                             {#each CRITERIOS_EVALUACION as crit}
                                 {@const selected = formData.eval_criterios.includes(crit.id)}
@@ -4263,7 +4262,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                     onclick={() => toggleCriterio(crit.id)}
                                     class="px-3 py-2 rounded-lg border-2 transition-all duration-200 flex items-center gap-1.5 text-sm {selected 
                                         ? 'bg-orange-600 border-orange-600 text-white shadow-md' 
-                                        : (isDark ? 'bg-white/5 border-white/10 text-gray-300 hover:border-orange-500/40 hover:bg-orange-500/10' : 'bg-white border-gray-200 text-gray-700 hover:border-orange-300 hover:bg-orange-50')}"
+                                        : 'hover:opacity-80'}" style="background-color: {selected ? '' : ts.bg3}; border-color: {selected ? '' : ts.border}; color: {selected ? '' : ts.text}"
                                 >
                                     <span>{crit.icono}</span>
                                     <span>{crit.titulo}</span>
@@ -4273,8 +4272,8 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                     </div>
 
                     <!-- EVIDENCIAS DE APRENDIZAJE -->
-                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-gradient-to-r from-cyan-50 to-teal-50 border-cyan-200'}">
-                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-cyan-400' : 'text-cyan-800'}">📦 Evidencias de Aprendizaje - Productos esperados:</span>
+                    <div class="p-4 rounded-xl border transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                        <span class="text-sm font-bold mb-3 block text-cyan-500" style="color: {ts.text}">📦 Evidencias de Aprendizaje - Productos esperados:</span>
                         <div class="flex flex-wrap gap-2">
                             {#each EVIDENCIAS_APRENDIZAJE as ev}
                                 {@const selected = formData.eval_evidencias.includes(ev.id)}
@@ -4283,7 +4282,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                     onclick={() => toggleEvidencia(ev.id)}
                                     class="px-3 py-2 rounded-lg border-2 transition-all duration-200 flex items-center gap-1.5 text-sm {selected
                                         ? 'bg-cyan-600 border-cyan-600 text-white shadow-md'
-                                        : (isDark ? 'bg-white/5 border-white/10 text-gray-300 hover:border-cyan-500/40 hover:bg-cyan-500/10' : 'bg-white border-gray-200 text-gray-700 hover:border-cyan-300 hover:bg-cyan-50')}"
+                                        : 'hover:opacity-80'}" style="background-color: {selected ? '' : ts.bg3}; border-color: {selected ? '' : ts.border}; color: {selected ? '' : ts.text}"
                                 >
                                     <span>{ev.icono}</span>
                                     <span>{ev.titulo}</span>
@@ -4344,11 +4343,11 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                     </div>
 
                     <!-- ESCALA DE VALORACIÓN -->
-                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200'}">
-                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-amber-400' : 'text-amber-800'}">📊 Escala de Valoración (Decreto 1290)</span>
+                    <div class="p-4 rounded-xl border transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                        <span class="text-sm font-bold mb-3 block text-amber-500" style="color: {ts.text}">📊 Escala de Valoración (Decreto 1290)</span>
                         <div class="grid grid-cols-5 gap-2">
                             {#each ESCALA_VALORACION as escala}
-                                <div class="text-center p-2 rounded-lg border transition-colors {isDark ? 'border-amber-500/20' : 'border-amber-200'}" style="background-color: {ts.card}">
+                                <div class="text-center p-2 rounded-lg border transition-colors" style="background-color: {ts.card}; border-color: {ts.border}">
                                     <div class="text-lg font-bold text-amber-600">{escala.valor}</div>
                                     <div class="text-xs font-medium" style="color: {ts.text2}">{escala.label}</div>
                                 </div>
@@ -4357,9 +4356,9 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                     </div>
 
                     <!-- DESCRIPCIÓN AUTO-GENERADA -->
-                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200'}">
+                    <div class="p-4 rounded-xl border transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-bold {isDark ? 'text-indigo-400' : 'text-indigo-800'}">📝 Descripción de Evaluación (Auto-generada)</span>
+                            <span class="text-sm font-bold text-indigo-500" style="color: {ts.text}">📝 Descripción de Evaluación (Auto-generada)</span>
                             <button 
                                 type="button"
                                 onclick={autoGenerarDescripcionEval}
@@ -4371,7 +4370,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                         <textarea
                             bind:value={formData.eval_descripcion_auto}
                             rows="4"
-                            class="w-full text-sm rounded-lg focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-shadow {isDark ? 'border-indigo-500/20' : 'border-indigo-200'}" style="background-color: {ts.bg2}; color: {ts.text}"
+                            class="w-full text-sm rounded-lg focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-shadow" style="background-color: {ts.bg2}; border-color: {ts.border}; color: {ts.text}"
                             placeholder="👆 Selecciona las opciones de arriba para auto-generar la descripción..."
                         ></textarea>
                     </div>
@@ -4406,7 +4405,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                 <div id="step-5" class="space-y-6 animate-fade-in">
                     <div class="flex items-center justify-between">
                         <div>
-                            <h2 class="text-lg md:text-xl font-semibold tracking-tight border-l-4 border-indigo-500 pl-3" style="color: {isDark ? 'rgb(165 180 252)' : 'rgb(55 48 163)'}">
+                            <h2 class="text-lg md:text-xl font-semibold tracking-tight border-l-4 border-indigo-500 pl-3" style="color: {ts.text}">
                                 📦 Recursos Didácticos
                             </h2>
                             <p class="text-sm mt-1" style="color: {ts.muted}">
@@ -4423,8 +4422,8 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                     </div>
 
                     <!-- CATEGORÍAS DE RECURSOS -->
-                    <div class="p-4 rounded-xl border transition-colors {isDark ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-gradient-to-r from-cyan-50 to-blue-50 border-cyan-200'}">
-                        <span class="text-sm font-bold mb-3 block {isDark ? 'text-cyan-400' : 'text-cyan-800'}">📂 Categorías de Recursos - Selecciona una o varias:</span>
+                    <div class="p-4 rounded-xl border transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                        <span class="text-sm font-bold mb-3 block text-cyan-500" style="color: {ts.text}">📂 Categorías de Recursos - Selecciona una o varias:</span>
                         <div class="flex flex-wrap gap-2">
                             {#each CATEGORIAS_RECURSOS as cat}
                                 {@const selected = recursosCategorias.includes(cat.id)}
@@ -4434,7 +4433,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                     onclick={() => toggleCategoria(cat.id)}
                                     class="px-4 py-2.5 rounded-xl border-2 transition-all duration-200 flex items-center gap-2 {selected 
                                         ? 'bg-cyan-600 border-cyan-600 text-white shadow-lg' 
-                                        : (isDark ? 'bg-white/5 border-white/10 text-gray-300 hover:border-cyan-500/40 hover:bg-cyan-500/10' : 'bg-white border-gray-200 text-gray-700 hover:border-cyan-300 hover:bg-cyan-50')}"
+                                        : 'hover:opacity-80'}" style="background-color: {selected ? '' : ts.bg3}; border-color: {selected ? '' : ts.border}; color: {selected ? '' : ts.text}"
                                 >
                                     <span class="text-lg">{cat.icono}</span>
                                     <span class="font-medium">{cat.titulo}</span>
@@ -4466,7 +4465,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                                 onclick={() => toggleRecurso(recurso.id)}
                                                 class="px-3 py-2 rounded-lg border-2 transition-all duration-200 flex items-center gap-1.5 text-sm {selected 
                                                     ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' 
-                                                    : (isDark ? 'bg-white/5 border-white/10 text-gray-300 hover:border-indigo-500/40 hover:bg-indigo-500/10' : 'bg-gray-50 border-gray-200 text-gray-700 hover:border-indigo-300 hover:bg-indigo-50')}"
+                                                    : 'hover:opacity-80'}" style="background-color: {selected ? '' : ts.bg3}; border-color: {selected ? '' : ts.border}; color: {selected ? '' : ts.text}"
                                                 title={recurso.descripcion}
                                             >
                                                 <span>{recurso.icono}</span>
@@ -4478,8 +4477,8 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                             {/each}
                         </div>
                     {:else}
-                        <div class="p-4 rounded-xl border text-center transition-colors {isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50 border-amber-200'}">
-                            <p class="{isDark ? 'text-amber-400' : 'text-amber-700'}">👆 Selecciona una categoría arriba para ver los recursos disponibles</p>
+                        <div class="p-4 rounded-xl border text-center transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                            <p class="text-amber-500" style="color: {ts.text}">👆 Selecciona una categoría arriba para ver los recursos disponibles</p>
                         </div>
                     {/if}
 
@@ -4710,22 +4709,22 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
             {/if}
 
             <!-- Panel de Planeaciones Locales -->
-            <div class="mt-6 rounded-xl border overflow-hidden transition-colors {isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50 border-amber-200'}">
+            <div class="mt-6 rounded-xl border overflow-hidden transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
                 <button
                     type="button"
                     onclick={() => { showLocalPanel = !showLocalPanel; if (showLocalPanel) loadPlaneacionesLocales(); }}
-                    class="w-full px-4 py-3 flex items-center justify-between transition-colors text-left {isDark ? 'bg-amber-500/15 hover:bg-amber-500/25' : 'bg-amber-100 hover:bg-amber-200'}"
+                    class="w-full px-4 py-3 flex items-center justify-between transition-colors text-left border-b hover:opacity-80" style="background-color: {ts.bg3}; border-color: {ts.border}"
                 >
-                    <span class="flex items-center gap-2 font-medium {isDark ? 'text-amber-400' : 'text-amber-800'}">
+                    <span class="flex items-center gap-2 font-medium text-amber-500" style="color: {ts.text}">
                         <span>📂</span> Planeaciones Locales ({planeacionesLocales.length}/100)
                     </span>
-                    <span class="{isDark ? 'text-amber-400' : 'text-amber-600'}">{showLocalPanel ? '▼' : '▶'}</span>
+                    <span class="text-amber-500" style="color: {ts.text}">{showLocalPanel ? '▼' : '▶'}</span>
                 </button>
 
                 {#if showLocalPanel}
                     <div class="p-4 space-y-4">
                         {#if planeacionesLocales.length === 0}
-                            <p class="{isDark ? 'text-amber-400' : 'text-amber-700'} text-center py-4">No hay planeaciones guardadas localmente.</p>
+                            <p class="text-amber-500 text-center py-4" style="color: {ts.text}">No hay planeaciones guardadas localmente.</p>
                         {:else}
                             <div class="max-h-64 overflow-y-auto space-y-2">
                                 {#each planeacionesLocales as planeacion, index}
@@ -4743,7 +4742,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                                 type="button"
                                                 onclick={() => generatePDF(planeacion)}
                                                 disabled={isGeneratingPdf}
-                                                class="px-2 py-1 text-xs rounded disabled:opacity-50 transition-colors {isDark ? 'bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-400' : 'bg-indigo-100 hover:bg-indigo-200 text-indigo-700'}"
+                                                class="px-2 py-1 text-xs rounded disabled:opacity-50 transition-colors border hover:opacity-80" style="background-color: {ts.bg3}; border-color: {ts.border}; color: {ts.text}"
                                                 title="Generar PDF"
                                             >
                                                 PDF
@@ -4751,14 +4750,14 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                             <button
                                                 type="button"
                                                 onclick={() => loadPlaneacionLocal(planeacion)}
-                                                class="px-2 py-1 text-xs rounded transition-colors {isDark ? 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-400' : 'bg-blue-100 hover:bg-blue-200 text-blue-700'}"
+                                                class="px-2 py-1 text-xs rounded transition-colors border hover:opacity-80" style="background-color: {ts.bg3}; border-color: {ts.border}; color: {ts.text}"
                                             >
                                                 Cargar
                                             </button>
                                             <button
                                                 type="button"
                                                 onclick={() => handleDeleteLocal(planeacion.id_local)}
-                                                class="px-2 py-1 text-xs rounded transition-colors {isDark ? 'bg-red-500/20 hover:bg-red-500/30 text-red-400' : 'bg-red-100 hover:bg-red-200 text-red-700'}"
+                                                class="px-2 py-1 text-xs rounded transition-colors border hover:opacity-80" style="background-color: {ts.bg3}; border-color: {ts.border}; color: {ts.text}"
                                             >
                                                 ✕
                                             </button>
@@ -4773,7 +4772,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                 type="button"
                                 onclick={handleExportLocal}
                                 disabled={planeacionesLocales.length === 0}
-                                class="px-3 py-1.5 text-sm rounded-lg disabled:opacity-50 transition-colors {isDark ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400' : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'}"
+                                class="px-3 py-1.5 text-sm rounded-lg disabled:opacity-50 transition-colors border hover:opacity-80" style="background-color: {ts.bg3}; border-color: {ts.border}; color: {ts.text}"
                             >
                                 📥 Exportar JSON
                             </button>
@@ -4805,16 +4804,16 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
             </div>
 
             <!-- Panel de Planeaciones Online (Google Sheets) -->
-            <div class="mt-4 rounded-xl border overflow-hidden transition-colors {isDark ? 'bg-blue-500/10 border-blue-500/30' : 'bg-blue-50 border-blue-200'}">
+            <div class="mt-4 rounded-xl border overflow-hidden transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
                 <button
                     type="button"
                     onclick={() => { showFiltrosPanel = !showFiltrosPanel; if (showFiltrosPanel && planeacionesOnline.length === 0) buscarPlaneacionesOnline(); }}
-                    class="w-full px-4 py-3 flex items-center justify-between transition-colors text-left {isDark ? 'bg-blue-500/15 hover:bg-blue-500/25' : 'bg-blue-100 hover:bg-blue-200'}"
+                    class="w-full px-4 py-3 flex items-center justify-between transition-colors text-left border-b hover:opacity-80" style="background-color: {ts.bg3}; border-color: {ts.border}"
                 >
-                    <span class="flex items-center gap-2 font-medium {isDark ? 'text-blue-400' : 'text-blue-800'}">
+                    <span class="flex items-center gap-2 font-medium text-blue-500" style="color: {ts.text}">
                         <span>☁️</span> Planeaciones en la Nube ({planeacionesOnline.length})
                     </span>
-                    <span class="{isDark ? 'text-blue-400' : 'text-blue-600'}">{showFiltrosPanel ? '▼' : '▶'}</span>
+                    <span class="text-blue-500" style="color: {ts.text}">{showFiltrosPanel ? '▼' : '▶'}</span>
                 </button>
 
                 {#if showFiltrosPanel}
@@ -4901,7 +4900,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                         <!-- Resultados -->
                         {#if planeacionesOnline.length > 0}
                             <div class="border-t pt-4" style="border-color: {ts.border}">
-                                <p class="text-sm font-medium mb-2 {isDark ? 'text-blue-400' : 'text-blue-700'}">
+                                <p class="text-sm font-medium mb-2 text-blue-500" style="color: {ts.text}">
                                     {planeacionesOnline.length} planeación(es) encontrada(s)
                                 </p>
                                 <div class="max-h-80 overflow-y-auto space-y-2">
@@ -4942,7 +4941,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                 </div>
                             </div>
                         {:else if !isLoadingOnline}
-                            <p class="text-center py-2 text-sm {isDark ? 'text-blue-400' : 'text-blue-600'}">
+                            <p class="text-center py-2 text-sm text-blue-500" style="color: {ts.text}">
                                 Use los filtros y haga clic en "Buscar Planeaciones"
                             </p>
                         {/if}
@@ -4956,7 +4955,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                     type="button"
                     disabled={currentStep === 0}
                     onclick={prevStep}
-                    class="w-full sm:w-auto px-5 sm:px-6 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] flex items-center justify-center gap-2 {isDark ? 'bg-white/10 text-gray-300 hover:bg-white/15' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+                    class="w-full sm:w-auto px-5 sm:px-6 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] flex items-center justify-center gap-2 border hover:opacity-80" style="background-color: {ts.bg3}; border-color: {ts.border}; color: {ts.text}"
                 >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                     Anterior
@@ -5233,9 +5232,9 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                 <!-- Content -->
                 <div class="flex-1 overflow-y-auto p-6 space-y-4" style="color: {ts.text}">
                     <!-- Info -->
-                    <div class="flex items-center gap-2 p-3 rounded-xl border {isDark ? 'bg-violet-500/10 border-violet-500/30' : 'bg-violet-50 border-violet-200'}">
+                    <div class="flex items-center gap-2 p-3 rounded-xl border" style="background-color: {ts.bg2}; border-color: {ts.border}">
                         <span class="text-lg">✨</span>
-                        <p class="text-xs {isDark ? 'text-violet-300' : 'text-violet-700'}">
+                        <p class="text-xs" style="color: {ts.text}">
                             Escribe el tema y la IA generará contenido para las <strong>4 secciones</strong> de la secuencia didáctica automáticamente.
                         </p>
                     </div>
@@ -5283,20 +5282,20 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                             {#if aiSectionsResult.objectives || aiSectionsResult.competencias || aiSectionsResult.indicadores}
                                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                     {#if aiSectionsResult.objectives}
-                                        <div class="rounded-xl border p-3 {isDark ? 'bg-blue-500/10 border-blue-500/30' : 'bg-blue-50 border-blue-200'}">
-                                            <span class="text-[11px] font-bold {isDark ? 'text-blue-300' : 'text-blue-700'} uppercase block mb-1">🎯 Objetivos</span>
+                                        <div class="rounded-xl border p-3" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                                            <span class="text-[11px] font-bold text-blue-500 uppercase block mb-1">🎯 Objetivos</span>
                                             <p class="text-xs whitespace-pre-wrap" style="color: {ts.text2}">{aiSectionsResult.objectives}</p>
                                         </div>
                                     {/if}
                                     {#if aiSectionsResult.competencias}
-                                        <div class="rounded-xl border p-3 {isDark ? 'bg-green-500/10 border-green-500/30' : 'bg-green-50 border-green-200'}">
-                                            <span class="text-[11px] font-bold {isDark ? 'text-green-300' : 'text-green-700'} uppercase block mb-1">🤝 Competencias</span>
+                                        <div class="rounded-xl border p-3" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                                            <span class="text-[11px] font-bold text-green-500 uppercase block mb-1">🤝 Competencias</span>
                                             <p class="text-xs whitespace-pre-wrap" style="color: {ts.text2}">{aiSectionsResult.competencias}</p>
                                         </div>
                                     {/if}
                                     {#if aiSectionsResult.indicadores}
-                                        <div class="rounded-xl border p-3 {isDark ? 'bg-purple-500/10 border-purple-500/30' : 'bg-purple-50 border-purple-200'}">
-                                            <span class="text-[11px] font-bold {isDark ? 'text-purple-300' : 'text-purple-700'} uppercase block mb-1">📊 Indicadores</span>
+                                        <div class="rounded-xl border p-3" style="background-color: {ts.bg2}; border-color: {ts.border}">
+                                            <span class="text-[11px] font-bold text-purple-500 uppercase block mb-1">📊 Indicadores</span>
                                             <p class="text-xs whitespace-pre-wrap" style="color: {ts.text2}">{aiSectionsResult.indicadores}</p>
                                         </div>
                                     {/if}

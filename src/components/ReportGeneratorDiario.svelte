@@ -16,8 +16,7 @@
     WORKSHEET_TITLE_DIARIO,
   } from "../constants";
 
-  export let onClose: () => void;
-  export let initialDocente: string = "";
+  let { onClose, initialDocente = "" }: { onClose: () => void; initialDocente?: string } = $props();
 
   interface DiarioData {
     "Marca Temporal": string;
