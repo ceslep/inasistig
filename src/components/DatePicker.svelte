@@ -1,10 +1,7 @@
 <script lang="ts">
-    import { onMount, onDestroy } from "svelte";
-
     interface Props {
         value?: string;
         placeholder?: string;
-        dateFormat?: string;
         minDate?: string;
         maxDate?: string;
         disabled?: boolean;
@@ -15,7 +12,6 @@
     let {
         value = $bindable(""),
         placeholder = "Seleccione fecha",
-        dateFormat = "Y-m-d",
         minDate = undefined,
         maxDate = undefined,
         disabled = false,
@@ -23,107 +19,37 @@
         onchange,
     }: Props = $props();
 
-    let inputElement = $state<HTMLInputElement | undefined>(undefined);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let flatpickrInstance: any = null;
-
-    const initFlatpickr = async () => {
-        if (!inputElement) return;
-
-        const flatpickr = (await import("flatpickr")).default;
-        const Spanish = (await import("flatpickr/dist/l10n/es.js")).Spanish;
-
-        const options: Record<string, unknown> = {
-            dateFormat: dateFormat,
-            allowInput: true,
-            enableTime: false,
-            time_24hr: true,
-            defaultDate: value || undefined,
-            locale: Spanish,
-            onChange: (selectedDates: Date[], dateStr: string) => {
-                value = dateStr;
-                if (onchange) {
-                    onchange(dateStr);
-                }
-            },
-        };
-
-        if (minDate) {
-            options.minDate = minDate;
-        }
-        if (maxDate) {
-            options.maxDate = maxDate;
-        }
-
-        flatpickrInstance = flatpickr(inputElement, options);
-
-        if (disabled && flatpickrInstance) {
-            flatpickrInstance.set("disable", true);
-        }
-    };
-
-    const destroyFlatpickr = () => {
-        if (flatpickrInstance) {
-            flatpickrInstance.destroy();
-            flatpickrInstance = null;
-        }
-    };
-
-    $effect(() => {
-        if (flatpickrInstance && value !== undefined) {
-            const currentDate = flatpickrInstance.selectedDates[0];
-            const shouldBeDate = value ? new Date(value) : null;
-
-            if (shouldBeDate) {
-                const currentDateStr = currentDate ? flatpickrInstance.formatDate(currentDate, dateFormat) : null;
-                const newDateStr = flatpickrInstance.formatDate(shouldBeDate, dateFormat);
-                
-                if (currentDateStr !== newDateStr) {
-                    flatpickrInstance.setDate(value);
-                }
-            } else if (currentDate) {
-                flatpickrInstance.clear();
-            }
-        }
-    });
-
-    $effect(() => {
-        if (flatpickrInstance) {
-            if (disabled) {
-                flatpickrInstance.set("disable", true);
-            } else {
-                flatpickrInstance.set("disable", false);
-            }
-        }
-    });
-
-    onMount(() => {
-        initFlatpickr();
-    });
-
-    onDestroy(() => {
-        destroyFlatpickr();
-    });
+    function handleChange(e: Event) {
+        const input = e.target as HTMLInputElement;
+        value = input.value;
+        onchange?.(input.value);
+    }
 </script>
 
-<div class="datepicker-wrapper {className}" class:disabled>
+<div class="dp-wrapper {className}" class:disabled>
     <input
-        bind:this={inputElement}
-        type="text"
-        {placeholder}
-        class="flatpickr-input datepicker-input"
-        class:disabled
+        type="date"
+        value={value ?? ""}
+        min={minDate ?? ""}
+        max={maxDate ?? ""}
+        {disabled}
+        class="dp-input"
+        class:has-value={!!value}
+        onchange={handleChange}
     />
+    {#if !value}
+        <span class="dp-placeholder">{placeholder}</span>
+    {/if}
 </div>
 
 <style>
-    .datepicker-wrapper {
+    .dp-wrapper {
+        position: relative;
         width: 100%;
         display: block;
     }
 
-    .datepicker-wrapper :global(.flatpickr-input),
-    .datepicker-wrapper :global(input.flatpickr-input) {
+    .dp-input {
         width: 100%;
         padding: 0.625rem 0.75rem;
         border-radius: 0.5rem;
@@ -131,45 +57,86 @@
         background-color: rgb(var(--bg-secondary));
         color: rgb(var(--text-primary));
         font-size: 0.875rem;
+        font-family: inherit;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
         box-shadow: none;
+        box-sizing: border-box;
+        outline: none;
     }
 
-    .datepicker-wrapper :global(.flatpickr-input:hover),
-    .datepicker-wrapper :global(input.flatpickr-input:hover) {
+    /* Sin value: ocultar el dd/mm/aaaa nativo para mostrar nuestro placeholder */
+    .dp-input:not(.has-value)::-webkit-datetime-edit {
+        color: transparent;
+    }
+
+    /* Con value: mostrar con color normal */
+    .dp-input.has-value::-webkit-datetime-edit {
+        color: rgb(var(--text-primary));
+    }
+
+    /* Firefox */
+    .dp-input:not(.has-value) {
+        color: transparent;
+    }
+    .dp-input.has-value {
+        color: rgb(var(--text-primary));
+    }
+
+    .dp-placeholder {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: rgb(var(--text-tertiary, 150 150 150));
+        font-size: 0.875rem;
+        pointer-events: none;
+        user-select: none;
+    }
+
+    .dp-input:hover:not(:disabled) {
         border-color: rgb(var(--accent-primary) / 0.5);
     }
 
-    .datepicker-wrapper :global(.flatpickr-input:focus),
-    .datepicker-wrapper :global(input.flatpickr-input:focus) {
-        outline: none;
+    .dp-input:focus {
         border-color: rgb(var(--accent-primary));
         box-shadow: 0 0 0 3px rgb(var(--accent-primary) / 0.15);
+        /* Al enfocar mostrar siempre el texto nativo */
+        color: rgb(var(--text-primary));
     }
 
-    .datepicker-wrapper.disabled :global(.flatpickr-input),
-    .datepicker-wrapper.disabled :global(input.flatpickr-input) {
+    .dp-input:focus::-webkit-datetime-edit {
+        color: rgb(var(--text-primary));
+    }
+
+    .dp-input:disabled {
         opacity: 0.6;
         cursor: not-allowed;
-        pointer-events: none;
         background-color: rgb(var(--bg-tertiary));
     }
 
-    .datepicker-wrapper.disabled {
+    .dp-input::-webkit-calendar-picker-indicator {
+        opacity: 0.5;
+        cursor: pointer;
+    }
+
+    .dp-input::-webkit-calendar-picker-indicator:hover {
+        opacity: 1;
+    }
+
+    .dp-wrapper.disabled {
         opacity: 0.6;
         pointer-events: none;
     }
 
-    .datepicker-wrapper.disabled :global(input) {
-        cursor: not-allowed;
-    }
-
     @media (max-width: 640px) {
-        .datepicker-wrapper :global(.flatpickr-input),
-        .datepicker-wrapper :global(input.flatpickr-input) {
+        .dp-input {
             font-size: 1rem;
             padding: 0.75rem;
+        }
+
+        .dp-placeholder {
+            font-size: 1rem;
         }
     }
 </style>

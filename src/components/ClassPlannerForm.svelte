@@ -97,6 +97,8 @@
     let selectedTemas = $state<string[]>([]);
     let selectedActividades = $state<string[]>([]);
     let showTemasSection = $state(true);
+    let temasGradoLocal = $state(""); // Variables locales para evitar conflictos con formData
+    let temasPeriodoLocal = $state("");
 
     // Firma del docente
     let showFirmaModal = $state(false);
@@ -890,6 +892,31 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
         fecha_firma: "",
     });
 
+    // Debug: Log formData changes to console
+    $effect(() => {
+        const currentData = { ...formData };
+        const filledFields = Object.entries(currentData).filter((entry): boolean => {
+            const v = entry[1];
+            if (Array.isArray(v)) return v.length > 0;
+            if (typeof v === 'string') return v.trim() !== '';
+            if (typeof v === 'boolean') return v;
+            return true;
+        });
+
+        console.log('📝 Payload Actual:', {
+            timestamp: new Date().toLocaleTimeString('es-CO'),
+            camposLlenados: `${filledFields.length}/${Object.keys(currentData).length}`,
+            data: currentData
+        });
+    });
+
+    // Sincronizar period con periodo_academico para compatibilidad
+    $effect(() => {
+        if (formData.periodo_academico) {
+            formData.period = formData.periodo_academico;
+        }
+    });
+
     // --- ACTIVIDADES SUGERIDAS POR MOMENTO (Normativa MEN) ---
     interface ActividadSugerida {
         id: string;
@@ -1330,9 +1357,9 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
     // --- TEMAS DEL DOCENTE (DERIVADOS Y FUNCIONES) ---
 
     let temasParaGradoPeriodo = $derived.by(() => {
-        if (!formData.grado || !formData.periodo_academico) return [];
-        const grado = formData.grado.toLowerCase().trim();
-        const periodo = formData.periodo_academico.toLowerCase().trim();
+        if (!temasGradoLocal || !temasPeriodoLocal) return [];
+        const grado = temasGradoLocal.toLowerCase().trim();
+        const periodo = temasPeriodoLocal.toLowerCase().trim();
         return temasDocente.filter(
             (t) => t.grado.toLowerCase().trim() === grado && t.periodo.toLowerCase().trim() === periodo
         );
@@ -1435,6 +1462,14 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
 
     function aplicarTemasSeleccionados(): void {
         if (selectedTemas.length === 0 && selectedActividades.length === 0) return;
+
+        // Sincronizar grado y período con formData si están vacíos
+        if (!formData.grado && temasGradoLocal) {
+            formData.grado = temasGradoLocal;
+        }
+        if (!formData.periodo_academico && temasPeriodoLocal) {
+            formData.periodo_academico = temasPeriodoLocal;
+        }
 
         // Aplicar temas en exploración
         if (selectedTemas.length > 0) {
@@ -2488,7 +2523,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
             campus: "",
             grade: formData.grado,
             subject: formData.subject,
-            period: formData.period,
+            period: formData.periodo_academico,
             dba: formData.dba,
             standard: formData.standard,
             dba_manual: formData.dba_manual,
@@ -3573,17 +3608,17 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                     </span>
                                 </div>
                                 
-                                <!-- Selector de Grado y Período -->
+                                <!-- Selector de Grado y Período (variables locales para evitar conflictos con formData) -->
                                 <div class="flex flex-wrap gap-2 items-center">
                                     <TomSelect
-                                        bind:value={formData.grado}
+                                        bind:value={temasGradoLocal}
                                         options={[...new Set(temasDocente.map(t => t.grado))].map((g) => ({ value: g, label: g }))}
                                         placeholder="Seleccionar Grado"
                                         class="sm:w-48"
                                     />
                                     
                                     <TomSelect
-                                        bind:value={formData.periodo_academico}
+                                        bind:value={temasPeriodoLocal}
                                         options={[...new Set(temasDocente.map(t => t.periodo))].map((p) => ({ value: p, label: p }))}
                                         placeholder="Seleccionar Período"
                                         class="sm:w-48"

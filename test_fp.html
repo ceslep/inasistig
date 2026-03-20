@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+</head>
+<body>
+  <input type="text" id="date" value="2026-03-20">
+  <script>
+    flatpickr("#date", {
+      locale: "es",
+      defaultDate: new Date(2026, 2, 20)
+    });
+  </script>
+</body>
+</html>
