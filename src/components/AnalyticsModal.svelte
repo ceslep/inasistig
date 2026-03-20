@@ -148,6 +148,7 @@
     planeador: "Planeador de clases",
     observador: "Observador",
     piar: "PIAR",
+    actividades_recuperacion: "Actividades de Recuperación",
     horas_laborables: "Horas laborables",
   };
 </script>

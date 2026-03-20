@@ -71,6 +71,18 @@
 
   const modules = [
     {
+      id: "actividades_recuperacion",
+      title: "Actividades de Recuperación",
+      subtitle: "Refuerzo Académico",
+      description:
+        "Gestión y seguimiento de actividades de recuperación para estudiantes.",
+      image: logoEie,
+      color: "from-lime-600/20 to-green-600/20",
+      accent: "lime",
+      tag: "Académico",
+      url: "https://ceslep.github.io/actividadesrecuperacion/",
+    },
+    {
       id: "inasistencia",
       title: "Registro Diario",
       subtitle: "Gestión de Asistencia",
