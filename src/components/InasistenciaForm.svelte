@@ -19,6 +19,7 @@
     "¡Nueva función de reporte en Excel disponible!";
 
   import { theme } from "../lib/themeStore";
+  import { docenteName, findMatchingDocente } from "../lib/authStore";
   import { Cloud, Filter, FileDown, Eye, BarChart3, LayoutGrid, Moon, Sun, CloudMoon, Info, X, Clock, ChevronDown, Pencil, Loader2, Check } from "lucide-svelte";
   import eieLogo from "../assets/eie.png";
   import InasistenciaFilter from "./InasistenciaFilter.svelte";
@@ -521,6 +522,11 @@
       docentes = docentesData;
       materias = materiasData;
       estudiantes = estudiantesData;
+
+      if (!formData.docente) {
+        const match = findMatchingDocente(docentes, $docenteName);
+        if (match) formData.docente = match;
+      }
     } catch (error) {
       console.error("Error cargando datos iniciales:", error);
     } finally {

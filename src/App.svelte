@@ -8,6 +8,8 @@
   import { isOnline, pendingCount, isSyncing } from "./lib/networkStore";
   import { initAnalytics, trackViewChange } from "./lib/analyticsService";
   import { initVersionCheck } from "./version";
+  import { isAuthenticated, docenteName } from "./lib/authStore";
+  import LoginScreen from "./components/LoginScreen.svelte";
 
   let showAnalytics = $state(false);
   let AnalyticsModal: ReturnType<typeof $state<typeof import("./components/AnalyticsModal.svelte").default | null>> = $state(null);
@@ -116,6 +118,7 @@
   };
 </script>
 
+{#if $isAuthenticated && $docenteName}
 <main class="w-full min-h-screen">
   {#if activeView === "dashboard"}
     <Dashboard onSelect={handleSelect} />
@@ -232,6 +235,10 @@
 <!-- Modal de estadísticas -->
 {#if showAnalytics && AnalyticsModal}
   <AnalyticsModal onClose={() => (showAnalytics = false)} />
+{/if}
+
+{:else}
+  <LoginScreen />
 {/if}
 
 <style>

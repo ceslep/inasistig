@@ -11,6 +11,7 @@
   import { theme, type Theme } from "../lib/themeStore";
   import FeaturePopup from "./FeaturePopup.svelte";
   import { Badge, NetworkStatus } from "./ui";
+  import UserAvatar from "./UserAvatar.svelte";
 
   export let onSelect: (view: string) => void;
 
@@ -186,8 +187,9 @@
       class="max-w-7xl w-full mb-6 lg:mb-8 text-center relative"
       in:fly={{ y: -20, duration: 800, delay: 100 }}
     >
-      <!-- Theme Switcher -->
-      <div class="absolute right-0 top-0">
+      <!-- Theme Switcher + User Avatar -->
+      <div class="absolute right-0 top-0 flex items-center gap-2">
+        <UserAvatar />
         <button
           on:click={toggleTheme}
           class="p-3 rounded-2xl bg-[rgb(var(--bg-secondary))] border border-[rgb(var(--border-primary))] hover:border-[rgb(var(--accent-primary))] transition-all duration-300 group"

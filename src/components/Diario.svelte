@@ -14,6 +14,7 @@
   } from "../constants";
   import Loader from "./Loader.svelte";
   import { theme } from "../lib/themeStore";
+  import { docenteName, findMatchingDocente } from "../lib/authStore";
   import eieLogo from "../assets/eie.png";
   import DiarioAnotacionOptions from "./DiarioAnotacionOptions.svelte";
   import ReportGeneratorDiario from "./ReportGeneratorDiario.svelte";
@@ -250,6 +251,11 @@
       docentes = docentesData;
       materias = materiasData;
       estudiantes = estudiantesData; // Update students state
+
+      if (!formData.docente) {
+        const match = findMatchingDocente(docentes, $docenteName);
+        if (match) formData.docente = match;
+      }
     } catch (error) {
       console.error("Error cargando datos iniciales:", error);
     } finally {

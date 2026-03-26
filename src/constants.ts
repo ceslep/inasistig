@@ -1,3 +1,6 @@
+// Google Auth
+export const GOOGLE_CLIENT_ID = '52017046107-5tked8kgj3c12qekpe77uu3r148fo7nb.apps.googleusercontent.com'
+
 export const SPREADSHEET_ID = "1wN7lp7lOGyxKYIUJ9TU89N9knnJjX2Z_TfsOUg48QpQ";
 export const API_URL_GS = "https://app.iedeoccidente.com/gs";
 

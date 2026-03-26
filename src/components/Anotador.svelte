@@ -17,6 +17,7 @@
   import AnotadorFilter from "./AnotadorFilter.svelte";
   import ReportGenerator from "./ReportGenerator.svelte";
   import { theme } from "../lib/themeStore";
+  import { docenteName, findMatchingDocente } from "../lib/authStore";
   import eieLogo from "../assets/eie.png";
   import { slide } from "svelte/transition";
   import FeaturePopup from "./FeaturePopup.svelte";
@@ -510,6 +511,11 @@
       docentes = docentesData;
       materias = materiasData;
       estudiantes = estudiantesData;
+
+      if (!formData.docente) {
+        const match = findMatchingDocente(docentes, $docenteName);
+        if (match) formData.docente = match;
+      }
 
       // Transformar opciones a objetos editables
       const transformed: Record<string, OpcionAnotacion[]> = {};

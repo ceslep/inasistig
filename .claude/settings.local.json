@@ -11,7 +11,9 @@
       "Bash(ls:*)",
       "Bash(npm uninstall:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash:*)"
     ],
     "allowedTools": [
       "Read",

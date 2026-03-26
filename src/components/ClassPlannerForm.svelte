@@ -3,6 +3,7 @@
     import { fade, fly } from "svelte/transition";
     import Swal from "sweetalert2";
     import { theme } from "../lib/themeStore";
+    import { docenteName, findMatchingDocente } from "../lib/authStore";
     import eieLogo from "../assets/eie.png";
     import {
         savePlaneador,
@@ -1991,6 +1992,11 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
             docentes = docentesData;
             materias = materiasData;
             estudiantes = estudiantesData;
+
+            if (!formData.docente) {
+                const match = findMatchingDocente(docentes, $docenteName);
+                if (match) formData.docente = match;
+            }
         } catch (error) {
             console.error("Error cargando datos:", error);
         } finally {
