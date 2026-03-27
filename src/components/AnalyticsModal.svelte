@@ -1,22 +1,22 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { fade, fly } from "svelte/transition";
-  import {
-    X,
-    BarChart3,
-    Monitor,
-    Wifi,
-    Globe,
-    Smartphone,
-    Activity,
-    Cpu,
-    Loader2,
-    Trash2,
-    RefreshCw,
-    Users,
-    Clock,
-    LayoutGrid,
-  } from "lucide-svelte";
+
+  import X from "@lucide/svelte/icons/x";
+  import BarChart3 from "@lucide/svelte/icons/bar-chart-3";
+  import Monitor from "@lucide/svelte/icons/monitor";
+  import Wifi from "@lucide/svelte/icons/wifi";
+  import Globe from "@lucide/svelte/icons/globe";
+  import Smartphone from "@lucide/svelte/icons/smartphone";
+  import Activity from "@lucide/svelte/icons/activity";
+  import Cpu from "@lucide/svelte/icons/cpu";
+  import Loader2 from "@lucide/svelte/icons/loader-2";
+  import Trash2 from "@lucide/svelte/icons/trash-2";
+  import RefreshCw from "@lucide/svelte/icons/refresh-cw";
+  import Users from "@lucide/svelte/icons/users";
+  import Clock from "@lucide/svelte/icons/clock";
+  import LayoutGrid from "@lucide/svelte/icons/layout-grid";
+
   import {
     SiGooglechrome,
     SiFirefoxbrowser,
@@ -212,8 +212,8 @@
           style="background-color: rgb(var(--accent-primary) / 0.15);"
         >
           <BarChart3
-            class="w-5 h-5"
-            style="color: rgb(var(--accent-primary));"
+            size={20}
+            color="rgb(var(--accent-primary))"
           />
         </div>
         <div>
@@ -233,7 +233,7 @@
         class="p-2 rounded-xl transition-colors hover:bg-black/10"
         style="color: rgb(var(--text-secondary));"
       >
-        <X class="w-5 h-5" />
+        <X size={20} />
       </button>
     </div>
 
@@ -254,7 +254,7 @@
             border-color: {activeTab === tab.key ? 'rgb(var(--accent-primary))' : 'transparent'};
           "
         >
-          <tab.icon class="w-4 h-4 inline-block mr-1 -mt-0.5" />
+          <tab.icon size={16} class="inline-block mr-1 -mt-0.5" />
           {tab.label}
         </button>
       {/each}
@@ -287,7 +287,7 @@
                 class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                 style="background-color: rgb(var(--accent-primary) / 0.1);"
               >
-                <item.icon class="w-4 h-4" style="color: rgb(var(--accent-primary));" />
+                <item.icon class="size-4" style="color: rgb(var(--accent-primary));" />
               </div>
               <div class="min-w-0">
                 <p class="text-[11px] font-medium uppercase tracking-wider" style="color: rgb(var(--text-muted));">
@@ -317,7 +317,7 @@
               style="color: rgb(var(--text-muted));"
               title="Recargar datos"
             >
-              <RefreshCw class="w-4 h-4 {isLoading ? 'animate-spin' : ''}" />
+              <RefreshCw size={16} class={isLoading ? 'animate-spin' : ''} />
             </button>
             <button
               onclick={handleReset}
@@ -326,9 +326,9 @@
               style="background-color: rgba(239, 68, 68, 0.1); color: rgb(239, 68, 68); border: 1px solid rgba(239, 68, 68, 0.2);"
             >
               {#if isResetting}
-                <Loader2 class="w-3.5 h-3.5 animate-spin" />
+                <Loader2 size={14} class="animate-spin" />
               {:else}
-                <Trash2 class="w-3.5 h-3.5" />
+                <Trash2 size={14} />
               {/if}
               Reiniciar
             </button>
@@ -338,8 +338,9 @@
         {#if isLoading}
           <div class="flex items-center justify-center py-12">
             <Loader2
-              class="w-8 h-8 animate-spin"
-              style="color: rgb(var(--accent-primary));"
+              size={32}
+              color="rgb(var(--accent-primary))"
+              class="animate-spin"
             />
           </div>
         {:else if analytics}
@@ -357,8 +358,9 @@
                 style="background-color: rgba({card.color}, 0.08); border: 1px solid rgba({card.color}, 0.2);"
               >
                 <card.icon
-                  class="w-5 h-5 mx-auto mb-1"
-                  style="color: rgba({card.color}, 0.8);"
+                  size={20}
+                  class="mx-auto mb-1"
+                  color="rgba({card.color}, 0.8)"
                 />
                 <p class="text-2xl font-bold" style="color: rgba({card.color}, 1);">
                   {card.value}
@@ -425,7 +427,7 @@
               class="text-center py-6 mb-6 rounded-xl"
               style="background-color: rgb(var(--bg-secondary)); border: 1px solid rgb(var(--card-border));"
             >
-              <Users class="w-8 h-8 mx-auto mb-2" style="color: rgb(var(--text-muted));" />
+              <Users size={32} color="rgb(var(--text-muted))" class="mx-auto mb-2" />
               <p class="text-xs" style="color: rgb(var(--text-muted));">
                 No hay actividad de docentes esta semana.
               </p>
@@ -467,7 +469,7 @@
 
         {:else}
           <div class="text-center py-12">
-            <BarChart3 class="w-12 h-12 mx-auto mb-3" style="color: rgb(var(--text-muted));" />
+            <BarChart3 size={48} color="rgb(var(--text-muted))" class="mx-auto mb-3" />
             <p class="text-sm" style="color: rgb(var(--text-muted));">
               No se pudieron cargar las estadísticas del servidor.<br />
               Revisa tu conexión e intenta de nuevo.

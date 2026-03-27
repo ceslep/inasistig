@@ -15,7 +15,10 @@
       "Bash(git checkout:*)",
       "Bash(git stash:*)",
       "Bash(git push:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:lucide-dev.translate.goog)",
+      "WebFetch(domain:lucide.dev)",
+      "Bash(node:*)"
     ],
     "allowedTools": [
       "Read",

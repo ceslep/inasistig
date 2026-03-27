@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@icons-pack/svelte-simple-icons": "^7.2.0",
+    "@lucide/svelte": "^1.7.0",
     "@openrouter/sdk": "^0.9.11",
     "@tailwindcss/vite": "^4.1.18",
     "@types/file-saver": "^2.0.7",
