@@ -20,17 +20,57 @@ interface ParsedUA {
   cpu_architecture: string;
 }
 
-let cachedParsedUA: ParsedUA | null = null;
+interface UAHighEntropy {
+  platform?: string;
+  platformVersion?: string;
+  architecture?: string;
+  model?: string;
+  fullVersionList?: Array<{ brand: string; version: string }>;
+  mobile?: boolean;
+}
 
-function getParsedUA(): ParsedUA {
-  if (cachedParsedUA) return cachedParsedUA;
+interface NavigatorUA {
+  userAgentData?: {
+    platform?: string;
+    mobile?: boolean;
+    getHighEntropyValues?: (hints: string[]) => Promise<UAHighEntropy>;
+  };
+}
+
+let cachedParsedUA: ParsedUA | null = null;
+let parsedUAPromise: Promise<ParsedUA> | null = null;
+
+/**
+ * Resuelve la versión real de Windows a partir del platformVersion
+ * de Client Hints. Major >= 13 = Windows 11, 1-12 = Windows 10.
+ */
+function resolveWindowsVersion(platformVersion: string): string {
+  const major = parseInt(platformVersion.split(".")[0], 10);
+  if (isNaN(major) || major <= 0) return "10";
+  return major >= 13 ? "11" : "10";
+}
+
+/**
+ * Encuentra el navegador principal del fullVersionList de Client Hints,
+ * ignorando las marcas de señuelo (Chromium, Not*Brand, etc.)
+ */
+function extractBrowser(list: Array<{ brand: string; version: string }>): { name: string; version: string } | null {
+  const skip = /^(chromium|not.{0,5}brand)$/i;
+  const match = list.find((b) => !skip.test(b.brand));
+  if (match) return { name: match.brand, version: match.version };
+  const chromium = list.find((b) => /^chromium$/i.test(b.brand));
+  if (chromium) return { name: chromium.brand, version: chromium.version };
+  return null;
+}
+
+function getBaseUA(): ParsedUA {
   const parser = new UAParser(navigator.userAgent);
   const browser = parser.getBrowser();
   const os = parser.getOS();
   const device = parser.getDevice();
   const cpu = parser.getCPU();
 
-  cachedParsedUA = {
+  return {
     browser_name: browser.name || "Desconocido",
     browser_version: browser.version || "Desconocido",
     os_name: os.name || "Desconocido",
@@ -40,6 +80,85 @@ function getParsedUA(): ParsedUA {
     device_model: device.model || "Desconocido",
     cpu_architecture: cpu.architecture || "Desconocido",
   };
+}
+
+async function fetchHighEntropyUA(): Promise<ParsedUA> {
+  const base = getBaseUA();
+
+  try {
+    const nav = navigator as Navigator & NavigatorUA;
+    const uaData = nav.userAgentData;
+    if (!uaData?.getHighEntropyValues) return base;
+
+    const hints = await uaData.getHighEntropyValues([
+      "platform",
+      "platformVersion",
+      "architecture",
+      "model",
+      "fullVersionList",
+      "mobile",
+    ]);
+
+    // OS name + version corregido
+    if (hints.platform) {
+      base.os_name = hints.platform;
+      if (hints.platformVersion) {
+        if (hints.platform === "Windows") {
+          base.os_version = resolveWindowsVersion(hints.platformVersion);
+        } else {
+          base.os_version = hints.platformVersion;
+        }
+      }
+    }
+
+    // Arquitectura CPU
+    if (hints.architecture) {
+      base.cpu_architecture = hints.architecture;
+    }
+
+    // Modelo de dispositivo (útil en Android)
+    if (hints.model) {
+      base.device_model = hints.model;
+    }
+
+    // Navegador y versión completa
+    if (hints.fullVersionList && hints.fullVersionList.length > 0) {
+      const browser = extractBrowser(hints.fullVersionList);
+      if (browser) {
+        base.browser_name = browser.name;
+        base.browser_version = browser.version;
+      }
+    }
+
+    // Tipo de dispositivo
+    if (hints.mobile !== undefined) {
+      if (hints.mobile && base.device_type === "desktop") {
+        base.device_type = "mobile";
+      }
+    }
+  } catch {
+    // Client Hints falló, se usa el resultado de ua-parser-js
+  }
+
+  return base;
+}
+
+/**
+ * Inicia la detección de UA en segundo plano (llamar en initAnalytics).
+ * No bloquea, los primeros eventos pueden ir con datos parciales.
+ */
+function warmUpParsedUA(): void {
+  if (parsedUAPromise) return;
+  parsedUAPromise = fetchHighEntropyUA().then((result) => {
+    cachedParsedUA = result;
+    return result;
+  });
+}
+
+function getParsedUA(): ParsedUA {
+  if (cachedParsedUA) return cachedParsedUA;
+  // Si aún no hay cache, devolver datos base síncronos
+  cachedParsedUA = getBaseUA();
   return cachedParsedUA;
 }
 
@@ -270,6 +389,7 @@ export function trackAction(action: string, details?: Record<string, unknown>): 
 }
 
 export function initAnalytics(): void {
+  warmUpParsedUA();
   getSessionId();
   trackEvent("session_start");
 
@@ -297,13 +417,13 @@ export function initAnalytics(): void {
   });
 }
 
-export function getClientInfo(): ClientInfo {
+export async function getClientInfo(): Promise<ClientInfo> {
   const net = getNetworkInfo();
   const nav = navigator as Navigator & { deviceMemory?: number };
   const duration = Math.round((Date.now() - sessionStart) / 1000);
   const mins = Math.floor(duration / 60);
   const secs = duration % 60;
-  const parsed = getParsedUA();
+  const parsed = await fetchHighEntropyUA();
 
   let pwaInstalled = false;
   if (window.matchMedia("(display-mode: standalone)").matches) {

@@ -45,8 +45,8 @@
   let isResetting = $state(false);
   let period = $state("all");
 
-  onMount(() => {
-    clientInfo = getClientInfo();
+  onMount(async () => {
+    clientInfo = await getClientInfo();
     loadAnalytics();
   });
 
