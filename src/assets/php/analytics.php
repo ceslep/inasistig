@@ -1,9 +1,9 @@
 <?php
 /**
  * analytics.php - Recopila y consulta estadísticas de uso (almacenamiento JSON)
- * 
+ *
  * POST: Registra un evento de uso
- * GET:  Consulta estadísticas
+ * GET:  Consulta estadísticas (siempre últimos 7 días, auto-limpieza)
  */
 
 include_once("cors.php");
@@ -37,6 +37,32 @@ function readJson(string $file): array {
 function writeJson(string $file, array $data): void {
     file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
+
+/**
+ * Auto-limpieza: elimina eventos y sesiones con más de 7 días de antigüedad.
+ */
+function autoCleanup(string $eventsFile, string $sessionsFile): void {
+    $cutoff = date('Y-m-d H:i:s', strtotime('-7 days'));
+
+    $events = readJson($eventsFile);
+    $cleanEvents = array_values(array_filter($events, function ($e) use ($cutoff) {
+        return ($e['created_at'] ?? '') >= $cutoff;
+    }));
+    if (count($cleanEvents) < count($events)) {
+        writeJson($eventsFile, $cleanEvents);
+    }
+
+    $sessions = readJson($sessionsFile);
+    $cleanSessions = array_values(array_filter($sessions, function ($s) use ($cutoff) {
+        return ($s['started_at'] ?? '') >= $cutoff;
+    }));
+    if (count($cleanSessions) < count($sessions)) {
+        writeJson($sessionsFile, $cleanSessions);
+    }
+}
+
+// Auto-limpieza en cada request
+autoCleanup($EVENTS_FILE, $SESSIONS_FILE);
 
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -97,11 +123,6 @@ if ($method === 'POST') {
 
     $events = readJson($EVENTS_FILE);
     $events[] = $event;
-
-    // Limitar a últimos 10000 eventos para no crecer indefinidamente
-    if (count($events) > 10000) {
-        $events = array_slice($events, -10000);
-    }
     writeJson($EVENTS_FILE, $events);
 
     // Actualizar sesión
@@ -143,79 +164,29 @@ if ($method === 'POST') {
             'ip_address'       => $ip,
         ];
     }
-
-    // Limitar a últimas 5000 sesiones
-    if (count($sessions) > 5000) {
-        $sessions = array_slice($sessions, -5000);
-    }
     writeJson($SESSIONS_FILE, $sessions);
 
     echo json_encode(['status' => 'success', 'message' => 'Evento registrado']);
 
 } elseif ($method === 'GET') {
-    $id_docente = $_GET['id_docente'] ?? null;
-    $period = $_GET['period'] ?? 'all';
-
     $events = readJson($EVENTS_FILE);
     $sessions = readJson($SESSIONS_FILE);
 
-    // Filtro de fecha
-    $cutoff = null;
-    if ($period === 'today') {
-        $cutoff = date('Y-m-d 00:00:00');
-    } elseif ($period === 'week') {
-        $cutoff = date('Y-m-d H:i:s', strtotime('-7 days'));
-    } elseif ($period === 'month') {
-        $cutoff = date('Y-m-d H:i:s', strtotime('-30 days'));
-    }
-
-    // Filtrar eventos
-    $filtered = array_filter($events, function ($e) use ($cutoff, $id_docente) {
-        if ($cutoff && ($e['created_at'] ?? '') < $cutoff) return false;
-        if ($id_docente && ($e['id_docente'] ?? '') !== $id_docente) return false;
-        return true;
-    });
-    $filtered = array_values($filtered);
-
-    // Filtrar sesiones
-    $filteredSessions = array_filter($sessions, function ($s) use ($cutoff, $id_docente) {
-        if ($cutoff && ($s['started_at'] ?? '') < $cutoff) return false;
-        if ($id_docente && ($s['id_docente'] ?? '') !== $id_docente) return false;
-        return true;
-    });
-    $filteredSessions = array_values($filteredSessions);
-
-    // Total eventos y sesiones
-    $totalEvents = count($filtered);
-    $totalSessions = count($filteredSessions);
+    // Todos los datos ya están filtrados a 7 días por auto-limpieza
+    $totalEvents = count($events);
+    $totalSessions = count($sessions);
 
     // Duración promedio
-    $durations = array_filter(array_column($filteredSessions, 'duration_seconds'), fn($d) => $d > 0);
+    $durations = array_filter(array_column($sessions, 'duration_seconds'), fn($d) => $d > 0);
     $avgDuration = count($durations) > 0 ? round(array_sum($durations) / count($durations)) : 0;
 
-    // Docentes únicos (sobre todos los eventos filtrados por fecha, sin filtro docente)
-    $allFiltered = array_filter($events, function ($e) use ($cutoff) {
-        if ($cutoff && ($e['created_at'] ?? '') < $cutoff) return false;
-        return true;
-    });
-    $docentes = array_unique(array_filter(array_column($allFiltered, 'id_docente')));
+    // Docentes únicos
+    $docentes = array_unique(array_filter(array_column($events, 'id_docente')));
     $uniqueDocentes = count($docentes);
 
-    // Eventos por tipo
-    $byType = [];
-    foreach ($filtered as $e) {
-        $t = $e['event_type'];
-        $byType[$t] = ($byType[$t] ?? 0) + 1;
-    }
-    arsort($byType);
-    $eventsByType = [];
-    foreach (array_slice($byType, 0, 20, true) as $type => $count) {
-        $eventsByType[] = ['event_type' => $type, 'count' => $count];
-    }
-
-    // Vistas más visitadas
+    // Vistas más visitadas (módulos)
     $views = [];
-    foreach ($filtered as $e) {
+    foreach ($events as $e) {
         if ($e['event_type'] === 'view_change' && isset($e['event_data']['view'])) {
             $v = $e['event_data']['view'];
             $views[$v] = ($views[$v] ?? 0) + 1;
@@ -227,79 +198,37 @@ if ($method === 'POST') {
         $topViews[] = ['view_name' => $name, 'count' => $count];
     }
 
-    // Plataformas (agrupado por SO parseado, con fallback a platform raw)
-    $plats = [];
-    foreach ($filtered as $e) {
-        $osName = $e['os_name'] ?? null;
-        $osVersion = $e['os_version'] ?? null;
-        if ($osName && $osName !== 'Desconocido') {
-            $p = $osVersion && $osVersion !== 'Desconocido' ? "$osName $osVersion" : $osName;
-        } else {
-            $p = $e['platform'] ?? 'Desconocida';
+    // Resumen semanal por docente
+    $docenteMap = [];
+    foreach ($sessions as $s) {
+        $did = $s['id_docente'] ?? null;
+        if (!$did) continue;
+        if (!isset($docenteMap[$did])) {
+            $docenteMap[$did] = [
+                'id_docente' => $did,
+                'sessions' => 0,
+                'total_duration' => 0,
+                'modules_used' => [],
+            ];
         }
-        $plats[$p] = ($plats[$p] ?? 0) + 1;
-    }
-    arsort($plats);
-    $platforms = [];
-    foreach (array_slice($plats, 0, 10, true) as $name => $count) {
-        $platforms[] = ['platform' => $name, 'count' => $count];
+        $docenteMap[$did]['sessions']++;
+        $docenteMap[$did]['total_duration'] += ($s['duration_seconds'] ?? 0);
     }
 
-    // Actividad por hora
-    $byHour = [];
-    foreach ($filtered as $e) {
-        $h = (int)date('G', strtotime($e['created_at']));
-        $byHour[$h] = ($byHour[$h] ?? 0) + 1;
-    }
-    ksort($byHour);
-    $activityByHour = [];
-    foreach ($byHour as $hora => $count) {
-        $activityByHour[] = ['hora' => $hora, 'count' => $count];
-    }
-
-    // Actividad por día (últimos 30 días)
-    $cutoff30 = date('Y-m-d H:i:s', strtotime('-30 days'));
-    $byDay = [];
-    foreach ($filtered as $e) {
-        if ($e['created_at'] >= $cutoff30) {
-            $d = date('Y-m-d', strtotime($e['created_at']));
-            $byDay[$d] = ($byDay[$d] ?? 0) + 1;
+    // Agregar módulos usados por cada docente (de view_change events)
+    foreach ($events as $e) {
+        $did = $e['id_docente'] ?? null;
+        if (!$did || $e['event_type'] !== 'view_change') continue;
+        if (!isset($e['event_data']['view'])) continue;
+        $view = $e['event_data']['view'];
+        if (isset($docenteMap[$did]) && !in_array($view, $docenteMap[$did]['modules_used'])) {
+            $docenteMap[$did]['modules_used'][] = $view;
         }
     }
-    ksort($byDay);
-    $activityByDay = [];
-    foreach ($byDay as $fecha => $count) {
-        $activityByDay[] = ['fecha' => $fecha, 'count' => $count];
-    }
 
-    // Eventos recientes
-    $recent = array_slice(array_reverse($filtered), 0, 20);
-    $recentEvents = array_map(fn($e) => [
-        'event_type' => $e['event_type'],
-        'event_data' => $e['event_data'] ? json_encode($e['event_data']) : null,
-        'created_at' => $e['created_at'],
-    ], $recent);
-
-    // Detallado de todas las sesiones (últimas 100, ordenadas por más reciente)
-    $sortedSessions = $filteredSessions;
-    usort($sortedSessions, fn($a, $b) => strcmp($b['started_at'] ?? '', $a['started_at'] ?? ''));
-    $allSessions = array_map(fn($s) => [
-        'session_id'       => $s['session_id'],
-        'id_docente'       => $s['id_docente'] ?? null,
-        'started_at'       => $s['started_at'],
-        'last_activity'    => $s['last_activity'] ?? $s['started_at'],
-        'duration_seconds' => $s['duration_seconds'] ?? 0,
-        'page_views'       => $s['page_views'] ?? 0,
-        'events_count'     => $s['events_count'] ?? 0,
-        'app_version'      => $s['app_version'] ?? null,
-        'platform'         => $s['platform'] ?? null,
-        'browser_name'     => $s['browser_name'] ?? null,
-        'browser_version'  => $s['browser_version'] ?? null,
-        'os_name'          => $s['os_name'] ?? null,
-        'os_version'       => $s['os_version'] ?? null,
-        'device_type'      => $s['device_type'] ?? null,
-        'ip_address'       => $s['ip_address'] ?? null,
-    ], array_slice($sortedSessions, 0, 100));
+    // Ordenar por sesiones desc
+    $docentesWeekly = array_values($docenteMap);
+    usort($docentesWeekly, fn($a, $b) => $b['sessions'] - $a['sessions']);
 
     echo json_encode([
         'status' => 'success',
@@ -308,13 +237,8 @@ if ($method === 'POST') {
             'total_sessions'       => $totalSessions,
             'avg_session_duration' => $avgDuration,
             'unique_docentes'      => $uniqueDocentes,
-            'events_by_type'       => $eventsByType,
             'top_views'            => $topViews,
-            'platforms'            => $platforms,
-            'activity_by_hour'     => $activityByHour,
-            'activity_by_day'      => $activityByDay,
-            'recent_events'        => $recentEvents,
-            'all_sessions'         => $allSessions,
+            'docentes_weekly'      => $docentesWeekly,
         ]
     ]);
 

@@ -196,53 +196,16 @@ interface AnalyticsEvent {
   referrer: string;
 }
 
-interface EventsByType {
-  event_type: string;
-  count: number;
-}
-
 interface ViewCount {
   view_name: string;
   count: number;
 }
 
-interface PlatformCount {
-  platform: string;
-  count: number;
-}
-
-interface HourActivity {
-  hora: number;
-  count: number;
-}
-
-interface DayActivity {
-  fecha: string;
-  count: number;
-}
-
-interface RecentEvent {
-  event_type: string;
-  event_data: string | null;
-  created_at: string;
-}
-
-export interface SessionDetail {
-  session_id: string;
-  id_docente: string | null;
-  started_at: string;
-  last_activity: string;
-  duration_seconds: number;
-  page_views: number;
-  events_count: number;
-  app_version: string | null;
-  platform: string | null;
-  browser_name: string | null;
-  browser_version: string | null;
-  os_name: string | null;
-  os_version: string | null;
-  device_type: string | null;
-  ip_address: string | null;
+export interface DocenteWeeklySummary {
+  id_docente: string;
+  sessions: number;
+  total_duration: number;
+  modules_used: string[];
 }
 
 export interface AnalyticsData {
@@ -250,13 +213,8 @@ export interface AnalyticsData {
   total_sessions: number;
   avg_session_duration: number;
   unique_docentes: number;
-  events_by_type: EventsByType[];
   top_views: ViewCount[];
-  platforms: PlatformCount[];
-  activity_by_hour: HourActivity[];
-  activity_by_day: DayActivity[];
-  recent_events: RecentEvent[];
-  all_sessions: SessionDetail[];
+  docentes_weekly: DocenteWeeklySummary[];
 }
 
 export interface ClientInfo {
@@ -443,7 +401,11 @@ export async function getClientInfo(): Promise<ClientInfo> {
     connection_speed: net.downlink ? `${net.downlink} Mbps` : "Desconocido",
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     is_online: navigator.onLine,
-    memory: nav.deviceMemory ? `${nav.deviceMemory} GB` : "No disponible",
+    memory: nav.deviceMemory
+      ? nav.deviceMemory >= 8
+        ? `≥ ${nav.deviceMemory} GB`
+        : `${nav.deviceMemory} GB`
+      : "No disponible",
     cores: navigator.hardwareConcurrency || 0,
     touch: "ontouchstart" in window || navigator.maxTouchPoints > 0,
     pwa_installed: pwaInstalled,
@@ -467,11 +429,9 @@ export async function resetAnalytics(): Promise<boolean> {
   }
 }
 
-export async function fetchAnalytics(period: string = "all"): Promise<AnalyticsData | null> {
+export async function fetchAnalytics(): Promise<AnalyticsData | null> {
   try {
-    const params = new URLSearchParams({ period });
-
-    const response = await fetch(`${ANALYTICS_URL}?${params}`);
+    const response = await fetch(ANALYTICS_URL);
     const result = await response.json() as { status: string; data: AnalyticsData };
     if (result.status === "success") {
       return result.data;
