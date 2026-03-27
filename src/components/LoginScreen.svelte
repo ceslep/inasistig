@@ -7,6 +7,7 @@
   import { isOnline } from '../lib/networkStore'
   import { theme, type Theme } from '../lib/themeStore'
   import { signIn, authUser, docenteName, setDocenteName, getDocenteName } from '../lib/authStore'
+  import { trackEvent } from '../lib/analyticsService'
   import { Skeleton } from './ui'
 
   import logoEie from '../assets/eie.png'
@@ -26,10 +27,13 @@
 
   function handleCredentialResponse(response: google.accounts.id.CredentialResponse) {
     signIn(response.credential)
-    if (!getDocenteName()) {
+    const existingName = getDocenteName()
+    if (!existingName) {
       const user = JSON.parse(localStorage.getItem('google_auth_user') || '{}')
       nameInput = user.name || ''
       showNameStep = true
+    } else {
+      trackEvent('google_login', { docente: existingName, method: 'auto' })
     }
   }
 
@@ -37,6 +41,7 @@
     const trimmed = nameInput.trim()
     if (!trimmed) return
     setDocenteName(trimmed)
+    trackEvent('google_login', { docente: trimmed, method: 'first_login' })
     showNameStep = false
   }
 

@@ -133,6 +133,7 @@
   const eventTypeLabels: Record<string, string> = {
     session_start: "Inicio de sesión",
     session_end: "Fin de sesión",
+    google_login: "Login con Google",
     view_change: "Cambio de vista",
     action: "Acción del usuario",
     app_hidden: "App en segundo plano",
