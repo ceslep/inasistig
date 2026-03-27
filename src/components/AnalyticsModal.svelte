@@ -17,6 +17,17 @@
     Clock,
     LayoutGrid,
   } from "lucide-svelte";
+  import {
+    SiGooglechrome,
+    SiFirefoxbrowser,
+    SiSafari,
+    SiOpera,
+    SiBrave,
+    SiApple,
+    SiMacos,
+    SiLinux,
+    SiAndroid,
+  } from "@icons-pack/svelte-simple-icons";
   import Swal from "sweetalert2";
 
   import {
@@ -27,6 +38,7 @@
     type ClientInfo,
   } from "../lib/analyticsService";
   import { APP_VERSION, APP_BUILD_DATE } from "../version";
+  import type { Component } from "svelte";
 
   let { onClose }: { onClose: () => void } = $props();
 
@@ -35,6 +47,41 @@
   let analytics = $state<AnalyticsData | null>(null);
   let isLoading = $state(false);
   let isResetting = $state(false);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type AnyIcon = Component<any>;
+
+  const browserIcons: Record<string, AnyIcon> = {
+    chrome: SiGooglechrome,
+    firefox: SiFirefoxbrowser,
+    safari: SiSafari,
+    opera: SiOpera,
+    brave: SiBrave,
+  };
+
+  const osIcons: Record<string, AnyIcon> = {
+    macos: SiMacos,
+    "mac os": SiMacos,
+    ios: SiApple,
+    android: SiAndroid,
+    linux: SiLinux,
+  };
+
+  const getBrowserIcon = (name: string): AnyIcon => {
+    const lower = name.toLowerCase();
+    for (const [key, icon] of Object.entries(browserIcons)) {
+      if (lower.includes(key)) return icon;
+    }
+    return Globe;
+  };
+
+  const getOsIcon = (name: string): AnyIcon => {
+    const lower = name.toLowerCase();
+    for (const [key, icon] of Object.entries(osIcons)) {
+      if (lower.includes(key)) return icon;
+    }
+    return Monitor;
+  };
 
   onMount(async () => {
     clientInfo = await getClientInfo();
@@ -218,11 +265,13 @@
 
       <!-- ==================== TAB: MI DISPOSITIVO ==================== -->
       {#if activeTab === "client" && clientInfo}
+        {@const BrowserIcon = getBrowserIcon(clientInfo.browser_name)}
+        {@const OsIcon = getOsIcon(clientInfo.os_name)}
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {#each [
-            { icon: Globe, label: "Navegador", value: `${clientInfo.browser_name} ${clientInfo.browser_version}` },
-            { icon: Monitor, label: "Sistema operativo", value: `${clientInfo.os_name} ${clientInfo.os_version}` },
+            { icon: BrowserIcon, label: "Navegador", value: `${clientInfo.browser_name} ${clientInfo.browser_version}` },
+            { icon: OsIcon, label: "Sistema operativo", value: `${clientInfo.os_name} ${clientInfo.os_version}` },
             { icon: Smartphone, label: "Tipo de dispositivo", value: deviceTypeLabel(clientInfo.device_type) },
             { icon: Monitor, label: "Pantalla", value: clientInfo.screen },
             { icon: Wifi, label: "Conexión", value: `${clientInfo.connection_type} (${clientInfo.connection_speed})` },
