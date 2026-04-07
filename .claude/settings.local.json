@@ -18,7 +18,9 @@
       "Bash(npx tsc:*)",
       "WebFetch(domain:lucide-dev.translate.goog)",
       "WebFetch(domain:lucide.dev)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(curl:*)",
+      "Bash(python:*)"
     ],
     "allowedTools": [
       "Read",

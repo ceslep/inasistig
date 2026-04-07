@@ -1,0 +1,60 @@
+{
+  "timestamp": "9:23:20 a. m.",
+  "camposLlenados": "33/46",
+  "data": {
+    "docente": "CESAR LEANDRO PATIÑO VELEZ",
+    "grado": "DECIMO",
+    "subject": "TECNOLOGÍA E INFORMÁTICA",
+    "period": "p1",
+    "dba": [
+      "Analiza críticamente cómo los paradigmas tecnológicos contemporáneos redefinen conceptos de identidad, privacidad y agencia humana."
+    ],
+    "standard": [
+      "Interpreto la tecnología y sus manifestaciones (artefactos, procesos, productos, servicios y sistemas) como elaboración cultural que ha evolucionado a través del tiempo para cubrir necesidades, mejorar condiciones de vida y solucionar problemas."
+    ],
+    "dba_manual": "No Disponible",
+    "competency": "",
+    "has_piar": false,
+    "piar_description": "",
+    "learning_objectives": "Entender el uso de la consola en Python.\nAplicar la función print para mostrar texto.\nCombinar variables y cadenas de texto.",
+    "competencias": "Uso de herramientas de programación.\nRazonamiento lógico para resolver problemas.\nColaboración en tareas grupales.",
+    "exploration": "¿Cómo crearías un robot que cuente chistes usando solo comandos de texto?",
+    "exploration_activities": [],
+    "structuring": "Introducción a Python como lenguaje de programación. Explicación del uso de la consola y la función print para mostrar mensajes. Ejemplo: print(\"Hola mundo\"). Actividad guiada para escribir código básico.",
+    "structuring_activities": [],
+    "practice": "1. Escribe un programa que imprima tu nombre y edad.\n2. Crea una frase divertida con print.\n3. Combina variables (nombre, color favorito) en un mensaje único usando print.",
+    "practice_activities": [],
+    "transfer": "Diseña un programa que genere un mensaje de felicitación personalizado. Pregunta opcional: ¿Qué error podría ocurrir si usas comillas simples en lugar de comillas dobles?",
+    "transfer_activities": [],
+    "assessment_moment": "",
+    "assessment_activities": [],
+    "indicadores_logro": "Ejecutar código simple con la consola.\nIdentificar y corregir errores de sintaxis.\nDesarrollar programas breves y funcionales.",
+    "tiempo_exploracion": 10,
+    "tiempo_estructuracion": 20,
+    "tiempo_practica": 25,
+    "tiempo_transferencia": 15,
+    "tiempo_valoracion": 10,
+    "eval_type": "formativa",
+    "eval_modalidades": ["heteroevaluacion", "coevaluacion", "autoevaluacion"],
+    "eval_instrumentos": ["prueba_computador", "proyecto"],
+    "eval_criterios": [
+      "comprension_conceptual",
+      "pensamiento_logico",
+      "actitudinal"
+    ],
+    "eval_evidencias": [],
+    "eval_criteria": "Comprensión conceptual, Pensamiento lógico, Competencia actitudinal",
+    "eval_evidence": "",
+    "eval_ponderacion_conceptos": 30,
+    "eval_ponderacion_procedimientos": 40,
+    "eval_ponderacion_actitudes": 30,
+    "eval_descripcion_auto": "Se aplicará 📈 Formativa con 👨‍🏫 Heteroevaluación, 👥 Coevaluación, 🙋 Autoevaluación. Instrumentos: 💻 Prueba computador, 🎨 Proyecto. Se evaluará: Comprensión conceptual, Pensamiento lógico, Competencia actitudinal. Ponderación: Conceptos 30%, Procedimientos 40%, Actitudes 30%",
+    "resources": "• 💻 Computador/Tablet\n• 🌐 Internet/WiFi\n• 📺 Smart TV\n• 📌 consola",
+    "planeacion_tipo": "bimestral",
+    "periodo_academico": "p1",
+    "fecha_inicio": "2026-01-26",
+    "fecha_fin": "2026-03-31",
+    "firma_docente": "",
+    "fecha_firma": ""
+  }
+}

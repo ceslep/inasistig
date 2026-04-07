@@ -2083,6 +2083,30 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
             const COLOR_EMERALD: [number, number, number] = [5, 150, 105];
             const COLOR_ORANGE: [number, number, number] = [234, 88, 12];
 
+            // Limpiar emojis/iconos que no se renderizan bien en PDF
+            const stripEmojis = (text: string): string => {
+                return text
+                    .replace(/[\u{1F600}-\u{1F64F}]/gu, '')  // Emoticons
+                    .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')  // Misc Symbols & Pictographs
+                    .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')  // Transport & Map
+                    .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '')  // Flags
+                    .replace(/[\u{2600}-\u{26FF}]/gu, '')     // Misc symbols
+                    .replace(/[\u{2700}-\u{27BF}]/gu, '')     // Dingbats
+                    .replace(/[\u{FE00}-\u{FE0F}]/gu, '')     // Variation Selectors
+                    .replace(/[\u{1F900}-\u{1F9FF}]/gu, '')   // Supplemental Symbols
+                    .replace(/[\u{1FA00}-\u{1FA6F}]/gu, '')   // Chess Symbols
+                    .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '')   // Symbols Extended-A
+                    .replace(/[\u{200D}]/gu, '')               // Zero Width Joiner
+                    .replace(/[\u{20E3}]/gu, '')               // Combining Enclosing Keycap
+                    .replace(/[\u{E0020}-\u{E007F}]/gu, '')   // Tags
+                    .replace(/\u{FE0F}/gu, '')                 // Variation Selector-16
+                    .replace(/[\u{1F000}-\u{1F02F}]/gu, '')   // Mahjong
+                    .replace(/[\u{1F0A0}-\u{1F0FF}]/gu, '')   // Playing Cards
+                    .replace(/\u{200B}/gu, '')                 // Zero Width Space
+                    .replace(/  +/g, ' ')                      // Colapsar espacios extra
+                    .trim();
+            };
+
             // Funciones helper para el PDF
             const checkPageBreak = (requiredSpace: number) => {
                 if (yPos + requiredSpace > pageHeight - footerMargin) {
@@ -2092,7 +2116,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
             };
 
             const addWrappedText = (text: string, x: number, maxWidth: number, lineHeight = 4) => {
-                const lines: string[] = doc.splitTextToSize(text, maxWidth);
+                const lines: string[] = doc.splitTextToSize(stripEmojis(text), maxWidth);
                 for (const line of lines) {
                     checkPageBreak(lineHeight + 2);
                     doc.text(line, x, yPos);
@@ -2743,18 +2767,35 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                 // Solo continuar si es "Guardar de todos modos" (dismiss='cancel')
                 // Si es ESC, X o backdrop, volver al formulario
                 if (result.dismiss !== Swal.DismissReason.cancel) {
+                    isLoading = false;
                     return;
                 }
                 // Usuario eligió "Guardar de todos modos" - continuar
+            }
+            if (result.isConfirmed) {
+                // Usuario eligió "Completar campos" - volver al formulario
+                isLoading = false;
+                return;
             }
         }
 
         // Ahora sí intentamos guardar (solo errores de red/backend aquí)
         try {
             const result = await savePlaneador(planeacionData);
-            
+
             if (result.success) {
                 guardadoOnline = true;
+            } else {
+                // Backend respondió pero con error
+                savePlaneadorLocal(planeacionData);
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'Error en el servidor',
+                    text: result.message || 'No se pudo guardar en línea. La planeación se guardó localmente.',
+                    confirmButtonColor: '#ef4444',
+                    timer: 4000,
+                    timerProgressBar: true
+                });
             }
         } catch (error) {
             console.warn("Backend no disponible, guardando localmente:", error);
@@ -2767,9 +2808,19 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                 timer: 3000,
                 timerProgressBar: true
             });
+        } finally {
+            isLoading = false;
         }
 
         if (guardadoOnline) {
+            await Swal.fire({
+                icon: 'success',
+                title: 'Planeación guardada',
+                text: 'La planeación se guardó exitosamente en el servidor.',
+                confirmButtonColor: '#10b981',
+                timer: 3000,
+                timerProgressBar: true
+            });
             // Reset form
             formData = {
                 docente: localStorage.getItem("lastDocente") || "",
