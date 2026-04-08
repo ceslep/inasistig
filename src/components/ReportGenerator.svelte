@@ -744,7 +744,7 @@
               </tr>
             </thead>
             <tbody>
-              {#each filteredData as item, index}
+              {#each [...filteredData].sort((a, b) => (b["Fecha"] || "").localeCompare(a["Fecha"] || "")) as item, index}
                 <tr
                   class="border-t transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
                   style="border-color: {styles.border};"

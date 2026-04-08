@@ -43,6 +43,28 @@
   let isLoading = false;
   let showFieldErrors = false;
 
+  // --- Último registro guardado (popup temporal) ---
+  interface LastSavedInfo {
+    fecha: string;
+    docente: string;
+    materias: string[];
+    grado: string;
+    cantidad: number;
+    timestamp: string;
+  }
+  let lastSaved: LastSavedInfo | null = null;
+  let lastSavedVisible = false;
+  let lastSavedTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const showLastSaved = (info: LastSavedInfo) => {
+    if (lastSavedTimer) clearTimeout(lastSavedTimer);
+    lastSaved = info;
+    lastSavedVisible = true;
+    lastSavedTimer = setTimeout(() => {
+      lastSavedVisible = false;
+    }, 8000);
+  };
+
   // Materias múltiples para docente con "-"
   interface MateriaHoras {
     materia: string;
@@ -391,6 +413,15 @@
       for (const materiaData of materiasToSave) {
         saveMateriaForDocente(formData.docente, materiaData.materia);
       }
+
+      showLastSaved({
+        fecha: formData.fecha,
+        docente: formData.docente,
+        materias: materiasToSave.map(m => m.materia),
+        grado: formData.grado,
+        cantidad: payload.length,
+        timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+      });
 
       const registrosMsg = isOffline
         ? (payload.length === 1
@@ -761,6 +792,36 @@
     onClose={closeReportGenerator}
     initialDocente={formData.docente}
   />
+{/if}
+
+{#if lastSaved && lastSavedVisible}
+  <div
+    class="fixed bottom-4 right-4 z-50 max-w-xs w-full rounded-xl shadow-lg border p-4 transition-all duration-500"
+    style="background-color: rgb(var(--card-bg)); border-color: rgb(var(--card-border));"
+    class:opacity-0={!lastSavedVisible}
+    class:translate-y-2={!lastSavedVisible}
+  >
+    <div class="flex items-start gap-3">
+      <div class="flex-shrink-0 w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+        <span class="text-green-600 text-sm">&#10003;</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-semibold" style="color: rgb(var(--text-primary));">Último diario guardado</p>
+        <p class="text-[11px] mt-1 opacity-70" style="color: rgb(var(--text-secondary));">
+          {lastSaved.fecha} &bull; {lastSaved.grado} &bull; {lastSaved.cantidad} reg.
+        </p>
+        <p class="text-[11px] truncate opacity-60" style="color: rgb(var(--text-secondary));" title={lastSaved.materias.join(', ')}>
+          {lastSaved.materias.join(', ')}
+        </p>
+        <p class="text-[10px] mt-1 opacity-40" style="color: rgb(var(--text-secondary));">{lastSaved.timestamp}</p>
+      </div>
+      <button
+        class="text-xs opacity-40 hover:opacity-100 transition-opacity"
+        style="color: rgb(var(--text-secondary));"
+        on:click={() => { lastSavedVisible = false; }}
+      >&times;</button>
+    </div>
+  </div>
 {/if}
 
 <style>

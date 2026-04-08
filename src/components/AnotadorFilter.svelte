@@ -287,7 +287,7 @@
       }
 
       return true;
-    });
+    }).sort((a, b) => b.fecha.localeCompare(a.fecha));
   }
 
   // --- Auto-inicializar fechas cuando se activa el filtro ---

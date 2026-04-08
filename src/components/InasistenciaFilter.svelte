@@ -389,6 +389,10 @@
       }
 
       return true;
+    }).sort((a, b) => {
+      const fechaA = normalizeFecha(a.fecha);
+      const fechaB = normalizeFecha(b.fecha);
+      return fechaB.localeCompare(fechaA);
     });
 
     console.log(
