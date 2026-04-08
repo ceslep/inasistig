@@ -244,8 +244,11 @@
           id={module.id === "diario" ? "diario-module-target" : ""}
           on:click={() => {
             if (module.url) {
-              const url = $authUser?.email
-                ? `${module.url}?email=${encodeURIComponent($authUser.email)}`
+              const params = new URLSearchParams();
+              if ($authUser?.email) params.set('email', $authUser.email);
+              if ($authUser?.name) params.set('teacher', $authUser.name);
+              const url = params.toString()
+                ? `${module.url}?${params}`
                 : module.url;
               window.open(url, '_blank');
             } else {
