@@ -3,6 +3,7 @@
 
   import { fade, fly } from "svelte/transition";
   import { Sun, Moon, CloudMoon, ArrowRight } from "lucide-svelte";
+  import { authUser } from "../lib/authStore";
   import asistenciaHero from "../assets/asistencia_hero.png";
   import anotadorHero from "../assets/anotador_hero.png";
   import diarioHero from "../assets/diario_hero.png";
@@ -241,7 +242,16 @@
       {#each modules as module, i}
         <button
           id={module.id === "diario" ? "diario-module-target" : ""}
-          on:click={() => onSelect(module.id)}
+          on:click={() => {
+            if (module.url) {
+              const url = $authUser?.email
+                ? `${module.url}?email=${encodeURIComponent($authUser.email)}`
+                : module.url;
+              window.open(url, '_blank');
+            } else {
+              onSelect(module.id);
+            }
+          }}
           class="group relative flex flex-col justify-between overflow-hidden rounded-[2.5rem] border border-[rgb(var(--card-border))] bg-[rgb(var(--card-bg))] backdrop-blur-xl transition-all duration-500 hover:border-[rgb(var(--accent-primary))]/30 hover:bg-[rgb(var(--bg-secondary))] p-1"
           in:fly={{ y: 40, duration: 800, delay: 200 + i * 150 }}
         >
