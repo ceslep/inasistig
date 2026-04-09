@@ -8,7 +8,7 @@
   import { isOnline, pendingCount, isSyncing } from "./lib/networkStore";
   import { initAnalytics, trackViewChange } from "./lib/analyticsService";
   import { initVersionCheck } from "./version";
-  import { isAuthenticated, docenteName } from "./lib/authStore";
+  import { isAuthenticated, docenteName, authUser } from "./lib/authStore";
   import LoginScreen from "./components/LoginScreen.svelte";
 
   let showAnalytics = $state(false);
@@ -16,6 +16,14 @@
 
   let activeView = $state("dashboard");
   let isLoadingModule = $state(false);
+
+  let externalModuleUrl = $state("");
+  let externalModuleTitle = $state("");
+
+  const externalModules = [
+    { id: "actividades_recuperacion", title: "Actividades de Recuperación", url: "https://ceslep.github.io/actividadesrecuperacion/" },
+    { id: "horas_laborables", title: "Horas Laborables", url: "https://ceslep.github.io/horas_laborables" },
+  ];
 
   // --- History API: gesto/botón atrás vuelve al dashboard en vez de cerrar la PWA ---
   function handlePopState() {
@@ -70,6 +78,23 @@
   const handleSelect = async (view: string) => {
     if (view === "dashboard") {
       activeView = "dashboard";
+      externalModuleUrl = "";
+      externalModuleTitle = "";
+      return;
+    }
+
+    const externalModule = externalModules.find(m => m.id === view);
+    if (externalModule) {
+      const params = new URLSearchParams();
+      if ($authUser?.email) params.set("email", $authUser.email);
+      if ($authUser?.name) params.set("teacher", $authUser.name);
+      externalModuleUrl = params.toString()
+        ? `${externalModule.url}?${params}`
+        : externalModule.url;
+      externalModuleTitle = externalModule.title;
+      activeView = view;
+      pushHistoryState(view);
+      trackViewChange(view);
       return;
     }
 
@@ -140,7 +165,7 @@
     <Observador onBack={handleBack} />
   {:else if activeView === "piar" && Piar}
     <Piar onBack={handleBack} />
-  {:else if activeView === "actividades_recuperacion"}
+  {:else if externalModuleUrl}
     <div class="w-full h-screen flex flex-col bg-[rgb(var(--bg-primary))]">
       <div
         class="h-16 flex items-center justify-between px-6 border-b transition-colors duration-200"
@@ -155,38 +180,13 @@
           Volver al Dashboard
         </button>
         <h2 class="text-lg font-bold" style="color: rgb(var(--text-primary));">
-          Actividades de Recuperación
+          {externalModuleTitle}
         </h2>
         <div class="w-10"></div>
       </div>
       <iframe
-        src="https://ceslep.github.io/actividadesrecuperacion/"
-        title="Actividades de Recuperación"
-        class="flex-1 w-full border-none"
-      ></iframe>
-    </div>
-  {:else if activeView === "horas_laborables"}
-    <div class="w-full h-screen flex flex-col bg-[rgb(var(--bg-primary))]">
-      <div
-        class="h-16 flex items-center justify-between px-6 border-b transition-colors duration-200"
-        style="background-color: rgb(var(--card-bg)); border-color: rgb(var(--card-border));"
-      >
-        <button
-          onclick={handleBack}
-          class="flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5 font-medium"
-          style="color: rgb(var(--text-primary));"
-        >
-          <ArrowLeft class="w-5 h-5" />
-          Volver al Dashboard
-        </button>
-        <h2 class="text-lg font-bold" style="color: rgb(var(--text-primary));">
-          Horas Laborables
-        </h2>
-        <div class="w-10"></div>
-      </div>
-      <iframe
-        src="https://ceslep.github.io/horas_laborables"
-        title="Horas Laborables"
+        src={externalModuleUrl}
+        title={externalModuleTitle}
         class="flex-1 w-full border-none"
       ></iframe>
     </div>

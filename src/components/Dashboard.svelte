@@ -250,7 +250,7 @@
               const url = params.toString()
                 ? `${module.url}?${params}`
                 : module.url;
-              window.open(url, '_blank');
+              onSelect(module.id);
             } else {
               onSelect(module.id);
             }
