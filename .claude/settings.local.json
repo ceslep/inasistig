@@ -20,7 +20,8 @@
       "WebFetch(domain:lucide.dev)",
       "Bash(node:*)",
       "Bash(curl:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(wc -l /c/Users/cesle/inasistig/src/components/*.svelte)"
     ],
     "allowedTools": [
       "Read",

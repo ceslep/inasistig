@@ -88,6 +88,7 @@
     // PDF Preview
     let showPdfPreview = $state(false);
     let pdfUrl = $state<string | null>(null);
+    let pdfFileName = $state('Planeacion.pdf');
     let isGeneratingPdf = $state(false);
 
     // Temas del Docente (JSON)
@@ -2545,6 +2546,17 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
             }
 
             pdfUrl = doc.output('bloburl') as unknown as string;
+
+            // Nombre descriptivo con datos del registro
+            const parts = [
+                'Planeacion',
+                d.subject || '',
+                d.grado ? `Grado_${d.grado}` : '',
+                d.docente || '',
+                d.periodo_academico || d.period || '',
+            ].filter(Boolean);
+            pdfFileName = parts.join('_').replace(/\s+/g, '_').replace(/[^\w_.-]/g, '') + '.pdf';
+
             showPdfPreview = true;
         } catch (error) {
             console.error('Error generando PDF:', error);
@@ -5154,7 +5166,7 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                     <div class="flex gap-2 flex-shrink-0">
                         <a
                             href={pdfUrl}
-                            download={`Planeacion_${formData.subject || 'clases'}_${formData.grado || ''}.pdf`}
+                            download={pdfFileName}
                             class="px-3 sm:px-4 py-2 bg-green-500 hover:bg-green-400 text-white rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors"
                         >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

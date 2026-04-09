@@ -26,7 +26,7 @@ No test framework — manual testing only via `npm run dev`.
 ### Routing
 String-based SPA routing in `App.svelte` via `activeView` state variable. Each view is dynamically imported for code splitting. Navigation back always returns to `"dashboard"`.
 
-Views: `dashboard`, `inasistencia`, `anotador`, `diario`, `planeador`, `observador`, `piar`, `horas_laborables`
+Views: `dashboard`, `inasistencia`, `anotador`, `diario`, `planeador`, `observador`, `piar`, `horas_laborables`, `actividades_recuperacion`
 
 ### Modules (6 pedagogical tools)
 - **Registro Diario** (`InasistenciaForm.svelte`) — Attendance tracking
@@ -38,17 +38,20 @@ Views: `dashboard`, `inasistencia`, `anotador`, `diario`, `planeador`, `observad
 
 Each module has companion filter/report components (e.g., `InasistenciaFilter.svelte`, `ReportGeneratorInas.svelte`).
 
+### Authentication
+`LoginScreen.svelte` handles Google OAuth via `google.accounts`. Auth state managed in `src/lib/authStore.ts` (`authUser`, `isAuthenticated`, `docenteName` stores). Token expiry checked every 5 minutes + on visibility change.
+
 ### API & Data Flow
-- **No service layer:** API calls are made directly with `fetch` in components. Constants in `src/constants.ts` define all endpoint URLs — never hardcode URLs.
+- **Service layer:** `api/service.ts` wraps `fetch` with offline fallback (enqueues to IndexedDB on failure) and strongly typed payloads. Constants in `src/constants.ts` define all endpoint URLs — never hardcode URLs.
 - **Backend:** PHP endpoints at `app.iedeoccidente.com` with two base paths:
   - `BASE_URL` (`/ig/`) — read endpoints (get students, teachers, options)
   - `API_URL_GS` (`/gs/`) — write endpoints (save to Google Sheets)
 - **AI integration:** `AI_PROXY_URL` endpoint + `@openrouter/sdk` for AI features (`ia.svelte`)
-- **Offline-first:** IndexedDB queue (`src/lib/offlineQueue.ts`) enqueues failed POST requests; `src/lib/networkStore.ts` triggers sync on reconnect via `processQueue()`.
+- **Offline-first:** IndexedDB queue (`src/lib/offlineQueue.ts`) enqueues failed POST requests; `src/lib/networkStore.ts` triggers sync on reconnect via `processQueue()`. Planeador also supports localStorage drafts (max 100).
 
 ### State Management
 - **Components:** Svelte 5 runes (`$state()`, `$derived()`, `$props()`)
-- **Global stores:** `networkStore.ts` and `themeStore.ts` use Svelte 4 `writable()` stores (not runes), imported with `$` prefix in components
+- **Global stores:** `authStore.ts`, `networkStore.ts`, and `themeStore.ts` use Svelte 4 `writable()` stores (not runes), imported with `$` prefix in components
 
 ### Theming
 Three themes (light, dim, dark) via CSS custom properties in `app.css`. Theme class (`dim` or `dark`) applied to `<html>`. Apply with Tailwind arbitrary values:
@@ -61,7 +64,7 @@ Key variables: `--bg-primary`, `--bg-secondary`, `--text-primary`, `--text-secon
 Located in `src/components/ui/` — Badge, Button, Card, Toast, Skeleton, Tooltip, NetworkStatus. Exported via `index.ts`.
 
 ### Version System
-`src/version.ts` defines `APP_VERSION` and `APP_BUILD_DATE`. On load and visibility change, fetches `/inasistig/version.json` to detect updates, then clears service worker caches and force-reloads. Update `APP_VERSION` when deploying.
+`src/version.ts` defines `APP_VERSION` and `APP_BUILD_DATE`. On load and visibility change, fetches `/inasistig/version.json` to detect updates, then clears service worker caches and force-reloads. **Both `src/version.ts` and `public/version.json` must be updated when deploying.**
 
 ### Analytics
 `src/lib/analyticsService.ts` batches events and sends to `ANALYTICS_URL`. Session-based tracking with `sendBeacon` on unload. `AnalyticsModal.svelte` displays usage stats (floating button in `App.svelte`).
@@ -83,7 +86,7 @@ Service worker with auto-update (Workbox). Runtime caching (StaleWhileRevalidate
 - **Loading states:** `$state(false)` toggled in try/finally blocks
 - **Responsive:** Mobile-first with Tailwind (`w-full sm:w-auto`)
 - **All components must support all three themes**
-- **Icons:** lucide-svelte
+- **Icons:** `@lucide/svelte` (individual imports, e.g., `import { Menu } from '@lucide/svelte'`). Brand icons use `@icons-pack/svelte-simple-icons`.
 - **localStorage keys:** `theme`, `docenteMaterias`, `docenteMateriasDiario`, `lastDocente`, `lastDocenteDiario` — used for persistence across sessions
 
 ## Checklist Before Committing
