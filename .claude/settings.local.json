@@ -21,7 +21,16 @@
       "Bash(node:*)",
       "Bash(curl:*)",
       "Bash(python:*)",
-      "Bash(wc -l /c/Users/cesle/inasistig/src/components/*.svelte)"
+      "Bash(wc -l /c/Users/cesle/inasistig/src/components/*.svelte)",
+      "Bash(npm ls:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(gentle-ai --version)",
+      "Bash(gentle-ai version:*)",
+      "Bash(where gentle-ai:*)",
+      "Bash(where gentleai:*)",
+      "Bash(pip show:*)",
+      "Bash(pip3 show:*)",
+      "Bash(npm list:*)"
     ],
     "allowedTools": [
       "Read",

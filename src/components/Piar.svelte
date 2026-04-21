@@ -2,9 +2,17 @@
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";
 
+    import { getDocentes, getEstudiantes } from "../../api/service";
+    import { docenteName, findMatchingDocente } from "../lib/authStore";
+
     // html2pdf se carga dinámicamente desde CDN
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     type Html2PdfWindow = Window & typeof globalThis & { html2pdf?: any };
+
+    interface Estudiante {
+        nombre: string;
+        grado: number | string;
+    }
 
     let { onBack }: { onBack: () => void } = $props();
 
@@ -14,6 +22,26 @@
     let currentStep = $state(1);
     let isGeneratingPdf = $state(false);
     let showSavedNotification = $state(false);
+
+    // Datos de API para selección de docente y estudiante
+    let docentes: string[] = $state([]);
+    let estudiantes: Estudiante[] = $state.raw([]);
+    let isLoadingDocentes = $state(false);
+    let isLoadingEstudiantes = $state(false);
+    let selectedGrado = $state("");
+    let selectedEstudiante = $state("");
+
+    let gradosDisponibles = $derived(
+        [...new Set(estudiantes.map((e) => e.grado.toString()))].sort(),
+    );
+
+    let estudiantesFiltrados = $derived(
+        selectedGrado
+            ? estudiantes.filter(
+                  (e) => e.grado.toString() === selectedGrado,
+              )
+            : [],
+    );
 
     const steps = [
         { id: 1, title: "Info. General" },
@@ -28,7 +56,7 @@
     // Estructura de datos completa del PIAR
     let piar = $state({
         // Info General
-        fechaDiligenciamiento: "",
+        fechaDiligenciamiento: new Date().toLocaleDateString("en-CA"),
         quienDiligencia: "",
         rol: "",
         nombres: "",
@@ -270,24 +298,79 @@
     // 3. LÓGICA DE ALMACENAMIENTO Y PDF
     // ==========================================
 
-    // Cargar desde LocalStorage al iniciar
-    onMount(() => {
+    // Cargar desde LocalStorage al iniciar + datos de API
+    onMount(async () => {
         const saved = localStorage.getItem("piar_draft");
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
-                // Hacemos merge para no perder campos nuevos si actualizamos la app
                 piar = { ...piar, ...parsed };
+                // Si fecha vacía, poner fecha actual
+                if (!piar.fechaDiligenciamiento) {
+                    piar.fechaDiligenciamiento = new Date().toLocaleDateString("en-CA");
+                }
             } catch (e) {
                 console.error("Error cargando PIAR", e);
             }
         }
+
+        // Cargar docentes y estudiantes
+        isLoadingDocentes = true;
+        isLoadingEstudiantes = true;
+        try {
+            const [docentesData, estudiantesData] = await Promise.all([
+                getDocentes(),
+                getEstudiantes(),
+            ]);
+            docentes = docentesData;
+            estudiantes = estudiantesData;
+
+            // Auto-seleccionar docente
+            if (!piar.quienDiligencia) {
+                const lastDocente = localStorage.getItem("lastDocente");
+                if (lastDocente && docentesData.includes(lastDocente)) {
+                    piar.quienDiligencia = lastDocente;
+                } else {
+                    const match = findMatchingDocente(docentesData, $docenteName);
+                    if (match) piar.quienDiligencia = match;
+                }
+            }
+        } catch (error) {
+            console.error("Error cargando datos:", error);
+        } finally {
+            isLoadingDocentes = false;
+            isLoadingEstudiantes = false;
+        }
     });
+
+    // Persistir docente seleccionado
+    $effect(() => {
+        if (piar.quienDiligencia) {
+            localStorage.setItem("lastDocente", piar.quienDiligencia);
+        }
+    });
+
+    // Auto-llenar nombre y apellidos al seleccionar estudiante
+    // Formato: APELLIDO1 APELLIDO2 NOMBRE1 [NOMBRE2]
+    function onEstudianteSelect(nombre: string) {
+        selectedEstudiante = nombre;
+        if (!nombre) return;
+        const partes = nombre.trim().split(/\s+/);
+        if (partes.length >= 4) {
+            piar.apellidos = partes.slice(0, 2).join(" ");
+            piar.nombres = partes.slice(2).join(" ");
+        } else if (partes.length === 3) {
+            piar.apellidos = partes.slice(0, 2).join(" ");
+            piar.nombres = partes[2];
+        } else {
+            piar.nombres = nombre;
+            piar.apellidos = "";
+        }
+    }
 
     // Guardado automático cada vez que 'piar' cambia usando $effect
     $effect(() => {
         localStorage.setItem("piar_draft", JSON.stringify(piar));
-        // Pequeño indicador visual de guardado
         showSavedNotification = true;
         const timer = setTimeout(() => (showSavedNotification = false), 2000);
         return () => clearTimeout(timer);
@@ -584,15 +667,64 @@
                                 piar,
                                 "fechaDiligenciamiento",
                             )}
-                            {@render inputGroup(
-                                "Persona que diligencia",
-                                "p_dil",
-                                "text",
-                                "Nombre del docente/orientador",
-                                "col-span-1 md:col-span-2",
-                                piar,
-                                "quienDiligencia",
-                            )}
+                            <div class="flex flex-col gap-1 col-span-1 md:col-span-2">
+                                <label for="p_dil" class="text-sm font-medium text-slate-700">Persona que diligencia</label>
+                                <select
+                                    id="p_dil"
+                                    bind:value={piar.quienDiligencia}
+                                    disabled={isLoadingDocentes}
+                                    class="border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                                >
+                                    <option value="">
+                                        {isLoadingDocentes ? "Cargando docentes..." : "Seleccione docente"}
+                                    </option>
+                                    {#each docentes as docente}
+                                        <option value={docente}>{docente}</option>
+                                    {/each}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Selección de estudiante por grado -->
+                        <h3
+                            class="font-semibold text-lg mt-6 text-blue-800 bg-blue-50 p-2 rounded"
+                        >
+                            Seleccionar Estudiante
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="flex flex-col gap-1">
+                                <label for="sel_grado" class="text-sm font-medium text-slate-700">Grado</label>
+                                <select
+                                    id="sel_grado"
+                                    bind:value={selectedGrado}
+                                    disabled={isLoadingEstudiantes}
+                                    class="border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                                >
+                                    <option value="">
+                                        {isLoadingEstudiantes ? "Cargando..." : "Seleccione grado"}
+                                    </option>
+                                    {#each gradosDisponibles as g}
+                                        <option value={g}>{g}</option>
+                                    {/each}
+                                </select>
+                            </div>
+                            <div class="flex flex-col gap-1 col-span-1 md:col-span-2">
+                                <label for="sel_est" class="text-sm font-medium text-slate-700">Estudiante</label>
+                                <select
+                                    id="sel_est"
+                                    bind:value={selectedEstudiante}
+                                    disabled={!selectedGrado || estudiantesFiltrados.length === 0}
+                                    onchange={() => onEstudianteSelect(selectedEstudiante)}
+                                    class="border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                                >
+                                    <option value="">
+                                        {!selectedGrado ? "Primero seleccione un grado" : estudiantesFiltrados.length === 0 ? "Sin estudiantes en este grado" : "Seleccione estudiante"}
+                                    </option>
+                                    {#each estudiantesFiltrados as est}
+                                        <option value={est.nombre}>{est.nombre}</option>
+                                    {/each}
+                                </select>
+                            </div>
                         </div>
 
                         <h3
