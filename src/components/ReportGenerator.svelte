@@ -6,12 +6,10 @@
     getEstudiantes,
     getAnotador,
   } from "../../api/service";
-  // Dynamic imports for heavy libraries
-  let jsPDF: any = null;
-  let autoTable: any = null;
+  import { getDocenteNumber, loadPdfLibraries } from '../lib/utils';
   import Loader from "./Loader.svelte";
   import { theme } from "../lib/themeStore";
-  import { FileText, X, Filter, Loader2, Download } from "lucide-svelte";
+  import { FileText, X, Filter, Loader2, Download } from '@lucide/svelte';
   import {
     SPREADSHEET_ID_ANOTADOR,
     WORKSHEET_TITLE_ANOTADOR,
@@ -47,17 +45,6 @@
   let selectedMateria = $state("");
   let selectedGrado = $state("");
 
-  const loadPdfLibraries = async () => {
-    if (!jsPDF || !autoTable) {
-      const [jspdfModule, autoTableModule] = await Promise.all([
-        import('jspdf'),
-        import('jspdf-autotable')
-      ]);
-      jsPDF = jspdfModule.default;
-      autoTable = autoTableModule.default;
-    }
-  };
-
   const saveMateriaForDocente = (docente: string, materia: string): void => {
     if (!docente || !materia) return;
     if (!docenteMaterias[docente]) {
@@ -74,12 +61,6 @@
       saveMateriaForDocente(selectedDocente, selectedMateria);
     }
   });
-
-  // Extraer número del docente cuando tiene patrón "Nombre-número"
-  const getDocenteNumber = (docente: string): string | null => {
-    const match = docente.match(/-(\d+)$/);
-    return match ? match[1] : null;
-  };
 
   // Verificar si el docente tiene "-"
   let docenteHasDash = $derived(selectedDocente.includes("-"));
@@ -293,8 +274,8 @@
 
   const generatePDF = async () => {
     // Load libraries dynamically
-    await loadPdfLibraries();
-    
+    const { jsPDF, autoTable } = await loadPdfLibraries();
+
     if (filteredData.length === 0) {
       alert("No hay datos para generar el PDF");
       return;
@@ -426,19 +407,20 @@
     });
 
     // Definir anchos de columnas según número de columnas
-    const columnStyles = showGradoColumn
+    type ColumnStyleMap = Record<string, Partial<import('jspdf-autotable').Styles>>;
+    const columnStyles: ColumnStyleMap = showGradoColumn
       ? {
           0: { cellWidth: 22, minCellHeight: 8, halign: 'center' },   // Fecha
           1: { cellWidth: 15, minCellHeight: 8, halign: 'center' },   // Horas
           2: { cellWidth: 35, minCellHeight: 8 },                     // Asignatura
-          3: { cellWidth: 18, minCellHeight: 8, halign: 'center' },  // Grado
-          4: { cellWidth: 'auto', minCellHeight: 12 },                // Anotación
+          3: { cellWidth: 18, minCellHeight: 8, halign: 'center' },   // Grado
+          4: { cellWidth: 'auto', minCellHeight: 12 },                // Anotacion
         }
       : {
-          0: { cellWidth: 28, minCellHeight: 8, halign: 'center' },  // Fecha
-          1: { cellWidth: 18, minCellHeight: 8, halign: 'center' },  // Horas
-          2: { cellWidth: 45, minCellHeight: 8 },                    // Asignatura
-          3: { cellWidth: 'auto', minCellHeight: 12 },                // Anotación
+          0: { cellWidth: 28, minCellHeight: 8, halign: 'center' },   // Fecha
+          1: { cellWidth: 18, minCellHeight: 8, halign: 'center' },   // Horas
+          2: { cellWidth: 45, minCellHeight: 8 },                     // Asignatura
+          3: { cellWidth: 'auto', minCellHeight: 12 },                // Anotacion
         };
 
     // Generar tabla con autoTable

@@ -4,7 +4,8 @@
   import { onMount } from "svelte";
   import { theme } from "../lib/themeStore";
   import { get } from 'svelte/store';
-  import { ChevronLeft, FileText, Sun, Moon, CloudMoon } from 'lucide-svelte';
+  import { ChevronLeft, FileText, Sun, Moon, CloudMoon } from '@lucide/svelte';
+  import ModuleHeader from './ModuleHeader.svelte';
 
   let { onBack }: { onBack: () => void } = $props();
 
@@ -663,43 +664,21 @@
 
 <div>
   <div class="min-h-screen bg-slate-50 dark:bg-[#0f172a] p-4 md:p-6 transition-colors duration-500 font-sans">
-    <!-- Header -->
-    <header class="max-w-7xl mx-auto mb-6">
-      <div class="bg-white/80 dark:bg-white/5 backdrop-blur-xl p-4 rounded-[2rem] border border-slate-200 dark:border-white/10 shadow-sm flex flex-wrap items-center justify-between gap-4">
-        <div class="flex items-center gap-4">
-          <button onclick={onBack} class="p-3 rounded-2xl bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 transition-colors">
-            <ChevronLeft class="w-5 h-5 text-slate-600 dark:text-white" />
-          </button>
-          <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center">
-            <FileText class="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 class="text-lg font-black text-slate-800 dark:text-white uppercase">Observador Escolar</h1>
-            <p class="text-[10px] font-bold text-indigo-500 tracking-widest">CONVIVENCIA Y SEGUIMIENTO</p>
-          </div>
-        </div>
+    <ModuleHeader title="Observador Escolar" subtitle="Convivencia y Seguimiento" {onBack}>
+      {#snippet actions()}
+        <button onclick={() => showHistory = !showHistory} class="min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold bg-[rgb(var(--bg-secondary))] border border-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] hover:border-[rgb(var(--accent-primary))] transition-colors">
+          Historial
+        </button>
+        <button onclick={() => showLegalInfo = !showLegalInfo} class="min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold bg-[rgb(var(--bg-secondary))] border border-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] hover:border-[rgb(var(--accent-primary))] transition-colors">
+          Marco Legal
+        </button>
+        <button onclick={clearAll} class="min-h-[44px] px-3 py-2 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+          Limpiar
+        </button>
+      {/snippet}
+    </ModuleHeader>
 
-        <div class="flex items-center gap-2 flex-wrap">
-          <button onclick={() => showHistory = !showHistory} class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white hover:bg-slate-200 transition-colors">
-            📜 Historial
-          </button>
-          <button onclick={() => showLegalInfo = !showLegalInfo} class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white hover:bg-slate-200 transition-colors">
-            ⚖️ Marco Legal
-          </button>
-          <button onclick={toggleTheme} class="p-3 rounded-xl bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-yellow-400 hover:scale-105 transition-all">
-            {#if $theme === "dark"}
-              <Sun class="w-5 h-5" />
-            {:else if $theme === "dim"}
-              <CloudMoon class="w-5 h-5" />
-            {:else}
-              <Moon class="w-5 h-5" />
-            {/if}
-          </button>
-          <button onclick={clearAll} class="px-4 py-2 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
-            🗑️ Limpiar
-          </button>
-        </div>
-      </div>
+    <header class="max-w-7xl mx-auto mb-6">
 
       <!-- Progress Bar -->
       <div class="mt-4 bg-white/50 dark:bg-white/5 rounded-2xl p-4 border border-slate-200 dark:border-white/10">

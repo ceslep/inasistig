@@ -61,6 +61,9 @@ export const ANALYTICS_URL = `${BASE_URL}/analytics.php`;
 // AI Proxy
 export const AI_PROXY_URL = `${BASE_URL}/ai_proxy.php`;
 
+// html2pdf (CDN)
+export const HTML2PDF_CDN_URL = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'
+
 export const URL_DBAS =
   `${BASE_URL}/getDBAs.php`;
 export const URL_EBCS =

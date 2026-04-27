@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Loader2 } from "lucide-svelte";
+  import { Loader2 } from '@lucide/svelte';
 
   export let size = "medium"; // small, medium, large
   export let message = "";

@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { fade, fly } from "svelte/transition";
-  import { ArrowLeft, Wifi, WifiOff, CloudUpload, Loader2, BarChart3 } from "lucide-svelte";
+  import type { Component } from 'svelte';
+
+  import { ArrowLeft, Wifi, WifiOff, CloudUpload, Loader2, BarChart3 } from '@lucide/svelte';
   import Swal from "sweetalert2";
   import Dashboard from "./components/Dashboard.svelte";
   import Loader from "./components/Loader.svelte";
@@ -68,12 +70,14 @@
     }
   });
 
-  let InasistenciaForm: any = $state(null);
-  let Anotador: any = $state(null);
-  let Diario: any = $state(null);
-  let ClassPlannerForm: any = $state(null);
-  let Observador: any = $state(null);
-  let Piar: any = $state(null);
+  type ModuleComponent = Component<{ onBack: () => void }>;
+
+  let InasistenciaForm: ModuleComponent | null = $state(null);
+  let Anotador: ModuleComponent | null = $state(null);
+  let Diario: ModuleComponent | null = $state(null);
+  let ClassPlannerForm: ModuleComponent | null = $state(null);
+  let Observador: ModuleComponent | null = $state(null);
+  let Piar: ModuleComponent | null = $state(null);
 
   const handleSelect = async (view: string) => {
     if (view === "dashboard") {

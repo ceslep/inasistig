@@ -3,6 +3,7 @@
     import { fade } from "svelte/transition";
 
     import { getDocentes, getEstudiantes } from "../../api/service";
+    import { HTML2PDF_CDN_URL } from "../constants";
     import { docenteName, findMatchingDocente } from "../lib/authStore";
 
     // html2pdf se carga dinámicamente desde CDN
@@ -13,6 +14,8 @@
         nombre: string;
         grado: number | string;
     }
+
+    import ModuleHeader from "./ModuleHeader.svelte";
 
     let { onBack }: { onBack: () => void } = $props();
 
@@ -433,8 +436,7 @@
     // Inyectar html2pdf por CDN
     onMount(() => {
         const script = document.createElement("script");
-        script.src =
-            "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+        script.src = HTML2PDF_CDN_URL;
         document.head.appendChild(script);
     });
 
@@ -460,13 +462,13 @@
     key: string,
 )}
     <div class={`flex flex-col gap-1 ${width}`}>
-        <label for={id} class="text-sm font-medium text-slate-700"
+        <label for={id} class="text-sm font-medium text-[rgb(var(--text-secondary))]"
             >{label}</label
         >
         {#if type === "textarea"}
             <textarea
                 {id}
-                class="border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                class="border border-[rgb(var(--border-primary))] rounded-lg p-2.5 text-sm bg-[rgb(var(--bg-secondary))] text-[rgb(var(--text-primary))] focus:ring-2 focus:ring-[rgb(var(--accent-primary))]/40 focus:border-[rgb(var(--accent-primary))] outline-none transition-colors"
                 rows="3"
                 {placeholder}
                 bind:value={obj[key]}
@@ -475,7 +477,7 @@
             <input
                 {type}
                 {id}
-                class="border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                class="border border-[rgb(var(--border-primary))] rounded-lg p-2.5 text-sm bg-[rgb(var(--bg-secondary))] text-[rgb(var(--text-primary))] focus:ring-2 focus:ring-[rgb(var(--accent-primary))]/40 focus:border-[rgb(var(--accent-primary))] outline-none transition-colors"
                 {placeholder}
                 bind:value={obj[key]}
             />
@@ -492,12 +494,12 @@
     key: string,
 )}
     <div class={`flex flex-col gap-1 ${width}`}>
-        <label for={id} class="text-sm font-medium text-slate-700"
+        <label for={id} class="text-sm font-medium text-[rgb(var(--text-secondary))]"
             >{label}</label
         >
         <select
             {id}
-            class="border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+            class="border border-[rgb(var(--border-primary))] rounded-lg p-2.5 text-sm bg-[rgb(var(--bg-secondary))] text-[rgb(var(--text-primary))] focus:ring-2 focus:ring-[rgb(var(--accent-primary))]/40 focus:border-[rgb(var(--accent-primary))] outline-none transition-colors"
             bind:value={obj[key]}
         >
             <option value="" disabled selected>Seleccione...</option>
@@ -515,93 +517,36 @@
 <!-- ==========================================
      INTERFAZ DE USUARIO PRINCIPAL
      ========================================== -->
-<div class="min-h-screen bg-slate-50 font-sans print:bg-white text-slate-800">
-    <!-- Topbar -->
-    <header
-        class="bg-blue-800 text-white p-4 shadow-md sticky top-0 z-10 print:hidden flex justify-between items-center"
-    >
-        <div class="flex items-center gap-4">
-            <button
-                onclick={onBack}
-                class="p-2 hover:bg-blue-700 rounded-lg transition-colors"
-                title="Volver al Dashboard"
-            >
-                <svg
-                    class="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                    />
-                </svg>
-            </button>
-            <div>
-                <h1 class="text-xl font-bold">Generador PIAR</h1>
-                <p class="text-sm text-blue-200">
-                    Plan Individual de Ajustes Razonables (Anexos 1, 2 y 3)
-                </p>
-            </div>
-        </div>
-        <div class="flex gap-3 items-center">
-            <span
-                class="text-xs text-green-300 bg-blue-900 px-2 py-1 rounded-full transition-opacity duration-300 {showSavedNotification
-                    ? 'opacity-100'
-                    : 'opacity-0'}"
-            >
-                Guardado localmente ✓
+<ModuleHeader title="Registro PIAR" subtitle="Plan Individual de Ajustes Razonables" {onBack}>
+    {#snippet actions()}
+        {#if showSavedNotification}
+            <span class="text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                Guardado localmente
             </span>
-            <button
-                onclick={resetForm}
-                class="px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 rounded-md font-medium transition-colors"
-                >Nuevo / Borrar</button
-            >
-            <button
-                onclick={generarPDF}
-                disabled={isGeneratingPdf}
-                class="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-slate-400 rounded-md font-bold transition-colors shadow flex items-center gap-2"
-            >
-                {#if isGeneratingPdf}
-                    <svg
-                        class="animate-spin h-4 w-4 text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        ><circle
-                            class="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            stroke-width="4"
-                        ></circle><path
-                            class="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path></svg
-                    >
-                    Generando...
-                {:else}
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-5 w-5"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        ><path
-                            fill-rule="evenodd"
-                            d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z"
-                            clip-rule="evenodd"
-                        /></svg
-                    >
-                    Exportar a PDF
-                {/if}
-            </button>
-        </div>
-    </header>
+        {/if}
+        <button
+            onclick={resetForm}
+            class="min-h-[44px] px-3 py-2 text-sm text-red-500 border border-red-500/30 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl font-medium transition-colors"
+        >Nuevo / Borrar</button>
+        <button
+            onclick={generarPDF}
+            disabled={isGeneratingPdf}
+            class="min-h-[44px] px-3 py-2 bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 rounded-xl font-bold transition-colors flex items-center gap-2 disabled:opacity-60"
+        >
+            {#if isGeneratingPdf}
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-sm">Generando...</span>
+            {:else}
+                <span class="text-sm">Exportar PDF</span>
+            {/if}
+        </button>
+    {/snippet}
+</ModuleHeader>
+
+<div class="min-h-screen bg-[rgb(var(--bg-primary))] font-sans print:bg-white text-[rgb(var(--text-primary))]">
 
     <div
         class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 md:grid-cols-4 gap-6 print:hidden"
@@ -609,27 +554,27 @@
         <!-- Sidebar / Stepper -->
         <aside class="col-span-1">
             <div
-                class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sticky top-24"
+                class="bg-[rgb(var(--card-bg))] rounded-xl border border-[rgb(var(--card-border))] p-4 sticky top-24"
             >
                 <h2
-                    class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4"
+                    class="text-sm font-bold text-[rgb(var(--text-muted))] uppercase tracking-wider mb-4"
                 >
                     Progreso del PIAR
                 </h2>
-                <nav class="space-y-2">
+                <nav class="space-y-1.5">
                     {#each steps as step}
                         <button
                             onclick={() => (currentStep = step.id)}
-                            class="w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all {currentStep ===
+                            class="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer min-h-[44px] flex items-center {currentStep ===
                             step.id
-                                ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-sm'
-                                : 'text-slate-600 hover:bg-slate-50 border border-transparent'}"
+                                ? 'bg-[rgb(var(--accent-primary))]/10 text-[rgb(var(--accent-primary))] border border-[rgb(var(--accent-primary))]/20'
+                                : 'text-[rgb(var(--text-secondary))] hover:bg-[rgb(var(--bg-secondary))] border border-transparent'}"
                         >
                             <span
-                                class="inline-block w-6 h-6 rounded-full text-center leading-6 mr-2 {currentStep ===
+                                class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold mr-2 shrink-0 {currentStep ===
                                 step.id
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-slate-200 text-slate-500'}"
+                                    ? 'bg-[rgb(var(--accent-primary))] text-white'
+                                    : 'bg-[rgb(var(--bg-secondary))] text-[rgb(var(--text-muted))]'}"
                             >
                                 {step.id}
                             </span>
@@ -643,16 +588,16 @@
         <!-- Main Form Area -->
         <main class="col-span-1 md:col-span-3">
             <div
-                class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8"
+                class="bg-[rgb(var(--card-bg))] rounded-xl border border-[rgb(var(--card-border))] p-5 md:p-8"
             >
                 <!-- STEP 1: INFORMACIÓN GENERAL -->
                 {#if currentStep === 1}
                     <div class="space-y-6 animate-in fade-in">
                         <div class="border-b pb-4 mb-4">
-                            <h2 class="text-2xl font-bold text-slate-800">
+                            <h2 class="text-xl font-bold text-[rgb(var(--text-primary))] sm:text-2xl">
                                 1. Información General del Estudiante
                             </h2>
-                            <p class="text-sm text-slate-500">
+                            <p class="text-sm text-[rgb(var(--text-muted))]">
                                 Datos para la matrícula (Anexo 1 PIAR)
                             </p>
                         </div>
@@ -668,12 +613,12 @@
                                 "fechaDiligenciamiento",
                             )}
                             <div class="flex flex-col gap-1 col-span-1 md:col-span-2">
-                                <label for="p_dil" class="text-sm font-medium text-slate-700">Persona que diligencia</label>
+                                <label for="p_dil" class="text-sm font-medium text-[rgb(var(--text-secondary))]">Persona que diligencia</label>
                                 <select
                                     id="p_dil"
                                     bind:value={piar.quienDiligencia}
                                     disabled={isLoadingDocentes}
-                                    class="border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                                    class="border border-[rgb(var(--border-primary))] rounded-lg p-2.5 text-sm bg-[rgb(var(--bg-secondary))] text-[rgb(var(--text-primary))] focus:ring-2 focus:ring-[rgb(var(--accent-primary))]/40 focus:border-[rgb(var(--accent-primary))] outline-none transition-colors"
                                 >
                                     <option value="">
                                         {isLoadingDocentes ? "Cargando docentes..." : "Seleccione docente"}
@@ -687,18 +632,18 @@
 
                         <!-- Selección de estudiante por grado -->
                         <h3
-                            class="font-semibold text-lg mt-6 text-blue-800 bg-blue-50 p-2 rounded"
+                            class="font-semibold text-lg mt-6 text-[rgb(var(--accent-primary))] bg-[rgb(var(--accent-primary))]/5 p-2.5 rounded-lg"
                         >
                             Seleccionar Estudiante
                         </h3>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div class="flex flex-col gap-1">
-                                <label for="sel_grado" class="text-sm font-medium text-slate-700">Grado</label>
+                                <label for="sel_grado" class="text-sm font-medium text-[rgb(var(--text-secondary))]">Grado</label>
                                 <select
                                     id="sel_grado"
                                     bind:value={selectedGrado}
                                     disabled={isLoadingEstudiantes}
-                                    class="border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                                    class="border border-[rgb(var(--border-primary))] rounded-lg p-2.5 text-sm bg-[rgb(var(--bg-secondary))] text-[rgb(var(--text-primary))] focus:ring-2 focus:ring-[rgb(var(--accent-primary))]/40 focus:border-[rgb(var(--accent-primary))] outline-none transition-colors"
                                 >
                                     <option value="">
                                         {isLoadingEstudiantes ? "Cargando..." : "Seleccione grado"}
@@ -709,13 +654,13 @@
                                 </select>
                             </div>
                             <div class="flex flex-col gap-1 col-span-1 md:col-span-2">
-                                <label for="sel_est" class="text-sm font-medium text-slate-700">Estudiante</label>
+                                <label for="sel_est" class="text-sm font-medium text-[rgb(var(--text-secondary))]">Estudiante</label>
                                 <select
                                     id="sel_est"
                                     bind:value={selectedEstudiante}
                                     disabled={!selectedGrado || estudiantesFiltrados.length === 0}
                                     onchange={() => onEstudianteSelect(selectedEstudiante)}
-                                    class="border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                                    class="border border-[rgb(var(--border-primary))] rounded-lg p-2.5 text-sm bg-[rgb(var(--bg-secondary))] text-[rgb(var(--text-primary))] focus:ring-2 focus:ring-[rgb(var(--accent-primary))]/40 focus:border-[rgb(var(--accent-primary))] outline-none transition-colors"
                                 >
                                     <option value="">
                                         {!selectedGrado ? "Primero seleccione un grado" : estudiantesFiltrados.length === 0 ? "Sin estudiantes en este grado" : "Seleccione estudiante"}
@@ -728,7 +673,7 @@
                         </div>
 
                         <h3
-                            class="font-semibold text-lg mt-6 text-blue-800 bg-blue-50 p-2 rounded"
+                            class="font-semibold text-lg mt-6 text-[rgb(var(--accent-primary))] bg-[rgb(var(--accent-primary))]/5 p-2.5 rounded-lg"
                         >
                             Datos Personales
                         </h3>
@@ -800,7 +745,7 @@
                         </div>
 
                         <h3
-                            class="font-semibold text-lg mt-6 text-blue-800 bg-blue-50 p-2 rounded"
+                            class="font-semibold text-lg mt-6 text-[rgb(var(--accent-primary))] bg-[rgb(var(--accent-primary))]/5 p-2.5 rounded-lg"
                         >
                             Ubicación y Contacto
                         </h3>
@@ -862,13 +807,13 @@
                         </div>
 
                         <h3
-                            class="font-semibold text-lg mt-6 text-blue-800 bg-blue-50 p-2 rounded"
+                            class="font-semibold text-lg mt-6 text-[rgb(var(--accent-primary))] bg-[rgb(var(--accent-primary))]/5 p-2.5 rounded-lg"
                         >
                             Condiciones Especiales
                         </h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div
-                                class="col-span-1 md:col-span-2 flex items-center gap-4 bg-slate-50 p-3 rounded border"
+                                class="col-span-1 md:col-span-2 flex items-center gap-4 bg-[rgb(var(--bg-secondary))] p-3 rounded-lg border border-[rgb(var(--border-primary))]"
                             >
                                 <span class="text-sm font-medium"
                                     >¿Está en centro de protección (ICBF, etc.)?</span
@@ -926,7 +871,7 @@
                                 "grupoEtnico",
                             )}
                             <div
-                                class="col-span-1 md:col-span-2 flex items-center gap-4 bg-slate-50 p-3 rounded border"
+                                class="col-span-1 md:col-span-2 flex items-center gap-4 bg-[rgb(var(--bg-secondary))] p-3 rounded-lg border border-[rgb(var(--border-primary))]"
                             >
                                 <span class="text-sm font-medium"
                                     >¿Víctima del conflicto armado?</span
@@ -976,20 +921,20 @@
                 {#if currentStep === 2}
                     <div class="space-y-6 animate-in fade-in">
                         <div class="border-b pb-4 mb-4">
-                            <h2 class="text-2xl font-bold text-slate-800">
+                            <h2 class="text-xl font-bold text-[rgb(var(--text-primary))] sm:text-2xl">
                                 2. Entorno Salud y Hogar
                             </h2>
                         </div>
 
                         <!-- SALUD -->
                         <h3
-                            class="font-semibold text-lg text-blue-800 bg-blue-50 p-2 rounded border-l-4 border-blue-500"
+                            class="font-semibold text-lg text-[rgb(var(--accent-primary))] bg-[rgb(var(--accent-primary))]/5 p-2.5 rounded-lg border-l-4 border-[rgb(var(--accent-primary))]"
                         >
                             Salud
                         </h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div
-                                class="col-span-1 flex flex-col gap-2 bg-slate-50 p-3 rounded border"
+                                class="col-span-1 flex flex-col gap-2 bg-[rgb(var(--bg-secondary))] p-3 rounded-lg border border-[rgb(var(--border-primary))]"
                             >
                                 <span class="text-sm font-medium"
                                     >Afiliación a Salud</span
@@ -1054,10 +999,10 @@
                         </div>
 
                         <div
-                            class="space-y-4 bg-yellow-50 p-4 rounded-lg border border-yellow-200"
+                            class="space-y-4 bg-amber-500/5 p-4 rounded-lg border border-amber-500/20"
                         >
                             <h4
-                                class="text-sm font-bold text-yellow-800 mb-2 flex items-center gap-2"
+                                class="text-sm font-bold text-amber-600 mb-2 flex items-center gap-2"
                             >
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
@@ -1105,7 +1050,7 @@
                                         <div class="flex flex-col gap-1">
                                             <label
                                                 for="diag"
-                                                class="text-sm font-medium text-slate-700"
+                                                class="text-sm font-medium text-[rgb(var(--text-secondary))]"
                                                 >¿Cuál? (Puede escribir o
                                                 seleccionar sugerencia)</label
                                             >
@@ -1129,7 +1074,7 @@
                             </div>
 
                             <!-- Terapias -->
-                            <div class="mt-4 pt-4 border-t border-yellow-200">
+                            <div class="mt-4 pt-4 border-t border-amber-500/20">
                                 <span class="text-sm font-medium block mb-2"
                                     >¿Asiste a terapias? (Fonoaudiología, T.
                                     Ocupacional, Psicología)</span
@@ -1178,7 +1123,7 @@
 
                             <!-- Medicamentos y Apoyos -->
                             <div
-                                class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-yellow-200"
+                                class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-amber-500/20"
                             >
                                 <div class="flex flex-col gap-2">
                                     <span class="text-sm font-medium"
@@ -1258,7 +1203,7 @@
                         </h3>
 
                         <div
-                            class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white p-4 border rounded-lg shadow-sm"
+                            class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-[rgb(var(--bg-secondary))] p-4 border border-[rgb(var(--border-primary))] rounded-lg"
                         >
                             {@render inputGroup(
                                 "Nombre de la Madre",
@@ -1398,7 +1343,7 @@
                 {#if currentStep === 3}
                     <div class="space-y-6 animate-in fade-in">
                         <div class="border-b pb-4 mb-4">
-                            <h2 class="text-2xl font-bold text-slate-800">
+                            <h2 class="text-xl font-bold text-[rgb(var(--text-primary))] sm:text-2xl">
                                 3. Entorno Educativo
                             </h2>
                         </div>
@@ -1502,7 +1447,7 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div
-                                class="bg-white p-4 border rounded-lg shadow-sm"
+                                class="bg-[rgb(var(--bg-secondary))] p-4 border border-[rgb(var(--border-primary))] rounded-lg"
                             >
                                 <span class="text-sm font-medium block mb-2"
                                     >¿Se recibe informe pedagógico previo o
@@ -1536,7 +1481,7 @@
                                 {/if}
                             </div>
                             <div
-                                class="bg-white p-4 border rounded-lg shadow-sm"
+                                class="bg-[rgb(var(--bg-secondary))] p-4 border border-[rgb(var(--border-primary))] rounded-lg"
                             >
                                 <span class="text-sm font-medium block mb-2"
                                     >¿Asiste a programas complementarios?
@@ -1575,7 +1520,7 @@
                             </div>
                         </div>
 
-                        <h3 class="font-bold text-slate-700 mt-6 border-b pb-2">
+                        <h3 class="font-bold text-[rgb(var(--text-secondary))] mt-6 border-b pb-2">
                             Información de matrícula actual
                         </h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1623,10 +1568,10 @@
                 {#if currentStep === 4}
                     <div class="space-y-6 animate-in fade-in">
                         <div class="border-b pb-4 mb-4">
-                            <h2 class="text-2xl font-bold text-slate-800">
+                            <h2 class="text-xl font-bold text-[rgb(var(--text-primary))] sm:text-2xl">
                                 4. Valoración Pedagógica Inicial
                             </h2>
-                            <p class="text-sm text-slate-500">
+                            <p class="text-sm text-[rgb(var(--text-muted))]">
                                 Anexo 2 PIAR: Reconocimiento del estudiante.
                             </p>
                         </div>
@@ -1662,10 +1607,10 @@
                             <div class="flex flex-col gap-2">
                                 <label
                                     for="desc1"
-                                    class="font-semibold text-slate-700"
+                                    class="font-semibold text-[rgb(var(--text-secondary))]"
                                     >1. Descripción general del estudiante</label
                                 >
-                                <span class="text-xs text-slate-500 block -mt-2"
+                                <span class="text-xs text-[rgb(var(--text-muted))] block -mt-2"
                                     >Énfasis en gustos, intereses, aspectos que
                                     le desagradan y expectativas.</span
                                 >
@@ -1680,11 +1625,11 @@
                             <div class="flex flex-col gap-2">
                                 <label
                                     for="desc2"
-                                    class="font-semibold text-slate-700"
+                                    class="font-semibold text-[rgb(var(--text-secondary))]"
                                     >2. Descripción de habilidades, competencias
                                     y apoyos</label
                                 >
-                                <span class="text-xs text-slate-500 block -mt-2"
+                                <span class="text-xs text-[rgb(var(--text-muted))] block -mt-2"
                                     >Indique lo que hace, puede hacer o requiere
                                     apoyo para favorecer su proceso educativo.</span
                                 >
@@ -1706,10 +1651,10 @@
                             class="border-b pb-4 mb-4 flex justify-between items-end"
                         >
                             <div>
-                                <h2 class="text-2xl font-bold text-slate-800">
+                                <h2 class="text-xl font-bold text-[rgb(var(--text-primary))] sm:text-2xl">
                                     5. Ajustes Razonables por Trimestre
                                 </h2>
-                                <p class="text-sm text-slate-500">
+                                <p class="text-sm text-[rgb(var(--text-muted))]">
                                     De acuerdo con los DBA (Derechos Básicos de
                                     Aprendizaje)
                                 </p>
@@ -1738,10 +1683,10 @@
 
                                     {#each trim.areas as area, aIndex}
                                         <div
-                                            class="border border-slate-200 rounded-lg overflow-hidden shadow-sm bg-white"
+                                            class="border border-[rgb(var(--border-primary))] rounded-lg overflow-hidden bg-[rgb(var(--card-bg))]"
                                         >
                                             <div
-                                                class="bg-slate-100 p-3 font-semibold text-slate-700 border-b flex justify-between items-center"
+                                                class="bg-slate-100 p-3 font-semibold text-[rgb(var(--text-secondary))] border-b flex justify-between items-center"
                                             >
                                                 <span>{area.nombre}</span>
                                             </div>
@@ -1754,14 +1699,14 @@
                                                 >
                                                     <label
                                                         for={`obj_${tIndex}_${aIndex}`}
-                                                        class="block text-xs font-bold text-slate-600 mb-1"
+                                                        class="block text-xs font-bold text-[rgb(var(--text-muted))] mb-1"
                                                         >Objetivos/Propósitos
                                                         (DBA)</label
                                                     >
                                                     <textarea
                                                         id={`obj_${tIndex}_${aIndex}`}
                                                         rows="2"
-                                                        class="w-full text-sm p-2 border rounded bg-slate-50"
+                                                        class="w-full text-sm p-2 border border-[rgb(var(--border-primary))] rounded-lg bg-[rgb(var(--bg-secondary))] text-[rgb(var(--text-primary))]"
                                                         bind:value={
                                                             area.objetivos
                                                         }
@@ -1845,7 +1790,7 @@
                                 </div>
                             {/each}
                         </div>
-                        <p class="text-xs text-slate-400 mt-2">
+                        <p class="text-xs text-[rgb(var(--text-muted))] mt-2">
                             * Para agregar más áreas, debe modificarse el código
                             fuente, se muestran las 4 principales sugeridas en
                             formato general.
@@ -1857,17 +1802,17 @@
                 {#if currentStep === 6}
                     <div class="space-y-6 animate-in fade-in">
                         <div class="border-b pb-4 mb-4">
-                            <h2 class="text-2xl font-bold text-slate-800">
+                            <h2 class="text-xl font-bold text-[rgb(var(--text-primary))] sm:text-2xl">
                                 6. Recomendaciones para el Plan de Mejoramiento
                             </h2>
-                            <p class="text-sm text-slate-500">
+                            <p class="text-sm text-[rgb(var(--text-muted))]">
                                 Acciones institucionales para la eliminación de
                                 barreras.
                             </p>
                         </div>
 
                         <div class="space-y-4">
-                            <div class="bg-white p-4 rounded border shadow-sm">
+                            <div class="bg-[rgb(var(--bg-secondary))] p-4 rounded-lg border border-[rgb(var(--border-primary))]">
                                 <label
                                     for="rec_fam"
                                     class="font-bold text-orange-700 block mb-2"
@@ -1881,7 +1826,7 @@
                                 ></textarea>
                             </div>
 
-                            <div class="bg-white p-4 rounded border shadow-sm">
+                            <div class="bg-[rgb(var(--bg-secondary))] p-4 rounded-lg border border-[rgb(var(--border-primary))]">
                                 <label
                                     for="rec_doc"
                                     class="font-bold text-blue-700 block mb-2"
@@ -1895,7 +1840,7 @@
                                 ></textarea>
                             </div>
 
-                            <div class="bg-white p-4 rounded border shadow-sm">
+                            <div class="bg-[rgb(var(--bg-secondary))] p-4 rounded-lg border border-[rgb(var(--border-primary))]">
                                 <label
                                     for="rec_dir"
                                     class="font-bold text-purple-700 block mb-2"
@@ -1909,10 +1854,10 @@
                                 ></textarea>
                             </div>
 
-                            <div class="bg-white p-4 rounded border shadow-sm">
+                            <div class="bg-[rgb(var(--bg-secondary))] p-4 rounded-lg border border-[rgb(var(--border-primary))]">
                                 <label
                                     for="rec_adm"
-                                    class="font-bold text-slate-700 block mb-2"
+                                    class="font-bold text-[rgb(var(--text-secondary))] block mb-2"
                                     >Administrativos</label
                                 >
                                 <textarea
@@ -1925,7 +1870,7 @@
                                 ></textarea>
                             </div>
 
-                            <div class="bg-white p-4 rounded border shadow-sm">
+                            <div class="bg-[rgb(var(--bg-secondary))] p-4 rounded-lg border border-[rgb(var(--border-primary))]">
                                 <label
                                     for="rec_par"
                                     class="font-bold text-green-700 block mb-2"
@@ -1946,16 +1891,16 @@
                 {#if currentStep === 7}
                     <div class="space-y-6 animate-in fade-in">
                         <div class="border-b pb-4 mb-4">
-                            <h2 class="text-2xl font-bold text-slate-800">
+                            <h2 class="text-xl font-bold text-[rgb(var(--text-primary))] sm:text-2xl">
                                 7. Acta de Acuerdo (Anexo 3)
                             </h2>
-                            <p class="text-sm text-slate-500">
+                            <p class="text-sm text-[rgb(var(--text-muted))]">
                                 Compromisos de la familia y el estudiante.
                             </p>
                         </div>
 
                         <div
-                            class="bg-slate-50 p-5 rounded border text-sm text-slate-700 space-y-4 mb-6"
+                            class="bg-[rgb(var(--bg-secondary))] p-5 rounded-lg border border-[rgb(var(--border-primary))] text-sm text-[rgb(var(--text-secondary))] space-y-4 mb-6"
                         >
                             <p>
                                 La educación inclusiva es un proceso
@@ -1972,14 +1917,14 @@
                                 >
                                 <textarea
                                     id="comp_esp"
-                                    class="w-full border rounded p-2 bg-white min-h-[80px]"
+                                    class="w-full border border-[rgb(var(--border-primary))] rounded-lg p-2.5 bg-[rgb(var(--bg-secondary))] text-[rgb(var(--text-primary))] min-h-[80px]"
                                     bind:value={piar.compromisosEspecificos}
                                     placeholder="Añadir detalles adicionales a los del PIAR..."
                                 ></textarea>
                             </div>
                         </div>
 
-                        <h3 class="font-bold text-lg text-slate-800">
+                        <h3 class="font-bold text-lg text-[rgb(var(--text-primary))]">
                             Compromisos en Casa (Actividades)
                         </h3>
                         <div
@@ -2012,7 +1957,7 @@
                                             >
                                             <td class="p-2">
                                                 <select
-                                                    class="w-full border rounded p-1 bg-white"
+                                                    class="w-full border border-[rgb(var(--border-primary))] rounded p-1.5 bg-[rgb(var(--bg-secondary))] text-[rgb(var(--text-primary))]"
                                                     bind:value={act.frecuencia}
                                                 >
                                                     <option value="D"

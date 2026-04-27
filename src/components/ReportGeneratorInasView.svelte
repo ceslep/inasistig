@@ -6,9 +6,10 @@
     getEstudiantes,
     getInasistencias,
   } from "../../api/service";
+  import { normalize, formatDateDisplay } from '../lib/utils';
   import Loader from "./Loader.svelte";
   import { theme } from "../lib/themeStore";
-  import { FileText, X, Loader2, Eye } from "lucide-svelte";
+  import { FileText, X, Loader2, Eye } from '@lucide/svelte';
   import {
     SPREADSHEET_ID,
     WORKSHEET_TITLE,
@@ -57,17 +58,6 @@
   let isGenerating = false;
   let reportData: ReportData | null = null;
 
-  const normalize = (str: any) => {
-    if (!str) return "";
-    return str.toString()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-zA-Z0-9\s]/g, "")
-      .replace(/\s+/g, " ")
-      .trim()
-      .toLowerCase();
-  };
-
   const normalizeFecha = (fecha: string): string => {
     if (!fecha) return "";
     const parts = fecha.split("/");
@@ -96,10 +86,6 @@
     return dates;
   };
 
-  const formatDateDisplay = (date: Date): string => {
-    const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    return `${date.getUTCDate()}/${months[date.getUTCMonth()]}/${date.getUTCFullYear().toString().substr(2)}`;
-  };
 
   onMount(async () => {
     isLoading = true;
@@ -284,8 +270,8 @@
   aria-modal="true"
   aria-labelledby="modal-title"
   tabindex="-1"
-  on:click|self={onClose}
-  on:keydown={(e: KeyboardEvent) => e.key === 'Escape' && onClose()}
+  onclick={(e: MouseEvent) => { if (e.target === e.currentTarget) onClose() }}
+  onkeydown={(e: KeyboardEvent) => e.key === 'Escape' && onClose()}
 >
   <div
     class="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-[95vw] max-h-[90vh] overflow-hidden shadow-2xl border flex flex-col"
@@ -302,7 +288,7 @@
           <p class="text-sm opacity-75">Inasistencias por materia y grado</p>
         </div>
       </div>
-      <button on:click={onClose} class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" aria-label="Cerrar">
+      <button onclick={onClose} class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" aria-label="Cerrar">
         <X class="w-5 h-5" />
       </button>
     </div>
@@ -358,14 +344,14 @@
 
           <div class="pt-4 flex gap-3">
             <button
-              on:click={onClose}
+              onclick={onClose}
               class="flex-1 px-6 py-3 border rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-medium"
               style="border-color: {styles.border};"
             >
               Cancelar
             </button>
             <button
-              on:click={generateReport}
+              onclick={generateReport}
               disabled={isGenerating || !selectedDocente || !selectedMateria || !selectedGrado}
               class="flex-[2] px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
@@ -436,14 +422,14 @@
             <!-- Actions -->
             <div class="pt-4 flex gap-3 flex-shrink-0">
               <button
-                on:click={() => reportData = null}
+                onclick={() => reportData = null}
                 class="flex-1 px-6 py-3 border rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-medium"
                 style="border-color: {styles.border};"
               >
                 Nueva Consulta
               </button>
               <button
-                on:click={onClose}
+                onclick={onClose}
                 class="flex-1 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl transition-colors font-medium"
               >
                 Cerrar

@@ -18,7 +18,8 @@
   import eieLogo from "../assets/eie.png";
   import DiarioAnotacionOptions from "./DiarioAnotacionOptions.svelte";
   import ReportGeneratorDiario from "./ReportGeneratorDiario.svelte";
-  import { Cloud, FileText, LayoutGrid, Sun, Moon, CloudMoon, Info, X, Send, Loader2 } from "lucide-svelte";
+  import { Cloud, FileText, LayoutGrid, Sun, Moon, CloudMoon, Info, X, Send, Loader2 } from '@lucide/svelte';
+  import ModuleHeader from "./ModuleHeader.svelte";
 
   export let onBack: () => void;
 
@@ -472,6 +473,8 @@
   });
 </script>
 
+<ModuleHeader title="Diario de Campo" subtitle="Reflexión Docente" {onBack} />
+
 <div
   class="min-h-screen flex flex-col lg:flex-row transition-colors duration-200"
   style="background-color: {styles.bg};"
@@ -484,16 +487,6 @@
     <div
       class="flex flex-col lg:flex-col items-center justify-between lg:justify-start gap-4 lg:gap-8"
     >
-      <div class="flex items-center gap-4 lg:flex-col">
-        <img src={eieLogo} alt="EIE Logo" class="h-12 lg:h-20 w-auto" />
-        <h1
-          class="text-xl lg:text-2xl tracking-tight font-bold lg:text-center"
-          style="color: {styles.text};"
-        >
-          Diario de Campo
-        </h1>
-      </div>
-
       <div class="flex flex-wrap justify-center lg:flex-col gap-3 w-full">
         <button
           on:click={openSheets}
@@ -516,34 +509,6 @@
         >
           <FileText class="w-5 h-5" />
           <span class="text-sm font-medium hidden lg:inline">Reportes PDF</span>
-        </button>
-
-        <button
-          on:click={onBack}
-          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
-          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
-          title="Volver al Dashboard"
-        >
-          <LayoutGrid class="w-5 h-5" />
-          <span class="text-sm font-medium hidden lg:inline">Dashboard</span>
-        </button>
-
-        <button
-          on:click={toggleTheme}
-          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5 w-full"
-          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
-          aria-label="Cambiar tema"
-        >
-          {#if $theme === "dark"}
-            <Moon class="w-5 h-5 text-indigo-500" />
-          {:else if $theme === "light"}
-            <Sun class="w-5 h-5 text-amber-500" />
-          {:else}
-            <CloudMoon class="w-5 h-5 text-indigo-400" />
-          {/if}
-          <span class="text-sm font-medium hidden lg:inline capitalize">
-            {$theme}
-          </span>
         </button>
       </div>
     </div>

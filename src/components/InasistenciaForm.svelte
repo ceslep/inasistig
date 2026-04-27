@@ -20,14 +20,19 @@
 
   import { theme } from "../lib/themeStore";
   import { docenteName, findMatchingDocente } from "../lib/authStore";
-  import { Cloud, Filter, FileDown, Eye, BarChart3, LayoutGrid, Moon, Sun, CloudMoon, Info, X, Clock, ChevronDown, Pencil, Loader2, Check } from "lucide-svelte";
+  import { Cloud, Filter, FileDown, Eye, BarChart3, LayoutGrid, Moon, Sun, CloudMoon, Info, X, Clock, ChevronDown, Pencil, Loader2, Check } from '@lucide/svelte';
   import eieLogo from "../assets/eie.png";
   import InasistenciaFilter from "./InasistenciaFilter.svelte";
   import ReportGeneratorInas from "./ReportGeneratorInas.svelte";
   import ReportGeneratorInasView from "./ReportGeneratorInasView.svelte";
   import FeaturePopup from "./FeaturePopup.svelte";
+  import ModuleHeader from "./ModuleHeader.svelte";
 
-  export let onBack: () => void;
+  interface Props {
+    onBack: () => void;
+  }
+
+  const { onBack }: Props = $props();
 
   // --- Interfaces para tipado estricto ---
   interface Estudiante {
@@ -47,30 +52,30 @@
   }
 
   // --- Estado de datos ---
-  let docentes: string[] = [];
-  let materias: Materia[] = [];
-  let estudiantes: Estudiante[] = [];
+  let docentes: string[] = $state([]);
+  let materias: Materia[] = $state([]);
+  let estudiantes: Estudiante[] = $state([]);
 
-  let isLoadingDocentes = false;
-  let isLoadingMaterias = false;
-  let isLoadingEstudiantes = false;
+  let isLoadingDocentes = $state(false);
+  let isLoadingMaterias = $state(false);
+  let isLoadingEstudiantes = $state(false);
 
   // --- Formulario ---
-  let formData = {
+  let formData = $state({
     docente: localStorage.getItem("lastDocente") || "",
     materia: "",
     horas: "",
     grado: "",
     fecha: new Date().toLocaleDateString('en-CA'),
     observaciones: "",
-  };
+  });
 
-  let inasistencias: Inasistencia[] = [];
-  let individualHours: Record<string, string> = {};
-  let openObservations: Record<string, boolean> = {};
-  let isLoading = false;
-  let message = "";
-  let showFieldErrors = false;
+  let inasistencias: Inasistencia[] = $state([]);
+  let individualHours: Record<string, string> = $state({});
+  let openObservations: Record<string, boolean> = $state({});
+  let isLoading = $state(false);
+  let message = $state("");
+  let showFieldErrors = $state(false);
 
   // --- Último registro guardado (popup temporal) ---
   interface LastSavedInfo {
@@ -81,8 +86,8 @@
     cantidad: number;
     timestamp: string;
   }
-  let lastSaved: LastSavedInfo | null = null;
-  let lastSavedVisible = false;
+  let lastSaved: LastSavedInfo | null = $state(null);
+  let lastSavedVisible = $state(false);
   let lastSavedTimer: ReturnType<typeof setTimeout> | null = null;
 
   const showLastSaved = (info: LastSavedInfo) => {
@@ -94,7 +99,7 @@
     }, 8000);
   };
 
-  $: missingFields = (() => {
+  let missingFields = $derived.by(() => {
     const fields: string[] = [];
     if (!formData.docente) fields.push("docente");
     if (!formData.fecha) fields.push("fecha");
@@ -110,22 +115,22 @@
       if (!formData.horas) fields.push("horas");
     }
     return fields;
-  })();
+  });
 
   // Materias múltiples para docente con "-"
   interface MateriaHoras {
     materia: string;
     horas: string;
   }
-  let selectedMaterias: MateriaHoras[] = [];
+  let selectedMaterias: MateriaHoras[] = $state([]);
 
   // Verificar si el docente tiene "-"
-  $: docenteHasDash = formData.docente.includes("-");
+  let docenteHasDash = $derived(formData.docente.includes("-"));
 
   // --- Filtros ---
-  let showFilter = false;
-  let showReportGenerator = false;
-  let showOnlineReport = false;
+  let showFilter = $state(false);
+  let showReportGenerator = $state(false);
+  let showOnlineReport = $state(false);
 
   const openFilters = () => {
     showFilter = true;
@@ -149,16 +154,17 @@
   };
 
   // --- Estado para Report Generator ---
-  let reportGeneratorLoading = false;
+  let reportGeneratorLoading = $state(false);
 
   // --- Alertas Dismissibles ---
-  let showInfoAlert =
+  let showInfoAlert = $state(
     INFO_INASISTENCIA &&
     localStorage.getItem("dismissedInfoInasistenciaContent") !==
-      INFO_INASISTENCIA;
+      INFO_INASISTENCIA,
+  );
 
-  let showFeatureAlert = true; // Control inmediato del popup for filters
-  let showFeatureAlertReport = true; // Control inmediato del popup for report
+  let showFeatureAlert = $state(true); // Control inmediato del popup for filters
+  let showFeatureAlertReport = $state(true); // Control inmediato del popup for report
 
   function shouldShowFeatureAlert(featureKey: string) {
     // FORZAR MOSTRAR PARA DESARROLLO - Cambiar a false en producción
@@ -233,9 +239,9 @@
   };
 
   // --- Persistencia de Materias por Docente ---
-  let docenteMaterias: Record<string, string[]> = JSON.parse(
+  let docenteMaterias: Record<string, string[]> = $state(JSON.parse(
     localStorage.getItem("docenteMaterias") || "{}",
-  );
+  ));
 
   const saveMateriaForDocente = (docente: string, materia: string) => {
     if (!docente || !materia) return;
@@ -250,21 +256,36 @@
 
   // No longer saving reactively to allow "normal" operation until first success
 
-  $: if (formData.docente) {
-    localStorage.setItem("lastDocente", formData.docente);
-  }
+  $effect(() => {
+    if (formData.docente) {
+      localStorage.setItem("lastDocente", formData.docente);
+    }
+  });
 
-  $: materiasSorted = formData.docente
-    ? [...materias].sort((a, b) => {
-        const aSaved = docenteMaterias[formData.docente]?.includes(a.materia);
-        const bSaved = docenteMaterias[formData.docente]?.includes(b.materia);
-        if (aSaved && !bSaved) return -1;
-        if (!aSaved && bSaved) return 1;
-        return a.materia.localeCompare(b.materia);
-      })
-    : materias;
+let materiasSorted = $derived(
+    formData.docente
+      ? [...materias].sort((a, b) => {
+          const aSaved = docenteMaterias[formData.docente]?.includes(a.materia);
+          const bSaved = docenteMaterias[formData.docente]?.includes(b.materia);
+          if (aSaved && !bSaved) return -1;
+          if (!aSaved && bSaved) return 1;
+          return a.materia.localeCompare(b.materia);
+        })
+      : materias
+  );
 
-  // --- Funciones auxiliares ---
+  let styles = $derived({
+    bg: "rgb(var(--bg-primary))",
+    text: "rgb(var(--text-primary))",
+    label: "rgb(var(--text-secondary))",
+    border: "rgb(var(--border-primary))",
+    placeholder: "rgb(var(--text-muted))",
+    icon: "rgb(var(--text-muted))",
+    cardBg: "rgb(var(--card-bg))",
+    cardBorder: "rgb(var(--card-border))",
+    inputBg: "rgb(var(--bg-secondary))",
+  });
+
   const getSheetsUrl = () => {
     return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}`;
   };
@@ -277,40 +298,28 @@
     window.open(URL_LOCKER_STUDIO, "_blank");
   };
 
-  // Optimización: Variable reactiva para estilos basada en el tema global
-  $: styles = {
-    bg: "rgb(var(--bg-primary))",
-    text: "rgb(var(--text-primary))",
-    label: "rgb(var(--text-secondary))",
-    border: "rgb(var(--border-primary))",
-    placeholder: "rgb(var(--text-muted))",
-    icon: "rgb(var(--text-muted))",
-    cardBg: "rgb(var(--card-bg))",
-    cardBorder: "rgb(var(--card-border))",
-    inputBg: "rgb(var(--bg-secondary))",
-  };
+  let estudiantesFiltrados = $derived(
+    formData.grado
+      ? estudiantes.filter((e) => e.grado.toString() === formData.grado)
+      : []
+  );
 
-  // Optimización: Filtrado reactivo (se ejecuta solo cuando cambia estudiantes o el grado seleccionado)
-  $: estudiantesFiltrados = formData.grado
-    ? estudiantes.filter((e) => e.grado.toString() === formData.grado)
-    : [];
-
-  // Extraer número del docente cuando tiene patrón "Nombre-número"
   const getDocenteNumber = (docente: string): string | null => {
     const match = docente.match(/-(\d+)$/);
     return match ? match[1] : null;
   };
 
-  // Filtrar grupos según el número del docente
-  $: docenteNumber = getDocenteNumber(formData.docente);
+  let docenteNumber = $derived(getDocenteNumber(formData.docente));
 
-  $: filteredGrados = docenteNumber
-    ? [...new Set(estudiantes.map((e) => e.grado.toString()))].filter((g) =>
-        g.startsWith(`${docenteNumber}-`),
-      )
-    : [...new Set(estudiantes.map((e) => e.grado.toString()))].filter((g) =>
-        !g.includes('-')
-      );
+  let filteredGrados = $derived(
+    docenteNumber
+      ? [...new Set(estudiantes.map((e) => e.grado.toString()))].filter((g) =>
+          g.startsWith(`${docenteNumber}-`)
+        )
+      : [...new Set(estudiantes.map((e) => e.grado.toString()))].filter((g) =>
+          !g.includes("-")
+        )
+  );
 
   // --- Motivos predefinidos ---
   const motivos = [
@@ -823,6 +832,8 @@
   });
 </script>
 
+<ModuleHeader title="Registro Diario" subtitle="Gestión de Asistencia" {onBack} />
+
 <div
   class="min-h-screen flex flex-col lg:flex-row transition-colors duration-200"
   style="background-color: {styles.bg};"
@@ -835,16 +846,6 @@
     <div
       class="flex flex-col lg:flex-col items-center justify-between lg:justify-start gap-4 lg:gap-8"
     >
-      <div class="flex items-center gap-4 lg:flex-col">
-        <img src={eieLogo} alt="EIE Logo" class="h-12 lg:h-20 w-auto" />
-        <h1
-          class="text-xl lg:text-2xl tracking-tight font-bold lg:text-center"
-          style="color: {styles.text};"
-        >
-          Registrar Inasistencias
-        </h1>
-      </div>
-
       <!-- Botones de Acción -->
       <div class="flex flex-wrap justify-center lg:flex-col gap-3 w-full">
         <button
@@ -924,36 +925,6 @@
 
 
 
-        <!-- Botón de Dashboard -->
-        <button
-          on:click={onBack}
-          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
-          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
-          title="Volver al Dashboard"
-        >
-          <LayoutGrid class="w-5 h-5" />
-          <span class="text-sm font-medium hidden lg:inline">Dashboard</span>
-        </button>
-
-        <div class="relative">
-          <button
-            on:click={toggleTheme}
-            class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5 w-full"
-            style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
-            aria-label="Cambiar tema"
-          >
-            {#if $theme === "dark"}
-              <Moon class="w-5 h-5 text-indigo-500" />
-            {:else if $theme === "light"}
-              <Sun class="w-5 h-5 text-amber-500" />
-            {:else}
-              <CloudMoon class="w-5 h-5 text-indigo-400" />
-            {/if}
-            <span class="text-sm font-medium hidden lg:inline capitalize">
-              {$theme}
-            </span>
-          </button>
-        </div>
       </div>
     </div>
   </aside>

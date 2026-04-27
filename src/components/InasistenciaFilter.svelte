@@ -10,10 +10,15 @@
   import { SPREADSHEET_ID, WORKSHEET_TITLE } from "../constants";
   import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
-  import { FileText, Download, X, Filter, Calendar, User, BookOpen, Building, AlertTriangle, Printer } from "lucide-svelte";
+  import { loadPdfLibraries, escapeCsvField } from '../lib/utils';
+  import { FileText, Download, X, Filter, Calendar, User, BookOpen, Building, AlertTriangle, Printer } from '@lucide/svelte';
 
-  export let onClose: () => void;
-  export let selectedDocente: string = "";
+  interface InasistenciaFilterProps {
+    onClose: () => void;
+    selectedDocente?: string;
+  }
+
+  const { onClose, selectedDocente = '' }: InasistenciaFilterProps = $props();
 
   // --- Interfaces para tipado ---
   interface InasistenciaData {
@@ -37,32 +42,31 @@
   }
 
   // --- Estado de datos ---
-  let inasistencias: InasistenciaData[] = [];
-  let docentes: string[] = [];
-  let materias: { materia: string }[] = [];
-  let estudiantes: { nombre: string; grado: string | number }[] = [];
+  let inasistencias: InasistenciaData[] = $state([]);
+  let docentes: string[] = $state([]);
+  let materias: { materia: string }[] = $state([]);
+  let estudiantes: { nombre: string; grado: string | number }[] = $state([]);
 
-  let isLoading = false;
-  let isLoadingData = false;
-  let filtrarPorFecha = false;
-  let inasistenciasFiltradas: InasistenciaData[] = [];
+  let isLoading = $state(false);
+  let isLoadingData = $state(false);
+  let filtrarPorFecha = $state(false);
 
   // --- Estado para modal de PDF ---
-  let showPdfModal = false;
-  let pdfDataUrl: string | null = null;
-  let isGeneratingPdf = false;
-  let jsPDFInstance: any = null;
+  let showPdfModal = $state(false);
+  let pdfDataUrl: string | null = $state(null);
+  let isGeneratingPdf = $state(false);
+  let jsPDFInstance: any = $state(null);
 
   // --- Filtros ---
-  let filtros = {
-    docente: selectedDocente || "",
-    materia: "",
-    grado: "",
-    fechaInicio: "",
-    fechaFin: "",
-    motivo: "",
-    estudiante: "",
-  };
+  let filtros = $state({
+    docente: selectedDocente || '',
+    materia: '',
+    grado: '',
+    fechaInicio: '',
+    fechaFin: '',
+    motivo: '',
+    estudiante: '',
+  });
 
   // --- Inicializar fechas ---
   const initializeDates = () => {
@@ -231,78 +235,86 @@
   };
 
   // --- Datos únicos para filtros (extraídos de las inasistencias y APIs) ---
-  let docentesUnicos: string[] = [];
-  let materiasUnicas: string[] = [];
-  let gradosUnicos: string[] = [];
-  let motivosUnicos: string[] = [];
-  let estudiantesUnicos: string[] = [];
+  let docentesUnicos: string[] = $state([]);
+  let materiasUnicas: string[] = $state([]);
+  let gradosUnicos: string[] = $state([]);
+  let motivosUnicos: string[] = $state([]);
+  let estudiantesUnicos: string[] = $state([]);
 
   // --- Estudiantes filtrados según filtros activos ---
-  $: estudiantesFiltrados = filtros.docente || filtros.materia || filtros.grado
-    ? [
-        ...new Set(
-          inasistencias
-            .filter((i) => {
-              if (filtros.docente && i.docente !== filtros.docente) return false;
-              if (filtros.materia && i.materia !== filtros.materia) return false;
-              if (filtros.grado && i.grado !== filtros.grado) return false;
-              return true;
-            })
-            .map((i) => i.nombre)
-            .filter(Boolean),
-        ),
-      ].sort()
-    : estudiantesUnicos;
+  let estudiantesFiltrados = $derived(
+    filtros.docente || filtros.materia || filtros.grado
+      ? [
+          ...new Set(
+            inasistencias
+              .filter((i) => {
+                if (filtros.docente && i.docente !== filtros.docente) return false;
+                if (filtros.materia && i.materia !== filtros.materia) return false;
+                if (filtros.grado && i.grado !== filtros.grado) return false;
+                return true;
+              })
+              .map((i) => i.nombre)
+              .filter(Boolean),
+          ),
+        ].sort()
+      : estudiantesUnicos,
+  );
 
   // --- Datos filtrados para selects dependientes ---
-  $: materiasPorDocente = filtros.docente
-    ? [
-        ...new Set(
-          inasistencias
-            .filter((i) => i.docente === filtros.docente)
-            .map((i) => i.materia)
-            .filter(Boolean),
-        ),
-      ].sort()
-    : materiasUnicas;
+  let materiasPorDocente = $derived(
+    filtros.docente
+      ? [
+          ...new Set(
+            inasistencias
+              .filter((i) => i.docente === filtros.docente)
+              .map((i) => i.materia)
+              .filter(Boolean),
+          ),
+        ].sort()
+      : materiasUnicas,
+  );
 
-  $: gradosPorDocente = filtros.docente
-    ? [
-        ...new Set(
-          inasistencias
-            .filter((i) => i.docente === filtros.docente)
-            .map((i) => i.grado)
-            .filter(Boolean),
-        ),
-      ].sort((a, b) => {
-        const aNum = parseInt(a);
-        const bNum = parseInt(b);
-        if (!isNaN(aNum) && !isNaN(bNum)) {
-          return aNum - bNum;
-        }
-        return a.localeCompare(b);
-      })
-    : gradosUnicos;
+  let gradosPorDocente = $derived(
+    filtros.docente
+      ? [
+          ...new Set(
+            inasistencias
+              .filter((i) => i.docente === filtros.docente)
+              .map((i) => i.grado)
+              .filter(Boolean),
+          ),
+        ].sort((a, b) => {
+          const aNum = parseInt(a);
+          const bNum = parseInt(b);
+          if (!isNaN(aNum) && !isNaN(bNum)) {
+            return aNum - bNum;
+          }
+          return a.localeCompare(b);
+        })
+      : gradosUnicos,
+  );
 
-  $: gradosPorMateria = filtros.materia
-    ? [
-        ...new Set(
-          inasistencias
-            .filter((i) => i.materia === filtros.materia)
-            .map((i) => i.grado)
-            .filter(Boolean),
-        ),
-      ].sort((a, b) => {
-        const aNum = parseInt(a);
-        const bNum = parseInt(b);
-        if (!isNaN(aNum) && !isNaN(bNum)) {
-          return aNum - bNum;
-        }
-        return a.localeCompare(b);
-      })
-    : gradosPorDocente;
+  let gradosPorMateria = $derived(
+    filtros.materia
+      ? [
+          ...new Set(
+            inasistencias
+              .filter((i) => i.materia === filtros.materia)
+              .map((i) => i.grado)
+              .filter(Boolean),
+          ),
+        ].sort((a, b) => {
+          const aNum = parseInt(a);
+          const bNum = parseInt(b);
+          if (!isNaN(aNum) && !isNaN(bNum)) {
+            return aNum - bNum;
+          }
+          return a.localeCompare(b);
+        })
+      : gradosPorDocente,
+  );
 
-  $: motivosPorFiltros =
+  let motivosPorFiltros = $derived(
     filtros.docente || filtros.materia || filtros.grado
       ? [
           ...new Set(
@@ -319,20 +331,21 @@
               .filter(Boolean),
           ),
         ].sort()
-      : motivosUnicos;
+      : motivosUnicos,
+  );
 
   // --- Estilos reactivos ---
-  $: styles = {
-    bg: "rgb(var(--bg-primary))",
-    text: "rgb(var(--text-primary))",
-    label: "rgb(var(--text-secondary))",
-    border: "rgb(var(--border-primary))",
-    placeholder: "rgb(var(--text-muted))",
-    icon: "rgb(var(--text-muted))",
-    cardBg: "rgb(var(--card-bg))",
-    cardBorder: "rgb(var(--card-border))",
-    inputBg: "rgb(var(--bg-secondary))",
-  };
+  const styles = $derived({
+    bg: 'rgb(var(--bg-primary))',
+    text: 'rgb(var(--text-primary))',
+    label: 'rgb(var(--text-secondary))',
+    border: 'rgb(var(--border-primary))',
+    placeholder: 'rgb(var(--text-muted))',
+    icon: 'rgb(var(--text-muted))',
+    cardBg: 'rgb(var(--card-bg))',
+    cardBorder: 'rgb(var(--card-border))',
+    inputBg: 'rgb(var(--bg-secondary))',
+  });
 
   // --- Normalizar fecha a formato YYYY-MM-DD para comparaciones ---
   const normalizeFecha = (fecha: string): string => {
@@ -364,46 +377,40 @@
     return fecha;
   };
 
-  // --- Inasistencias filtradas ---
-  $: {
-    console.log("🔄 Filtro reactivo ejecutándose:", {
-      totalInasistencias: inasistencias.length,
-      filtrarPorFecha,
-      fechaInicio: filtros.fechaInicio,
-      fechaFin: filtros.fechaFin,
-    });
+  let inasistenciasFiltradas = $derived.by(() => {
+    if (!inasistencias.length) return [];
 
-    inasistenciasFiltradas = inasistencias.filter((item) => {
-      if (filtros.docente && item.docente !== filtros.docente) return false;
-      if (filtros.materia && item.materia !== filtros.materia) return false;
-      if (filtros.grado && item.grado !== filtros.grado) return false;
-      if (filtros.motivo && item.motivo !== filtros.motivo) return false;
-      if (filtros.estudiante && item.nombre !== filtros.estudiante) return false;
+    return inasistencias
+      .filter((item) => {
+        if (filtros.docente && item.docente !== filtros.docente) return false;
+        if (filtros.materia && item.materia !== filtros.materia) return false;
+        if (filtros.grado && item.grado !== filtros.grado) return false;
+        if (filtros.motivo && item.motivo !== filtros.motivo) return false;
+        if (filtros.estudiante && item.nombre !== filtros.estudiante) return false;
 
-      if (filtrarPorFecha) {
-        const itemFecha = normalizeFecha(item.fecha);
+        if (filtrarPorFecha) {
+          const itemFecha = normalizeFecha(item.fecha);
 
-        if (filtros.fechaInicio && itemFecha < filtros.fechaInicio)
-          return false;
-        if (filtros.fechaFin && itemFecha > filtros.fechaFin) return false;
-      }
+          if (filtros.fechaInicio && itemFecha < filtros.fechaInicio)
+            return false;
+          if (filtros.fechaFin && itemFecha > filtros.fechaFin) return false;
+        }
 
-      return true;
-    }).sort((a, b) => {
-      const fechaA = normalizeFecha(a.fecha);
-      const fechaB = normalizeFecha(b.fecha);
-      return fechaB.localeCompare(fechaA);
-    });
+        return true;
+      })
+      .sort((a, b) => {
+        const fechaA = normalizeFecha(a.fecha);
+        const fechaB = normalizeFecha(b.fecha);
+        return fechaB.localeCompare(fechaA);
+      });
+  });
 
-    console.log(
-      `📊 Resultados filtrados: ${inasistenciasFiltradas.length} de ${inasistencias.length}`,
-    );
-  }
-
-  // --- Auto-inicializar fechas cuando se activa el filtro ---
-  $: if (filtrarPorFecha && (!filtros.fechaInicio || !filtros.fechaFin)) {
-    initializeDates();
-  }
+  let initializeDatesOnce = $derived.by(() => {
+    if (filtrarPorFecha && (!filtros.fechaInicio || !filtros.fechaFin)) {
+      initializeDates();
+    }
+    return "";
+  });
 
   // --- Cargar datos iniciales ---
   const loadData = async () => {
@@ -600,19 +607,20 @@
       headers.join(","),
       ...inasistenciasFiltradas.map((item) =>
         [
-          item.fecha,
-          `"${item.docente}"`,
-          `"${item.materia}"`,
-          item.grado,
-          `"${item.nombre}"`,
-          `"${item.motivo}"`,
-          item.horas,
-          `"${item.observaciones}"`,
+          escapeCsvField(item.fecha),
+          escapeCsvField(item.docente),
+          escapeCsvField(item.materia),
+          escapeCsvField(item.grado),
+          escapeCsvField(item.nombre),
+          escapeCsvField(item.motivo),
+          escapeCsvField(item.horas),
+          escapeCsvField(item.observaciones),
         ].join(","),
       ),
     ].join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const bom = '\uFEFF'
+    const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
@@ -641,10 +649,7 @@
     isGeneratingPdf = true;
 
     try {
-      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
-        import('jspdf'),
-        import('jspdf-autotable')
-      ]);
+      const { jsPDF, autoTable } = await loadPdfLibraries();
 
       const doc = new jsPDF();
 

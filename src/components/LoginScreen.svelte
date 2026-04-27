@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { fade, fly } from 'svelte/transition'
-  import { Sun, Moon, CloudMoon, WifiOff, User } from 'lucide-svelte'
+  import { Sun, Moon, CloudMoon, WifiOff, User } from '@lucide/svelte'
 
   import { GOOGLE_CLIENT_ID } from '../constants'
   import { isOnline } from '../lib/networkStore'

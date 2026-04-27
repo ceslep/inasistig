@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LogOut } from 'lucide-svelte'
+  import { LogOut } from '@lucide/svelte'
   import Swal from 'sweetalert2'
 
   import { authUser, signOut } from '../lib/authStore'

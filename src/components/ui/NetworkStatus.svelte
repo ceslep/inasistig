@@ -1,6 +1,6 @@
 <script lang="ts">
   import { isOnline, pendingCount, isSyncing } from "../../lib/networkStore";
-  import { WifiOff, CloudUpload } from "lucide-svelte";
+  import { WifiOff, CloudUpload } from '@lucide/svelte';
 </script>
 
 <div

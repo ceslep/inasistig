@@ -1,99 +1,85 @@
 <script lang="ts">
-  import { onMount, createEventDispatcher } from "svelte";
-  import { slide } from "svelte/transition";
-  import { getDiarioOptions } from "../../api/service";
-  import { theme } from "../lib/themeStore";
-  import Loader from "./Loader.svelte";
-  import { ChevronDown, Check } from "lucide-svelte";
+  import { onMount } from 'svelte';
+  import { slide } from 'svelte/transition';
+  import { getDiarioOptions } from '../../api/service';
+  import { theme } from '../lib/themeStore';
+  import Loader from './Loader.svelte';
+  import { ChevronDown, Check } from '@lucide/svelte';
 
-  // --- Props ---
-  // Prop to bind the selected annotations back to the parent component (Diario.svelte)
-  // This will be an array of strings, which the parent will then join into formData.diarioCampo
-  export let selectedDiarioAnots: string[] = [];
+  interface Props {
+    selectedDiarioAnots?: string[];
+    onchange?: (anots: string[]) => void;
+  }
 
-  // --- Interfaces ---
+  let { selectedDiarioAnots = $bindable([]), onchange }: Props = $props();
+
   interface DiarioOption {
     id: string;
     categoria: string;
     titulo: string;
     descripcion: string;
-    impacto: number; // Not directly used in UI, but part of data
-    tiempo_estimado: number; // Not directly used in UI, but part of data
+    impacto: number;
+    tiempo_estimado: number;
   }
 
-  // Similar to OpcionAnotacion in Anotador.svelte
   interface DiarioOpcionAnotacion {
-    id: string; // Keep original ID for potential future use
-    text: string; // The editable description
+    id: string;
+    text: string;
     selected: boolean;
-    originalTitulo: string; // Keep original title for context
+    originalTitulo: string;
     categoria: string;
     impacto: number;
     tiempo_estimado: number;
   }
 
-  // --- State ---
-  let diarioOpcionesGrupos: Record<string, DiarioOpcionAnotacion[]> = {};
-  let expandedCategories: Record<string, boolean> = {}; // New state for accordion
-  let isLoadingOptions = false;
+  let diarioOpcionesGrupos: Record<string, DiarioOpcionAnotacion[]> = $state({});
+  let expandedCategories: Record<string, boolean> = $state({});
+  let isLoadingOptions = $state(false);
 
-  const dispatch = createEventDispatcher();
+  const styles = $derived({
+    text: 'rgb(var(--text-primary))',
+    label: 'rgb(var(--text-secondary))',
+    border: 'rgb(var(--border-primary))',
+    inputBg: 'rgb(var(--bg-secondary))',
+  });
 
-  // --- Reactive statements ---
-  // Reactively update selectedDiarioAnots when diarioOpcionesGrupos changes
-  $: {
+  function syncSelectedAnots() {
     const newlySelectedAnots = Object.values(diarioOpcionesGrupos)
       .flat()
-      .filter((o) => o.selected && o.text.trim() !== "")
+      .filter((o) => o.selected && o.text.trim() !== '')
       .map((o) => `[${o.categoria}] ${o.originalTitulo}: ${o.text}`);
-    // Only dispatch if the array content actually changed to avoid infinite loops
     if (JSON.stringify(newlySelectedAnots) !== JSON.stringify(selectedDiarioAnots)) {
       selectedDiarioAnots = newlySelectedAnots;
-      dispatch("change", selectedDiarioAnots); // Notify parent of changes
+      onchange?.(selectedDiarioAnots);
     }
   }
 
-  // Reactivity for styles
-  $: styles = {
-    text: "rgb(var(--text-primary))",
-    label: "rgb(var(--text-secondary))",
-    border: "rgb(var(--border-primary))",
-    inputBg: "rgb(var(--bg-secondary))",
-  };
-
-  // --- Functions ---
   const toggleCategory = (category: string) => {
-    // If the clicked category is already expanded, close it
     if (expandedCategories[category]) {
       expandedCategories[category] = false;
     } else {
-      // Close all other categories
       for (const cat in expandedCategories) {
         expandedCategories[cat] = false;
       }
-      // Open the clicked category
       expandedCategories[category] = true;
     }
-    // This line is needed to trigger reactivity when updating an object property
-    expandedCategories = expandedCategories;
   };
 
   const getCategoryColor = (cat: string) => {
     const colors: Record<string, string> = {
-      "Administrativo": "#6366f1", // Indigo
-      "Emergencia": "#ef4444",    // Red
-      "Académico": "#f59e0b",     // Amber
-      "Convivencia": "#22c55e",   // Green
-      "Infraestructura": "#0ea5e9", // Sky Blue
-      "Salud": "#ec4899",         // Pink
-      "Tecnológico": "#8b5cf6",   // Violet
-      "Comunicación": "#3b82f6",  // Blue
-      "Disciplinario": "#64748b",  // Slate
-      "Normalidad": "#10b981",    // Emerald
+      'Administrativo': '#6366f1',
+      'Emergencia': '#ef4444',
+      'Académico': '#f59e0b',
+      'Convivencia': '#22c55e',
+      'Infraestructura': '#0ea5e9',
+      'Salud': '#ec4899',
+      'Tecnológico': '#8b5cf6',
+      'Comunicación': '#3b82f6',
+      'Disciplinario': '#64748b',
+      'Normalidad': '#10b981',
     };
-    return colors[cat] || "#6366f1"; // Default to Indigo
+    return colors[cat] || '#6366f1';
   };
-
 
   const loadOptions = async () => {
     isLoadingOptions = true;
@@ -104,7 +90,6 @@
       const transformed: Record<string, DiarioOpcionAnotacion[]> = {};
       const initialExpandedState: Record<string, boolean> = {};
 
-      // Process grouped situations
       Object.entries(situaciones).forEach(([categoria, items]) => {
         if (items.length > 0) {
           initialExpandedState[categoria] = false;
@@ -115,7 +100,7 @@
             originalTitulo: option.titulo,
             categoria: option.categoria,
             impacto: option.impacto,
-            tiempo_estimado: option.tiempo_estimado
+            tiempo_estimado: option.tiempo_estimado,
           }));
         }
       });
@@ -123,7 +108,7 @@
       diarioOpcionesGrupos = transformed;
       expandedCategories = initialExpandedState;
     } catch (error) {
-      console.error("Error cargando opciones de diario:", error);
+      console.error('Error cargando opciones de diario:', error);
     } finally {
       isLoadingOptions = false;
     }
@@ -145,7 +130,7 @@
       <div class="space-y-4">
         <button
           type="button"
-          on:click={() => toggleCategory(categoria)}
+          onclick={() => toggleCategory(categoria)}
           class="flex items-center gap-3 w-full text-left cursor-pointer group focus:outline-none"
         >
           <h3
@@ -185,10 +170,7 @@
                           type="checkbox"
                           bind:checked={opcion.selected}
                           class="hidden"
-                          on:change={() => {
-                            // Trigger reactivity for selectedDiarioAnots after change
-                            diarioOpcionesGrupos = diarioOpcionesGrupos;
-                          }}
+                          onchange={() => syncSelectedAnots()}
                         />
                         <div
                           class="w-5 h-5 rounded border flex items-center justify-center transition-colors"
@@ -227,10 +209,7 @@
                     class="w-full bg-transparent border-none focus:ring-0 text-sm font-medium leading-relaxed resize-none p-0 transition-colors opacity-80"
                     style="color: {styles.text};"
                     placeholder="Escriba aquí..."
-                    on:input={() => {
-                       // Trigger reactivity for selectedDiarioAnots after text change
-                       diarioOpcionesGrupos = diarioOpcionesGrupos;
-                    }}
+                    oninput={() => syncSelectedAnots()}
                   ></textarea>
                 </div>
               </div>

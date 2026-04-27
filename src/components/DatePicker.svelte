@@ -2,6 +2,7 @@
     interface Props {
         value?: string;
         placeholder?: string;
+        dateFormat?: string;
         minDate?: string;
         maxDate?: string;
         disabled?: boolean;
@@ -12,6 +13,7 @@
     let {
         value = $bindable(""),
         placeholder = "Seleccione fecha",
+        dateFormat = "Y-m-d",
         minDate = undefined,
         maxDate = undefined,
         disabled = false,

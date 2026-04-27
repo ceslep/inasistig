@@ -6,12 +6,10 @@
     getEstudiantes,
     getInasistencias,
   } from "../../api/service";
-  // Dynamic imports for heavy libraries
-  let ExcelJS: any = null;
-  let saveAs: any = null;
+  import { normalize, getDocenteNumber, formatDateDisplay, loadExcelLibraries } from '../lib/utils';
   import Loader from "./Loader.svelte";
   import { theme } from "../lib/themeStore";
-  import { Download, X, Loader2, FileSpreadsheet } from "lucide-svelte";
+  import { Download, X, Loader2, FileSpreadsheet } from '@lucide/svelte';
   import {
     SPREADSHEET_ID,
     WORKSHEET_TITLE,
@@ -43,12 +41,6 @@
   let selectedGrado = "";
   let selectedPeriodo = periodos[0].nombre;
 
-  // Extraer número del docente cuando tiene patrón "Nombre-número"
-  const getDocenteNumber = (docente: string): string | null => {
-    const match = docente.match(/-(\d+)$/);
-    return match ? match[1] : null;
-  };
-
   // Verificar si el docente tiene "-"
   $: docenteHasDash = selectedDocente.includes("-");
 
@@ -67,28 +59,6 @@
   let isGenerating = false;
   let showInlineView = false;
 
-  // Load heavy libraries dynamically
-  const loadLibraries = async () => {
-    if (!ExcelJS || !saveAs) {
-      const [exceljsModule, fileSaverModule] = await Promise.all([
-        import('exceljs'),
-        import('file-saver')
-      ]);
-      ExcelJS = exceljsModule.default;
-      saveAs = fileSaverModule.default;
-    }
-  };
-
-  const normalize = (str: any) => {
-    if (!str) return "";
-    return str.toString()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-zA-Z0-9\s]/g, "")
-      .replace(/\s+/g, " ")
-      .trim()
-      .toLowerCase();
-  };
 
   const normalizeFecha = (fecha: string): string => {
     if (!fecha) return "";
@@ -119,10 +89,7 @@
     return dates;
   };
 
-  const formatDateForExcel = (date: Date): string => {
-    const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    return `${date.getUTCDate()}/${months[date.getUTCMonth()]}/${date.getUTCFullYear().toString().substr(2)}`;
-  };
+  const formatDateForExcel = formatDateDisplay;
 
   onMount(async () => {
     isLoading = true;
@@ -144,8 +111,8 @@
 
   const generateExcel = async () => {
     // Load libraries dynamically
-    await loadLibraries();
-    
+    const { ExcelJS, saveAs } = await loadExcelLibraries();
+
     if (!selectedDocente || !selectedMateria || !selectedGrado) {
       Swal.fire({
         icon: "warning",
@@ -442,8 +409,8 @@
   aria-modal="true"
   aria-labelledby="modal-title"
   tabindex="-1"
-  on:click|self={onClose}
-  on:keydown={(e: KeyboardEvent) => e.key === 'Escape' && onClose()}
+  onclick={(e: MouseEvent) => { if (e.target === e.currentTarget) onClose() }}
+  onkeydown={(e: KeyboardEvent) => e.key === 'Escape' && onClose()}
 >
   <div
     class="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl border"
@@ -460,7 +427,7 @@
           <p class="text-sm opacity-75">Inasistencias por materia y grado</p>
         </div>
       </div>
-      <button on:click={onClose} class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" aria-label="Cerrar modal">
+      <button onclick={onClose} class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" aria-label="Cerrar modal">
         <X class="w-5 h-5" />
       </button>
     </div>
@@ -515,14 +482,14 @@
 
         <div class="pt-4 flex gap-3">
           <button
-            on:click={onClose}
+            onclick={onClose}
             class="flex-1 px-6 py-3 border rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-medium"
             style="border-color: {styles.border};"
           >
             Cancelar
           </button>
           <button
-            on:click={generateExcel}
+            onclick={generateExcel}
             disabled={isGenerating || !selectedDocente || !selectedMateria || !selectedGrado}
             class="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-green-500/20"
           >

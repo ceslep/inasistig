@@ -6,15 +6,17 @@
     getEstudiantes,
     getDiario,
   } from "../../api/service";
-  let jsPDF: any = null;
-  let autoTable: any = null;
+  import { getDocenteNumber, loadPdfLibraries } from '../lib/utils';
   import Loader from "./Loader.svelte";
   import { theme } from "../lib/themeStore";
-  import { FileText, X, Filter, Loader2, Download } from "lucide-svelte";
+  import { FileText, X, Filter, Loader2, Download, Cloud } from '@lucide/svelte';
   import {
     SPREADSHEET_ID_DIARIO,
     WORKSHEET_TITLE_DIARIO,
+    GOOGLE_CLIENT_ID
   } from "../constants";
+  import { gdriveService, isUploading } from "../lib/gdriveService";
+  import DriveFolderPicker from "./DriveFolderPicker.svelte";
 
   let { onClose, initialDocente = "" }: { onClose: () => void; initialDocente?: string } = $props();
 
@@ -27,6 +29,10 @@
     Grado: string;
     "Diario de Campo": string;
   }
+
+  let showFolderPicker = $state(false);
+  let pdfBlobToUpload = $state<Blob | null>(null);
+  let pdfFileNameToUpload = $state("");
 
   let docentes: string[] = $state([]);
   let materias: { materia: string }[] = $state([]);
@@ -45,17 +51,6 @@
   let selectedMateria = $state("");
   let selectedGrado = $state("");
 
-  const loadPdfLibraries = async () => {
-    if (!jsPDF || !autoTable) {
-      const [jspdfModule, autoTableModule] = await Promise.all([
-        import('jspdf'),
-        import('jspdf-autotable')
-      ]);
-      jsPDF = jspdfModule.default;
-      autoTable = autoTableModule.default;
-    }
-  };
-
   const saveMateriaForDocente = (docente: string, materia: string): void => {
     if (!docente || !materia) return;
     if (!docenteMaterias[docente]) {
@@ -72,12 +67,6 @@
       saveMateriaForDocente(selectedDocente, selectedMateria);
     }
   });
-
-  // Extraer número del docente cuando tiene patrón "Nombre-número"
-  const getDocenteNumber = (docente: string): string | null => {
-    const match = docente.match(/-(\d+)$/);
-    return match ? match[1] : null;
-  };
 
   // Verificar si el docente tiene "-"
   let docenteHasDash = $derived(selectedDocente.includes("-"));
@@ -219,9 +208,9 @@
     filteredData = [];
   };
 
-  const generatePDF = async () => {
-    await loadPdfLibraries();
-    
+  const generatePDF = async (saveToDrive = false) => {
+    const { jsPDF, autoTable } = await loadPdfLibraries();
+
     if (filteredData.length === 0) {
       alert("No hay datos para generar el PDF");
       return;
@@ -350,7 +339,30 @@
     });
 
     const fileName = `reporte_diario_${selectedDocente || "todos"}_${selectedMateria || "todas"}_${selectedGrado || "todos"}_${new Date().toISOString().split("T")[0]}.pdf`;
-    pdf.save(fileName);
+    
+    if (saveToDrive) {
+      pdfBlobToUpload = pdf.output("blob");
+      pdfFileNameToUpload = fileName;
+      showFolderPicker = true;
+    } else {
+      pdf.save(fileName);
+    }
+  };
+
+  const handleFolderSelected = async (folder: { id: string, name: string } | null) => {
+    if (!pdfBlobToUpload) return;
+    
+    showFolderPicker = false;
+    await gdriveService.uploadFile(
+      pdfBlobToUpload, 
+      pdfFileNameToUpload, 
+      "application/pdf", 
+      GOOGLE_CLIENT_ID,
+      folder?.id
+    );
+    
+    pdfBlobToUpload = null;
+    pdfFileNameToUpload = "";
   };
 
   let totalHoras = $derived(filteredData.reduce((sum, item) => {
@@ -527,14 +539,30 @@
             <X class="w-4 h-4" />
             Limpiar
           </button>
-          <button
-            onclick={generatePDF}
-            disabled={filteredData.length === 0}
-            class="ml-auto px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition-colors flex items-center gap-2"
-          >
-            <Download class="w-4 h-4" />
-            Generar PDF
-          </button>
+          
+          <div class="ml-auto flex gap-2">
+            <button
+              onclick={() => generatePDF(false)}
+              disabled={filteredData.length === 0}
+              class="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition-colors flex items-center gap-2"
+            >
+              <Download class="w-4 h-4" />
+              Descargar PDF
+            </button>
+            <button
+              onclick={() => generatePDF(true)}
+              disabled={filteredData.length === 0 || $isUploading}
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors flex items-center gap-2"
+            >
+              {#if $isUploading}
+                <Loader2 class="animate-spin h-4 w-4" />
+                Guardando...
+              {:else}
+                <Cloud class="w-4 h-4" />
+                Guardar en Drive
+              {/if}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -647,3 +675,10 @@
     </div>
   </div>
 </div>
+
+{#if showFolderPicker}
+  <DriveFolderPicker 
+    onSelect={handleFolderSelected} 
+    onClose={() => { showFolderPicker = false; pdfBlobToUpload = null; }}
+  />
+{/if}

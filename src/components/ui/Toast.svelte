@@ -1,6 +1,6 @@
 <script lang="ts">
   import { fly, fade } from "svelte/transition";
-  import { CheckCircle, XCircle, AlertTriangle, Info, X } from "lucide-svelte";
+  import { CheckCircle, XCircle, AlertTriangle, Info, X } from '@lucide/svelte';
 
   type ToastType = "success" | "error" | "warning" | "info";
 

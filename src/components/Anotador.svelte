@@ -21,9 +21,15 @@
   import eieLogo from "../assets/eie.png";
   import { slide } from "svelte/transition";
   import FeaturePopup from "./FeaturePopup.svelte";
-  import { Cloud, Filter, FileText, LayoutGrid, Moon, Sun, CloudMoon, Info, X, Search, ChevronDown, Check, Loader2, Send } from "lucide-svelte";
+  import ModuleHeader from "./ModuleHeader.svelte";
+  import { Cloud, Filter, FileText, LayoutGrid, Moon, Sun, CloudMoon, Info, X, Search, ChevronDown, Check, Loader2, Send } from '@lucide/svelte';
 
-  export let onBack: () => void;
+  // --- Props ---
+  interface AnotadorProps {
+    onBack: () => void;
+  }
+
+  const { onBack }: AnotadorProps = $props();
 
   // --- Interfaces ---
   interface Estudiante {
@@ -41,60 +47,38 @@
   }
 
   // --- Estado de datos ---
-  let docentes: string[] = [];
-  let materias: Materia[] = [];
-  let estudiantes: Estudiante[] = [];
+  let docentes: string[] = $state([]);
+  let materias: Materia[] = $state([]);
+  let estudiantes: Estudiante[] = $state([]);
 
-  let isLoadingDocentes = false;
-  let isLoadingMaterias = false;
-  let isLoadingEstudiantes = false;
-  let isLoadingOpciones = false;
+  let isLoadingDocentes = $state(false);
+  let isLoadingMaterias = $state(false);
+  let isLoadingEstudiantes = $state(false);
+  let isLoadingOpciones = $state(false);
 
-  let anotacionGrupos: Record<string, OpcionAnotacion[]> = {};
-  let expandedCategories: Record<string, boolean> = {}; // New state for accordion
+  let anotacionGrupos: Record<string, OpcionAnotacion[]> = $state({});
+  let expandedCategories: Record<string, boolean> = $state({}); // State for accordion
 
   // Estado para búsqueda
-  let searchTerm = "";
-  let filteredAnotacionGrupos: Record<string, OpcionAnotacion[]> = {};
-  let sortedFilteredEntries: [string, OpcionAnotacion[]][] = [];
-  let highlightedCategory = "";
-  let lastSelectedMateria = "";
+  let searchTerm = $state("");
+  let highlightedCategory = $state("");
+  let lastSelectedMateria = $state("");
 
   const toggleCategory = (category: string) => {
     expandedCategories[category] = !expandedCategories[category];
-    // This line is needed to trigger reactivity when updating an object property
-    expandedCategories = expandedCategories;
   };
 
-  // Función helper para actualizar selección de anotación y forzar reactividad
-  const toggleAnotacionSeleccion = (categoria: string, opcion: OpcionAnotacion) => {
-    const index = anotacionGrupos[categoria].indexOf(opcion);
-
-    if (index !== -1) {
-      // Create a new option object with the toggled selected state
-      const updatedOption = {
-        ...opcion,
-        selected: !opcion.selected,
-      };
-
-      // Create a new array for the category with the updated option
-      const updatedCategoryOptions = [
-        ...anotacionGrupos[categoria].slice(0, index),
-        updatedOption,
-        ...anotacionGrupos[categoria].slice(index + 1),
-      ];
-
-      // Create a new anotacionGrupos object with the updated category array
-      anotacionGrupos = {
-        ...anotacionGrupos,
-        [categoria]: updatedCategoryOptions,
-      };
+  // Función helper para actualizar selección de anotación
+  const toggleAnotacionSeleccion = (categoria: string, index: number) => {
+    const opcion = anotacionGrupos[categoria][index];
+    if (opcion) {
+      opcion.selected = !opcion.selected;
 
       console.log("🔄 Anotación toggle:", {
         categoria,
         index,
-        texto: updatedOption.text,
-        nuevoEstado: updatedOption.selected,
+        texto: opcion.text,
+        nuevoEstado: opcion.selected,
         totalSeleccionadas: Object.values(anotacionGrupos)
           .flat()
           .filter((o) => o.selected).length,
@@ -212,85 +196,89 @@
   };
 
   // Detectar cambios en la materia seleccionada
-  $: if (formData.materia && formData.materia !== lastSelectedMateria) {
-    lastSelectedMateria = formData.materia;
+  $effect(() => {
+    if (formData.materia && formData.materia !== lastSelectedMateria) {
+      lastSelectedMateria = formData.materia;
 
-    // Encontrar la categoría correspondiente
-    let targetCategory =
-      materiaToCategory[formData.materia.toUpperCase()] ||
-      materiaToCategory[formData.materia] ||
-      "";
+      // Encontrar la categoría correspondiente
+      let targetCategory =
+        materiaToCategory[formData.materia.toUpperCase()] ||
+        materiaToCategory[formData.materia] ||
+        '';
 
-    // Buscar coincidencia parcial si no encuentra exacta
-    if (!targetCategory) {
-      const materiaUpper = formData.materia.toUpperCase();
-      for (const [key, value] of Object.entries(materiaToCategory)) {
-        if (key.includes(materiaUpper) || materiaUpper.includes(key)) {
-          targetCategory = value;
-          break;
+      // Buscar coincidencia parcial si no encuentra exacta
+      if (!targetCategory) {
+        const materiaUpper = formData.materia.toUpperCase();
+        for (const [key, value] of Object.entries(materiaToCategory)) {
+          if (key.includes(materiaUpper) || materiaUpper.includes(key)) {
+            targetCategory = value;
+            break;
+          }
         }
       }
+
+      if (targetCategory) {
+        highlightedCategory = targetCategory;
+        console.log('✨ Categoria destacada:', targetCategory);
+
+        // Remover el highlight después de 3 segundos
+        setTimeout(() => {
+          highlightedCategory = '';
+        }, 3000);
+      }
     }
+  });
 
-    if (targetCategory) {
-      highlightedCategory = targetCategory;
-      console.log("✨ Categoria destacada:", targetCategory);
+  // Función de filtrado
+  let filteredAnotacionGrupos: Record<string, OpcionAnotacion[]> = $derived.by(() => {
+    return Object.entries(anotacionGrupos).reduce(
+      (acc, [categoria, opciones]) => {
+        if (!searchTerm.trim()) {
+          acc[categoria] = opciones;
+          return acc;
+        }
 
-      // Remover el highlight después de 3 segundos
-      setTimeout(() => {
-        highlightedCategory = "";
-      }, 3000);
-    }
-  }
+        const term = searchTerm.toLowerCase().trim();
+        const filteredOpciones = opciones.filter((opcion) =>
+          opcion.text.toLowerCase().includes(term),
+        );
 
-  // Reactividad para forzar el reordenamiento
-  $: {
-    console.log("🔄 Reactividad actualizada");
+        // Solo incluir la categoría si encuentra coincidencias en el texto de las opciones
+        if (filteredOpciones.length > 0) {
+          acc[categoria] = filteredOpciones;
+        }
+
+        return acc;
+      },
+      {} as Record<string, OpcionAnotacion[]>,
+    );
+  });
+
+  // Reactividad para el reordenamiento
+  let sortedFilteredEntries: [string, OpcionAnotacion[]][] = $derived.by(() => {
+    console.log('🔄 Reactividad actualizada');
     console.log(
-      "📚 Materias disponibles:",
+      '📚 Materias disponibles:',
       materias.map((m) => m.materia),
     );
-    console.log("✍️ Materia seleccionada:", formData.materia);
-    console.log("📊 Categorías disponibles:", Object.keys(anotacionGrupos));
+    console.log('✍️ Materia seleccionada:', formData.materia);
+    console.log('📊 Categorías disponibles:', Object.keys(anotacionGrupos));
     console.log(
-      "🔍 Categorías filtradas:",
+      '🔍 Categorías filtradas:',
       Object.keys(filteredAnotacionGrupos),
     );
-    sortedFilteredEntries = sortCategoriesByMateria(
+    const entries = sortCategoriesByMateria(
       Object.entries(filteredAnotacionGrupos),
     );
     console.log(
-      "📋 Entradas ordenadas:",
-      sortedFilteredEntries.map(([cat]) => cat),
+      '📋 Entradas ordenadas:',
+      entries.map(([cat]) => cat),
     );
-  }
-
-  // Función de filtrado
-  $: filteredAnotacionGrupos = Object.entries(anotacionGrupos).reduce(
-    (acc, [categoria, opciones]) => {
-      if (!searchTerm.trim()) {
-        acc[categoria] = opciones;
-        return acc;
-      }
-
-      const term = searchTerm.toLowerCase().trim();
-      const filteredOpciones = opciones.filter((opcion) =>
-        opcion.text.toLowerCase().includes(term),
-      );
-
-      // Solo incluir la categoría si encuentra coincidencias en el texto de las opciones
-      if (filteredOpciones.length > 0) {
-        acc[categoria] = filteredOpciones;
-        // No auto-expandir categorías, el docente decide cuándo abrir
-      }
-
-      return acc;
-    },
-    {} as Record<string, OpcionAnotacion[]>,
-  );
+    return entries;
+  });
 
   // --- Formulario ---
-  let formData = {
+  let formData = $state({
     fecha: new Date().toLocaleDateString('en-CA'),
     docente: localStorage.getItem("lastDocente") || "",
     materia: "",
@@ -298,7 +286,7 @@
     grado: "",
     anotacion: "",
     observacion: "",
-  };
+  });
 
   // --- Persistencia de Materias por Docente ---
   let docenteMaterias: Record<string, string[]> = JSON.parse(
@@ -316,47 +304,52 @@
     }
   };
 
-  $: if (formData.docente) {
-    localStorage.setItem("lastDocente", formData.docente);
-  }
+  $effect(() => {
+    if (formData.docente) {
+      localStorage.setItem("lastDocente", formData.docente);
+    }
+  });
 
-  $: materiasSorted = formData.docente
-    ? [...materias].sort((a, b) => {
-        const aSaved = docenteMaterias[formData.docente]?.includes(a.materia);
-        const bSaved = docenteMaterias[formData.docente]?.includes(b.materia);
-        if (aSaved && !bSaved) return -1;
-        if (!aSaved && bSaved) return 1;
-        return a.materia.localeCompare(b.materia);
-      })
-    : materias;
+  let materiasSorted = $derived(
+    formData.docente
+      ? [...materias].sort((a, b) => {
+          const aSaved = docenteMaterias[formData.docente]?.includes(a.materia);
+          const bSaved = docenteMaterias[formData.docente]?.includes(b.materia);
+          if (aSaved && !bSaved) return -1;
+          if (!aSaved && bSaved) return 1;
+          return a.materia.localeCompare(b.materia);
+        })
+      : materias
+  );
 
-  // Extraer número del docente cuando tiene patrón "Nombre-número"
   const getDocenteNumber = (docente: string): string | null => {
     const match = docente.match(/-(\d+)$/);
     return match ? match[1] : null;
   };
 
-  // Filtrar grupos según el número del docente
-  $: docenteNumber = getDocenteNumber(formData.docente);
+  let docenteNumber = $derived(getDocenteNumber(formData.docente));
 
-  $: filteredGrados = docenteNumber
-    ? [...new Set(estudiantes.map((e) => e.grado.toString()))].filter((g) =>
-        g.startsWith(`${docenteNumber}-`),
-      )
-    : [...new Set(estudiantes.map((e) => e.grado.toString()))].filter((g) => !g.includes('-'));
+  let filteredGrados = $derived(
+    docenteNumber
+      ? [...new Set(estudiantes.map((e) => e.grado.toString()))].filter((g) =>
+          g.startsWith(`${docenteNumber}-`)
+        )
+      : [...new Set(estudiantes.map((e) => e.grado.toString()))].filter((g) => !g.includes('-'))
+  );
 
   // --- Alertas Dismissibles ---
-  let showInfoAlert =
+  let showInfoAlert = $state(
     INFO_ANOTADOR &&
-    localStorage.getItem("dismissedInfoAnotadorContent") !== INFO_ANOTADOR;
+    localStorage.getItem("dismissedInfoAnotadorContent") !== INFO_ANOTADOR
+  );
 
   const dismissAlert = () => {
     showInfoAlert = false;
     localStorage.setItem("dismissedInfoAnotadorContent", INFO_ANOTADOR);
   };
 
-  let isLoading = false;
-  let showFieldErrors = false;
+  let isLoading = $state(false);
+  let showFieldErrors = $state(false);
 
   // --- Último registro guardado (popup temporal) ---
   interface LastSavedInfo {
@@ -367,9 +360,9 @@
     anotacion: string;
     timestamp: string;
   }
-  let lastSaved: LastSavedInfo | null = null;
-  let lastSavedVisible = false;
-  let lastSavedTimer: ReturnType<typeof setTimeout> | null = null;
+  let lastSaved: LastSavedInfo | null = $state(null);
+  let lastSavedVisible = $state(false);
+  let lastSavedTimer: ReturnType<typeof setTimeout> | null = $state(null);
 
   const showLastSaved = (info: LastSavedInfo) => {
     if (lastSavedTimer) clearTimeout(lastSavedTimer);
@@ -380,7 +373,7 @@
     }, 8000);
   };
 
-  $: missingFields = (() => {
+  let missingFields = $derived((() => {
     const fields: string[] = [];
     if (!formData.fecha) fields.push("fecha");
     if (!formData.docente) fields.push("docente");
@@ -390,11 +383,11 @@
     const hasSelectedAnotacion = Object.values(anotacionGrupos).flat().some((o) => o.selected);
     if (!hasSelectedAnotacion) fields.push("anotacion");
     return fields;
-  })();
+  })());
 
   // --- Filtros ---
-  let showFilter = false;
-  let showReportGenerator = false;
+  let showFilter = $state(false);
+  let showReportGenerator = $state(false);
 
   const openFilters = () => {
     showFilter = true;
@@ -411,7 +404,7 @@
   };
 
   // --- Alertas Dismissibles ---
-  let showFeatureAlert = true; // Control inmediato del popup
+  let showFeatureAlert = $state(true); // Control inmediato del popup
 
   const FEATURE_MESSAGE = "¡Nueva función de filtrado avanzado disponible!";
 
@@ -465,8 +458,7 @@
     window.open(getSheetsUrl(), "_blank");
   };
 
-  // Reactividad para estilos
-  $: styles = {
+  let styles = $derived({
     bg: "rgb(var(--bg-primary))",
     text: "rgb(var(--text-primary))",
     label: "rgb(var(--text-secondary))",
@@ -476,7 +468,7 @@
     cardBg: "rgb(var(--card-bg))",
     cardBorder: "rgb(var(--card-border))",
     inputBg: "rgb(var(--bg-secondary))",
-  };
+  });
 
   const toggleTheme = () => {
     theme.update((t) => {
@@ -486,35 +478,18 @@
     });
   };
 
-  // Validación de formulario
-  $: hasSelectedAnotacion = Object.values(anotacionGrupos)
-    .flat()
-    .some((o) => o.selected);
+  let hasSelectedAnotacion = $derived(
+    Object.values(anotacionGrupos).flat().some((o) => o.selected)
+  );
 
-  $: isFormValid =
+  let isFormValid = $derived(
     formData.fecha &&
     formData.docente &&
     formData.materia &&
     formData.grado &&
     formData.horas &&
-    hasSelectedAnotacion;
-
-  // Debug para validación del formulario
-  $: {
-    console.log("🔍 Validación formulario:", {
-      fecha: formData.fecha,
-      docente: formData.docente,
-      materia: formData.materia,
-      grado: formData.grado,
-      horas: formData.horas,
-      hasSelectedAnotacion,
-      isFormValid,
-      totalAnotaciones: Object.values(anotacionGrupos).flat().length,
-      selectedCount: Object.values(anotacionGrupos)
-        .flat()
-        .filter((o) => o.selected).length,
-    });
-  }
+    hasSelectedAnotacion
+  );
 
   const loadData = async () => {
     isLoadingDocentes = true;
@@ -732,6 +707,8 @@
   });
 </script>
 
+<ModuleHeader title="Anotador de Clase" subtitle="Seguimiento Ágil" {onBack} />
+
 <div
   class="min-h-screen flex flex-col lg:flex-row transition-colors duration-200"
   style="background-color: {styles.bg};"
@@ -744,16 +721,6 @@
     <div
       class="flex flex-col lg:flex-col items-center justify-between lg:justify-start gap-4 lg:gap-8"
     >
-      <div class="flex items-center gap-4 lg:flex-col">
-        <img src={eieLogo} alt="EIE Logo" class="h-12 lg:h-20 w-auto" />
-        <h1
-          class="text-xl lg:text-2xl tracking-tight font-bold lg:text-center"
-          style="color: {styles.text};"
-        >
-          Anotador de Clase
-        </h1>
-      </div>
-
       <div class="flex flex-wrap justify-center lg:flex-col gap-3 w-full">
         <button
           on:click={openSheets}
@@ -798,33 +765,6 @@
           <span class="text-sm font-medium hidden lg:inline">Reportes PDF</span>
         </button>
 
-        <button
-          on:click={onBack}
-          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
-          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
-          title="Volver al Dashboard"
-        >
-          <LayoutGrid class="w-5 h-5" />
-          <span class="text-sm font-medium hidden lg:inline">Dashboard</span>
-        </button>
-
-        <button
-          on:click={toggleTheme}
-          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5 w-full"
-          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
-          aria-label="Cambiar tema"
-        >
-          {#if $theme === "dark"}
-            <Moon class="w-5 h-5 text-indigo-500" />
-          {:else if $theme === "light"}
-            <Sun class="w-5 h-5 text-amber-500" />
-          {:else}
-            <CloudMoon class="w-5 h-5 text-indigo-400" />
-          {/if}
-          <span class="text-sm font-medium hidden lg:inline capitalize">
-            {$theme}
-          </span>
-        </button>
       </div>
     </div>
   </aside>
@@ -1103,7 +1043,7 @@
                     transition:slide
                     class="grid grid-cols-1 md:grid-cols-2 gap-4"
                   >
-                    {#each opciones as opcion}
+                    {#each opciones as opcion, idx}
                       {@const isHighlighted =
                         searchTerm &&
                         opcion.text
@@ -1130,7 +1070,7 @@
                               type="checkbox"
                               checked={opcion.selected}
                               class="hidden"
-                              on:change={() => toggleAnotacionSeleccion(categoria, opcion)}
+                              on:change={() => toggleAnotacionSeleccion(categoria, idx)}
                             />
                             <!-- svelte-ignore a11y_click_events_have_key_events -->
                             <div

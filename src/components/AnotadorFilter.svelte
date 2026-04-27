@@ -10,10 +10,15 @@
   import { SPREADSHEET_ID_ANOTADOR, WORKSHEET_TITLE_ANOTADOR } from "../constants";
   import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
-  import { Download, X, FileText, User, BookOpen } from "lucide-svelte";
+  import { Download, X, FileText, User, BookOpen } from '@lucide/svelte';
 
-  export let onClose: () => void;
-  export let selectedDocente: string = "";
+  // --- Props ---
+  interface AnotadorFilterProps {
+    onClose: () => void;
+    selectedDocente?: string;
+  }
+
+  const { onClose, selectedDocente = '' }: AnotadorFilterProps = $props();
 
   // --- Interfaces para tipado ---
   interface AnotadorData {
@@ -36,25 +41,30 @@
   }
 
   // --- Estado de datos ---
-  let anotaciones: AnotadorData[] = [];
-  let docentes: string[] = [];
-  let materias: { materia: string }[] = [];
-  let estudiantes: { nombre: string; grado: string | number }[] = [];
+  let anotaciones: AnotadorData[] = $state([]);
+  let docentes: string[] = $state([]);
+  let materias: { materia: string }[] = $state([]);
+  let estudiantes: { nombre: string; grado: string | number }[] = $state([]);
 
-  let isLoading = false;
-  let isLoadingData = false;
-  let filtrarPorFecha = false;
-  let anotacionesFiltradas: AnotadorData[] = [];
+  let isLoading = $state(false);
+  let isLoadingData = $state(false);
+  let filtrarPorFecha = $state(false);
 
   // --- Filtros ---
-  let filtros = {
-    docente: selectedDocente || "",
+  let filtros = $state({
+    docente: "",
     materia: "",
     grado: "",
     fechaInicio: "",
     fechaFin: "",
     anotacion: "",
-  };
+  });
+
+  $effect(() => {
+    if (selectedDocente && !filtros.docente) {
+      filtros.docente = selectedDocente;
+    }
+  });
 
   // --- Inicializar fechas ---
   const initializeDates = () => {
@@ -184,60 +194,66 @@
   };
 
   // --- Datos únicos para filtros (extraídos de las anotaciones y APIs) ---
-  let docentesUnicos: string[] = [];
-  let materiasUnicas: string[] = [];
-  let gradosUnicos: string[] = [];
-  let anotacionesUnicas: string[] = [];
+  let docentesUnicos: string[] = $state([]);
+  let materiasUnicas: string[] = $state([]);
+  let gradosUnicos: string[] = $state([]);
+  let anotacionesUnicas: string[] = $state([]);
 
   // --- Datos filtrados para selects dependientes ---
-  $: materiasPorDocente = filtros.docente
-    ? [
-        ...new Set(
-          anotaciones
-            .filter((i) => i.docente === filtros.docente)
-            .map((i) => i.materia)
-            .filter(Boolean),
-        ),
-      ].sort()
-    : materiasUnicas;
+  let materiasPorDocente = $derived(
+    filtros.docente
+      ? [
+          ...new Set(
+            anotaciones
+              .filter((i) => i.docente === filtros.docente)
+              .map((i) => i.materia)
+              .filter(Boolean),
+          ),
+        ].sort()
+      : materiasUnicas,
+  );
 
-  $: gradosPorDocente = filtros.docente
-    ? [
-        ...new Set(
-          anotaciones
-            .filter((i) => i.docente === filtros.docente)
-            .map((i) => i.grado)
-            .filter(Boolean),
-        ),
-      ].sort((a, b) => {
-        const aNum = parseInt(a);
-        const bNum = parseInt(b);
-        if (!isNaN(aNum) && !isNaN(bNum)) {
-          return aNum - bNum;
-        }
-        return a.localeCompare(b);
-      })
-    : gradosUnicos;
+  let gradosPorDocente = $derived(
+    filtros.docente
+      ? [
+          ...new Set(
+            anotaciones
+              .filter((i) => i.docente === filtros.docente)
+              .map((i) => i.grado)
+              .filter(Boolean),
+          ),
+        ].sort((a, b) => {
+          const aNum = parseInt(a);
+          const bNum = parseInt(b);
+          if (!isNaN(aNum) && !isNaN(bNum)) {
+            return aNum - bNum;
+          }
+          return a.localeCompare(b);
+        })
+      : gradosUnicos,
+  );
 
-  $: gradosPorMateria = filtros.materia
-    ? [
-        ...new Set(
-          anotaciones
-            .filter((i) => i.materia === filtros.materia)
-            .map((i) => i.grado)
-            .filter(Boolean),
-        ),
-      ].sort((a, b) => {
-        const aNum = parseInt(a);
-        const bNum = parseInt(b);
-        if (!isNaN(aNum) && !isNaN(bNum)) {
-          return aNum - bNum;
-        }
-        return a.localeCompare(b);
-      })
-    : gradosPorDocente;
+  let gradosPorMateria = $derived(
+    filtros.materia
+      ? [
+          ...new Set(
+            anotaciones
+              .filter((i) => i.materia === filtros.materia)
+              .map((i) => i.grado)
+              .filter(Boolean),
+          ),
+        ].sort((a, b) => {
+          const aNum = parseInt(a);
+          const bNum = parseInt(b);
+          if (!isNaN(aNum) && !isNaN(bNum)) {
+            return aNum - bNum;
+          }
+          return a.localeCompare(b);
+        })
+      : gradosPorDocente,
+  );
 
-  $: anotacionesPorFiltros =
+  let anotacionesPorFiltros = $derived(
     filtros.docente || filtros.materia || filtros.grado
       ? [
           ...new Set(
@@ -254,10 +270,11 @@
               .filter(Boolean),
           ),
         ].sort()
-      : anotacionesUnicas;
+      : anotacionesUnicas,
+  );
 
   // --- Estilos reactivos ---
-  $: styles = {
+  const styles = $derived({
     bg: "rgb(var(--bg-primary))",
     text: "rgb(var(--text-primary))",
     label: "rgb(var(--text-secondary))",
@@ -267,11 +284,11 @@
     cardBg: "rgb(var(--card-bg))",
     cardBorder: "rgb(var(--card-border))",
     inputBg: "rgb(var(--bg-secondary))",
-  };
+  });
 
   // --- Anotaciones filtradas ---
-  $: {
-    anotacionesFiltradas = anotaciones.filter((item) => {
+  let anotacionesFiltradas: AnotadorData[] = $derived(
+    anotaciones.filter((item) => {
       if (filtros.docente && item.docente !== filtros.docente) return false;
       if (filtros.materia && item.materia !== filtros.materia) return false;
       if (filtros.grado && item.grado !== filtros.grado) return false;
@@ -287,13 +304,15 @@
       }
 
       return true;
-    }).sort((a, b) => b.fecha.localeCompare(a.fecha));
-  }
+    }).sort((a, b) => b.fecha.localeCompare(a.fecha)),
+  );
 
   // --- Auto-inicializar fechas cuando se activa el filtro ---
-  $: if (filtrarPorFecha && (!filtros.fechaInicio || !filtros.fechaFin)) {
-    initializeDates();
-  }
+  $effect(() => {
+    if (filtrarPorFecha && (!filtros.fechaInicio || !filtros.fechaFin)) {
+      initializeDates();
+    }
+  });
 
   // --- Cargar datos iniciales ---
   const loadData = async () => {
@@ -465,22 +484,29 @@
       "Observación",
     ];
 
+    const esc = (v: string | number) => {
+      const s = String(v ?? '')
+      return s.includes(',') || s.includes('"') || s.includes('\n')
+        ? `"${s.replace(/"/g, '""')}"` : s
+    }
+
     const csvContent = [
       headers.join(","),
       ...anotacionesFiltradas.map((item) =>
         [
-          item.fecha,
-          `"${item.docente}"`,
-          `"${item.materia}"`,
-          item.grado,
-          item.horas,
-          `"${item.anotacion}"`,
-          `"${item.observacion}"`,
+          esc(item.fecha),
+          esc(item.docente),
+          esc(item.materia),
+          esc(item.grado),
+          esc(item.horas),
+          esc(item.anotacion),
+          esc(item.observacion),
         ].join(","),
       ),
     ].join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const bom = '\uFEFF'
+    const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
@@ -522,11 +548,11 @@
 
 <div
   class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-  on:click|self={onClose}
+  onclick={(e: MouseEvent) => { if (e.target === e.currentTarget) onClose(); }}
   role="button"
   tabindex="0"
   aria-label="Cerrar ventana"
-  on:keydown={(e) => {
+  onkeydown={(e: KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
       onClose();
     }
@@ -557,7 +583,7 @@
       </div>
       <div class="flex items-center gap-3">
         <button
-          on:click={exportarCSV}
+          onclick={exportarCSV}
           class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
           disabled={anotacionesFiltradas.length === 0}
         >
@@ -565,7 +591,7 @@
           Exportar CSV
         </button>
         <button
-          on:click={onClose}
+          onclick={onClose}
           class="p-2 rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5"
           style="color: {styles.text};"
           aria-label="Cerrar"
@@ -604,7 +630,7 @@
               {/if}
             </h3>
             <button
-              on:click={limpiarFiltros}
+              onclick={limpiarFiltros}
               class="text-sm px-3 py-1 rounded-lg border transition-colors hover:bg-black/5 dark:hover:bg-white/5"
               style="border-color: {styles.border}; color: {styles.text};"
             >
@@ -639,35 +665,35 @@
             </div>
             <div class="flex flex-wrap gap-1 sm:gap-2">
               <button
-                on:click={() => setFechaPreset("hoy")}
+                onclick={() => setFechaPreset("hoy")}
                 class="text-[10px] sm:text-xs px-1.5 sm:px-2 py-1 bg-white dark:bg-zinc-800 border rounded hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition-colors"
                 style="border-color: {styles.border}; color: {styles.text};"
               >
                 Hoy
               </button>
               <button
-                on:click={() => setFechaPreset("semana")}
+                onclick={() => setFechaPreset("semana")}
                 class="text-[10px] sm:text-xs px-1.5 sm:px-2 py-1 bg-white dark:bg-zinc-800 border rounded hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition-colors"
                 style="border-color: {styles.border}; color: {styles.text};"
               >
                 Últimos 7 días
               </button>
               <button
-                on:click={() => setFechaPreset("mes")}
+                onclick={() => setFechaPreset("mes")}
                 class="text-[10px] sm:text-xs px-1.5 sm:px-2 py-1 bg-white dark:bg-zinc-800 border rounded hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition-colors"
                 style="border-color: {styles.border}; color: {styles.text};"
               >
                 Últimos 30 días
               </button>
               <button
-                on:click={() => setFechaPreset("mes_actual")}
+                onclick={() => setFechaPreset("mes_actual")}
                 class="text-[10px] sm:text-xs px-1.5 sm:px-2 py-1 bg-white dark:bg-zinc-800 border rounded hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition-colors"
                 style="border-color: {styles.border}; color: {styles.text};"
               >
                 Mes actual
               </button>
               <button
-                on:click={() => setFechaPreset("trimestre")}
+                onclick={() => setFechaPreset("trimestre")}
                 class="text-[10px] sm:text-xs px-1.5 sm:px-2 py-1 bg-white dark:bg-zinc-800 border rounded hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition-colors"
                 style="border-color: {styles.border}; color: {styles.text};"
               >
