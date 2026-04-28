@@ -6,6 +6,11 @@ import { VitePWA } from "vite-plugin-pwa";
 // https://vite.dev/config/
 export default defineConfig({
   base: "/inasistig/",
+  server: {
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+    },
+  },
   plugins: [
     svelte(),
     tailwindcss(),

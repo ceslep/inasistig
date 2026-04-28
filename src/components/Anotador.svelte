@@ -723,7 +723,7 @@
     >
       <div class="flex flex-wrap justify-center lg:flex-col gap-3 w-full">
         <button
-          on:click={openSheets}
+          onclick={openSheets}
           class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
           style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
           title="Abrir hoja de cálculo"
@@ -737,7 +737,7 @@
         <!-- Botón de Filtros -->
         <button
           id="filter-button-target"
-          on:click={openFilters}
+          onclick={openFilters}
           class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
           style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
           title="Abrir filtros de anotaciones"
@@ -754,10 +754,10 @@
           {/if}
         </button>
 
-        <!-- Botón de Reportes PDF -->
-        <button
-          on:click={openReportGenerator}
-          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
+          <!-- Botón de Reportes PDF -->
+          <button
+            onclick={openReportGenerator}
+            class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
           style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
           title="Generar reportes PDF"
         >
@@ -796,9 +796,9 @@
               {INFO_ANOTADOR}
             </p>
           </div>
-          <button
-            on:click={dismissAlert}
-            class="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-green-100 dark:hover:bg-indigo-700 text-green-600 hover:text-green-800 dark:text-indigo-400 dark:hover:text-indigo-100 transition-colors"
+           <button
+             onclick={dismissAlert}
+             class="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-green-100 dark:hover:bg-indigo-700 text-green-600 hover:text-green-800 dark:text-indigo-400 dark:hover:text-indigo-100 transition-colors"
             aria-label="Cerrar alerta"
           >
             <X class="w-4 h-4" />
@@ -817,7 +817,7 @@
         colorTheme="purple"
       />
 
-      <form on:submit={handleSubmit} novalidate class="space-y-6">
+       <form onsubmit={handleSubmit} novalidate class="space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div class="space-y-2">
             <label
@@ -967,9 +967,9 @@
             />
             <Search class="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5" style="color: {styles.placeholder};" />
             {#if searchTerm}
-              <button
-                on:click={() => (searchTerm = "")}
-                class="absolute right-4 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+               <button
+                 onclick={() => (searchTerm = "")}
+                 class="absolute right-4 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 style="color: {styles.placeholder};"
                 title="Limpiar búsqueda"
               >
@@ -999,7 +999,7 @@
               <div class="space-y-4">
                 <button
                   type="button"
-                  on:click={() => toggleCategory(categoria)}
+                  onclick={() => toggleCategory(categoria)}
                   class="flex items-center gap-3 w-full text-left cursor-pointer group focus:outline-none"
                 >
                   <div class="flex items-center gap-3 flex-1">
@@ -1066,12 +1066,12 @@
                       >
                         <div class="flex items-start gap-1 p-4">
                           <label class="flex-shrink-0 cursor-pointer p-1 mt-1">
-                            <input
-                              type="checkbox"
-                              checked={opcion.selected}
-                              class="hidden"
-                              on:change={() => toggleAnotacionSeleccion(categoria, idx)}
-                            />
+                              <input
+                                type="checkbox"
+                                checked={opcion.selected}
+                                class="hidden"
+                                onchange={() => toggleAnotacionSeleccion(categoria, idx)}
+                              />
                             <!-- svelte-ignore a11y_click_events_have_key_events -->
                             <div
                               class="w-5 h-5 rounded border flex items-center justify-center transition-colors cursor-pointer"
@@ -1174,11 +1174,11 @@
         </p>
         <p class="text-[10px] mt-1 opacity-40" style="color: rgb(var(--text-secondary));">{lastSaved.timestamp}</p>
       </div>
-      <button
-        class="text-xs opacity-40 hover:opacity-100 transition-opacity"
-        style="color: rgb(var(--text-secondary));"
-        on:click={() => { lastSavedVisible = false; }}
-      >&times;</button>
+         <button
+           class="text-xs opacity-40 hover:opacity-100 transition-opacity"
+           style="color: rgb(var(--text-secondary));"
+           onclick={() => { lastSavedVisible = false; }}
+         >&times;</button>
     </div>
   </div>
 {/if}

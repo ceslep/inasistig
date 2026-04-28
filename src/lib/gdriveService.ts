@@ -1,140 +1,460 @@
-import { writable, get } from 'svelte/store';
+import { writable } from 'svelte/store';
 import Swal from 'sweetalert2';
 
-declare var google: any;
+import { ensureGisLoaded } from './utils';
 
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const DRIVE_UPLOAD_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const DRIVE_READONLY_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
+const DRIVE_SCOPES = `${DRIVE_UPLOAD_SCOPE} ${DRIVE_READONLY_SCOPE}`;
+
 const ACCESS_TOKEN_KEY = 'gdrive_access_token';
 const TOKEN_EXPIRY_KEY = 'gdrive_token_expiry';
+const SCOPE_VERSION_KEY = 'gdrive_scope_version';
+const CURRENT_SCOPE_VERSION = '3';
 
 export const isUploading = writable(false);
 
-interface DriveToken {
-  access_token: string;
-  expires_in: number;
+export interface FolderItem {
+  id: string;
+  name: string;
 }
 
-/**
- * Servicio para interactuar con Google Drive REST API v3
- */
-export const gdriveService = {
-  /**
-   * Obtiene un token de acceso válido, pidiendo permiso al usuario si es necesario
-   */
-  async getAccessToken(clientId: string): Promise<string | null> {
-    const storedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-    const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
+export interface ListFoldersResult {
+  folders: FolderItem[];
+  error?: string;
+}
 
-    if (storedToken && expiry && Date.now() < parseInt(expiry)) {
-      return storedToken;
+interface TokenResult {
+  token: string | null;
+  error?: 'gis_not_loaded' | 'user_cancelled' | 'auth_error' | 'timeout' | 'unknown';
+  message?: string;
+}
+
+function isGisLoaded(): boolean {
+  try {
+    return typeof google !== 'undefined'
+      && google?.accounts?.oauth2?.initTokenClient != null;
+  } catch {
+    return false;
+  }
+}
+
+export const gdriveService = {
+  async getAccessToken(clientId: string): Promise<TokenResult> {
+    const storedScopeVersion = localStorage.getItem(SCOPE_VERSION_KEY);
+    if (storedScopeVersion !== CURRENT_SCOPE_VERSION) {
+      localStorage.removeItem(ACCESS_TOKEN_KEY);
+      localStorage.removeItem(TOKEN_EXPIRY_KEY);
+      localStorage.setItem(SCOPE_VERSION_KEY, CURRENT_SCOPE_VERSION);
     }
 
-    return new Promise((resolve) => {
-      const client = google.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: DRIVE_SCOPE,
-        callback: (response: any) => {
-          if (response.error) {
-            console.error('Error de autorización:', response.error);
-            resolve(null);
-            return;
-          }
-          const expiryTime = Date.now() + response.expires_in * 1000;
-          localStorage.setItem(ACCESS_TOKEN_KEY, response.access_token);
-          localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
-          resolve(response.access_token);
-        },
-      });
-      client.requestAccessToken();
+    const storedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+    const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
+    if (storedToken && expiry && Date.now() < parseInt(expiry)) {
+      return { token: storedToken };
+    }
+
+    try {
+      await ensureGisLoaded();
+    } catch {
+      // fall through to isGisLoaded check
+    }
+
+    if (!isGisLoaded()) {
+      return {
+        token: null,
+        error: 'gis_not_loaded',
+        message: 'El servicio de Google no se ha cargado. Recarga la página e intenta de nuevo.',
+      };
+    }
+
+    return new Promise<TokenResult>((resolve) => {
+      let resolved = false;
+
+      const timeoutId = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          resolve({
+            token: null,
+            error: 'timeout',
+            message: 'Tiempo de espera agotado. Intenta de nuevo.',
+          });
+        }
+      }, 30_000);
+
+      try {
+        const client = google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: DRIVE_SCOPES,
+          callback: (response) => {
+            if (resolved) return;
+            resolved = true;
+            clearTimeout(timeoutId);
+
+            if (response.error) {
+              resolve({
+                token: null,
+                error: 'auth_error',
+                message: response.error_description || `Error de autorización: ${response.error}`,
+              });
+              return;
+            }
+
+            const expiryTime = Date.now() + response.expires_in * 1000;
+            localStorage.setItem(ACCESS_TOKEN_KEY, response.access_token);
+            localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
+            resolve({ token: response.access_token });
+          },
+          error_callback: (error) => {
+            if (resolved) return;
+            resolved = true;
+            clearTimeout(timeoutId);
+
+            if (error.type === 'popup_closed') {
+              resolve({
+                token: null,
+                error: 'user_cancelled',
+                message: 'Se cerró la ventana de autorización.',
+              });
+            } else {
+              resolve({
+                token: null,
+                error: 'auth_error',
+                message: error.message || 'Error al conectar con Google.',
+              });
+            }
+          },
+        });
+
+        client.requestAccessToken();
+      } catch (err) {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeoutId);
+          resolve({
+            token: null,
+            error: 'unknown',
+            message: 'Error inesperado al iniciar la autenticación.',
+          });
+        }
+      }
     });
   },
 
-  /**
-   * Lista las carpetas en una ubicación específica
-   */
-  async listFolders(clientId: string, parentId: string = 'root') {
-    try {
-      const token = await this.getAccessToken(clientId);
-      if (!token) return [];
-
-      const query = `'${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
-      const response = await fetch(
-        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&orderBy=name`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (!response.ok) throw new Error('Error al listar carpetas');
-      const data = await response.json();
-      return data.files || [];
-    } catch (error) {
-      console.error('Error listing folders:', error);
-      return [];
+  async listFolders(clientId: string, parentId: string = 'root', driveId?: string): Promise<ListFoldersResult> {
+    const tokenResult = await this.getAccessToken(clientId);
+    if (!tokenResult.token) {
+      return { folders: [], error: tokenResult.message };
     }
-  },
 
-  /**
-   * Sube un archivo a Google Drive en una carpeta específica
-   */
-  async uploadFile(blob: Blob, fileName: string, mimeType: string, clientId: string, folderId?: string) {
-    isUploading.set(true);
     try {
-      const token = await this.getAccessToken(clientId);
-      if (!token) throw new Error('No se pudo obtener el token de acceso');
-
-      // 1. Crear metadatos del archivo
-      const metadata: any = {
-        name: fileName,
-        mimeType: mimeType,
-      };
-
-      if (folderId) {
-        metadata.parents = [folderId];
+      const query = `'${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+      let url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&orderBy=name&includeItemsFromAllDrives=true&supportsAllDrives=true`;
+      if (driveId) {
+        url += `&driveId=${encodeURIComponent(driveId)}&corpora=drive`;
       }
-
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-      form.append('file', blob);
-
       const response = await fetch(
-        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: form,
-        }
+        url,
+        { headers: { Authorization: `Bearer ${tokenResult.token}` } },
       );
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'Error al subir a Google Drive');
+        const errorBody = await response.json().catch(() => ({}));
+        const apiMessage = (errorBody as { error?: { message?: string } })?.error?.message || '';
+
+        if (response.status === 401) {
+          localStorage.removeItem(ACCESS_TOKEN_KEY);
+          localStorage.removeItem(TOKEN_EXPIRY_KEY);
+          return { folders: [], error: 'Tu sesión de Drive expiró. Intenta de nuevo.' };
+        }
+        if (response.status === 403) {
+          return { folders: [], error: `Sin permisos para acceder a Drive. ${apiMessage}` };
+        }
+        return { folders: [], error: `Error al listar carpetas (${response.status}). ${apiMessage}` };
       }
 
-      const result = await response.json();
-      
-      await Swal.fire({
-        icon: 'success',
-        title: '¡Guardado en Drive!',
-        text: `El reporte "${fileName}" se ha guardado correctamente.`,
-        confirmButtonColor: '#4f46e5',
-        footer: `<a href="https://drive.google.com/file/d/${result.id}/view" target="_blank" style="color: #6366f1; font-weight: 600;">Ver archivo en Drive</a>`
-      });
-
-      return result;
-    } catch (error: any) {
-      console.error('GDrive Error:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Error de Drive',
-        text: error.message || 'No se pudo guardar el archivo en tu unidad.',
-        confirmButtonColor: '#ef4444',
-      });
-      return null;
-    } finally {
-      isUploading.set(false);
+      const data: { files?: FolderItem[] } = await response.json();
+      return { folders: data.files || [] };
+    } catch (error) {
+      console.error('Error listing folders:', error);
+      return { folders: [], error: 'Error de conexión al listar carpetas.' };
     }
-  }
+  },
+
+  async listSharedDrives(clientId: string): Promise<ListFoldersResult> {
+    const tokenResult = await this.getAccessToken(clientId);
+    if (!tokenResult.token) {
+      return { folders: [], error: tokenResult.message };
+    }
+
+    try {
+      const response = await fetch(
+        'https://www.googleapis.com/drive/v3/drives?pageSize=50&fields=drives(id,name)',
+        { headers: { Authorization: `Bearer ${tokenResult.token}` } },
+      );
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        const apiMessage = (errorBody as { error?: { message?: string } })?.error?.message || '';
+        return { folders: [], error: `Error al listar unidades compartidas (${response.status}). ${apiMessage}` };
+      }
+
+      const data: { drives?: FolderItem[] } = await response.json();
+      return { folders: data.drives || [] };
+    } catch (error) {
+      console.error('Error listing shared drives:', error);
+      return { folders: [], error: 'Error de conexión al listar unidades compartidas.' };
+    }
+  },
+
+   async listStarredFolders(clientId: string): Promise<ListFoldersResult> {
+     const tokenResult = await this.getAccessToken(clientId);
+     if (!tokenResult.token) {
+       return { folders: [], error: tokenResult.message };
+     }
+
+     try {
+       const query = `starred = true and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+       const response = await fetch(
+         `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&orderBy=name&includeItemsFromAllDrives=true&supportsAllDrives=true`,
+         { headers: { Authorization: `Bearer ${tokenResult.token}` } },
+       );
+
+       if (!response.ok) {
+         const errorBody = await response.json().catch(() => ({}));
+         const apiMessage = (errorBody as { error?: { message?: string } })?.error?.message || '';
+         return { folders: [], error: `Error al listar favoritos (${response.status}). ${apiMessage}` };
+       }
+
+       const data: { files?: FolderItem[] } = await response.json();
+       return { folders: data.files || [] };
+     } catch (error) {
+       console.error('Error listing starred folders:', error);
+       return { folders: [], error: 'Error de conexión al listar favoritos.' };
+     }
+   },
+
+   async listFilesByNameInFolder(
+     clientId: string,
+     fileName: string,
+     folderId?: string,
+     driveId?: string
+   ): Promise<{ files: FolderItem[]; error?: string }> {
+     const tokenResult = await this.getAccessToken(clientId);
+     if (!tokenResult.token) {
+       return { files: [], error: tokenResult.message };
+     }
+
+     try {
+       let query = `name = "${fileName.replace(/"/g, '\\"')}" and trashed = false`;
+       if (folderId) {
+         query += ` and '${folderId}' in parents`;
+       }
+       if (driveId) {
+         query += ` and driveId = "${driveId}" and corpora = drive`;
+       } else {
+         query += ` and corpora = allDrives`;
+       }
+
+       const response = await fetch(
+         `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&includeItemsFromAllDrives=true&supportsAllDrives=true`,
+         { headers: { Authorization: `Bearer ${tokenResult.token}` } },
+       );
+
+       if (!response.ok) {
+         const errorBody = await response.json().catch(() => ({}));
+         const apiMessage = (errorBody as { error?: { message?: string } })?.error?.message || '';
+         if (response.status === 401) {
+           localStorage.removeItem(ACCESS_TOKEN_KEY);
+           localStorage.removeItem(TOKEN_EXPIRY_KEY);
+           return { files: [], error: 'Tu sesión de Drive expiró. Intenta de nuevo.' };
+         }
+         return { files: [], error: `Error al buscar archivos (${response.status}). ${apiMessage}` };
+       }
+
+       const data: { files?: FolderItem[] } = await response.json();
+       return { files: data.files || [] };
+     } catch (error) {
+       console.error('Error listing files by name:', error);
+       return { files: [], error: 'Error de conexión al buscar archivos.' };
+     }
+   },
+
+   async createFolder(
+     clientId: string,
+     folderName: string,
+     parentId: string = 'root',
+     driveId?: string
+   ): Promise<{ folder?: FolderItem; error?: string }> {
+     const tokenResult = await this.getAccessToken(clientId);
+     if (!tokenResult.token) {
+       return { error: tokenResult.message };
+     }
+
+     try {
+       const metadata: {
+         name: string;
+         mimeType: string;
+         parents?: string[];
+       } = {
+         name: folderName,
+         mimeType: 'application/vnd.google-apps.folder',
+       };
+
+       if (parentId) {
+         metadata['parents'] = [parentId];
+       }
+
+       const form = new FormData();
+       form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+
+       let url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true';
+       if (driveId) {
+         url += `&driveId=${encodeURIComponent(driveId)}&corpora=drive`;
+       }
+
+       const response = await fetch(
+         url,
+         {
+           method: 'POST',
+           headers: { Authorization: `Bearer ${tokenResult.token}` },
+           body: form,
+         },
+       );
+
+       if (!response.ok) {
+         const errorBody = await response.json().catch(() => ({}));
+         const apiMessage = (errorBody as { error?: { message?: string } })?.error?.message || '';
+         if (response.status === 401) {
+           localStorage.removeItem(ACCESS_TOKEN_KEY);
+           localStorage.removeItem(TOKEN_EXPIRY_KEY);
+           return { error: 'Tu sesión de Drive expiró. Intenta de nuevo.' };
+         }
+         return { error: `Error al crear carpeta (${response.status}). ${apiMessage}` };
+       }
+
+       const data: FolderItem = await response.json();
+       return { folder: data };
+     } catch (error) {
+       console.error('Error creating folder:', error);
+       return { error: 'Error de conexión al crear la carpeta.' };
+     }
+   },
+
+   async uploadFile(
+     blob: Blob,
+     fileName: string,
+     mimeType: string,
+     clientId: string,
+     folderId?: string,
+   ) {
+     isUploading.set(true);
+     try {
+       const tokenResult = await this.getAccessToken(clientId);
+       if (!tokenResult.token) {
+         throw new Error(tokenResult.message || 'No se pudo obtener el token de acceso');
+       }
+
+       // Check if file with same name already exists in the target folder
+       const existingFiles = await this.listFilesByNameInFolder(clientId, fileName, folderId);
+       if (existingFiles.error) {
+         throw new Error(existingFiles.error);
+       }
+
+       // If file exists, delete it first
+       if (existingFiles.files.length > 0) {
+         const fileId = existingFiles.files[0].id;
+         await this.deleteFile(clientId, fileId);
+       }
+
+       const metadata: { name: string; mimeType: string; parents?: string[] } = {
+         name: fileName,
+         mimeType: mimeType,
+       };
+
+       if (folderId) {
+         metadata.parents = [folderId];
+       }
+
+       const form = new FormData();
+       form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+       form.append('file', blob);
+
+       const response = await fetch(
+         'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true',
+         {
+           method: 'POST',
+           headers: { Authorization: `Bearer ${tokenResult.token}` },
+           body: form,
+         },
+       );
+
+       if (!response.ok) {
+         const error: { error?: { message?: string } } = await response.json().catch(() => ({}));
+         throw new Error(error?.error?.message || 'Error al subir a Google Drive');
+       }
+
+       const result: { id: string } = await response.json();
+
+       await Swal.fire({
+         icon: 'success',
+         title: '¡Guardado en Drive!',
+         text: `El reporte "${fileName}" se ha guardado correctamente.`,
+         confirmButtonColor: '#4f46e5',
+         footer: `<a href="https://drive.google.com/file/d/${result.id}/view" target="_blank" style="color: #6366f1; font-weight: 600;">Ver archivo en Drive</a>`,
+       });
+
+       return result;
+     } catch (error: unknown) {
+       const message = error instanceof Error ? error.message : 'No se pudo guardar el archivo en tu unidad.';
+       console.error('GDrive Error:', error);
+       Swal.fire({
+         icon: 'error',
+         title: 'Error de Drive',
+         text: message,
+         confirmButtonColor: '#ef4444',
+       });
+       return null;
+     } finally {
+       isUploading.set(false);
+     }
+   },
+
+   async deleteFile(clientId: string, fileId: string): Promise<{ success: boolean; error?: string }> {
+     const tokenResult = await this.getAccessToken(clientId);
+     if (!tokenResult.token) {
+       return { success: false, error: tokenResult.message };
+     }
+
+     try {
+       const response = await fetch(
+         `https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true`,
+         {
+           method: 'DELETE',
+           headers: { Authorization: `Bearer ${tokenResult.token}` },
+         },
+       );
+
+       if (!response.ok) {
+         const errorBody = await response.json().catch(() => ({}));
+         const apiMessage = (errorBody as { error?: { message?: string } })?.error?.message || '';
+         if (response.status === 401) {
+           localStorage.removeItem(ACCESS_TOKEN_KEY);
+           localStorage.removeItem(TOKEN_EXPIRY_KEY);
+           return { success: false, error: 'Tu sesión de Drive expiró. Intenta de nuevo.' };
+         }
+         return { success: false, error: `Error al eliminar archivo (${response.status}). ${apiMessage}` };
+       }
+
+       return { success: true };
+     } catch (error) {
+       console.error('Error deleting file:', error);
+       return { success: false, error: 'Error de conexión al eliminar el archivo.' };
+     }
+   },
+
+  clearToken(): void {
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(TOKEN_EXPIRY_KEY);
+  },
 };

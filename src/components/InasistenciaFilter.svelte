@@ -41,15 +41,20 @@
     }>;
   }
 
-  // --- Estado de datos ---
-  let inasistencias: InasistenciaData[] = $state([]);
-  let docentes: string[] = $state([]);
-  let materias: { materia: string }[] = $state([]);
-  let estudiantes: { nombre: string; grado: string | number }[] = $state([]);
+   // --- Estado de datos ---
+   let inasistencias: InasistenciaData[] = $state([]);
+   let docentes: string[] = $state([]);
+   let materias: { materia: string }[] = $state([]);
+   let estudiantes: { nombre: string; grado: string | number }[] = $state([]);
 
-  let isLoading = $state(false);
-  let isLoadingData = $state(false);
-  let filtrarPorFecha = $state(false);
+   let isLoading = $state(false);
+   let isLoadingData = $state(false);
+   let filtrarPorFecha = $state(false);
+
+   // --- Sincronizar filtros.docente cuando cambie selectedDocente ---
+   $effect(() => {
+     filtros.docente = selectedDocente || '';
+   });
 
   // --- Estado para modal de PDF ---
   let showPdfModal = $state(false);
@@ -57,16 +62,16 @@
   let isGeneratingPdf = $state(false);
   let jsPDFInstance: any = $state(null);
 
-  // --- Filtros ---
-  let filtros = $state({
-    docente: selectedDocente || '',
-    materia: '',
-    grado: '',
-    fechaInicio: '',
-    fechaFin: '',
-    motivo: '',
-    estudiante: '',
-  });
+   // --- Filtros ---
+   let filtros = $state({
+     docente: '',
+     materia: '',
+     grado: '',
+     fechaInicio: '',
+     fechaFin: '',
+     motivo: '',
+     estudiante: '',
+   });
 
   // --- Inicializar fechas ---
   const initializeDates = () => {
@@ -914,15 +919,15 @@
 
 <div
   class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-  on:click|self={onClose}
+  onclick={onClose}
   role="button"
   tabindex="0"
-  aria-label="Cerrar ventana"
-  on:keydown={(e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      onClose();
-    }
-  }}
+   aria-label="Cerrar ventana"
+   onkeydown={(e) => {
+     if (e.key === "Enter" || e.key === " ") {
+       onClose();
+     }
+   }}
 >
   <div
     class="w-full max-w-7xl max-h-[95vh] bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
@@ -952,7 +957,7 @@
       </div>
       <div class="flex items-center gap-2 sm:gap-3">
         <button
-          on:click={exportarCSV}
+          onclick={exportarCSV}
           class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shadow-sm hover:shadow-md font-medium text-sm"
           disabled={inasistenciasFiltradas.length === 0}
         >
@@ -960,7 +965,7 @@
           <span class="hidden sm:inline">CSV</span>
         </button>
         <button
-          on:click={generarReportePDF}
+          onclick={generarReportePDF}
           class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all shadow-sm hover:shadow-md font-medium text-sm"
           disabled={inasistenciasFiltradas.length === 0}
         >
@@ -968,7 +973,7 @@
           <span class="hidden sm:inline">PDF</span>
         </button>
         <button
-          on:click={onClose}
+          onclick={onClose}
           class="p-2.5 sm:p-3 rounded-xl transition-colors hover:bg-black/5 dark:hover:bg-white/10 border"
           style="color: {styles.text}; border-color: {styles.border};"
           aria-label="Cerrar"
@@ -1011,9 +1016,9 @@
                 </p>
               </div>
             </div>
-            <button
-              on:click={limpiarFiltros}
-              class="text-sm px-4 py-2 rounded-xl border-2 transition-all hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300 dark:hover:border-red-700"
+              <button
+                onclick={limpiarFiltros}
+                class="text-sm px-4 py-2 rounded-xl border-2 transition-all hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300 dark:hover:border-red-700"
               style="border-color: {styles.border}; color: {styles.text};"
             >
               <span class="flex items-center gap-1.5">
@@ -1048,35 +1053,35 @@
             </div>
             <div class="flex flex-wrap gap-2">
               <button
-                on:click={() => setFechaPreset("hoy")}
+                onclick={() => setFechaPreset("hoy")}
                 class="text-xs px-3 py-1.5 bg-white dark:bg-zinc-700 border rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
                 style="border-color: {styles.border}; color: {styles.text};"
               >
                 Hoy
               </button>
               <button
-                on:click={() => setFechaPreset("semana")}
+                onclick={() => setFechaPreset("semana")}
                 class="text-xs px-3 py-1.5 bg-white dark:bg-zinc-700 border rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
                 style="border-color: {styles.border}; color: {styles.text};"
               >
                 7 días
               </button>
               <button
-                on:click={() => setFechaPreset("mes")}
+                onclick={() => setFechaPreset("mes")}
                 class="text-xs px-3 py-1.5 bg-white dark:bg-zinc-700 border rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
                 style="border-color: {styles.border}; color: {styles.text};"
               >
                 30 días
               </button>
               <button
-                on:click={() => setFechaPreset("mes_actual")}
+                onclick={() => setFechaPreset("mes_actual")}
                 class="text-xs px-3 py-1.5 bg-white dark:bg-zinc-700 border rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
                 style="border-color: {styles.border}; color: {styles.text};"
               >
                 Mes actual
               </button>
               <button
-                on:click={() => setFechaPreset("trimestre")}
+                onclick={() => setFechaPreset("trimestre")}
                 class="text-xs px-3 py-1.5 bg-white dark:bg-zinc-700 border rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
                 style="border-color: {styles.border}; color: {styles.text};"
               >
@@ -1322,10 +1327,10 @@
                           title={item.nombre}
                         >
                           {#if filtros.docente && filtros.materia && filtros.grado}
-                            <button
-                              class="text-indigo-600 dark:text-indigo-400 hover:underline font-medium text-left truncate w-full"
-                              on:click={() => calculateTotalHours(item.nombre)}
-                            >
+                              <button
+                                class="text-indigo-600 dark:text-indigo-400 hover:underline font-medium text-left truncate w-full"
+                                onclick={() => calculateTotalHours(item.nombre)}
+                              >
                               {item.nombre}
                             </button>
                           {:else}
@@ -1367,9 +1372,9 @@
       role="dialog"
       aria-modal="true"
       aria-labelledby="pdf-modal-title"
-      tabindex="-1"
-      on:click|self={cerrarPdfModal}
-      on:keydown={(e: KeyboardEvent) => e.key === 'Escape' && cerrarPdfModal()}
+       tabindex="-1"
+       onclick={cerrarPdfModal}
+       onkeydown={(e: KeyboardEvent) => e.key === 'Escape' && cerrarPdfModal()}
     >
       <div
         class="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden shadow-2xl border flex flex-col"
@@ -1390,9 +1395,9 @@
               </p>
             </div>
           </div>
-          <button
-            on:click={cerrarPdfModal}
-            class="p-2 rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+           <button
+             onclick={cerrarPdfModal}
+             class="p-2 rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5"
             style="color: {styles.text};"
             aria-label="Cerrar"
           >
@@ -1419,25 +1424,25 @@
           {/if}
         </div>
 
-        <!-- Footer - Actions -->
-        <div class="flex items-center justify-end gap-3 p-3 sm:p-4 border-t flex-shrink-0" style="border-color: {styles.cardBorder};">
-          <button
-            on:click={cerrarPdfModal}
-            class="px-4 py-2 border rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5 font-medium"
-            style="border-color: {styles.border}; color: {styles.text};"
-          >
-            Cancelar
-          </button>
-          <button
-            on:click={imprimirPDF}
-            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2"
-          >
+         <!-- Footer - Actions -->
+         <div class="flex items-center justify-end gap-3 p-3 sm:p-4 border-t flex-shrink-0" style="border-color: {styles.cardBorder};">
+           <button
+             onclick={cerrarPdfModal}
+             class="px-4 py-2 border rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5 font-medium"
+             style="border-color: {styles.border}; color: {styles.text};"
+           >
+             Cancelar
+           </button>
+           <button
+             onclick={imprimirPDF}
+             class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2"
+           >
             <Printer class="w-4 h-4" />
             Imprimir
           </button>
-          <button
-            on:click={descargarPDF}
-            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2"
+           <button
+             onclick={descargarPDF}
+             class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium flex items-center gap-2"
           >
             <Download class="w-4 h-4" />
             Descargar

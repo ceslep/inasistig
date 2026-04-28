@@ -100,6 +100,44 @@ export const loadExcelLibraries = async (): Promise<ExcelLibs> => {
   return cachedExcelLibs;
 };
 
+// --- Google Identity Services script loader ---
+
+const GIS_SCRIPT_URL = 'https://accounts.google.com/gsi/client';
+
+let gisLoadPromise: Promise<void> | null = null;
+
+export const ensureGisLoaded = (): Promise<void> => {
+  if (typeof google !== 'undefined' && google?.accounts?.oauth2?.initTokenClient != null) {
+    return Promise.resolve();
+  }
+
+  if (gisLoadPromise) return gisLoadPromise;
+
+  gisLoadPromise = new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${GIS_SCRIPT_URL}"]`);
+    if (existing) {
+      existing.addEventListener('load', () => resolve());
+      if (typeof google !== 'undefined' && google?.accounts) {
+        resolve();
+      }
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = GIS_SCRIPT_URL;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => {
+      gisLoadPromise = null;
+      reject(new Error('No se pudo cargar el script de Google.'));
+    };
+    document.head.appendChild(script);
+  });
+
+  return gisLoadPromise;
+};
+
 // --- CSV escaping ---
 
 /**

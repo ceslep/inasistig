@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Folder, ChevronRight, Home, X, Check, Loader2, FolderPlus } from '@lucide/svelte';
-  import { gdriveService } from '../lib/gdriveService';
+  import { Folder, ChevronRight, X, Check, Loader2, FolderPlus, AlertTriangle, RefreshCw, Star, Users, HardDrive } from '@lucide/svelte';
+  import { gdriveService, type FolderItem } from '../lib/gdriveService';
   import { GOOGLE_CLIENT_ID } from '../constants';
   import { fade, fly } from 'svelte/transition';
 
@@ -12,37 +12,167 @@
 
   let { onSelect, onClose }: Props = $props();
 
-  interface FolderItem {
-    id: string;
-    name: string;
-  }
+  type RootSection = 'my-drive' | 'starred' | 'shared';
 
-  let currentPath = $state<FolderItem[]>([{ id: 'root', name: 'Mi Unidad' }]);
-  let folders = $state<FolderItem[]>([]);
-  let isLoading = $state(false);
-  let selectedFolderId = $state<string | null>(null);
+   let activeSection = $state<RootSection>('my-drive');
+   let currentPath = $state<FolderItem[]>([{ id: 'root', name: 'Mi Unidad' }]);
+   let folders = $state<FolderItem[]>([]);
+   let isLoading = $state(false);
+   let errorMessage = $state<string | null>(null);
+   let activeDriveId = $state<string | undefined>(undefined);
+   let isCreatingFolder = $state(false);
+   let newFolderName = $state('');
 
   const currentFolder = $derived(currentPath[currentPath.length - 1]);
+  const isAtRoot = $derived(currentPath.length === 1);
 
-  async function loadFolders(parentId: string) {
+  async function loadFolders(parentId: string, driveId?: string) {
     isLoading = true;
-    folders = await gdriveService.listFolders(GOOGLE_CLIENT_ID, parentId);
+    errorMessage = null;
+
+    const result = await gdriveService.listFolders(GOOGLE_CLIENT_ID, parentId, driveId);
+
+    folders = result.folders;
+    if (result.error) {
+      errorMessage = result.error;
+    }
+
     isLoading = false;
   }
 
-  function navigateTo(folder: FolderItem) {
-    currentPath = [...currentPath, folder];
-    loadFolders(folder.id);
+  async function loadStarred() {
+    isLoading = true;
+    errorMessage = null;
+
+    const result = await gdriveService.listStarredFolders(GOOGLE_CLIENT_ID);
+
+    folders = result.folders;
+    if (result.error) {
+      errorMessage = result.error;
+    }
+
+    isLoading = false;
   }
 
-  function navigateBack(index: number) {
-    currentPath = currentPath.slice(0, index + 1);
-    loadFolders(currentPath[currentPath.length - 1].id);
+  async function loadSharedDrives() {
+    isLoading = true;
+    errorMessage = null;
+
+    const result = await gdriveService.listSharedDrives(GOOGLE_CLIENT_ID);
+
+    folders = result.folders;
+    if (result.error) {
+      errorMessage = result.error;
+    }
+
+    isLoading = false;
+  }
+
+  function switchSection(section: RootSection) {
+    activeSection = section;
+    activeDriveId = undefined;
+
+    if (section === 'my-drive') {
+      currentPath = [{ id: 'root', name: 'Mi Unidad' }];
+      loadFolders('root');
+    } else if (section === 'starred') {
+      currentPath = [{ id: 'starred', name: 'Destacados' }];
+      loadStarred();
+    } else {
+      currentPath = [{ id: 'shared', name: 'Compartidas' }];
+      loadSharedDrives();
+    }
+  }
+
+  function navigateTo(folder: FolderItem) {
+    if (activeSection === 'shared' && isAtRoot) {
+      activeDriveId = folder.id;
+      currentPath = [{ id: 'shared', name: 'Compartidas' }, folder];
+      loadFolders(folder.id, folder.id);
+    } else if (activeSection === 'starred' && isAtRoot) {
+      activeDriveId = undefined;
+      currentPath = [{ id: 'starred', name: 'Destacados' }, folder];
+      loadFolders(folder.id);
+    } else {
+      currentPath = [...currentPath, folder];
+      loadFolders(folder.id, activeDriveId);
+    }
+  }
+
+   function navigateBack(index: number) {
+     currentPath = currentPath.slice(0, index + 1);
+     const target = currentPath[currentPath.length - 1];
+
+     if (index === 0) {
+       if (activeSection === 'starred') {
+         loadStarred();
+       } else if (activeSection === 'shared') {
+         activeDriveId = undefined;
+         loadSharedDrives();
+       } else {
+         loadFolders('root');
+       }
+     } else {
+       loadFolders(target.id, activeDriveId);
+     }
+   }
+
+   async function createNewFolder() {
+     if (!newFolderName.trim()) return;
+     
+     isCreatingFolder = true;
+     errorMessage = null;
+     
+     try {
+       const parentId = currentFolder.id;
+       const driveId = activeSection === 'shared' && isAtRoot ? activeDriveId : undefined;
+       
+       const result = await gdriveService.createFolder(
+         GOOGLE_CLIENT_ID, 
+         newFolderName.trim(), 
+         parentId, 
+         driveId
+       );
+       
+       if (result.error) {
+         errorMessage = result.error;
+       } else {
+         // Navigate to the newly created folder
+         if (result.folder) {
+           navigateTo(result.folder);
+         }
+         // Reset form
+         newFolderName = '';
+       }
+     } catch (error) {
+       errorMessage = error instanceof Error ? error.message : 'Error al crear la carpeta';
+     } finally {
+       isCreatingFolder = false;
+     }
+   }
+
+  function retryLoad() {
+    const target = currentFolder;
+    if (isAtRoot) {
+      switchSection(activeSection);
+    } else {
+      loadFolders(target.id, activeDriveId);
+    }
   }
 
   function handleSelect() {
-    onSelect(currentFolder.id === 'root' ? null : currentFolder);
+    if (currentFolder.id === 'root' || currentFolder.id === 'starred' || currentFolder.id === 'shared') {
+      onSelect(null);
+    } else {
+      onSelect(currentFolder);
+    }
   }
+
+  const sections: { id: RootSection; label: string; icon: typeof HardDrive }[] = [
+    { id: 'my-drive', label: 'Mi Unidad', icon: HardDrive },
+    { id: 'starred', label: 'Destacados', icon: Star },
+    { id: 'shared', label: 'Compartidas', icon: Users },
+  ];
 
   onMount(() => {
     loadFolders('root');
@@ -76,6 +206,19 @@
       </button>
     </div>
 
+    <!-- Section Tabs -->
+    <div class="px-4 py-2 bg-white/5 border-b border-[rgb(var(--card-border))] flex gap-1">
+      {#each sections as section}
+        <button
+          onclick={() => switchSection(section.id)}
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors {activeSection === section.id ? 'bg-blue-500/15 text-blue-500' : 'text-[rgb(var(--text-secondary))] hover:bg-white/5'}"
+        >
+          <section.icon class="w-3.5 h-3.5" />
+          {section.label}
+        </button>
+      {/each}
+    </div>
+
     <!-- Breadcrumbs -->
     <div class="px-6 py-3 bg-white/5 border-b border-[rgb(var(--card-border))] flex items-center gap-2 overflow-x-auto no-scrollbar">
       {#each currentPath as folder, i}
@@ -96,30 +239,89 @@
       {#if isLoading}
         <div class="flex flex-col items-center justify-center py-20 gap-4">
           <Loader2 class="w-10 h-10 text-blue-500 animate-spin" />
-          <p class="text-[rgb(var(--text-secondary))] animate-pulse">Cargando carpetas...</p>
+          <p class="text-[rgb(var(--text-secondary))] animate-pulse">Conectando con Google Drive...</p>
         </div>
-      {:else if folders.length === 0}
-        <div class="flex flex-col items-center justify-center py-20 text-center px-8">
-          <FolderPlus class="w-16 h-16 text-[rgb(var(--text-muted))] mb-4 opacity-20" />
-          <p class="text-[rgb(var(--text-primary))] font-medium">No hay subcarpetas aquí</p>
-          <p class="text-sm text-[rgb(var(--text-secondary))] mt-1">Puedes guardar el reporte en esta ubicación actual.</p>
-        </div>
-      {:else}
-        {#each folders as folder}
+      {:else if errorMessage}
+        <div class="flex flex-col items-center justify-center py-16 text-center px-8 gap-4">
+          <div class="p-3 rounded-full bg-red-500/10">
+            <AlertTriangle class="w-10 h-10 text-red-500" />
+          </div>
+          <div>
+            <p class="text-[rgb(var(--text-primary))] font-semibold">Error al cargar carpetas</p>
+            <p class="text-sm text-[rgb(var(--text-secondary))] mt-1 max-w-xs">{errorMessage}</p>
+          </div>
           <button
-            onclick={() => navigateTo(folder)}
-            class="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all group"
+            onclick={retryLoad}
+            class="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500/10 text-blue-500 font-medium hover:bg-blue-500/20 transition-colors"
           >
-            <div class="flex items-center gap-4">
-              <div class="w-10 h-10 rounded-xl bg-blue-500/5 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
-                <Folder class="w-5 h-5" />
-              </div>
-              <span class="font-medium text-[rgb(var(--text-primary))]">{folder.name}</span>
-            </div>
-            <ChevronRight class="w-5 h-5 text-[rgb(var(--text-muted))] opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1" />
+            <RefreshCw class="w-4 h-4" />
+            Reintentar
           </button>
-        {/each}
-      {/if}
+        </div>
+       {:else if folders.length === 0}
+         <div class="flex flex-col items-center justify-center py-20 text-center px-8">
+           <FolderPlus class="w-16 h-16 text-[rgb(var(--text-muted))] mb-4 opacity-20" />
+           {#if activeSection === 'starred' && isAtRoot}
+             <p class="text-[rgb(var(--text-primary))] font-medium">Sin carpetas destacadas</p>
+             <p class="text-sm text-[rgb(var(--text-secondary))] mt-1">Marca carpetas con estrella en Google Drive para verlas aquí.</p>
+           {:else if activeSection === 'shared' && isAtRoot}
+             <p class="text-[rgb(var(--text-primary))] font-medium">Sin unidades compartidas</p>
+             <p class="text-sm text-[rgb(var(--text-secondary))] mt-1">No tienes acceso a unidades compartidas.</p>
+           {:else}
+             <p class="text-[rgb(var(--text-primary))] font-medium">No hay subcarpetas aquí</p>
+             <p class="text-sm text-[rgb(var(--text-secondary))] mt-1">Puedes guardar el reporte en esta ubicación actual.</p>
+           {/if}
+         </div>
+       {:else}
+         <!-- New Folder Form -->
+         {#if !isCreatingFolder}
+           <div class="flex items-center gap-2 px-2 mb-4">
+             <input
+               type="text"
+               bind:value={newFolderName}
+               placeholder="Nombre de nueva carpeta..."
+               class="flex-1 px-3 py-2 rounded-lg border focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+               style="background-color: rgb(var(--bg-secondary)); border-color: rgb(var(--border-primary)); color: rgb(var(--text-primary));"
+               onkeydown={(e) => e.key === 'Enter' && createNewFolder()}
+             />
+              <button
+                onclick={createNewFolder}
+                disabled={!newFolderName.trim()}
+                class="px-3 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style="background-color: rgb(99, 102, 241); color: white"
+              >
+                <FolderPlus class="w-4 h-4" />
+                Crear carpeta
+              </button>
+           </div>
+         {/if}
+         {#if isCreatingFolder}
+           <div class="flex items-center justify-center py-2">
+             <Loader2 class="w-5 h-5 text-blue-500 animate-spin" />
+             <span class="ml-2 text-[rgb(var(--text-primary))]">Creando carpeta...</span>
+           </div>
+         {/if}
+         {#each folders as folder}
+           <button
+             onclick={() => navigateTo(folder)}
+             class="w-full flex items-center justify-between p-4 rounded-2xl hover:bg-white/5 border border-transparent hover:border-white/10 transition-all group"
+           >
+             <div class="flex items-center gap-4">
+               <div class="w-10 h-10 rounded-xl {activeSection === 'shared' && isAtRoot ? 'bg-purple-500/5 text-purple-400' : activeSection === 'starred' && isAtRoot ? 'bg-yellow-500/5 text-yellow-400' : 'bg-blue-500/5 text-blue-400'} flex items-center justify-center group-hover:scale-110 transition-transform">
+                 {#if activeSection === 'shared' && isAtRoot}
+                   <Users class="w-5 h-5" />
+                 {:else if activeSection === 'starred' && isAtRoot}
+                   <Star class="w-5 h-5" />
+                 {:else}
+                   <Folder class="w-5 h-5" />
+                 {/if}
+               </div>
+               <span class="font-medium text-[rgb(var(--text-primary))]">{folder.name}</span>
+             </div>
+             <ChevronRight class="w-5 h-5 text-[rgb(var(--text-muted))] opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1" />
+           </button>
+         {/each}
+       {/if}
     </div>
 
     <!-- Footer Action -->
@@ -132,7 +334,8 @@
       </button>
       <button
         onclick={handleSelect}
-        class="flex-[2] px-6 py-3 rounded-2xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
+        disabled={!!errorMessage}
+        class="flex-[2] px-6 py-3 rounded-2xl bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
       >
         <Check class="w-5 h-5" />
         Guardar en "{currentFolder.name}"

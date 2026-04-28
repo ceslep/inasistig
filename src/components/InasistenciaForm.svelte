@@ -848,9 +848,9 @@ let materiasSorted = $derived(
     >
       <!-- Botones de Acción -->
       <div class="flex flex-wrap justify-center lg:flex-col gap-3 w-full">
-        <button
-          on:click={openSheets}
-          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
+         <button
+           onclick={openSheets}
+           class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
           style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
           title="Abrir hoja de cálculo"
         >
@@ -863,7 +863,7 @@ let materiasSorted = $derived(
         <!-- Botón de Filtros -->
         <button
           id="filter-button-target"
-          on:click={openFilters}
+          onclick={openFilters}
           class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5 relative"
           style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
           title="Abrir Looker Studio"
@@ -883,7 +883,7 @@ let materiasSorted = $derived(
         <!-- Botón de Reportes Excel -->
         <button
           id="report-button-target"
-          on:click={openReportGenerator}
+          onclick={openReportGenerator}
           class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5 relative"
           style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
           title="Generar reportes Excel"
@@ -901,9 +901,9 @@ let materiasSorted = $derived(
         </button>
 
         <!-- Botón de Reporte Online -->
-        <button
-          on:click={openOnlineReport}
-          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
+         <button
+           onclick={openOnlineReport}
+           class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
           style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
           title="Ver reporte online"
         >
@@ -911,10 +911,10 @@ let materiasSorted = $derived(
           <span class="text-sm font-medium hidden lg:inline">Ver Online</span>
         </button>
 
-        <!-- Botón de Locker Studio -->
-        <button
-          on:click={openLocker}
-          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
+         <!-- Botón de Locker Studio -->
+         <button
+           onclick={openLocker}
+           class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
           style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
           title="Abrir Looker Studio"
         >
@@ -956,9 +956,9 @@ let materiasSorted = $derived(
               {INFO_INASISTENCIA}
             </p>
           </div>
-          <button
-            on:click={dismissInfoAlert}
-            class="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-green-100 dark:hover:bg-indigo-700 text-green-600 hover:text-green-800 dark:text-indigo-400 dark:hover:text-indigo-100 transition-colors"
+           <button
+             onclick={dismissInfoAlert}
+             class="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-green-100 dark:hover:bg-indigo-700 text-green-600 hover:text-green-800 dark:text-indigo-400 dark:hover:text-indigo-100 transition-colors"
             aria-label="Cerrar alerta"
           >
             <X class="w-4 h-4" />
@@ -988,7 +988,7 @@ let materiasSorted = $derived(
         colorTheme="green"
       />
 
-      <form on:submit={handleSubmit} class="space-y-6">
+       <form onsubmit={handleSubmit} class="space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="space-y-2">
             <label
@@ -1033,16 +1033,16 @@ let materiasSorted = $derived(
                   <div class="flex flex-col lg:flex-row lg:items-center gap-1 lg:gap-2 px-2 py-2 lg:py-1.5 rounded-lg border transition-all {isSelected ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-500' : 'border-transparent'}"
                     style="border-color: {isSelected ? '#6366f1' : styles.border};">
                     <div class="flex items-center gap-1.5">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        on:change={(e) => {
-                          if (e.currentTarget.checked) {
-                            selectedMaterias = [...selectedMaterias, { materia: materia.materia, horas: "" }];
-                          } else {
-                            selectedMaterias = selectedMaterias.filter(m => m.materia !== materia.materia);
-                          }
-                        }}
+                       <input
+                         type="checkbox"
+                         checked={isSelected}
+                         onchange={(e) => {
+                           if (e.currentTarget.checked) {
+                             selectedMaterias = [...selectedMaterias, { materia: materia.materia, horas: "" }];
+                           } else {
+                             selectedMaterias = selectedMaterias.filter(m => m.materia !== materia.materia);
+                           }
+                         }}
                         class="w-4 h-4 lg:w-5 lg:h-5 rounded text-indigo-500 focus:ring-indigo-500"
                         style="accent-color: #6366f1;"
                       />
@@ -1197,12 +1197,12 @@ let materiasSorted = $derived(
                             class={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${m.bgColor} ${m.textColor} ${m.borderColor} ${m.darkBgColor} ${m.darkTextColor} ${m.darkBorderColor}`}
                           >
                             <span class="mr-1.5">{m.icon}</span>
-                            {m.label}
-                            <button
-                              type="button"
-                              on:click={() =>
-                                removeInasistencia(estudiante.nombre, inas.motivo)}
-                              class="ml-1.5 hover:opacity-70 transition-opacity"
+                             {m.label}
+                             <button
+                               type="button"
+                               onclick={() =>
+                                 removeInasistencia(estudiante.nombre, inas.motivo)}
+                               class="ml-1.5 hover:opacity-70 transition-opacity"
                               aria-label="Eliminar motivo"
                             >
                               <svg
@@ -1240,11 +1240,11 @@ let materiasSorted = $derived(
                         })?.horas ||
                           individualHours[estudiante.nombre] ||
                           formData.horas}
-                        on:change={(e) =>
-                          handleIndividualHourChange(
-                            estudiante.nombre,
-                            e.currentTarget.value,
-                          )}
+                          onchange={(e) =>
+                            handleIndividualHourChange(
+                              estudiante.nombre,
+                              e.currentTarget.value,
+                            )}
                         disabled={!hasObligaHoras}
                         class="w-full appearance-none border rounded-lg px-4 py-2 pr-10 text-sm focus:ring-2 focus:ring-indigo-500 cursor-pointer transition-all outline-none"
                         style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
@@ -1279,7 +1279,7 @@ let materiasSorted = $derived(
                     <div class="relative w-full sm:w-56">
                       <select
                         value=""
-                        on:change={(e) => {
+                        onchange={(e) => {
                           handleInasistenciaChange(
                             estudiante.nombre,
                             e.currentTarget.value,
@@ -1325,7 +1325,7 @@ let materiasSorted = $derived(
                     <div class="flex items-center gap-2">
                       <button
                         type="button"
-                        on:click={() => toggleObservation(estudiante.nombre)}
+                         onclick={() => toggleObservation(estudiante.nombre)}
                         class="p-2 rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/5"
                         style="color: {studentInasistencias[0]?.observaciones
                           ? 'rgb(var(--text-primary))'
@@ -1354,7 +1354,7 @@ let materiasSorted = $derived(
                   <div class="px-4 pb-4 animate-fade-in">
                     <textarea
                       value={studentInasistencias[0]?.observaciones || ""}
-                      on:input={(e) =>
+                      oninput={(e) =>
                         handleIndividualObservationChange(
                           estudiante.nombre,
                           e.currentTarget.value,
@@ -1431,7 +1431,7 @@ let materiasSorted = $derived(
   </main>
 
   <button
-    on:click={handleSubmit}
+    onclick={handleSubmit}
     disabled={isLoading}
     class="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 bg-green-600 hover:bg-green-700 text-white p-4 lg:p-5 rounded-full shadow-2xl hover:shadow-green-500/20 transform transition-all duration-300 hover:scale-110 active:scale-95 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed z-50 group"
     title="Guardar inasistencias"
@@ -1524,11 +1524,11 @@ let materiasSorted = $derived(
         </p>
         <p class="text-[10px] mt-1 opacity-40" style="color: rgb(var(--text-secondary));">{lastSaved.timestamp}</p>
       </div>
-      <button
-        class="text-xs opacity-40 hover:opacity-100 transition-opacity"
-        style="color: rgb(var(--text-secondary));"
-        on:click={() => { lastSavedVisible = false; }}
-      >&times;</button>
+         <button
+           class="text-xs opacity-40 hover:opacity-100 transition-opacity"
+           style="color: rgb(var(--text-secondary));"
+           onclick={() => { lastSavedVisible = false; }}
+         >&times;</button>
     </div>
   </div>
 {/if}

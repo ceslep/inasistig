@@ -106,7 +106,9 @@ export function signOut(): void {
   localStorage.removeItem(DOCENTE_NAME_KEY)
   authUser.set(null)
   docenteName.set('')
-  google.accounts.id.disableAutoSelect()
+  if (typeof google !== 'undefined' && google?.accounts?.id) {
+    google.accounts.id.disableAutoSelect()
+  }
 }
 
 // Periodic token expiration check

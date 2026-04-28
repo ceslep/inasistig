@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import Swal from "sweetalert2";
   import {
     getDocentes,
     getMaterias,
@@ -40,7 +41,7 @@
   let diarioData: DiarioData[] = $state([]);
   let filteredData: DiarioData[] = $state([]);
 
-  let isLoading = false;
+  let isLoading = $state(false);
   let isLoadingData = $state(false);
 
   let docenteMaterias: Record<string, string[]> = $state(JSON.parse(
@@ -341,7 +342,17 @@
     const fileName = `reporte_diario_${selectedDocente || "todos"}_${selectedMateria || "todas"}_${selectedGrado || "todos"}_${new Date().toISOString().split("T")[0]}.pdf`;
     
     if (saveToDrive) {
-      pdfBlobToUpload = pdf.output("blob");
+      const blob = pdf.output("blob");
+      if (!blob || blob.size === 0) {
+        await Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'No se pudo generar el archivo PDF.',
+          confirmButtonColor: '#ef4444',
+        });
+        return;
+      }
+      pdfBlobToUpload = blob;
       pdfFileNameToUpload = fileName;
       showFolderPicker = true;
     } else {
