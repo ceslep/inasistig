@@ -10,7 +10,10 @@
   import { SPREADSHEET_ID_ANOTADOR, WORKSHEET_TITLE_ANOTADOR } from "../constants";
   import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
-  import { Download, X, FileText, User, BookOpen } from '@lucide/svelte';
+  import { Download, X, FileText, User, BookOpen, Cloud, Upload } from '@lucide/svelte';
+  import DriveFolderPicker from './DriveFolderPicker.svelte';
+  import { gdriveService } from '../lib/gdriveService';
+  import { GOOGLE_CLIENT_ID } from '../constants';
 
   // --- Props ---
   interface AnotadorFilterProps {
@@ -49,6 +52,9 @@
   let isLoading = $state(false);
   let isLoadingData = $state(false);
   let filtrarPorFecha = $state(false);
+  let showDrivePicker = $state(false);
+  let isSavingToDrive = $state(false);
+  let exportarSoloFiltrados = $state(true);
 
   // --- Filtros ---
   let filtros = $state({
@@ -462,9 +468,31 @@
     filtrarPorFecha = false;
   };
 
+  // --- Obtener datos a exportar según modo ---
+  const getDatosAExportar = () => {
+    if (exportarSoloFiltrados) {
+      return anotacionesFiltradas;
+    }
+    if (filtros.docente) {
+      return anotaciones.filter(i => i.docente === filtros.docente);
+    }
+    return anotaciones;
+  };
+
+  const getCountAExportar = () => {
+    if (exportarSoloFiltrados) {
+      return anotacionesFiltradas.length;
+    }
+    if (filtros.docente) {
+      return anotaciones.filter(i => i.docente === filtros.docente).length;
+    }
+    return anotaciones.length;
+  };
+
   // --- Exportar a CSV ---
   const exportarCSV = () => {
-    if (anotacionesFiltradas.length === 0) {
+    const datos = getDatosAExportar();
+    if (datos.length === 0) {
       Swal.fire({
         icon: "warning",
         title: "Sin datos",
@@ -492,7 +520,7 @@
 
     const csvContent = [
       headers.join(","),
-      ...anotacionesFiltradas.map((item) =>
+      ...datos.map((item) =>
         [
           esc(item.fecha),
           esc(item.docente),
@@ -510,14 +538,112 @@
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
+    const sufijo = exportarSoloFiltrados ? "" : "_todos";
     link.setAttribute(
       "download",
-      `anotaciones_${new Date().toISOString().split("T")[0]}.csv`,
+      `anotaciones${sufijo}_${new Date().toISOString().split("T")[0]}.csv`,
     );
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // --- Guardar en Google Drive ---
+  const guardarEnDrive = () => {
+    const datos = getDatosAExportar();
+    if (datos.length === 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Sin datos",
+        text: "No hay datos para guardar",
+        confirmButtonColor: "#f59e0b",
+      });
+      return;
+    }
+    showDrivePicker = true;
+  };
+
+  const handleDriveFolderSelect = async (folder: { id: string; name: string } | null) => {
+    if (!folder) {
+      showDrivePicker = false;
+      return;
+    }
+
+    isSavingToDrive = true;
+    showDrivePicker = false;
+
+    try {
+      const headers = [
+        "Fecha",
+        "Docente",
+        "Materia",
+        "Grado",
+        "Horas",
+        "Anotación",
+        "Observación",
+      ];
+
+      const esc = (v: string | number) => {
+        const s = String(v ?? '')
+        return s.includes(',') || s.includes('"') || s.includes('\n')
+          ? `"${s.replace(/"/g, '""')}"` : s
+      }
+
+      const datos = getDatosAExportar();
+      const csvContent = [
+        headers.join(","),
+        ...datos.map((item) =>
+          [
+            esc(item.fecha),
+            esc(item.docente),
+            esc(item.materia),
+            esc(item.grado),
+            esc(item.horas),
+            esc(item.anotacion),
+            esc(item.observacion),
+          ].join(","),
+        ),
+      ].join("\n");
+
+      const bom = '\uFEFF'
+      const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
+      const sufijo = exportarSoloFiltrados ? "" : "_todos";
+      const fileName = `anotaciones${sufijo}_${new Date().toISOString().split("T")[0]}.csv`;
+
+      const result = await gdriveService.uploadFile(
+        blob,
+        fileName,
+        "text/csv",
+        GOOGLE_CLIENT_ID,
+        folder.id
+      );
+
+      if (result.success) {
+        await Swal.fire({
+          icon: "success",
+          title: "Guardado",
+          text: `Archivo guardado en: ${folder.name}`,
+          confirmButtonColor: "#10b981",
+        });
+      } else {
+        await Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: result.error || "No se pudo guardar el archivo",
+          confirmButtonColor: "#ef4444",
+        });
+      }
+    } catch (error) {
+      await Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo guardar el archivo en Drive",
+        confirmButtonColor: "#ef4444",
+      });
+    } finally {
+      isSavingToDrive = false;
+    }
   };
 
   // --- Formatear fecha ---
@@ -581,14 +707,43 @@
           </p>
         </div>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
+        <!-- Toggle modo de exportación -->
+        <div class="flex items-center gap-1 text-xs bg-zinc-100 dark:bg-zinc-800 rounded-lg p-0.5">
+          <button
+            onclick={() => exportarSoloFiltrados = true}
+            class="px-2 py-1 rounded transition-all {exportarSoloFiltrados ? 'bg-indigo-600 text-white' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}"
+          >
+            Filtrados ({getCountAExportar()})
+          </button>
+          <button
+            onclick={() => exportarSoloFiltrados = false}
+            class="px-2 py-1 rounded transition-all {!exportarSoloFiltrados ? 'bg-indigo-600 text-white' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}"
+            title={filtros.docente ? `Todos los registros del docente (${getCountAExportar()})` : `Todos los registros (${getCountAExportar()})`}
+          >
+            Todos
+          </button>
+        </div>
+        <button
+          onclick={guardarEnDrive}
+          class="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+          disabled={getCountAExportar() === 0 || isSavingToDrive}
+        >
+          {#if isSavingToDrive}
+            <Upload class="w-4 h-4 animate-pulse" />
+            Guardando...
+          {:else}
+            <Cloud class="w-4 h-4" />
+            Drive
+          {/if}
+        </button>
         <button
           onclick={exportarCSV}
-          class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
-          disabled={anotacionesFiltradas.length === 0}
+          class="inline-flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
+          disabled={getCountAExportar() === 0}
         >
           <Download class="w-4 h-4" />
-          Exportar CSV
+          CSV
         </button>
         <button
           onclick={onClose}
@@ -1039,5 +1194,13 @@
         </div>
       {/if}
     </div>
+
+    <!-- Drive Folder Picker -->
+    {#if showDrivePicker}
+      <DriveFolderPicker
+        onSelect={handleDriveFolderSelect}
+        onClose={() => showDrivePicker = false}
+      />
+    {/if}
   </div>
 </div>

@@ -1,5 +1,4 @@
 import { writable } from 'svelte/store';
-import Swal from 'sweetalert2';
 
 import { ensureGisLoaded } from './utils';
 
@@ -245,21 +244,21 @@ export const gdriveService = {
        return { files: [], error: tokenResult.message };
      }
 
-     try {
-       let query = `name = "${fileName.replace(/"/g, '\\"')}" and trashed = false`;
-       if (folderId) {
-         query += ` and '${folderId}' in parents`;
-       }
-       if (driveId) {
-         query += ` and driveId = "${driveId}" and corpora = drive`;
-       } else {
-         query += ` and corpora = allDrives`;
-       }
+try {
+        let query = `name = "${fileName.replace(/"/g, '\\"')}" and trashed = false`;
+        if (folderId) {
+          query += ` and '${folderId}' in parents`;
+        }
 
-       const response = await fetch(
-         `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&includeItemsFromAllDrives=true&supportsAllDrives=true`,
-         { headers: { Authorization: `Bearer ${tokenResult.token}` } },
-       );
+        let url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)`;
+        
+        if (driveId) {
+          url += `&driveId=${encodeURIComponent(driveId)}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true`;
+        } else if (folderId) {
+          url += `&supportsAllDrives=true`;
+        }
+
+        const response = await fetch(url, { headers: { Authorization: `Bearer ${tokenResult.token}` } });
 
        if (!response.ok) {
          const errorBody = await response.json().catch(() => ({}));
@@ -341,84 +340,67 @@ export const gdriveService = {
      }
    },
 
-   async uploadFile(
-     blob: Blob,
-     fileName: string,
-     mimeType: string,
-     clientId: string,
-     folderId?: string,
-   ) {
-     isUploading.set(true);
-     try {
-       const tokenResult = await this.getAccessToken(clientId);
-       if (!tokenResult.token) {
-         throw new Error(tokenResult.message || 'No se pudo obtener el token de acceso');
-       }
+async uploadFile(
+      blob: Blob,
+      fileName: string,
+      mimeType: string,
+      clientId: string,
+      folderId?: string,
+    ): Promise<{ success: boolean; fileId?: string; error?: string }> {
+      isUploading.set(true);
+      try {
+        const tokenResult = await this.getAccessToken(clientId);
+        if (!tokenResult.token) {
+          return { success: false, error: tokenResult.message || 'No se pudo obtener el token de acceso' };
+        }
 
-       // Check if file with same name already exists in the target folder
-       const existingFiles = await this.listFilesByNameInFolder(clientId, fileName, folderId);
-       if (existingFiles.error) {
-         throw new Error(existingFiles.error);
-       }
+        const existingFiles = await this.listFilesByNameInFolder(clientId, fileName, folderId);
+        if (existingFiles.error) {
+          return { success: false, error: existingFiles.error };
+        }
 
-       // If file exists, delete it first
-       if (existingFiles.files.length > 0) {
-         const fileId = existingFiles.files[0].id;
-         await this.deleteFile(clientId, fileId);
-       }
+        if (existingFiles.files.length > 0) {
+          const fileId = existingFiles.files[0].id;
+          await this.deleteFile(clientId, fileId);
+        }
 
-       const metadata: { name: string; mimeType: string; parents?: string[] } = {
-         name: fileName,
-         mimeType: mimeType,
-       };
+        const metadata: { name: string; mimeType: string; parents?: string[] } = {
+          name: fileName,
+          mimeType: mimeType,
+        };
 
-       if (folderId) {
-         metadata.parents = [folderId];
-       }
+        if (folderId) {
+          metadata.parents = [folderId];
+        }
 
-       const form = new FormData();
-       form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-       form.append('file', blob);
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+        form.append('file', blob);
 
-       const response = await fetch(
-         'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true',
-         {
-           method: 'POST',
-           headers: { Authorization: `Bearer ${tokenResult.token}` },
-           body: form,
-         },
-       );
+        const response = await fetch(
+          'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true',
+          {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${tokenResult.token}` },
+            body: form,
+          },
+        );
 
-       if (!response.ok) {
-         const error: { error?: { message?: string } } = await response.json().catch(() => ({}));
-         throw new Error(error?.error?.message || 'Error al subir a Google Drive');
-       }
+        if (!response.ok) {
+          const error: { error?: { message?: string } } = await response.json().catch(() => ({}));
+          return { success: false, error: error?.error?.message || 'Error al subir a Google Drive' };
+        }
 
-       const result: { id: string } = await response.json();
-
-       await Swal.fire({
-         icon: 'success',
-         title: '¡Guardado en Drive!',
-         text: `El reporte "${fileName}" se ha guardado correctamente.`,
-         confirmButtonColor: '#4f46e5',
-         footer: `<a href="https://drive.google.com/file/d/${result.id}/view" target="_blank" style="color: #6366f1; font-weight: 600;">Ver archivo en Drive</a>`,
-       });
-
-       return result;
-     } catch (error: unknown) {
-       const message = error instanceof Error ? error.message : 'No se pudo guardar el archivo en tu unidad.';
-       console.error('GDrive Error:', error);
-       Swal.fire({
-         icon: 'error',
-         title: 'Error de Drive',
-         text: message,
-         confirmButtonColor: '#ef4444',
-       });
-       return null;
-     } finally {
-       isUploading.set(false);
-     }
-   },
+        const result: { id: string } = await response.json();
+        return { success: true, fileId: result.id };
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'No se pudo guardar el archivo en tu unidad.';
+        console.error('GDrive Error:', error);
+        return { success: false, error: message };
+      } finally {
+        isUploading.set(false);
+      }
+    },
 
    async deleteFile(clientId: string, fileId: string): Promise<{ success: boolean; error?: string }> {
      const tokenResult = await this.getAccessToken(clientId);

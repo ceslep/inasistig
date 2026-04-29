@@ -11,7 +11,7 @@
   import { theme } from "../lib/themeStore";
   import eieLogo from "../assets/eie.png";
   import { loadPdfLibraries, escapeCsvField } from '../lib/utils';
-  import { FileText, Download, X, Filter, Calendar, User, BookOpen, Building, AlertTriangle, Printer } from '@lucide/svelte';
+  import { FileText, Download, X, Filter, Calendar, User, BookOpen, Building, AlertTriangle, Printer, GraduationCap, UserCheck, FileSpreadsheet, ChevronDown } from '@lucide/svelte';
 
   interface InasistenciaFilterProps {
     onClose: () => void;
@@ -61,6 +61,9 @@
   let pdfDataUrl: string | null = $state(null);
   let isGeneratingPdf = $state(false);
   let jsPDFInstance: any = $state(null);
+  
+  // --- Estado para panel de tips ---
+  let showTips = $state(false);
 
    // --- Filtros ---
    let filtros = $state({
@@ -933,55 +936,106 @@
     class="w-full max-w-7xl max-h-[95vh] bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
     style="background-color: {styles.cardBg};"
   >
-    <!-- Header -->
-    <div
-      class="flex items-center justify-between p-4 sm:p-5 border-b"
-      style="border-color: {styles.cardBorder};"
-    >
-      <div class="flex items-center gap-4">
-        <div class="p-2.5 sm:p-3 rounded-xl bg-indigo-100 dark:bg-indigo-900/50">
-          <FileText class="w-6 h-6 sm:w-7 sm:h-7 text-indigo-600 dark:text-indigo-400" />
+    <!-- Header Unificado con acciones -->
+    <div class="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-700 px-3 py-3 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <div class="p-1.5 rounded-lg bg-white/20 backdrop-blur">
+          <FileText class="w-4 h-4 text-white" />
         </div>
-        <div>
-          <h2 class="text-xl sm:text-2xl font-bold" style="color: {styles.text};">
+        <div class="min-w-0">
+          <h2 class="text-base font-semibold text-white truncate">
             Consultar Inasistencias
           </h2>
-          <p class="text-sm" style="color: {styles.label};">
+          <p class="text-[10px] text-indigo-100/70">
             {#if inasistenciasFiltradas.length > 0}
-              <span class="font-semibold text-indigo-600 dark:text-indigo-400">{inasistenciasFiltradas.length}</span> registros encontrados
+              {inasistenciasFiltradas.length} registros
             {:else}
-              Aplica filtros para buscar registros
+              Sin filtros
             {/if}
           </p>
         </div>
       </div>
-      <div class="flex items-center gap-2 sm:gap-3">
+      
+      <div class="flex items-center gap-1.5 flex-shrink-0">
         <button
-          onclick={exportarCSV}
-          class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shadow-sm hover:shadow-md font-medium text-sm"
-          disabled={inasistenciasFiltradas.length === 0}
+          onclick={(e) => { e.preventDefault(); e.stopPropagation(); showTips = !showTips; }}
+          class="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur text-white/80 hover:text-white transition-all"
         >
-          <Download class="w-4 h-4" />
-          <span class="hidden sm:inline">CSV</span>
+          <AlertTriangle class="w-3.5 h-3.5" />
         </button>
         <button
-          onclick={generarReportePDF}
-          class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all shadow-sm hover:shadow-md font-medium text-sm"
+          onclick={(e) => { e.preventDefault(); e.stopPropagation(); exportarCSV(); }}
+          class="px-2 py-1 rounded-lg bg-emerald-500/80 hover:bg-emerald-500 text-white text-xs font-medium transition-all disabled:opacity-50"
           disabled={inasistenciasFiltradas.length === 0}
         >
-          <FileText class="w-4 h-4" />
-          <span class="hidden sm:inline">PDF</span>
+          CSV
         </button>
         <button
-          onclick={onClose}
-          class="p-2.5 sm:p-3 rounded-xl transition-colors hover:bg-black/5 dark:hover:bg-white/10 border"
-          style="color: {styles.text}; border-color: {styles.border};"
+          onclick={(e) => { e.preventDefault(); e.stopPropagation(); generarReportePDF(); }}
+          class="px-2 py-1 rounded-lg bg-red-500/80 hover:bg-red-500 text-white text-xs font-medium transition-all disabled:opacity-50"
+          disabled={inasistenciasFiltradas.length === 0}
+        >
+          PDF
+        </button>
+        <button
+          onclick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }}
+          class="p-1 rounded-lg hover:bg-white/20 backdrop-blur transition-all"
           aria-label="Cerrar"
         >
-          <X class="w-5 h-5 sm:w-6 sm:h-6" />
+          <X class="w-3.5 h-3.5 text-white" />
         </button>
       </div>
     </div>
+
+    <!-- Panel de Tips -->
+    {#if showTips}
+      <div class="px-3 py-2 border-b bg-amber-500/5" style="border-color: {styles.cardBorder};">
+        <div class="flex flex-wrap gap-1.5 text-[10px] text-amber-700 dark:text-amber-400">
+          <span class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10">
+            <Filter class="w-2.5 h-2.5" />
+            Filtros
+          </span>
+          <span class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10">
+            <Calendar class="w-2.5 h-2.5" />
+            Fechas
+          </span>
+          <span class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10">
+            <Download class="w-2.5 h-2.5" />
+            CSV
+          </span>
+          <span class="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10">
+            <FileText class="w-2.5 h-2.5" />
+            PDF
+          </span>
+        </div>
+      </div>
+    {/if}
+
+    
+
+    <!-- Panel de Tips -->
+    {#if showTips}
+      <div class="px-4 py-3 border-b bg-amber-500/5" style="border-color: {styles.cardBorder};">
+        <div class="flex flex-wrap gap-2 text-xs text-amber-700 dark:text-amber-400">
+          <span class="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/10">
+            <Filter class="w-3 h-3" />
+            Usa múltiples filtros para refinar resultados
+          </span>
+          <span class="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/10">
+            <Calendar class="w-3 h-3" />
+            Rango de fechas: último mes por defecto
+          </span>
+          <span class="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/10">
+            <Download class="w-3 h-3" />
+            CSV: formato compatible con Excel
+          </span>
+          <span class="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/10">
+            <FileText class="w-3 h-3" />
+            PDF: reporte listo para imprimir
+          </span>
+        </div>
+      </div>
+    {/if}
 
     <!-- Contenido -->
     <div class="flex-1 overflow-y-auto">
@@ -995,34 +1049,34 @@
           </div>
         </div>
       {:else}
-        <!-- Filtros -->
-        <div class="p-4 sm:p-5 border-b space-y-4" style="border-color: {styles.cardBorder};">
-          <!-- Header de filtros -->
+<!-- Filtros -->
+        <div class="p-3 sm:p-4 border-b space-y-3" style="border-color: {styles.cardBorder};">
+          <!-- Header de filtros compacto -->
           <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-900/30">
-                <Filter class="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            <div class="flex items-center gap-2">
+              <div class="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30">
+                <Filter class="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               </div>
               <div>
-                <h3 class="text-lg font-semibold" style="color: {styles.text};">
-                  Filtros de búsqueda
+                <h3 class="text-base font-medium" style="color: {styles.text};">
+                  Filtros
                 </h3>
-                <p class="text-xs" style="color: {styles.label};">
+                <p class="text-[10px]" style="color: {styles.label};">
                   {#if filtros.docente || filtros.materia || filtros.grado || filtros.motivo || filtros.estudiante || (filtrarPorFecha && (filtros.fechaInicio || filtros.fechaFin))}
-                    <span class="text-indigo-600 dark:text-indigo-400 font-medium">Filtros activos</span>
+                    Activos
                   {:else}
-                    Sin filtros aplicados
+                    Sin aplicar
                   {/if}
                 </p>
               </div>
             </div>
               <button
                 onclick={limpiarFiltros}
-                class="text-sm px-4 py-2 rounded-xl border-2 transition-all hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300 dark:hover:border-red-700"
+                class="text-xs px-3 py-1.5 rounded-lg border transition-all hover:bg-red-50 dark:hover:bg-red-900/20"
               style="border-color: {styles.border}; color: {styles.text};"
             >
-              <span class="flex items-center gap-1.5">
-                <X class="w-4 h-4" />
+              <span class="flex items-center gap-1">
+                <X class="w-3 h-3" />
                 Limpiar
               </span>
             </button>
@@ -1365,20 +1419,23 @@
       </div>
     </div>
 
-  <!-- Modal de Vista Previa PDF -->
+<!-- Modal de Vista Previa PDF -->
   {#if showPdfModal}
     <div
       class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="pdf-modal-title"
-       tabindex="-1"
-       onclick={cerrarPdfModal}
-       onkeydown={(e: KeyboardEvent) => e.key === 'Escape' && cerrarPdfModal()}
+      tabindex="-1"
+      onclick={(e: MouseEvent) => { if (e.target === e.currentTarget) cerrarPdfModal() }}
+      onkeydown={(e: KeyboardEvent) => e.key === 'Escape' && cerrarPdfModal()}
     >
       <div
         class="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden shadow-2xl border flex flex-col"
         style="background-color: {styles.cardBg}; border-color: {styles.cardBorder};"
+        role="document"
+        onclick={(e: MouseEvent) => e.stopPropagation()}
+        onkeydown={(e: KeyboardEvent) => e.stopPropagation()}
       >
         <!-- Header -->
         <div class="flex items-center justify-between p-3 sm:p-4 border-b flex-shrink-0" style="border-color: {styles.cardBorder};">
