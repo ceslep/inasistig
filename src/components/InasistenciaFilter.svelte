@@ -1433,7 +1433,7 @@
       <div
         class="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden shadow-2xl border flex flex-col"
         style="background-color: {styles.cardBg}; border-color: {styles.cardBorder};"
-        role="document"
+        role="presentation"
         onclick={(e: MouseEvent) => e.stopPropagation()}
         onkeydown={(e: KeyboardEvent) => e.stopPropagation()}
       >

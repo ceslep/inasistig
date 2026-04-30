@@ -27,8 +27,7 @@ npm run deploy     # Build + deploy to GitHub Pages
 - Planeador: localStorage drafts (max 100) with JSON import/export
 
 ## Version Updates
-**Both** `src/version.ts` **and** `public/version.json` must be updated on deploy.
-Current: src/version.ts = 1.0.17, public/version.json = 1.0.7 (needs sync)
+**Both** `src/version.ts` (APP_VERSION const) **and** `public/version.json` (`version` field) must match on deploy.
 
 ## Large Components (navigate carefully)
 - `ClassPlannerForm.svelte` (~10,800 lines)

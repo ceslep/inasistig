@@ -44,19 +44,26 @@
     }[];
   }
 
-  let docentes: string[] = [];
-  let materias: { materia: string }[] = [];
-  let estudiantes: { nombre: string; grado: number | string }[] = [];
+  let docentes = $state<string[]>([]);
+  let materias = $state<{ materia: string }[]>([]);
+  let estudiantes = $state<{ nombre: string; grado: number | string }[]>([]);
   
-  let selectedDocente = initialDocente || "";
-  let selectedMateria = "";
-  let selectedGrado = "";
-  let selectedPeriodo = periodos[0].nombre;
+  let selectedDocente = $state("");
+  let selectedMateria = $state("");
+  let selectedGrado = $state("");
+  let selectedPeriodo = $state(periodos[0].nombre);
 
-  let isLoading = false;
-  let isGenerating = false;
-  let reportData: ReportData | null = null;
+  let isLoading = $state(false);
+  let isGenerating = $state(false);
+  let reportData = $state<ReportData | null>(null);
   let showTips = $state(true);
+
+  // Sincronizar initialDocente con selectedDocente
+  $effect(() => {
+    if (initialDocente) {
+      selectedDocente = initialDocente;
+    }
+  });
 
   const normalizeFecha = (fecha: string): string => {
     if (!fecha) return "";
@@ -402,7 +409,7 @@
             >
               Cancelar
             </button>
-            <button
+<button
               onclick={generateReport}
               disabled={isGenerating || !selectedDocente || !selectedMateria || !selectedGrado}
               class="flex-[2] group relative overflow-hidden px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold transition-all hover:shadow-lg hover:shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -412,10 +419,11 @@
                 {#if isGenerating}
                   <Loader2 class="animate-spin h-4 w-4" />
                   Generando...
-              {:else}
-                <Eye class="w-5 h-5" />
-                Ver Reporte
-              {/if}
+                {:else}
+                  <Eye class="w-5 h-5" />
+                  Ver Reporte
+                {/if}
+              </div>
             </button>
           </div>
         {:else}

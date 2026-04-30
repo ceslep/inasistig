@@ -1,8 +1,9 @@
 <script lang="ts">
   import { fade, scale } from 'svelte/transition';
-  import { CheckCircle2, XCircle, Loader2, FileSpreadsheet, Cloud, Sparkles } from '@lucide/svelte';
+  import { CheckCircle2, XCircle, Loader2, FileSpreadsheet, Cloud, Sparkles, FileText } from '@lucide/svelte';
 
   type Phase = 'idle' | 'generating' | 'uploading' | 'done';
+  type FileType = 'pdf' | 'excel';
 
   interface Props {
     phase: Phase;
@@ -11,11 +12,15 @@
     currentFile: string;
     successCount: number;
     failedCount: number;
+    fileType?: FileType;
   }
 
-  let { phase, current, total, currentFile, successCount, failedCount }: Props = $props();
+  let { phase, current, total, currentFile, successCount, failedCount, fileType = 'excel' }: Props = $props();
 
   const phaseConfig = $derived(() => {
+    const fileLabel = fileType === 'pdf' ? 'PDF' : 'Excel';
+    const fileLabelLower = fileType === 'pdf' ? 'PDF' : 'Excel';
+    
     switch (phase) {
       case 'idle':
         return {
@@ -28,9 +33,9 @@
         };
       case 'generating':
         return {
-          icon: FileSpreadsheet,
+          icon: fileType === 'pdf' ? FileText : FileSpreadsheet,
           title: 'Generando reportes',
-          subtitle: 'Creando archivos Excel...',
+          subtitle: `Creando archivos ${fileLabelLower}...`,
           color: 'text-green-500',
           bgColor: 'bg-green-500/10',
           progressColor: 'from-green-400 to-emerald-500'
@@ -74,8 +79,13 @@
             <Sparkles class="w-10 h-10 text-amber-500" />
           </div>
         {:else}
-          <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-green-500/10 flex items-center justify-center">
-            <CheckCircle2 class="w-10 h-10 text-green-500" />
+          <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-blue-500/10 flex items-center justify-center">
+            <svg class="w-10 h-10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12.001 2C8.90102 2 6.00102 4.9 6.00102 8L6.00102 16C6.00102 19.1 8.90102 22 12.001 22H16.001C19.101 22 22.001 19.1 22.001 16V8C22.001 4.9 19.101 2 16.001 2H12.001Z" fill="#4285F4"/>
+              <path d="M16.001 14L12.001 18L8.00102 14" fill="#FBBC05"/>
+              <path d="M12.001 10L8.00102 6L12.001 10Z" fill="#34A853"/>
+              <path d="M12.001 10L16.001 6L12.001 10Z" fill="#EA4335"/>
+            </svg>
           </div>
         {/if}
       {:else}

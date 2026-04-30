@@ -214,15 +214,28 @@
     activeSection = favoriteFolder.section;
     activeDriveId = undefined;
     
+    // Establecer el path incluyendo la carpeta favorita
     if (favoriteFolder.section === 'my-drive') {
-      currentPath = [{ id: 'root', name: 'Mi Unidad' }];
-      loadFolders('root');
+      currentPath = [
+        { id: 'root', name: 'Mi Unidad' },
+        { id: favoriteFolder.id, name: favoriteFolder.name }
+      ];
+      loadFolders(favoriteFolder.id);
     } else if (favoriteFolder.section === 'starred') {
-      currentPath = [{ id: 'starred', name: 'Destacados' }];
-      loadStarred();
+      currentPath = [
+        { id: 'starred', name: 'Destacados' },
+        { id: favoriteFolder.id, name: favoriteFolder.name }
+      ];
+      loadFolders(favoriteFolder.id);
     } else {
-      currentPath = [{ id: 'shared', name: 'Compartidas' }];
-      loadSharedDrives();
+      // Para unidades compartidas, el favorito puede ser la unidad o una carpeta dentro
+      // Asumimos que es una carpeta dentro de una unidad compartida
+      currentPath = [
+        { id: 'shared', name: 'Compartidas' },
+        { id: favoriteFolder.id, name: favoriteFolder.name }
+      ];
+      // Cargar como contenido de la carpeta favorita (no como unidad raíz)
+      loadFolders(favoriteFolder.id);
     }
   }
 
@@ -237,6 +250,7 @@
 <div
   class="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[100] p-4"
   transition:fade={{ duration: 200 }}
+  role="presentation"
   onclick={(e) => e.stopPropagation()}
   onkeydown={(e) => e.stopPropagation()}
 >

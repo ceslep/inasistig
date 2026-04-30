@@ -9,15 +9,16 @@
   import { getDocenteNumber, loadPdfLibraries } from '../lib/utils';
   import Loader from "./Loader.svelte";
   import { theme } from "../lib/themeStore";
-  import { FileText, X, Filter, Loader2, Download, Cloud } from '@lucide/svelte';
+  import { FileText, X, Filter, Loader2, Download, Cloud, Sparkles } from '@lucide/svelte';
   import {
     SPREADSHEET_ID_ANOTADOR,
     WORKSHEET_TITLE_ANOTADOR,
     GOOGLE_CLIENT_ID,
   } from "../constants";
   import { gdriveService, isUploading } from "../lib/gdriveService";
-  import DriveFolderPicker from "./DriveFolderPicker.svelte";
-  import Swal from "sweetalert2";
+import DriveFolderPicker from "./DriveFolderPicker.svelte";
+import UploadProgressModal from "./UploadProgressModal.svelte";
+import Swal from "sweetalert2";
   import eieLogo from "../assets/eie.png";
 
   let { onClose, initialDocente = "" }: { onClose: () => void; initialDocente?: string } = $props();
@@ -49,9 +50,26 @@
     localStorage.getItem("docenteMaterias") || "{}",
   ));
 
-  let selectedDocente = $state("");
-  let selectedMateria = $state("");
-  let selectedGrado = $state("");
+let selectedDocente = $state("");
+    let selectedMateria = $state("");
+    let selectedGrado = $state("");
+
+    // Estado para carga automática de datos
+    let autoLoaded = $state(false);
+    
+    // Estado para generar todos los reportes
+    let isGeneratingAll = $state(false);
+    let generatedPDFs = $state<Array<{blob: Blob; fileName: string; grado: string}>>([]);
+    
+    // Estado para progreso de upload
+    type UploadPhase = 'idle' | 'generating' | 'uploading' | 'done';
+    let uploadPhase = $state<UploadPhase>('idle');
+    let uploadCurrent = $state(0);
+    let uploadTotal = $state(0);
+    let uploadCurrentFile = $state('');
+    let uploadSuccessCount = $state(0);
+    let uploadFailedCount = $state(0);
+    let showUploadProgress = $state(false);
 
   const saveMateriaForDocente = (docente: string, materia: string): void => {
     if (!docente || !materia) return;
@@ -268,9 +286,28 @@
     console.log("✅ Registros filtrados:", filteredData.length);
   };
 
-  const handleFilter = () => {
-    loadAnotadorData();
-  };
+  // Cargar datos automáticamente cuando cambia el docente
+    $effect(() => {
+      if (selectedDocente && !autoLoaded) {
+        loadAnotadorData();
+        autoLoaded = true;
+      }
+    });
+
+    // Recargar datos cuando cambian los filtros después de la carga inicial
+    $effect(() => {
+      if (autoLoaded && (selectedMateria || selectedGrado)) {
+        // Debounce para no recargar en cada keystroke
+        const timeout = setTimeout(() => {
+          loadAnotadorData();
+        }, 500);
+        return () => clearTimeout(timeout);
+      }
+    });
+
+    const handleFilter = () => {
+      loadAnotadorData();
+    };
 
   const handleClearFilters = () => {
     selectedDocente = "";
@@ -473,7 +510,10 @@
       },
     });
 
-    const fileName = `reporte_anotaciones_${selectedDocente || "todos"}_${selectedMateria || "todas"}_${selectedGrado || "todos"}_${new Date().toISOString().split("T")[0]}.pdf`;
+    const fileNameParts = [selectedDocente];
+    if (selectedMateria) fileNameParts.push(selectedMateria);
+    if (selectedGrado) fileNameParts.push(selectedGrado);
+    const fileName = `reporte_anotaciones_${fileNameParts.join("_")}.pdf`;
 
     if (saveToDrive) {
       const blob = pdf.output("blob");
@@ -490,11 +530,342 @@
   };
 
   const handleFolderSelected = async (folder: { id: string; name: string } | null) => {
-    if (!pdfBlobToUpload) return;
     showFolderPicker = false;
-    await gdriveService.uploadFile(pdfBlobToUpload, pdfFileNameToUpload, "application/pdf", GOOGLE_CLIENT_ID, folder?.id);
-    pdfBlobToUpload = null;
-    pdfFileNameToUpload = "";
+    showUploadProgress = true;
+    uploadSuccessCount = 0;
+    uploadFailedCount = 0;
+
+    // Handle single file upload (legacy)
+    if (generatedPDFs.length === 0) {
+      if (!pdfBlobToUpload) {
+        showUploadProgress = false;
+        return;
+      }
+
+      uploadPhase = 'uploading';
+      uploadCurrent = 1;
+      uploadTotal = 1;
+      uploadCurrentFile = pdfFileNameToUpload;
+
+      const result = await gdriveService.uploadFile(
+        pdfBlobToUpload,
+        pdfFileNameToUpload,
+        "application/pdf",
+        GOOGLE_CLIENT_ID,
+        folder?.id
+      );
+
+      if (result.success) {
+        uploadSuccessCount = 1;
+      } else {
+        uploadFailedCount = 1;
+      }
+
+      uploadPhase = 'done';
+      pdfBlobToUpload = null;
+      pdfFileNameToUpload = "";
+
+      await Swal.fire({
+        icon: uploadFailedCount > 0 ? "warning" : "success",
+        title: uploadFailedCount > 0 ? "Archivo con problemas" : "Guardado en Drive",
+        text: uploadFailedCount > 0 
+          ? `El archivo no se pudo guardar: ${result.error}` 
+          : "El reporte se ha guardado exitosamente en Google Drive.",
+        confirmButtonColor: "#3b82f6",
+      });
+      showUploadProgress = false;
+      return;
+    }
+
+    // Handle multiple file uploads
+    uploadPhase = 'uploading';
+    uploadTotal = generatedPDFs.length;
+
+    for (let i = 0; i < generatedPDFs.length; i++) {
+      const report = generatedPDFs[i];
+      uploadCurrent = i + 1;
+      uploadCurrentFile = report.fileName;
+
+      const result = await gdriveService.uploadFile(
+        report.blob,
+        report.fileName,
+        "application/pdf",
+        GOOGLE_CLIENT_ID,
+        folder?.id
+      );
+
+      if (result.success) {
+        uploadSuccessCount++;
+      } else {
+        uploadFailedCount++;
+      }
+    }
+
+    uploadPhase = 'done';
+
+    await Swal.fire({
+      icon: uploadFailedCount > 0 ? "warning" : "success",
+      title: uploadFailedCount > 0 ? "Algunos archivos no se guardaron" : "Reportes guardados",
+      text: uploadFailedCount > 0
+        ? `Se guardaron ${uploadSuccessCount} de ${uploadTotal} reportes.`
+        : `Se guardaron exitosamente ${uploadSuccessCount} reportes en Google Drive.`,
+      confirmButtonColor: "#3b82f6",
+    });
+
+    generatedPDFs = [];
+    showUploadProgress = false;
+  };
+
+  // Función para generar reportes de todos los grados del docente
+  const generateAllReportsForDocente = async () => {
+    if (!selectedDocente) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Docente requerido",
+        text: "Por favor seleccione un docente.",
+      });
+      return;
+    }
+
+    isGeneratingAll = true;
+    generatedPDFs = [];
+    showUploadProgress = true;
+    uploadPhase = 'generating';
+    uploadCurrent = 0;
+    uploadTotal = filteredGrados.length;
+    uploadSuccessCount = 0;
+    uploadFailedCount = 0;
+
+    try {
+      const gradosDisponibles = filteredGrados;
+      
+      if (filteredGrados.length === 0) {
+        showUploadProgress = false;
+        throw new Error("No hay grados disponibles para este docente");
+      }
+
+      // Necesitamos cargar los datos de todos los grados
+      // Primero obtenemos todos los datos sin filtro de grado
+      const payload: Record<string, string> = {
+        spreadsheetId: SPREADSHEET_ID_ANOTADOR,
+        worksheetTitle: WORKSHEET_TITLE_ANOTADOR,
+      };
+      if (selectedDocente) payload.docente = selectedDocente;
+      if (selectedMateria) payload.materia = selectedMateria;
+
+      const response = await getAnotador(payload);
+      
+      let rawData = response;
+      if (response && typeof response === "object") {
+        if (response.data) {
+          rawData = response.data;
+        } else if (response.records) {
+          rawData = response.records;
+        } else if (Array.isArray(response)) {
+          rawData = response;
+        }
+      }
+      
+      const allData: AnotadorData[] = Array.isArray(rawData) ? rawData : [];
+
+      // Transformar si viene con formato .values
+      if (allData.length > 0 && (allData[0] as any).values) {
+        const headers = ["Marca Temporal", "Fecha", "Docente", "Asignatura", "Grado", "Horas", "Anotación"];
+        const transformedData = allData.map((row: any) => {
+          const obj: AnotadorData = {
+            "Marca Temporal": "",
+            Fecha: "",
+            Docente: "",
+            Asignatura: "",
+            Grado: "",
+            Horas: "",
+            Anotación: ""
+          };
+          headers.forEach((header, index) => {
+            (obj as any)[header] = row.values?.[index] || "";
+          });
+          return obj;
+        });
+        allData.length = 0;
+        allData.push(...transformedData);
+      }
+
+      // Obtener las materias únicas que el docente ha registrado
+      const materiasDelDocente = [...new Set(
+        allData
+          .filter(item => item["Docente"] === selectedDocente)
+          .map(item => item["Asignatura"])
+      )].filter(Boolean);
+
+      // Si no hay materias registradas del docente, usamos todas las disponibles
+      const materiasAProcesar = materiasDelDocente.length > 0 
+        ? materiasDelDocente 
+        : [...new Set(allData.map(item => item["Asignatura"]))].filter(Boolean);
+
+      // Crear lista de combinaciones (materia + grado) que tienen datos
+      const combinacionesConDatos: Array<{materia: string, grado: string}> = [];
+      
+      for (const materia of materiasAProcesar) {
+        for (const grado of gradosDisponibles) {
+          const tieneDatos = allData.some(item => 
+            item["Docente"] === selectedDocente && 
+            item["Asignatura"] === materia && 
+            item["Grado"] === grado
+          );
+          if (tieneDatos) {
+            combinacionesConDatos.push({ materia, grado });
+          }
+        }
+      }
+
+      // Actualizar total para el progreso
+      uploadTotal = combinacionesConDatos.length;
+
+      // Generar PDF para cada combinación materia + grado
+      for (let i = 0; i < combinacionesConDatos.length; i++) {
+        const { materia, grado } = combinacionesConDatos[i];
+        uploadCurrent = i + 1;
+        uploadCurrentFile = `Generando reporte ${i + 1} de ${uploadTotal}: ${materia} - Grado ${grado}`;
+
+        // Filtrar datos por docente, materia y grado
+        const dataForGrado = allData.filter((item) => 
+          item["Docente"] === selectedDocente && 
+          item["Asignatura"] === materia && 
+          item["Grado"] === grado
+        );
+
+        if (dataForGrado.length === 0) {
+          continue; // Skip if no data
+        }
+
+        // Generar PDF para este grado
+        const { jsPDF, autoTable } = await loadPdfLibraries();
+        
+        const pdf = new jsPDF({ format: 'letter' });
+        const reportTitle = "Anotador de Clases";
+        const reportFilters = [
+          `Docente: ${selectedDocente}`,
+          `Asignatura: ${materia}`,
+          `Grado: ${grado}`
+        ].filter(Boolean);
+
+        let yPosition = 20;
+
+        // Logo EIE
+        pdf.setTextColor(99, 102, 241);
+        pdf.setFontSize(28);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("EIE", pdf.internal.pageSize.getWidth() / 2, yPosition, { align: "center" });
+        yPosition += 15;
+
+        // Título
+        pdf.setTextColor(0, 0, 0);
+        pdf.setFontSize(18);
+        pdf.setFont("helvetica", "bold");
+        pdf.text(reportTitle, pdf.internal.pageSize.getWidth() / 2, yPosition, { align: "center" });
+        yPosition += 12;
+
+        // Institución
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "normal");
+        pdf.text("Institución Educativa Instituto Guática", pdf.internal.pageSize.getWidth() / 2, yPosition, { align: "center" });
+        yPosition += 10;
+
+        // Fecha
+        pdf.setTextColor(60, 60, 60);
+        pdf.setFontSize(10);
+        pdf.text(`Fecha de generación: ${new Date().toLocaleDateString()}`, pdf.internal.pageSize.getWidth() / 2, yPosition, { align: "center" });
+        yPosition += 15;
+
+        // Línea
+        pdf.setDrawColor(200, 200, 200);
+        pdf.setLineWidth(1);
+        pdf.line(20, yPosition, pdf.internal.pageSize.getWidth() - 20, yPosition);
+        yPosition += 15;
+
+        // Filtros
+        if (reportFilters.length > 0) {
+          pdf.setTextColor(80, 80, 80);
+          pdf.setFontSize(9);
+          reportFilters.forEach((filter) => {
+            if (filter) {
+              pdf.text(filter, 20, yPosition, { align: "left" });
+              yPosition += 6;
+            }
+          });
+          yPosition += 10;
+        }
+
+        // Tabla
+        const tableHeaders = [["Fecha", "Horas", "Asignatura", "Anotación"]];
+        const tableData = dataForGrado.map((item) => [
+          item["Fecha"] || "",
+          item["Horas"] || "",
+          item["Asignatura"] || "",
+          item["Anotación"] || "",
+        ]);
+
+        // Calcular total de horas
+        const totalHorasGrado = dataForGrado.reduce((sum, item) => sum + (parseFloat(item["Horas"] || "0") || 0), 0);
+        tableData.push(["TOTAL", totalHorasGrado.toFixed(1), "", `${dataForGrado.length} registros`]);
+
+        type ColumnStyleMap = Record<string, Partial<import('jspdf-autotable').Styles>>;
+        const columnStyles: ColumnStyleMap = {
+          0: { cellWidth: 28, minCellHeight: 8, halign: 'center' },
+          1: { cellWidth: 18, minCellHeight: 8, halign: 'center' },
+          2: { cellWidth: 45, minCellHeight: 8 },
+          3: { cellWidth: 'auto', minCellHeight: 12 },
+        };
+
+        autoTable(pdf, {
+          head: tableHeaders,
+          body: tableData,
+          startY: yPosition,
+          styles: { fontSize: 7, cellPadding: 1.5, cellWidth: "wrap", valign: "top", overflow: "linebreak" },
+          headStyles: { fillColor: [99, 102, 241], textColor: 255, fontSize: 8, fontStyle: "bold", halign: 'center' },
+          bodyStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0] },
+          alternateRowStyles: { fillColor: [248, 250, 252] },
+          columnStyles,
+          margin: { top: 12, right: 12, bottom: 12, left: 12 },
+          tableWidth: "auto",
+          didParseCell: (data: any) => {
+            if (data.row.index === tableData.length - 1) {
+              data.cell.styles.fillColor = [230, 230, 230];
+              data.cell.styles.fontStyle = "bold";
+              data.cell.styles.textColor = [0, 0, 0];
+              data.cell.styles.halign = "center";
+            }
+          },
+        });
+
+        const blob = pdf.output("blob");
+        const fileName = `reporte_anotaciones_${materia}_${grado}.pdf`;
+
+        generatedPDFs = [...generatedPDFs, { blob, fileName, grado }];
+      }
+
+      if (generatedPDFs.length === 0) {
+        showUploadProgress = false;
+        await Swal.fire({
+          icon: "warning",
+          title: "Sin datos",
+          text: "No se encontraron anotaciones para el docente y período seleccionados.",
+        });
+        return;
+      }
+
+      showUploadProgress = false;
+      showFolderPicker = true;
+    } catch (error) {
+      showUploadProgress = false;
+      await Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: error instanceof Error ? error.message : "Error desconocido",
+      });
+    } finally {
+      isGeneratingAll = false;
+    }
   };
 
   // Calcular totales y materias destacadas
@@ -687,7 +1058,7 @@
             </button>
             <button
               onclick={() => generatePDF(true)}
-              disabled={filteredData.length === 0 || $isUploading}
+              disabled={!selectedDocente || $isUploading}
               class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors flex items-center gap-2"
             >
               {#if $isUploading}
@@ -696,6 +1067,28 @@
               {:else}
                 <Cloud class="w-4 h-4" />
                 Guardar en Drive
+              {/if}
+            </button>
+          </div>
+          <!-- Botón Generar todos y enviar -->
+          <div class="mt-3">
+            <button
+              onclick={generateAllReportsForDocente}
+              disabled={isGeneratingAll || !selectedDocente || $isUploading}
+              class="w-full px-4 py-3 bg-gradient-to-r from-purple-600 via-pink-500 to-indigo-600 hover:from-purple-700 hover:via-pink-600 hover:to-indigo-700 disabled:bg-gray-400 text-white rounded-lg transition-all flex items-center justify-between font-semibold shadow-lg shadow-purple-500/20"
+            >
+              <div class="flex items-center gap-2">
+                {#if isGeneratingAll}
+                  <Loader2 class="animate-spin h-4 w-4" />
+                {:else}
+                  <Cloud class="w-4 h-4" />
+                {/if}
+                <span class="text-sm">{isGeneratingAll ? 'Generando todos...' : 'Generar todos y enviar'}</span>
+              </div>
+              {#if !isGeneratingAll && selectedDocente}
+                <div class="px-2 py-1 rounded-full bg-white/20 backdrop-blur text-xs font-medium flex items-center gap-1">
+                  {filteredGrados.length} grado{filteredGrados.length !== 1 ? 's' : ''}
+                </div>
               {/if}
             </button>
           </div>
@@ -813,6 +1206,18 @@
 {#if showFolderPicker}
   <DriveFolderPicker
     onSelect={handleFolderSelected}
-    onClose={() => { showFolderPicker = false; pdfBlobToUpload = null; }}
+    onClose={() => { showFolderPicker = false; pdfBlobToUpload = null; generatedPDFs = []; }}
+  />
+{/if}
+
+{#if showUploadProgress}
+  <UploadProgressModal 
+    phase={uploadPhase}
+    current={uploadCurrent}
+    total={uploadTotal}
+    currentFile={uploadCurrentFile}
+    successCount={uploadSuccessCount}
+    failedCount={uploadFailedCount}
+    fileType="pdf"
   />
 {/if}
