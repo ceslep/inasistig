@@ -9,38 +9,54 @@ npm run check      # Type checking (svelte-check + tsc)
 npm run deploy     # Build + deploy to GitHub Pages
 ```
 
+Single file check: `npx svelte-check --tsconfig ./tsconfig.app.json src/path/to/file.svelte`
+
+**No test framework** — manual testing via `npm run dev` only.
+
 ## Environment
-- Requires `VITE_OPENROUTER_API_KEY` in .env for AI features
-- See `.env.example` for format
+- Requires `VITE_OPENROUTER_API_KEY` in `.env` for AI features (free tier at openrouter.ai)
+- Build deploys to GitHub Pages at `/inasistig/`
 
-## Architecture (non-obvious)
+## Version Sync Required
+**Both** `src/version.ts` (`APP_VERSION`) **and** `public/version.json` (`version`) must match before `npm run deploy`. Current: `1.0.17`.
 
-- **Routing**: String-based SPA via `activeView` state in `App.svelte`. Back button always returns to `"dashboard"`. Views are dynamically imported for code splitting.
-- **External modules**: `horas_laborables` and `actividades_recuperacion` load via `<iframe>` with teacher email/name as URL params.
-- **Auth**: Google OAuth via `LoginScreen.svelte`, stored in `authStore.ts`. Fuzzy match: strips trailing `-N` suffix ("Juan-5" → "Juan").
-- **API**: Two paths - `/ig/` (read), `/gs/` (write). PHP backend at `app.iedeoccidente.com`.
-- **PWA**: Cache only 6 read endpoints, 20 entries max, 1 day TTL via vite-plugin-pwa.
-- **Google Drive Integration**: Report generators (ReportGenerator.svelte, ReportGeneratorDiario.svelte, ReportGeneratorInas.svelte) offer direct save to Google Drive via the gdriveService module.
+## Architecture
 
-## Offline Behavior
-- Queue (`src/lib/offlineQueue.ts`) stops on first error (no retry loop)
-- Planeador: localStorage drafts (max 100) with JSON import/export
+**Routing**: String-based SPA via `activeView` state in `App.svelte`. Browser back always returns to `"dashboard"`. Views dynamically imported.
 
-## Version Updates
-**Both** `src/version.ts` (APP_VERSION const) **and** `public/version.json` (`version` field) must match on deploy.
+**Views**: `dashboard`, `inasistencia`, `anotador`, `diario`, `planeador`, `observador`, `piar`, `horas_laborables`, `actividades_recuperacion`
 
-## Large Components (navigate carefully)
-- `ClassPlannerForm.svelte` (~10,800 lines)
-- `Piar.svelte` (~3,900 lines)
-- `InasistenciaForm.svelte` (~1,950 lines)
+**Integrated Modules**: `horas_laborables` and `activ_recuperacion` are internal Svelte components (not iframes). Use auth from `authStore.ts`.
 
-## Skills (use for domain help)
-```bash
-skill name=ui-inasistencias   # UI component standards
-skill name=api-inasistig       # PHP/MySQL patterns
-skill name=google-sync         # Google Sheets sync
-skill name=ui-ux-pro-max       # Design guidance
-```
+**Admin Access**: `horas_laborables/AdminStats.svelte` shows only for `ceslep@gmail.com` or `rectoria.guatica@gmail.com`.
+
+**Auth**: Google OAuth via `LoginScreen.svelte`, stored in `authStore.ts`. Teacher matching strips trailing `-N` suffix ("Juan-5" → "Juan"). Token expiry checked every 5 min + on visibility change.
+
+**API**: Two paths - `/ig/` (read), `/gs/` (write). PHP backend at `app.iedeoccidente.com`.
+
+**State Management**:
+- Svelte 5 runes: `$state()`, `$derived()`, `$props()`
+- `$bindable()` for two-way bound props
+- Global stores: `authStore.ts`, `networkStore.ts`, `themeStore.ts` use Svelte 4 `writable()` (imported with `$` prefix)
+
+**Theming**: Three themes (light/dim/dark) via CSS custom properties. Theme class on `<html>`. Use Tailwind: `bg-[rgb(var(--bg-primary))]`. Key vars: `--bg-primary`, `--text-primary`, `--accent-primary`, `--card-bg`, `--border-primary`.
+
+**Exports**: ExcelJS (chunked), jsPDF + jspdf-autotable, file-saver. Chart.js for PieChart.
+
+**PWA**: Service worker with auto-update. Caches `/ig/` read endpoints (getprofes, getMaterias, getEstudiantes, getOpcionesAnotador, adiario) — 20 entries max, 1 day TTL.
+
+**Google Drive**: `gdriveService.ts` for direct uploads. Used by report generators, PIAR, planeador, anotador, horas.
+
+**Offline Queue**: IndexedDB queue in `src/lib/offlineQueue.ts` — stops on first error (no retry). Planeador uses localStorage drafts (max 100) with JSON import/export.
+
+## Large Components
+- `ClassPlannerForm.svelte` (~6000 lines)
+- `Piar.svelte` (~2700 lines)
+- `InasistenciaForm.svelte` (~1600 lines)
+- `HoursRegistration.svelte` (~1300 lines)
+
+## Key localStorage Keys
+`theme`, `docenteMaterias`, `docenteMateriasDiario`, `lastDocente`, `lastDocenteDiario`, `planeaciones_local`, `app_version`, `dismissedFeatureAlert*`
 
 ## Before Commit
 - [ ] `npm run check` passes
@@ -48,6 +64,3 @@ skill name=ui-ux-pro-max       # Design guidance
 - [ ] No `any` types
 - [ ] Spanish error messages (SweetAlert2)
 - [ ] Ask before git commit
-
-## Key localStorage Keys
-`theme`, `docenteMaterias`, `lastDocente`, `planeaciones_local`, `app_version`

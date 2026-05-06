@@ -19,6 +19,9 @@ npx svelte-check --tsconfig ./tsconfig.app.json src/path/to/file.svelte
 
 No test framework — manual testing only via `npm run dev`.
 
+### Environment
+- `VITE_OPENROUTER_API_KEY` required in `.env` for AI features (free tier at openrouter.ai).
+
 ## Architecture
 
 **Svelte 5 + TypeScript + Vite PWA** deployed to GitHub Pages at base path `/inasistig/`.
@@ -28,7 +31,9 @@ String-based SPA routing in `App.svelte` via `activeView` state variable. Each v
 
 Views: `dashboard`, `inasistencia`, `anotador`, `diario`, `planeador`, `observador`, `piar`, `horas_laborables`, `actividades_recuperacion`
 
-Last two views (`horas_laborables`, `actividades_recuperacion`) are external modules loaded via `<iframe>` — teacher email and name passed as URL params.
+`horas_laborables` and `actividades_recuperacion` are now internal Svelte modules (dynamically imported, not iframes). They consume auth directly from `authStore.ts`.
+
+Admin gating: `horas_laborables/AdminStats.svelte` visible only to `ceslep@gmail.com` and `rectoria.guatica@gmail.com`.
 
 ### Modules (6 pedagogical tools)
 - **Registro Diario** (`InasistenciaForm.svelte`) — Attendance tracking
@@ -50,6 +55,7 @@ Each module has companion filter/report components (e.g., `InasistenciaFilter.sv
   - `API_URL_GS` (`/gs/`) — write endpoints (save to Google Sheets)
 - **AI integration:** `AI_PROXY_URL` endpoint + `@openrouter/sdk` for AI features (`ia.svelte`)
 - **Offline-first:** IndexedDB queue (`src/lib/offlineQueue.ts`) enqueues failed POST requests; `src/lib/networkStore.ts` triggers sync on reconnect via `processQueue()`. Queue processing stops on first error (no retry loop). Planeador also supports localStorage drafts (max 100) with JSON import/export (`exportPlaneadoresLocales`/`importPlaneadoresLocales`).
+- **Google Drive:** `src/lib/gdriveService.ts` handles direct uploads (Drive API). Used by report generators (`ReportGenerator*.svelte`), `Piar.svelte`, `ClassPlannerForm.svelte`, `AnotadorFilter.svelte`, `HoursRegistration.svelte`. `DriveFolderPicker.svelte` browses folders/shared drives/starred. `isUploading` store exposes upload state.
 
 ### State Management
 - **Components:** Svelte 5 runes (`$state()`, `$derived()`, `$props()`)
@@ -76,7 +82,7 @@ Located in `src/components/ui/` — Badge, Button, Card, Toast, Skeleton, Toolti
 `src/lib/analyticsService.ts` batches events and sends to `ANALYTICS_URL`. Session-based tracking with `sendBeacon` on unload. `AnalyticsModal.svelte` displays usage stats (floating button in `App.svelte`).
 
 ### Exports
-Excel (ExcelJS), PDF (jsPDF + jspdf-autotable), file download (file-saver). Vite manually chunks these in `vite.config.ts` for bundle optimization.
+Excel (ExcelJS), PDF (jsPDF + jspdf-autotable), file download (file-saver). Vite manually chunks these in `vite.config.ts` for bundle optimization. Charts via `chart.js` (PieChart in `horas_laborables`).
 
 ### PWA
 Service worker with auto-update (Workbox). Runtime caching (StaleWhileRevalidate) for reference data endpoints only (`getprofes`, `getMaterias`, `getEstudiantes`, `getOpcionesAnotador`, `adiario`) — max 20 entries, 1 day TTL. Manifest configured for standalone display. `version.json` check forces hard reload on new versions. SW update check runs hourly via `setInterval` in `main.ts`.
@@ -95,10 +101,10 @@ Service worker with auto-update (Workbox). Runtime caching (StaleWhileRevalidate
 - **Loading states:** `$state(false)` toggled in try/finally blocks
 - **Responsive:** Mobile-first with Tailwind (`w-full sm:w-auto`)
 - **All components must support all three themes**
-- **Icons:** `@lucide/svelte` (individual imports, e.g., `import { Menu } from '@lucide/svelte'`). Brand icons use `@icons-pack/svelte-simple-icons`.
+- **Icons:** `@lucide/svelte` (individual imports, e.g., `import { Menu } from '@lucide/svelte'`). Brand icons use `@icons-pack/svelte-simple-icons`. `@iconify/svelte` used in `actividades_recuperacion`.
 - **localStorage keys:** `theme`, `docenteMaterias`, `docenteMateriasDiario`, `lastDocente`, `lastDocenteDiario`, `planeaciones_local`, `app_version`, `dismissedFeatureAlert*` — used for persistence across sessions
 - **Debug pattern:** Components use `const DEBUG_FORCE_SHOW = false` to control feature popup visibility — set to `true` only during development
-- **Large components:** `ClassPlannerForm.svelte` (~5500 lines), `Piar.svelte` (~2500 lines), `InasistenciaForm.svelte` (~1600 lines) — navigate carefully
+- **Large components:** `ClassPlannerForm.svelte` (~6000 lines), `Piar.svelte` (~2700 lines), `InasistenciaForm.svelte` (~1600 lines), `HoursRegistration.svelte` (~1300 lines) — navigate carefully
 
 ## Checklist Before Committing
 

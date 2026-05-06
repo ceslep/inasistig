@@ -92,7 +92,6 @@
       icon: RotateCcw,
       color: 'emerald',
       tag: 'Académico',
-      url: 'https://ceslep.github.io/actividadesrecuperacion/',
     },
     {
       id: 'inasistencia',
@@ -138,7 +137,6 @@
       icon: Clock,
       color: 'orange',
       tag: 'Herramienta',
-      url: 'https://ceslep.github.io/horas_laborables',
     },
     {
       id: 'observador',

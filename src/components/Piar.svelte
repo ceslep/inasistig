@@ -2,8 +2,8 @@
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";
 
-    import { getDocentes, getEstudiantes } from "../../api/service";
-    import { HTML2PDF_CDN_URL } from "../constants";
+    import { getDocentes, getEstudiantes, savePiar, type PiarData } from "../../api/service";
+    import { HTML2PDF_CDN_URL, GOOGLE_CLIENT_ID } from "../constants";
     import { docenteName, findMatchingDocente } from "../lib/authStore";
 
     // html2pdf se carga dinámicamente desde CDN
@@ -16,6 +16,11 @@
     }
 
     import ModuleHeader from "./ModuleHeader.svelte";
+    import DriveFolderPicker from "./DriveFolderPicker.svelte";
+    import UploadProgressModal from "./UploadProgressModal.svelte";
+    import { gdriveService, isUploading } from "../lib/gdriveService";
+    import { FileText, Save, Upload, Sparkles } from "@lucide/svelte";
+    import Swal from "sweetalert2";
 
     let { onBack }: { onBack: () => void } = $props();
 
@@ -25,6 +30,20 @@
     let currentStep = $state(1);
     let isGeneratingPdf = $state(false);
     let showSavedNotification = $state(false);
+
+    // Drive Upload states
+    let isSavingOnline = $state(false);
+    let showUploadProgress = $state(false);
+    let uploadPhase = $state<'saving' | 'generating' | 'uploading'>('saving');
+    let uploadCurrent = $state(0);
+    let uploadTotal = $state(0);
+    let uploadCurrentFile = $state('');
+    let uploadSuccessCount = $state(0);
+    let uploadFailedCount = $state(0);
+    let showFolderPicker = $state(false);
+    let selectedFolderId = $state<string | null>(null);
+    let pdfBlobToUpload = $state<Blob | null>(null);
+    let pdfFileNameToUpload = $state('');
 
     // Datos de API para selección de docente y estudiante
     let docentes: string[] = $state([]);
@@ -433,6 +452,192 @@
         }
     }
 
+    // Guardar en Google Sheets
+    async function guardarOnline(): Promise<void> {
+        if (!piar.nombres || !piar.apellidos) {
+            await Swal.fire({
+                icon: "warning",
+                title: "Faltan datos",
+                text: "Por favor ingrese el nombre y apellido del estudiante.",
+            });
+            return;
+        }
+
+        isSavingOnline = true;
+        showUploadProgress = true;
+        uploadPhase = 'saving';
+        uploadCurrent = 1;
+        uploadTotal = 1;
+        uploadCurrentFile = 'Guardando en Google Sheets...';
+
+        try {
+            const piarData: PiarData = {
+                id: `PIAR_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+                fecha_creacion: new Date().toISOString().split('T')[0],
+                docente: piar.quienDiligencia,
+                nombres: piar.nombres,
+                apellidos: piar.apellidos,
+                tipoDoc: piar.tipoDoc,
+                numDoc: piar.numDoc,
+                grado: selectedGrado || piar.gradoAspira,
+                fechaNacimiento: piar.fechaNacimiento,
+                lugarNacimiento: piar.lugarNacimiento,
+                telefono: piar.telefono,
+                correo: piar.correo,
+                barrio: piar.barrio,
+                eps: piar.eps,
+                tieneDiagnostico: piar.tieneDiagnostico === "SI",
+                cualDiagnostico: piar.cualDiagnostico,
+                asisteTerapias: piar.asisteTerapias === "SI",
+                terapias: piar.terapias.filter(t => t.tipo).map(t => `${t.tipo} (${t.frecuencia})`).join(', '),
+                tratamientoMedico: piar.tratamientoMedico === "SI",
+                cualTratamiento: piar.cualTratamiento,
+                productosApoyo: piar.productosApoyo === "SI",
+                cualesApoyos: piar.cualesApoyos,
+                nombreMadre: piar.nombreMadre,
+                nombrePadre: piar.nombrePadre,
+                nombreCuidador: piar.nombreCuidador,
+                telefonoCuidador: piar.telefonoCuidador,
+                vinculadoOtraInstitucion: piar.vinculadoOtraInstitucion === "SI",
+                observacionesGrado: piar.observacionesGrado,
+                descripcionEstudiante: piar.descripcionEstudiante,
+                habilidadesCompetencias: piar.habilidadesCompetencias,
+                recomendacionesFamilia: piar.recomendacionesFamilia,
+                compromisosEspecificos: piar.compromisosEspecificos,
+            };
+
+            await savePiar(piarData);
+            uploadSuccessCount = 1;
+            uploadCurrentFile = 'Guardado exitosamente en Google Sheets';
+
+            await Swal.fire({
+                icon: "success",
+                title: "Guardado",
+                text: "El PIAR se ha guardado en Google Sheets.",
+                confirmButtonColor: "#22c55e",
+            });
+        } catch (error) {
+            console.error("Error guardando PIAR:", error);
+            uploadFailedCount = 1;
+            await Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "No se pudo guardar el PIAR. Verifique la conexión.",
+                confirmButtonColor: "#ef4444",
+            });
+        } finally {
+            isSavingOnline = false;
+            showUploadProgress = false;
+        }
+    }
+
+    // Generar PDF y guardar en Drive
+    async function generarPDFYGuardarDrive(): Promise<void> {
+        isGeneratingPdf = true;
+        showUploadProgress = true;
+        uploadPhase = 'generating';
+        uploadCurrent = 0;
+        uploadTotal = 2;
+        uploadCurrentFile = 'Generando PDF...';
+
+        try {
+            await new Promise((r) => setTimeout(r, 200));
+
+            const element = document.getElementById("documento-pdf");
+            if (!element) throw new Error("No se encontró el elemento del documento");
+
+            element.classList.remove("hidden");
+
+            if ((window as Html2PdfWindow).html2pdf) {
+                const fileName = `PIAR_${piar.nombres || 'Estudiante'}_${piar.apellidos || ''}.pdf`.replace(/\s+/g, '_');
+                pdfFileNameToUpload = fileName;
+
+                const opt = {
+                    margin: 10,
+                    filename: fileName,
+                    image: { type: "jpeg", quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true },
+                    jsPDF: {
+                        unit: "mm",
+                        format: "legal",
+                        orientation: "portrait",
+                    },
+                };
+
+                const pdf = (window as Html2PdfWindow).html2pdf().set(opt).from(element);
+                const blob = await pdf.outputPdf('blob');
+                pdfBlobToUpload = blob;
+
+                uploadCurrent = 1;
+                uploadPhase = 'uploading';
+                uploadCurrentFile = 'Seleccionando carpeta de Drive...';
+                showFolderPicker = true;
+            } else {
+                window.print();
+                showUploadProgress = false;
+            }
+        } catch (error) {
+            console.error("Error generando PDF:", error);
+            await Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "No se pudo generar el PDF.",
+                confirmButtonColor: "#ef4444",
+            });
+            showUploadProgress = false;
+        } finally {
+            isGeneratingPdf = false;
+            const element = document.getElementById("documento-pdf");
+            if (element) element.classList.add("hidden");
+        }
+    }
+
+    // Handle folder selection from Drive
+    async function handleFolderSelected(folder: { id: string; name: string } | null): Promise<void> {
+        if (!folder) {
+            showFolderPicker = false;
+            pdfBlobToUpload = null;
+            pdfFileNameToUpload = '';
+            showUploadProgress = false;
+            return;
+        }
+
+        selectedFolderId = folder.id;
+        showFolderPicker = false;
+        uploadCurrentFile = `Subiendo PDF a Drive...`;
+
+        const clientId = GOOGLE_CLIENT_ID;
+        const result = await gdriveService.uploadFile(
+            pdfBlobToUpload!,
+            pdfFileNameToUpload,
+            'application/pdf',
+            clientId,
+            folder.id
+        );
+
+        if (result.success) {
+            uploadSuccessCount = 1;
+            await Swal.fire({
+                icon: "success",
+                title: "Guardado en Drive",
+                text: `El PDF se ha guardado en la carpeta "${folder.name}".`,
+                confirmButtonColor: "#22c55e",
+            });
+        } else {
+            uploadFailedCount = 1;
+            await Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: `No se pudo subir el PDF: ${result.error}`,
+                confirmButtonColor: "#ef4444",
+            });
+        }
+
+        pdfBlobToUpload = null;
+        pdfFileNameToUpload = '';
+        showUploadProgress = false;
+    }
+
     // Inyectar html2pdf por CDN
     onMount(() => {
         const script = document.createElement("script");
@@ -529,6 +734,38 @@
             class="min-h-[44px] px-3 py-2 text-sm text-red-500 border border-red-500/30 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl font-medium transition-colors"
         >Nuevo / Borrar</button>
         <button
+            onclick={guardarOnline}
+            disabled={isSavingOnline || $isUploading}
+            class="min-h-[44px] px-3 py-2 bg-blue-500/10 text-blue-600 border border-blue-500/30 rounded-xl font-bold transition-colors flex items-center gap-2 disabled:opacity-60"
+        >
+            {#if isSavingOnline}
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-sm">Guardando...</span>
+            {:else}
+                <Save class="w-4 h-4" />
+                <span class="text-sm">Guardar en Nube</span>
+            {/if}
+        </button>
+        <button
+            onclick={generarPDFYGuardarDrive}
+            disabled={isGeneratingPdf || $isUploading}
+            class="min-h-[44px] px-3 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl font-bold transition-colors flex items-center gap-2 disabled:opacity-60"
+        >
+            {#if isGeneratingPdf}
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-sm">Procesando...</span>
+            {:else}
+                <Sparkles class="w-4 h-4" />
+                <span class="text-sm">Generar y Enviar a Drive</span>
+            {/if}
+        </button>
+        <button
             onclick={generarPDF}
             disabled={isGeneratingPdf}
             class="min-h-[44px] px-3 py-2 bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 rounded-xl font-bold transition-colors flex items-center gap-2 disabled:opacity-60"
@@ -540,6 +777,7 @@
                 </svg>
                 <span class="text-sm">Generando...</span>
             {:else}
+                <FileText class="w-4 h-4" />
                 <span class="text-sm">Exportar PDF</span>
             {/if}
         </button>
@@ -2475,3 +2713,24 @@
         </div>
     </div>
 </div>
+
+<!-- Drive Folder Picker for PDF Upload -->
+{#if showFolderPicker}
+    <DriveFolderPicker 
+        onSelect={handleFolderSelected} 
+        onClose={() => { showFolderPicker = false; pdfBlobToUpload = null; pdfFileNameToUpload = ''; }}
+    />
+{/if}
+
+<!-- Upload Progress Modal -->
+{#if showUploadProgress}
+    <UploadProgressModal 
+        phase={uploadPhase}
+        current={uploadCurrent}
+        total={uploadTotal}
+        currentFile={uploadCurrentFile}
+        successCount={uploadSuccessCount}
+        failedCount={uploadFailedCount}
+        fileType="pdf"
+    />
+{/if}

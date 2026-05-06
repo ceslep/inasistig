@@ -22,10 +22,7 @@
   let externalModuleUrl = $state("");
   let externalModuleTitle = $state("");
 
-  const externalModules = [
-    { id: "actividades_recuperacion", title: "Actividades de Recuperación", url: "https://ceslep.github.io/actividadesrecuperacion/" },
-    { id: "horas_laborables", title: "Horas Laborables", url: "https://ceslep.github.io/horas_laborables" },
-  ];
+  const externalModules: { id: string; title: string; url: string }[] = [];
 
   // --- History API: gesto/botón atrás vuelve al dashboard en vez de cerrar la PWA ---
   function handlePopState() {
@@ -78,6 +75,8 @@
   let ClassPlannerForm: ModuleComponent | null = $state(null);
   let Observador: ModuleComponent | null = $state(null);
   let Piar: ModuleComponent | null = $state(null);
+  let HorasLaborables: ModuleComponent | null = $state(null);
+  let ActividadesRecuperacion: ModuleComponent | null = $state(null);
 
   const handleSelect = async (view: string) => {
     if (view === "dashboard") {
@@ -124,6 +123,12 @@
       } else if (view === "piar" && !Piar) {
         const module = await import("./components/Piar.svelte");
         Piar = module.default;
+      } else if (view === "horas_laborables" && !HorasLaborables) {
+        const module = await import("./components/horas_laborables/HoursRegistration.svelte");
+        HorasLaborables = module.default;
+      } else if (view === "actividades_recuperacion" && !ActividadesRecuperacion) {
+        const module = await import("./components/actividades_recuperacion/App.svelte");
+        ActividadesRecuperacion = module.default;
       }
     } finally {
       isLoadingModule = false;
@@ -169,6 +174,10 @@
     <Observador onBack={handleBack} />
   {:else if activeView === "piar" && Piar}
     <Piar onBack={handleBack} />
+  {:else if activeView === "horas_laborables" && HorasLaborables}
+    <HorasLaborables onBack={handleBack} />
+  {:else if activeView === "actividades_recuperacion" && ActividadesRecuperacion}
+    <ActividadesRecuperacion onBack={handleBack} />
   {:else if externalModuleUrl}
     <div class="w-full h-screen flex flex-col bg-[rgb(var(--bg-primary))]">
       <div

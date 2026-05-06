@@ -88,15 +88,10 @@
   }
   let lastSaved: LastSavedInfo | null = $state(null);
   let lastSavedVisible = $state(false);
-  let lastSavedTimer: ReturnType<typeof setTimeout> | null = null;
 
   const showLastSaved = (info: LastSavedInfo) => {
-    if (lastSavedTimer) clearTimeout(lastSavedTimer);
     lastSaved = info;
     lastSavedVisible = true;
-    lastSavedTimer = setTimeout(() => {
-      lastSavedVisible = false;
-    }, 8000);
   };
 
   let missingFields = $derived.by(() => {

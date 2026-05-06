@@ -1,8 +1,8 @@
 <script lang="ts">
   import { fade, scale } from 'svelte/transition';
-  import { CheckCircle2, XCircle, Loader2, FileSpreadsheet, Cloud, Sparkles, FileText } from '@lucide/svelte';
+  import { CheckCircle2, XCircle, Loader2, FileSpreadsheet, Cloud, Sparkles, FileText, Save } from '@lucide/svelte';
 
-  type Phase = 'idle' | 'generating' | 'uploading' | 'done';
+  type Phase = 'idle' | 'generating' | 'uploading' | 'saving' | 'done';
   type FileType = 'pdf' | 'excel';
 
   interface Props {
@@ -48,6 +48,15 @@
           color: 'text-blue-500',
           bgColor: 'bg-blue-500/10',
           progressColor: 'from-blue-400 to-indigo-500'
+        };
+      case 'saving':
+        return {
+          icon: Save,
+          title: 'Guardando en Sheets',
+          subtitle: 'Guardando en Google Sheets...',
+          color: 'text-indigo-500',
+          bgColor: 'bg-indigo-500/10',
+          progressColor: 'from-indigo-400 to-purple-500'
         };
       case 'done':
         return {

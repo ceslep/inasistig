@@ -25,11 +25,14 @@
     "vite-plugin-pwa": "^1.2.0"
   },
   "dependencies": {
+    "@iconify/svelte": "^4.0.0",
     "@icons-pack/svelte-simple-icons": "^7.2.0",
     "@lucide/svelte": "^1.7.0",
     "@openrouter/sdk": "^0.9.11",
     "@tailwindcss/vite": "^4.1.18",
     "@types/file-saver": "^2.0.7",
+    "@warp-dot-dev/opencode-warp": "^0.1.5",
+    "chart.js": "^4.5.1",
     "exceljs": "^4.1.1",
     "file-saver": "^2.0.5",
     "flatpickr": "^4.6.13",

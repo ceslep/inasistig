@@ -30,6 +30,12 @@ export const SAVE_PLANEADOR_URL = `${API_URL_GS}/save_planeador.php`;
 export const GET_PLANEADOR_URL = `${API_URL_GS}/get_planeador.php`;
 export const WORKSHEET_TITLE_PLANEADOR = "Planeaciones";
 
+// PIAR
+export const SPREADSHEET_ID_PIAR = "1nXqDNW_KLlDoXKUENQ-Yg50dHfNRI_vL5r4boYOfbOo";
+export const SAVE_PIAR_URL = `${API_URL_GS}/save_piar.php`;
+export const GET_PIAR_URL = `${API_URL_GS}/get_piar.php`;
+export const WORKSHEET_TITLE_PIAR = "PIAR";
+
 // Temas del Docente (JSON)
 export const UPLOAD_TEMAS_URL = `${BASE_URL}/arjson.php`;
 export const GET_TEMAS_BASE_URL = `${BASE_URL}/getjson.php`;

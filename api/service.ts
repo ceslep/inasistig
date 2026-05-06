@@ -15,6 +15,10 @@ import {
   GET_PLANEADOR_URL,
   SPREADSHEET_ID_PLANEADOR,
   WORKSHEET_TITLE_PLANEADOR,
+  SAVE_PIAR_URL,
+  GET_PIAR_URL,
+  SPREADSHEET_ID_PIAR,
+  WORKSHEET_TITLE_PIAR,
   URL_DBAS,
   URL_EBCS,
   UPLOAD_TEMAS_URL,
@@ -711,6 +715,107 @@ export const fetchNormativa = async (
     return data.data || [];
   } catch (error) {
     console.error(`Error fetching ${tipo}s:`, error);
+    throw error;
+  }
+};
+
+// ==================== PIAR ====================
+
+export interface PiarData {
+  id?: string;
+  fecha_creacion?: string;
+  docente?: string;
+  nombres?: string;
+  apellidos?: string;
+  tipoDoc?: string;
+  numDoc?: string;
+  grado?: string;
+  fechaNacimiento?: string;
+  lugarNacimiento?: string;
+  telefono?: string;
+  correo?: string;
+  barrio?: string;
+  eps?: string;
+  tieneDiagnostico?: boolean;
+  cualDiagnostico?: string;
+  asisteTerapias?: boolean;
+  terapias?: string;
+  tratamientoMedico?: boolean;
+  cualTratamiento?: string;
+  productosApoyo?: boolean;
+  cualesApoyos?: string;
+  nombreMadre?: string;
+  nombrePadre?: string;
+  nombreCuidador?: string;
+  telefonoCuidador?: string;
+  vinculadoOtraInstitucion?: boolean;
+  observacionesGrado?: string;
+  descripcionEstudiante?: string;
+  habilidadesCompetencias?: string;
+  recomendacionesFamilia?: string;
+  compromisosEspecificos?: string;
+}
+
+export const savePiar = async (data: PiarData): Promise<{ success: boolean; message: string }> => {
+  const payload = {
+    spreadsheetId: SPREADSHEET_ID_PIAR,
+    worksheetTitle: WORKSHEET_TITLE_PIAR,
+    datos: [data],
+  };
+
+  if (!navigator.onLine) {
+    return offlineFallback(SAVE_PIAR_URL, payload, "savePiar") as Promise<{ success: boolean; message: string }>;
+  }
+
+  try {
+    const response = await fetch(SAVE_PIAR_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    if (isNetworkError(error)) {
+      return offlineFallback(SAVE_PIAR_URL, payload, "savePiar") as Promise<{ success: boolean; message: string }>;
+    }
+    console.error("Error saving PIAR:", error);
+    throw error;
+  }
+};
+
+export interface PiarFiltros {
+  docente?: string;
+  nombres?: string;
+  apellidos?: string;
+  grado?: string;
+}
+
+export const getPiar = async (filtros: PiarFiltros = {}): Promise<PiarData[]> => {
+  try {
+    const response = await fetch(GET_PIAR_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(filtros),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.data || [];
+  } catch (error) {
+    console.error("Error fetching PIAR:", error);
     throw error;
   }
 };

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import Swal from "sweetalert2";
   import {
     getDocentes,
@@ -12,16 +12,19 @@
     WORKSHEET_TITLE_DIARIO,
     INFO_DIARIO,
   } from "../constants";
-  import Loader from "./Loader.svelte";
   import { theme } from "../lib/themeStore";
   import { docenteName, findMatchingDocente } from "../lib/authStore";
-  import eieLogo from "../assets/eie.png";
+  import { isOnline, pendingCount } from "../lib/networkStore";
   import DiarioAnotacionOptions from "./DiarioAnotacionOptions.svelte";
   import ReportGeneratorDiario from "./ReportGeneratorDiario.svelte";
-  import { Cloud, FileText, LayoutGrid, Sun, Moon, CloudMoon, Info, X, Send, Loader2 } from '@lucide/svelte';
+  import { Cloud, FileText, Info, X, Send, Loader2, Check, AlertTriangle, ChevronDown, ChevronUp, Wifi, WifiOff, Eraser } from '@lucide/svelte';
   import ModuleHeader from "./ModuleHeader.svelte";
+  import { Badge, Skeleton } from "./ui";
 
   export let onBack: () => void;
+
+  const DRAFT_KEY = "diarioDraft";
+  const TODAY_ISO = new Date().toLocaleDateString('en-CA');
 
   // --- Interfaces ---
   interface Estudiante {
@@ -44,6 +47,21 @@
   let isLoading = false;
   let showFieldErrors = false;
 
+  // Campos tocados (para validación on-blur)
+  let touched: Record<string, boolean> = {};
+  const markTouched = (id: string) => {
+    touched = { ...touched, [id]: true };
+  };
+  const showError = (id: string) =>
+    (showFieldErrors || touched[id]) && missingFields.includes(id);
+
+  // Mostrar/ocultar grid de materias múltiples cuando hay muchas
+  let showAllMaterias = true;
+
+  // Restauración de borrador
+  let draftRestored = false;
+  let showDraftBanner = false;
+
   // --- Último registro guardado (popup temporal) ---
   interface LastSavedInfo {
     fecha: string;
@@ -55,15 +73,10 @@
   }
   let lastSaved: LastSavedInfo | null = null;
   let lastSavedVisible = false;
-  let lastSavedTimer: ReturnType<typeof setTimeout> | null = null;
 
   const showLastSaved = (info: LastSavedInfo) => {
-    if (lastSavedTimer) clearTimeout(lastSavedTimer);
     lastSaved = info;
     lastSavedVisible = true;
-    lastSavedTimer = setTimeout(() => {
-      lastSavedVisible = false;
-    }, 8000);
   };
 
   // Materias múltiples para docente con "-"
@@ -72,6 +85,9 @@
     horas: string;
   }
   let selectedMaterias: MateriaHoras[] = [];
+
+  // Anotaciones seleccionadas en hijo DiarioAnotacionOptions
+  let selectedDiarioAnots: string[] = [];
 
   // Verificar si el docente tiene "-"
   $: docenteHasDash = formData.docente.includes("-");
@@ -96,9 +112,8 @@
     if (!formData.fecha) fields.push("fecha");
     if (!formData.docente) fields.push("docente");
     if (!formData.grado) fields.push("grado");
-    if (!formData.horas) fields.push("horas");
     if (selectedDiarioAnots.length === 0) fields.push("diario");
-    
+
     if (docenteHasDash) {
       if (selectedMaterias.length === 0) {
         fields.push("materias");
@@ -108,9 +123,42 @@
       }
     } else {
       if (!formData.materia) fields.push("materia");
+      if (!formData.horas) fields.push("horas");
     }
     return fields;
   })();
+
+  // Etiquetas amistosas en español para cada campo faltante
+  const FIELD_LABELS: Record<string, string> = {
+    fecha: "Fecha",
+    docente: "Docente",
+    materia: "Asignatura",
+    materias: "Materias",
+    grado: "Grado",
+    horas: "Horas",
+    diario: "Diario de campo",
+  };
+
+  // Mapear cada campo faltante al id del elemento DOM al que debe hacer scroll
+  const FIELD_TARGET_ID: Record<string, string> = {
+    fecha: "fecha",
+    docente: "docente",
+    materia: "materia",
+    materias: "materias-multi",
+    grado: "grado",
+    horas: "horas",
+    diario: "diario",
+  };
+
+  const focusField = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (typeof (el as HTMLElement).focus === 'function') {
+        (el as HTMLElement).focus();
+      }
+    }
+  };
 
   // --- Report Generator ---
   let showReportGenerator = false;
@@ -122,61 +170,95 @@
     showReportGenerator = false;
   };
 
-  let selectedDiarioAnots: string[] = []; // State to hold selected annotations from the child component
-
-  // --- Feature Alert ---
-  let showFeatureAlert = true; // Control inicial del popup
-  const FEATURE_MESSAGE = "¡Nueva forma de anotar el Diario de Campo!";
-
-  function checkFeatureAlertVisibility() {
-    // FORZAR MOSTRAR PARA DESARROLLO - Cambiar a false en producción
-    const DEBUG_FORCE_SHOW = false; // Set to false for production
-
-    if (DEBUG_FORCE_SHOW) {
-      return true;
-    }
-
-    const dismissed = localStorage.getItem("dismissedFeatureAlertDiario");
-
-    // Si nunca fue descartado, mostrar siempre
-    if (!dismissed) {
-      return true;
-    }
-
-    const dismissedDate = new Date(dismissed);
-    const now = new Date();
-    const daysSinceDismissed =
-      (now.getTime() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
-
-    // Mostrar si han pasado más de 5 días desde que se descartó (e.g., to remind users)
-    return daysSinceDismissed > 5;
-  }
-
-  const dismissFeatureAlert = () => {
-    localStorage.setItem(
-      "dismissedFeatureAlertDiario",
-      new Date().toISOString(),
-    );
-    showFeatureAlert = false; // Cerrar el popup inmediatamente
-  };
-
-  const tryFeatureNow = () => {
-    // Cerrar el popup
-    localStorage.setItem(
-      "dismissedFeatureAlertDiario",
-      new Date().toISOString(),
-    );
-    showFeatureAlert = false; // Just dismiss as there's no specific action to take here
-  };
-
   // --- Formulario ---
   let formData = {
-    fecha: new Date().toLocaleDateString('en-CA'),
+    fecha: TODAY_ISO,
     docente: localStorage.getItem("lastDocenteDiario") || "",
     materia: "",
     grado: "",
     horas: "",
-    // diarioCampo will now be derived from selectedDiarioAnots
+  };
+
+  // --- Borrador autoguardado ---
+  // Guarda formData + selecciones cada cambio. Restaura al montar.
+  const saveDraft = () => {
+    try {
+      const draft = {
+        formData,
+        selectedDiarioAnots,
+        selectedMaterias,
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      /* ignorar errores de cuota */
+    }
+  };
+
+  const clearDraft = () => {
+    localStorage.removeItem(DRAFT_KEY);
+  };
+
+  const restoreDraft = () => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      // Sólo considerar borradores con contenido real
+      const hasContent =
+        (draft.selectedDiarioAnots?.length ?? 0) > 0 ||
+        (draft.selectedMaterias?.length ?? 0) > 0 ||
+        draft.formData?.materia ||
+        draft.formData?.grado;
+      if (!hasContent) {
+        clearDraft();
+        return;
+      }
+      formData = { ...formData, ...draft.formData };
+      selectedDiarioAnots = draft.selectedDiarioAnots ?? [];
+      selectedMaterias = draft.selectedMaterias ?? [];
+      draftRestored = true;
+      showDraftBanner = true;
+    } catch {
+      clearDraft();
+    }
+  };
+
+  const discardDraft = () => {
+    formData = {
+      fecha: TODAY_ISO,
+      docente: localStorage.getItem("lastDocenteDiario") || "",
+      materia: "",
+      grado: "",
+      horas: "",
+    };
+    selectedDiarioAnots = [];
+    selectedMaterias = [];
+    showDraftBanner = false;
+    draftRestored = false;
+    clearDraft();
+  };
+
+  // Reactivo: cada cambio del formulario actualiza borrador
+  $: if (typeof window !== "undefined") {
+    void formData;
+    void selectedDiarioAnots;
+    void selectedMaterias;
+    saveDraft();
+  }
+
+  // Chips de fecha rápida
+  const setFechaRelative = (offsetDays: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - offsetDays);
+    formData.fecha = d.toLocaleDateString('en-CA');
+    markTouched('fecha');
+  };
+  const isFechaToday = (iso: string) => iso === TODAY_ISO;
+  const fechaOffsetIso = (n: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return d.toLocaleDateString('en-CA');
   };
 
   // --- Persistencia de Materias por Docente ---
@@ -201,6 +283,13 @@
   $: if (formData.docente) {
     localStorage.setItem("lastDocenteDiario", formData.docente);
   }
+
+  // Docente reciente al top
+  $: docentesSorted = (() => {
+    const last = localStorage.getItem("lastDocenteDiario") || "";
+    if (!last || !docentes.includes(last)) return docentes;
+    return [last, ...docentes.filter((d) => d !== last)];
+  })();
 
   $: materiasSorted = formData.docente
     ? [...materias].sort((a, b) => {
@@ -243,37 +332,26 @@
     inputBg: "rgb(var(--bg-secondary))",
   };
 
-  const toggleTheme = () => {
-    theme.update((t) => {
-      if (t === "light") return "dim";
-      if (t === "dim") return "dark";
-      return "light";
-    });
-  };
-
-  // Validación de formulario
-  $: isFormValid =
-    formData.fecha &&
-    formData.docente &&
-    formData.materia &&
-    formData.grado && // Added grado to validation
-    formData.horas &&
-    selectedDiarioAnots.length > 0; // Validate based on selectedDiarioAnots
+  // Estado de carga inicial: mostrar skeleton mientras no hay datos
+  $: initialLoading =
+    (isLoadingDocentes && docentes.length === 0) ||
+    (isLoadingMaterias && materias.length === 0) ||
+    (isLoadingEstudiantes && estudiantes.length === 0);
 
   const loadData = async () => {
     isLoadingDocentes = true;
     isLoadingMaterias = true;
-    isLoadingEstudiantes = true; // Added loading state for students
+    isLoadingEstudiantes = true;
 
     try {
       const [docentesData, materiasData, estudiantesData] = await Promise.all([
         getDocentes(),
         getMaterias(),
-        getEstudiantes(), // Fetch students
+        getEstudiantes(),
       ]);
       docentes = docentesData;
       materias = materiasData;
-      estudiantes = estudiantesData; // Update students state
+      estudiantes = estudiantesData;
 
       if (!formData.docente) {
         const match = findMatchingDocente(docentes, $docenteName);
@@ -284,7 +362,7 @@
     } finally {
       isLoadingDocentes = false;
       isLoadingMaterias = false;
-      isLoadingEstudiantes = false; // Reset loading state
+      isLoadingEstudiantes = false;
     }
   };
 
@@ -296,59 +374,22 @@
 
     const diarioCampoFinal = selectedDiarioAnots.join(" | ");
 
-    const camposFaltantes: { id: string; label: string }[] = [];
-    if (!formData.fecha) camposFaltantes.push({ id: "fecha", label: "Fecha" });
-    if (!formData.docente) camposFaltantes.push({ id: "docente", label: "Docente" });
-    if (!formData.grado) camposFaltantes.push({ id: "grado", label: "Grado" });
-    if (!formData.horas) camposFaltantes.push({ id: "horas", label: "Horas" });
-    if (selectedDiarioAnots.length === 0) camposFaltantes.push({ id: "diario", label: "Diario de Campo" });
-
-    if (docenteHasDash) {
-      if (selectedMaterias.length === 0) {
-        camposFaltantes.push({ id: "materia", label: "Materia(s)" });
-      } else {
-        const sinHoras = selectedMaterias.filter(m => !m.horas);
-        if (sinHoras.length > 0) {
-          camposFaltantes.push({ id: "horas", label: `Horas para: ${sinHoras.map(m => m.materia).join(", ")}` });
-        }
-      }
-    } else {
-      if (!formData.materia) camposFaltantes.push({ id: "materia", label: "Asignatura" });
-    }
-
-    if (camposFaltantes.length > 0) {
-      await Swal.fire({
-        icon: "warning",
-        title: "Campos requeridos",
-        html: `Complete los siguientes campos:<br/><br/><strong>${camposFaltantes.map(c => c.label).join("<br/>")}</strong>`,
-        confirmButtonColor: "#6366f1",
-      });
-      
-      const firstField = document.getElementById(camposFaltantes[0].id);
-      if (firstField) {
-        firstField.scrollIntoView({ behavior: "smooth", block: "center" });
-        firstField.focus();
-      }
-      return;
-    }
-
-    if (selectedDiarioAnots.length === 0) {
-      await Swal.fire({
-        icon: "warning",
-        title: "Sin diario de campo",
-        text: "Debe seleccionar al menos una opción del diario de campo",
-        confirmButtonColor: "#6366f1",
-      });
+    // Si faltan campos, dejar que el panel de validación en vivo los muestre.
+    if (missingFields.length > 0) {
+      // Hacer scroll al primer campo faltante para guiar al usuario.
+      const firstMissing = missingFields[0];
+      const targetId = FIELD_TARGET_ID[firstMissing] ?? firstMissing;
+      focusField(targetId);
       return;
     }
 
     // Determinar las materias a guardar
-    const materiasToSave: MateriaHoras[] = docenteHasDash 
-      ? selectedMaterias 
+    const materiasToSave: MateriaHoras[] = docenteHasDash
+      ? selectedMaterias
       : [{ materia: formData.materia, horas: formData.horas }];
 
     // Construir mensaje de confirmación según el tipo de docente
-    const materiasMsg = docenteHasDash 
+    const materiasMsg = docenteHasDash
       ? selectedMaterias.map(m => `${m.materia} (${m.horas}h)`).join(", ")
       : `${formData.materia} (${formData.horas}h)`;
 
@@ -389,7 +430,7 @@
 
       // Crear un payload por cada materia seleccionada
       const payload: string[][] = [];
-      
+
       for (const materiaData of materiasToSave) {
         payload.push([
           currentTimestamp,
@@ -424,27 +465,25 @@
         timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
       });
 
-      const registrosMsg = isOffline
-        ? (payload.length === 1
+      // Avisar SOLO cuando el guardado quedó offline (en cola).
+      if (isOffline) {
+        const registrosMsg = payload.length === 1
           ? "Diario de Campo guardado en cola. Se enviará al recuperar conexión."
-          : `${payload.length} registros guardados en cola. Se enviarán al recuperar conexión.`)
-        : (payload.length === 1
-          ? "Diario de Campo registrado exitosamente"
-          : `${payload.length} registros de Diario de Campo creados exitosamente`);
-
-      await Swal.fire({
-        icon: isOffline ? "warning" : "success",
-        title: isOffline ? "Guardado offline" : "¡Éxito!",
-        text: registrosMsg,
-        timer: 3000,
-        timerProgressBar: true,
-        showConfirmButton: false,
-        position: "top-end",
-        toast: true,
-      });
+          : `${payload.length} registros guardados en cola. Se enviarán al recuperar conexión.`;
+        await Swal.fire({
+          icon: "warning",
+          title: "Guardado offline",
+          text: registrosMsg,
+          timer: 3000,
+          timerProgressBar: true,
+          showConfirmButton: false,
+          position: "top-end",
+          toast: true,
+        });
+      }
 
       formData = {
-    fecha: new Date().toLocaleDateString('en-CA'),
+        fecha: TODAY_ISO,
         docente: formData.docente,
         materia: "",
         grado: formData.grado,
@@ -455,6 +494,9 @@
       selectedDiarioAnots = [];
       selectedMaterias = [];
       showFieldErrors = false;
+      touched = {};
+      clearDraft();
+      showDraftBanner = false;
     } catch (error) {
       console.error("Error enviando:", error);
       await Swal.fire({
@@ -468,54 +510,119 @@
     }
   };
 
+  // Resumen amistoso del estado del FAB para tooltip
+  $: fabTitle = missingFields.length === 0
+    ? "Listo para guardar"
+    : `Faltan: ${missingFields.map((f) => FIELD_LABELS[f] ?? f).join(", ")}`;
+
+  // Limpiar formulario manualmente
+  const handleClearForm = async () => {
+    const hasContent =
+      selectedDiarioAnots.length > 0 ||
+      selectedMaterias.length > 0 ||
+      formData.materia ||
+      formData.grado;
+    if (!hasContent) return;
+    const result = await Swal.fire({
+      icon: "question",
+      title: "¿Limpiar formulario?",
+      text: "Se borrarán los campos y selecciones actuales.",
+      showCancelButton: true,
+      confirmButtonText: "Sí, limpiar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#64748b",
+      reverseButtons: true,
+      background: $theme === "light" ? "#fff" : "#1e293b",
+      color: $theme === "light" ? "#1e293b" : "#f1f5f9",
+    });
+    if (result.isConfirmed) {
+      discardDraft();
+      showFieldErrors = false;
+      touched = {};
+    }
+  };
+
+  // Atajo Ctrl/Cmd+Enter envía
+  const handleKeydown = (e: KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      const form = document.getElementById("diario-form") as HTMLFormElement | null;
+      if (form && !isLoading) {
+        form.requestSubmit();
+      }
+    }
+  };
+
+  // Auto-focus inteligente cuando termina la carga
+  let didAutoFocus = false;
+  $: if (!initialLoading && !didAutoFocus && docentes.length > 0) {
+    didAutoFocus = true;
+    setTimeout(() => {
+      const target = formData.docente ? "grado" : "docente";
+      const el = document.getElementById(target) as HTMLElement | null;
+      if (el) el.focus({ preventScroll: true });
+    }, 50);
+  }
+
   onMount(() => {
+    restoreDraft();
     loadData();
+    window.addEventListener("keydown", handleKeydown);
+  });
+
+  onDestroy(() => {
+    if (typeof window !== "undefined") {
+      window.removeEventListener("keydown", handleKeydown);
+    }
   });
 </script>
 
-<ModuleHeader title="Diario de Campo" subtitle="Reflexión Docente" {onBack} />
+<ModuleHeader title="Diario de Campo" subtitle="Reflexión Docente" {onBack}>
+  {#snippet actions()}
+    <!-- Indicador de red mini -->
+    <div
+      class="hidden sm:flex min-h-[44px] items-center gap-1.5 px-2.5 rounded-xl border"
+      style="background-color: rgb(var(--bg-secondary)); border-color: rgb(var(--border-primary));"
+      title={$isOnline ? ($pendingCount > 0 ? `${$pendingCount} en cola` : "En línea") : "Sin conexión"}
+      aria-label={$isOnline ? "En línea" : "Sin conexión"}
+    >
+      {#if $isOnline}
+        <Wifi class="w-4 h-4 {$pendingCount > 0 ? 'text-amber-500' : 'text-emerald-500'}" />
+        {#if $pendingCount > 0}
+          <span class="text-[10px] font-bold text-amber-600 dark:text-amber-400">{$pendingCount}</span>
+        {/if}
+      {:else}
+        <WifiOff class="w-4 h-4 text-red-500" />
+      {/if}
+    </div>
+    <button
+      on:click={openSheets}
+      class="min-h-[44px] min-w-[44px] flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-[rgb(var(--bg-secondary))] border border-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] hover:border-[rgb(var(--accent-primary))] transition-colors cursor-pointer"
+      title="Abrir hoja de cálculo"
+      aria-label="Abrir hoja de cálculo"
+    >
+      <Cloud class="w-5 h-5" />
+      <span class="hidden md:inline text-xs font-bold">Hoja</span>
+    </button>
+    <button
+      on:click={openReportGenerator}
+      class="min-h-[44px] min-w-[44px] flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-[rgb(var(--bg-secondary))] border border-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] hover:border-[rgb(var(--accent-primary))] transition-colors cursor-pointer"
+      title="Generar reportes PDF"
+      aria-label="Generar reportes PDF"
+    >
+      <FileText class="w-5 h-5" />
+      <span class="hidden md:inline text-xs font-bold">Reportes</span>
+    </button>
+  {/snippet}
+</ModuleHeader>
 
 <div
-  class="min-h-screen flex flex-col lg:flex-row transition-colors duration-200"
+  class="min-h-screen flex flex-col transition-colors duration-200"
   style="background-color: {styles.bg};"
 >
-  <!-- Sidebar -->
-  <aside
-    class="w-full lg:w-80 lg:h-screen lg:sticky lg:top-0 border-b lg:border-b-0 lg:border-r transition-colors duration-200 p-6 lg:p-8 flex flex-col flex-shrink-0 z-40"
-    style="background-color: {styles.cardBg}; border-color: {styles.cardBorder};"
-  >
-    <div
-      class="flex flex-col lg:flex-col items-center justify-between lg:justify-start gap-4 lg:gap-8"
-    >
-      <div class="flex flex-wrap justify-center lg:flex-col gap-3 w-full">
-        <button
-          on:click={openSheets}
-          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
-          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
-          title="Abrir hoja de cálculo"
-        >
-          <Cloud class="w-5 h-5" />
-          <span class="text-sm font-medium hidden lg:inline"
-            >Hoja de Cálculo</span
-          >
-        </button>
-
-        <!-- Botón de Reportes PDF -->
-        <button
-          on:click={openReportGenerator}
-          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
-          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
-          title="Generar reportes PDF"
-        >
-          <FileText class="w-5 h-5" />
-          <span class="text-sm font-medium hidden lg:inline">Reportes PDF</span>
-        </button>
-      </div>
-    </div>
-  </aside>
-
   <!-- Contenido Principal -->
-  <main class="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto pb-32">
+  <main class="flex-1 p-4 sm:p-6 lg:p-8 pb-40">
     <div
       class="max-w-4xl mx-auto rounded-2xl p-6 lg:p-8 transition-colors duration-200 border"
       style="background-color: {styles.cardBg}; border-color: {styles.cardBorder};"
@@ -551,110 +658,325 @@
         </div>
       {/if}
 
-      <form on:submit={handleSubmit} novalidate class="space-y-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="space-y-2">
-            <label
-              for="fecha"
-              class="block text-sm font-medium"
-              style="color: {styles.label};">Fecha</label
-            >
-            <input
-              type="date"
-              id="fecha"
-              bind:value={formData.fecha}
-              required
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none {showFieldErrors && missingFields.includes('fecha') ? 'ring-2 ring-red-500 border-red-500' : ''}"
-              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('fecha') ? '#ef4444' : styles.border}; color: {styles.text}; color-scheme: {$theme ===
-              'light'
-                ? 'light'
-                : 'dark'};"
-            />
+      <!-- Banner de borrador restaurado -->
+      {#if showDraftBanner && draftRestored}
+        <div
+          class="mb-4 p-3 rounded-xl border flex items-start gap-3 bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700/50"
+          role="status"
+        >
+          <div class="flex-1 text-sm text-blue-900 dark:text-blue-100">
+            <p class="font-semibold">Borrador restaurado</p>
+            <p class="text-xs opacity-80 mt-0.5">Continuamos donde lo dejaste. Si no es lo que querías, descártalo.</p>
           </div>
-
-          <div class="space-y-2">
-            <label
-              for="docente"
-              class="block text-sm font-medium"
-              style="color: {styles.label};">Docente</label
+          <div class="flex gap-2 flex-shrink-0">
+            <button
+              type="button"
+              on:click={discardDraft}
+              class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer"
+            >Descartar</button>
+            <button
+              type="button"
+              on:click={() => (showDraftBanner = false)}
+              class="p-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 transition-colors cursor-pointer"
+              aria-label="Cerrar aviso de borrador"
             >
-            <select
-              id="docente"
-              bind:value={formData.docente}
-              required
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showFieldErrors && missingFields.includes('docente') ? 'ring-2 ring-red-500 border-red-500' : ''}"
-              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('docente') ? '#ef4444' : styles.border}; color: {styles.text};"
-            >
-              <option value=""
-                >{isLoadingDocentes
-                  ? "Cargando..."
-                  : "Seleccione docente"}</option
-              >
-              {#each docentes as docente}
-                <option value={docente}>{docente}</option>
-              {/each}
-            </select>
+              <X class="w-4 h-4" />
+            </button>
           </div>
         </div>
+      {/if}
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="space-y-2 {docenteHasDash ? 'lg:col-span-2' : ''}">
+      <!-- Panel de validación en vivo (estático, sin sticky para evitar solapes) -->
+      <div
+        class="mb-6 rounded-xl border-2 p-3 sm:p-4 transition-colors {missingFields.length === 0
+          ? 'bg-emerald-50 dark:bg-emerald-500/15 border-emerald-500'
+          : 'bg-amber-50 dark:bg-amber-500/15 border-amber-500'}"
+      >
+        {#if missingFields.length === 0}
+          <div class="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
+            <Check class="w-5 h-5" />
+            <span class="text-sm font-semibold">Listo para guardar</span>
+          </div>
+        {:else}
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+              <AlertTriangle class="w-5 h-5" />
+              <span class="text-sm font-semibold">
+                {missingFields.length === 1
+                  ? "Falta 1 campo"
+                  : `Faltan ${missingFields.length} campos`}
+              </span>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              {#each missingFields as field}
+                <button
+                  type="button"
+                  on:click={() => focusField(FIELD_TARGET_ID[field] ?? field)}
+                  class="cursor-pointer inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide bg-amber-500 text-white border border-amber-600 shadow-sm hover:bg-amber-600 motion-safe:transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-1"
+                  aria-label={`Ir al campo ${FIELD_LABELS[field] ?? field}`}
+                >
+                  {FIELD_LABELS[field] ?? field}
+                </button>
+              {/each}
+            </div>
+          </div>
+        {/if}
+      </div>
+
+      {#if initialLoading}
+        <div class="space-y-6">
+          <Skeleton variant="rect" class="h-12 w-full" />
+          <Skeleton variant="rect" class="h-12 w-full" />
+          <Skeleton variant="rect" class="h-12 w-full" />
+          <Skeleton variant="rect" class="h-12 w-full" />
+        </div>
+      {:else}
+        <form id="diario-form" on:submit={handleSubmit} novalidate class="space-y-6">
+          <!-- Fila 1: Fecha + Docente -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-2">
+              <label
+                for="fecha"
+                class="block text-sm font-medium"
+                style="color: {styles.label};">Fecha</label
+              >
+              <!-- Input + chips lado a lado -->
+              <div class="flex items-stretch gap-2">
+                <input
+                  type="date"
+                  id="fecha"
+                  bind:value={formData.fecha}
+                  on:blur={() => markTouched('fecha')}
+                  max={TODAY_ISO}
+                  required
+                  class="flex-1 min-w-0 px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none {showError('fecha') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+                  style="background-color: {styles.inputBg}; border-color: {showError('fecha') ? '#ef4444' : styles.border}; color: {styles.text}; color-scheme: {$theme ===
+                  'light'
+                    ? 'light'
+                    : 'dark'};"
+                />
+                <div class="flex gap-1 flex-shrink-0">
+                  {#each [{ label: "Hoy", n: 0 }, { label: "Ayer", n: 1 }] as opt}
+                    {@const targetIso = fechaOffsetIso(opt.n)}
+                    {@const active = formData.fecha === targetIso}
+                    <button
+                      type="button"
+                      on:click={() => setFechaRelative(opt.n)}
+                      title={opt.label}
+                      class="px-2.5 text-xs font-semibold rounded-xl border transition-colors cursor-pointer
+                        {active
+                          ? 'bg-indigo-600 text-white border-indigo-600'
+                          : 'bg-[rgb(var(--bg-secondary))] text-[rgb(var(--text-secondary))] border-[rgb(var(--border-primary))] hover:border-indigo-500'}"
+                    >{opt.label}</button>
+                  {/each}
+                </div>
+              </div>
+              {#if !isFechaToday(formData.fecha)}
+                <p class="text-[11px] text-amber-600 dark:text-amber-400">Registro retroactivo</p>
+              {/if}
+            </div>
+
+            <div class="space-y-2">
+              <label
+                for="docente"
+                class="block text-sm font-medium"
+                style="color: {styles.label};">Docente</label
+              >
+              <select
+                id="docente"
+                bind:value={formData.docente}
+                on:blur={() => markTouched('docente')}
+                required
+                class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showError('docente') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+                style="background-color: {styles.inputBg}; border-color: {showError('docente') ? '#ef4444' : styles.border}; color: {styles.text};"
+              >
+                <option value=""
+                  >{isLoadingDocentes
+                    ? "Cargando..."
+                    : "Seleccione docente"}</option
+                >
+                {#each docentesSorted as docente, i}
+                  <option value={docente}>{i === 0 && docente === (localStorage.getItem("lastDocenteDiario") || "") ? "★ " : ""}{docente}</option>
+                {/each}
+              </select>
+            </div>
+          </div>
+
+          <!-- Fila 2: Grado + Horas (Horas oculto cuando docenteHasDash) -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-2">
+              <label
+                for="grado"
+                class="block text-sm font-medium"
+                style="color: {styles.label};">Grado</label
+              >
+              <select
+                id="grado"
+                bind:value={formData.grado}
+                on:blur={() => markTouched('grado')}
+                required
+                class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showError('grado') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+                style="background-color: {styles.inputBg}; border-color: {showError('grado') ? '#ef4444' : styles.border}; color: {styles.text};"
+              >
+                <option value=""
+                  >{isLoadingEstudiantes
+                    ? "Cargando..."
+                    : "Seleccione grado"}</option
+                >
+                {#each filteredGrados as g}
+                  <option value={g}
+                    >{g
+                      .replace(/0(\d)$/, "°$1")
+                      .replace(/(\d{1,2})0(\d)/, "$1°$2")}</option
+                  >
+                {/each}
+              </select>
+            </div>
+
+            {#if !docenteHasDash}
+              <div class="space-y-2">
+                <label
+                  for="horas"
+                  class="block text-sm font-medium"
+                  style="color: {styles.label};">Horas</label
+                >
+                <select
+                  id="horas"
+                  bind:value={formData.horas}
+                  on:blur={() => markTouched('horas')}
+                  required
+                  class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer {showError('horas') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+                  style="background-color: {styles.inputBg}; border-color: {showError('horas') ? '#ef4444' : styles.border}; color: {styles.text};"
+                >
+                  <option value="">Seleccione horas</option>
+                  <option value="0">Sin hora específica</option>
+                  {#each [1, 2, 3, 4] as h}
+                    <option value={h.toString()}
+                      >{h} {h === 1 ? "Hora" : "Horas"}</option
+                    >
+                  {/each}
+                </select>
+              </div>
+            {/if}
+          </div>
+
+          <!-- Fila 3: Materia(s) - ancho completo -->
+          <div class="space-y-2">
             <div class="flex items-center justify-between">
               <label
                 for="materia"
                 class="block text-sm font-medium"
-                style="color: {styles.label};">Materia</label
-              >
+                style="color: {styles.label};"
+              >{docenteHasDash ? "Materias" : "Materia"}</label>
             </div>
             {#if docenteHasDash}
-              <div class="border rounded-xl p-2 lg:p-3 flex flex-col lg:flex-row lg:flex-wrap gap-2 lg:gap-2 {showFieldErrors && missingFields.includes('materias') ? 'ring-2 ring-red-500 border-red-500' : ''}" style="border-color: {showFieldErrors && missingFields.includes('materias') ? '#ef4444' : styles.border}; background-color: {styles.inputBg};">
-                {#each materiasSorted as materia}
-                  {@const isSaved = docenteMaterias[formData.docente]?.includes(materia.materia)}
-                  {@const selectedIndex = selectedMaterias.findIndex(m => m.materia === materia.materia)}
-                  {@const isSelected = selectedIndex >= 0}
-                  <div class="flex flex-col lg:flex-row lg:items-center gap-1 lg:gap-2 px-2 py-2 lg:py-1.5 rounded-lg border transition-all {isSelected ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-500' : 'border-transparent'}"
-                    style="border-color: {isSelected ? '#6366f1' : styles.border};">
-                    <div class="flex items-center gap-1.5">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        on:change={(e) => {
-                          if (e.currentTarget.checked) {
-                            selectedMaterias = [...selectedMaterias, { materia: materia.materia, horas: formData.horas }];
-                          } else {
-                            selectedMaterias = selectedMaterias.filter(m => m.materia !== materia.materia);
-                          }
-                        }}
-                        class="w-4 h-4 lg:w-5 lg:h-5 rounded text-indigo-500 focus:ring-indigo-500"
-                        style="accent-color: #6366f1;"
-                      />
-                      <span class="text-sm lg:text-sm flex-shrink-0" style="color: {styles.text};">
-                        {isSaved ? "⭐ " : ""}{materia.materia}
-                      </span>
-                    </div>
-                    {#if isSelected}
-                      <select
-                        bind:value={selectedMaterias[selectedIndex].horas}
-                        class="w-full lg:w-16 px-2 py-1.5 lg:py-1 text-sm rounded border appearance-none cursor-pointer {showFieldErrors && missingFields.includes('horas') && !selectedMaterias[selectedIndex].horas ? 'ring-2 ring-red-500 border-red-500' : ''}"
-                        style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('horas') && !selectedMaterias[selectedIndex].horas ? '#ef4444' : styles.border}; color: {styles.text};"
+              <div id="materias-multi" class="space-y-3">
+                <!-- Resumen visual de materias seleccionadas -->
+                {#if selectedMaterias.length === 0}
+                  <p class="text-xs italic" style="color: {styles.placeholder};">
+                    Aún no has seleccionado materias
+                  </p>
+                {:else}
+                  <div class="flex flex-wrap gap-2">
+                    {#each selectedMaterias as sm (sm.materia)}
+                      <span
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30"
                       >
-                        <option value="">Horas...</option>
-                        <option value="0">0</option>
-                        {#each [1, 2, 3, 4] as h}
-                          <option value={h.toString()}>{h}h</option>
-                        {/each}
-                      </select>
-                    {/if}
+                        <span>
+                          {sm.materia} · {sm.horas ? `${sm.horas}h` : "sin horas"}
+                        </span>
+                        <button
+                          type="button"
+                          on:click={() => {
+                            selectedMaterias = selectedMaterias.filter(
+                              (m) => m.materia !== sm.materia,
+                            );
+                          }}
+                          class="rounded-full hover:bg-blue-500/20 p-0.5 transition-colors"
+                          aria-label={`Quitar ${sm.materia}`}
+                        >
+                          <X class="w-3 h-3" />
+                        </button>
+                      </span>
+                    {/each}
                   </div>
-                {/each}
+                {/if}
+
+                <!-- Toggle para grids grandes -->
+                {#if materiasSorted.length > 6}
+                  <button
+                    type="button"
+                    on:click={() => (showAllMaterias = !showAllMaterias)}
+                    class="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
+                    {#if showAllMaterias}
+                      <ChevronUp class="w-4 h-4" />
+                      <span>Ocultar materias</span>
+                    {:else}
+                      <ChevronDown class="w-4 h-4" />
+                      <span>Mostrar todas las materias ({materiasSorted.length})</span>
+                    {/if}
+                  </button>
+                {/if}
+
+                {#if materiasSorted.length <= 6 || showAllMaterias}
+                  <div
+                    class="border rounded-xl p-2 lg:p-3 flex flex-col lg:flex-row lg:flex-wrap gap-2 lg:gap-2 {showError('materias') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+                    style="border-color: {showError('materias') ? '#ef4444' : styles.border}; background-color: {styles.inputBg};"
+                  >
+                    {#each materiasSorted as materia}
+                      {@const isSaved = docenteMaterias[formData.docente]?.includes(materia.materia)}
+                      {@const selectedIndex = selectedMaterias.findIndex(m => m.materia === materia.materia)}
+                      {@const isSelected = selectedIndex >= 0}
+                      <div
+                        class="flex flex-col lg:flex-row lg:items-center gap-1 lg:gap-2 px-2 py-2 lg:py-1.5 rounded-lg border transition-all {isSelected ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 dark:border-indigo-500' : 'border-transparent'}"
+                        style="border-color: {isSelected ? '#6366f1' : styles.border};"
+                      >
+                        <div class="flex items-center gap-1.5">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            on:change={(e) => {
+                              if (e.currentTarget.checked) {
+                                selectedMaterias = [...selectedMaterias, { materia: materia.materia, horas: formData.horas }];
+                              } else {
+                                selectedMaterias = selectedMaterias.filter(m => m.materia !== materia.materia);
+                              }
+                            }}
+                            class="w-4 h-4 lg:w-5 lg:h-5 rounded text-indigo-500 focus:ring-indigo-500"
+                            style="accent-color: #6366f1;"
+                          />
+                          <span class="text-sm lg:text-sm flex-shrink-0" style="color: {styles.text};">
+                            {isSaved ? "⭐ " : ""}{materia.materia}
+                          </span>
+                        </div>
+                        {#if isSelected}
+                          <select
+                            bind:value={selectedMaterias[selectedIndex].horas}
+                            class="w-full lg:w-16 px-2 py-1.5 lg:py-1 text-sm rounded border appearance-none cursor-pointer {showError('horas') && !selectedMaterias[selectedIndex].horas ? 'ring-2 ring-red-500 border-red-500' : ''}"
+                            style="background-color: {styles.inputBg}; border-color: {showError('horas') && !selectedMaterias[selectedIndex].horas ? '#ef4444' : styles.border}; color: {styles.text};"
+                            aria-label={`Horas para ${materia.materia}`}
+                          >
+                            <option value="">Horas...</option>
+                            <option value="0">0</option>
+                            {#each [1, 2, 3, 4] as h}
+                              <option value={h.toString()}>{h}h</option>
+                            {/each}
+                          </select>
+                        {/if}
+                      </div>
+                    {/each}
+                  </div>
+                {/if}
               </div>
             {:else}
               <select
                 id="materia"
                 bind:value={formData.materia}
+                on:blur={() => markTouched('materia')}
                 required
-                class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showFieldErrors && missingFields.includes('materia') ? 'ring-2 ring-red-500 border-red-500' : ''}"
-                style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('materia') ? '#ef4444' : styles.border}; color: {styles.text};"
+                class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showError('materia') ? 'ring-2 ring-red-500 border-red-500' : ''}"
+                style="background-color: {styles.inputBg}; border-color: {showError('materia') ? '#ef4444' : styles.border}; color: {styles.text};"
               >
                 <option value=""
                   >{isLoadingMaterias
@@ -668,7 +990,7 @@
                   <option
                     value={materia.materia}
                     style={isSaved ? "color: #6366f1; font-weight: 600;" : ""}
-              >
+                  >
                     {isSaved ? "⭐ " : ""}{materia.materia}
                   </option>
                 {/each}
@@ -676,78 +998,47 @@
             {/if}
           </div>
 
-          <div class="space-y-2">
-            <label
-              for="grado"
-              class="block text-sm font-medium"
-              style="color: {styles.label};">Grado</label
-            >
-            <select
-              id="grado"
-              bind:value={formData.grado}
-              required
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showFieldErrors && missingFields.includes('grado') ? 'ring-2 ring-red-500 border-red-500' : ''}"
-              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('grado') ? '#ef4444' : styles.border}; color: {styles.text};"
-            >
-              <option value=""
-                >{isLoadingEstudiantes
-                  ? "Cargando..."
-                  : "Seleccione grado"}</option
-              >
-              {#each filteredGrados as g}
-                <option value={g}
-                  >{g
-                    .replace(/0(\d)$/, "°$1")
-                    .replace(/(\d{1,2})0(\d)/, "$1°$2")}</option
-                >
-              {/each}
-            </select>
+          <!-- Fila 4: Diario de Campo -->
+          <div id="diario" class="space-y-2">
+            <DiarioAnotacionOptions bind:selectedDiarioAnots />
           </div>
-        </div>
 
-        <div class="space-y-2">
-          <label
-            for="horas"
-            class="block text-sm font-medium"
-            style="color: {styles.label};">Horas</label
-          >
-          <select
-            id="horas"
-            bind:value={formData.horas}
-            required
-            class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer {showFieldErrors && missingFields.includes('horas') ? 'ring-2 ring-red-500 border-red-500' : ''}"
-            style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('horas') ? '#ef4444' : styles.border}; color: {styles.text};"
-          >
-            <option value="">Seleccione horas</option>
-            <option value="0">Sin hora específica</option>
-            {#each [1, 2, 3, 4] as h}
-              <option value={h.toString()}
-                >{h} {h === 1 ? "Hora" : "Horas"}</option
-              >
-            {/each}
-          </select>
-        </div>
-
-        <div class="space-y-2">
-          <!-- Diario de Campo options component -->
-          <DiarioAnotacionOptions bind:selectedDiarioAnots />
-        </div>
-
-        <div class="fixed bottom-8 right-8 z-50">
-          <button
-            type="submit"
-            disabled={isLoading}
-            class="w-16 h-16 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 dark:disabled:bg-slate-700 disabled:cursor-not-allowed disabled:scale-100 text-white rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 active:scale-95 backdrop-blur-sm bg-opacity-95 flex items-center justify-center overflow-hidden border border-white/20"
-            aria-label="Guardar Diario de Campo"
-          >
-            {#if isLoading}
-              <Loader2 class="w-7 h-7 text-white animate-spin" />
-            {:else}
-              <Send class="w-7 h-7 text-white" />
-            {/if}
-          </button>
-        </div>
-      </form>
+          <!-- FAB: Botón flotante con badge contador y color por estado -->
+          <div class="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
+            <!-- Botón secundario: limpiar formulario -->
+            <button
+              type="button"
+              on:click={handleClearForm}
+              title="Limpiar formulario"
+              aria-label="Limpiar formulario"
+              class="w-11 h-11 rounded-full bg-[rgb(var(--bg-secondary))] hover:bg-[rgb(var(--bg-tertiary))] text-[rgb(var(--text-secondary))] border border-[rgb(var(--border-primary))] shadow-lg motion-safe:transition-transform motion-safe:duration-200 motion-safe:hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer"
+            >
+              <Eraser class="w-5 h-5" />
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading}
+              title={fabTitle}
+              class="relative w-16 h-16 {missingFields.length === 0 ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-amber-500 hover:bg-amber-600'} disabled:bg-slate-400 dark:disabled:bg-slate-700 disabled:cursor-not-allowed disabled:scale-100 text-white rounded-full shadow-2xl motion-safe:transition-transform motion-safe:duration-200 motion-safe:hover:scale-105 active:scale-95 flex items-center justify-center overflow-visible border-2 border-white dark:border-slate-800 cursor-pointer"
+              aria-label="Guardar Diario de Campo (Ctrl+Enter)"
+            >
+              {#if isLoading}
+                <Loader2 class="w-7 h-7 text-white animate-spin" />
+              {:else}
+                <Send class="w-7 h-7 text-white" />
+              {/if}
+              {#if selectedDiarioAnots.length >= 1}
+                <span
+                  class="absolute -top-1 -right-1 min-w-[22px] h-[22px] px-1.5 rounded-full bg-white text-indigo-600 text-xs font-bold flex items-center justify-center border-2 border-indigo-600 shadow"
+                  aria-label={`${selectedDiarioAnots.length} anotaciones seleccionadas`}
+                >
+                  {selectedDiarioAnots.length}
+                </span>
+              {/if}
+            </button>
+          </div>
+        </form>
+      {/if}
     </div>
   </main>
 </div>
@@ -761,7 +1052,7 @@
 
 {#if lastSaved && lastSavedVisible}
   <div
-    class="fixed bottom-4 right-4 z-50 max-w-xs w-full rounded-xl shadow-lg border p-4 transition-all duration-500"
+    class="fixed bottom-4 left-4 z-40 max-w-xs w-[calc(100%-2rem)] sm:w-72 rounded-xl shadow-lg border p-4 transition-all duration-500"
     style="background-color: rgb(var(--card-bg)); border-color: rgb(var(--card-border));"
     class:opacity-0={!lastSavedVisible}
     class:translate-y-2={!lastSavedVisible}
@@ -784,6 +1075,7 @@
         class="text-xs opacity-40 hover:opacity-100 transition-opacity"
         style="color: rgb(var(--text-secondary));"
         on:click={() => { lastSavedVisible = false; }}
+        aria-label="Cerrar notificación"
       >&times;</button>
     </div>
   </div>

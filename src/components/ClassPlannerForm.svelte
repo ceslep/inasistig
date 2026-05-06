@@ -26,11 +26,15 @@
         type TemaDocenteEntry,
         getPlaneador,
     } from "../../api/service";
-    import { URL_DBA_EBC, AI_PROXY_URL } from "../constants";
+    import { URL_DBA_EBC, AI_PROXY_URL, GOOGLE_CLIENT_ID } from "../constants";
     import Piar from "./Piar.svelte";
     import TomSelect from "./TomSelect.svelte";
     import DatePicker from "./DatePicker.svelte";
     import ModuleHeader from "./ModuleHeader.svelte";
+    import DriveFolderPicker from "./DriveFolderPicker.svelte";
+    import UploadProgressModal from "./UploadProgressModal.svelte";
+    import { gdriveService, isUploading } from "../lib/gdriveService";
+    import { Sparkles } from "@lucide/svelte";
 
     let { onBack }: { onBack: () => void } = $props();
 
@@ -82,8 +86,8 @@
         grado: "",
         materia: "",
         periodo: "",
-        fechaDesde: getCurrentDate(),
-        fechaHasta: getCurrentDate()
+        fechaDesde: "",
+        fechaHasta: ""
     });
 
     // PDF Preview
@@ -91,6 +95,19 @@
     let pdfUrl = $state<string | null>(null);
     let pdfFileName = $state('Planeacion.pdf');
     let isGeneratingPdf = $state(false);
+
+    // Drive Upload - Generar todos y enviar
+    let isGeneratingAll = $state(false);
+    let generatedPDFs = $state<Array<{name: string, blob: Blob, data: PlaneadorData}>>([]);
+    let showUploadProgress = $state(false);
+    let uploadPhase = $state<'generating' | 'uploading'>('generating');
+    let uploadCurrent = $state(0);
+    let uploadTotal = $state(0);
+    let uploadCurrentFile = $state('');
+    let uploadSuccessCount = $state(0);
+    let uploadFailedCount = $state(0);
+    let showFolderPicker = $state(false);
+    let selectedFolderId = $state<string | null>(null);
 
     // Temas del Docente (JSON)
     let isLoadingTemas = $state(false);
@@ -112,18 +129,13 @@
       periodo: string;
       timestamp: string;
     }
-    let lastSaved = $state<LastSavedInfo | null>(null);
-    let lastSavedVisible = $state(false);
-    let lastSavedTimer: ReturnType<typeof setTimeout> | null = null;
+let lastSaved = $state<LastSavedInfo | null>(null);
+  let lastSavedVisible = $state(false);
 
-    const showLastSaved = (info: LastSavedInfo) => {
-      if (lastSavedTimer) clearTimeout(lastSavedTimer);
-      lastSaved = info;
-      lastSavedVisible = true;
-      lastSavedTimer = setTimeout(() => {
-        lastSavedVisible = false;
-      }, 8000);
-    };
+const showLastSaved = (info: LastSavedInfo) => {
+    lastSaved = info;
+    lastSavedVisible = true;
+  };
 
     // Firma del docente
     let showFirmaModal = $state(false);
@@ -642,9 +654,17 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
 
     // --- Funciones Planeaciones Online (Google Sheets) ---
     const buscarPlaneacionesOnline = async (): Promise<void> => {
+        // Asegurar que el docente tenga un valor por defecto
+        if (!filtrosBusqueda.docente && $docenteName) {
+            filtrosBusqueda.docente = $docenteName;
+        }
+        
+        console.log('[Planeaciones] Buscando con filtros:', filtrosBusqueda);
+        
         isLoadingOnline = true;
         try {
             planeacionesOnline = await getPlaneador(filtrosBusqueda);
+            console.log('[Planeaciones] Resultados:', planeacionesOnline.length, 'planeaciones');
         } catch (error) {
             console.error("Error buscando planeaciones:", error);
             Swal.fire({
@@ -2570,6 +2590,426 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
         } finally {
             isGeneratingPdf = false;
         }
+    };
+
+    const generatePDFBlob = async (source: PlaneadorData): Promise<{ blob: Blob; fileName: string }> => {
+        const d = {
+            docente: source.docente || '',
+            grado: source.grade || '',
+            subject: source.subject || '',
+            period: source.period || '',
+            dba: source.dba || [],
+            standard: source.standard || [],
+            dba_manual: source.dba_manual || '',
+            competency: source.competency || '',
+            has_piar: source.has_piar ?? false,
+            piar_description: source.piar_description || '',
+            learning_objectives: source.learning_objectives || '',
+            competencias: source.competencias || '',
+            indicadores_logro: source.indicadores_logro || '',
+            exploration: source.exploration || '',
+            exploration_activities: source.exploration_activities || [],
+            tiempo_exploracion: source.tiempo_exploracion || 10,
+            structuring: source.structuring || '',
+            structuring_activities: source.structuring_activities || [],
+            tiempo_estructuracion: source.tiempo_estructuracion || 20,
+            practice: source.practice || '',
+            practice_activities: source.practice_activities || [],
+            tiempo_practica: source.tiempo_practica || 25,
+            transfer: source.transfer || '',
+            transfer_activities: source.transfer_activities || [],
+            tiempo_transferencia: source.tiempo_transferencia || 15,
+            assessment_moment: source.assessment_moment || '',
+            assessment_activities: source.assessment_activities || [],
+            tiempo_valoracion: source.tiempo_valoracion || 10,
+            eval_type: source.eval_type || 'Formativa',
+            eval_modalidades: source.eval_modalidades || [],
+            eval_instrumentos: source.eval_instrumentos || [],
+            eval_criterios: source.eval_criterios || [],
+            eval_evidencias: source.eval_evidencias || [],
+            eval_criteria: source.eval_criteria || '',
+            eval_evidence: source.eval_evidence || '',
+            eval_ponderacion_conceptos: source.eval_ponderacion_conceptos ?? 30,
+            eval_ponderacion_procedimientos: source.eval_ponderacion_procedimientos ?? 40,
+            eval_ponderacion_actitudes: source.eval_ponderacion_actitudes ?? 30,
+            eval_descripcion_auto: source.eval_descripcion_auto || '',
+            resources: source.resources || '',
+            planeacion_tipo: source.planeacion_tipo || '',
+            periodo_academico: source.periodo_academico || '',
+            fecha_inicio: source.fecha_inicio || '',
+            fecha_fin: source.fecha_fin || '',
+            firma_docente: source.firma_docente || '',
+            fecha_firma: source.fecha_firma || '',
+        };
+
+        const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+            import('jspdf'),
+            import('jspdf-autotable')
+        ]);
+
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 15;
+        const footerMargin = 20;
+        let yPos = 10;
+
+        const COLOR_INDIGO: [number, number, number] = [79, 70, 229];
+        const COLOR_GRAY_LIGHT: [number, number, number] = [243, 244, 246];
+        const COLOR_GREEN: [number, number, number] = [16, 185, 129];
+        const COLOR_AMBER: [number, number, number] = [245, 158, 11];
+        const COLOR_ROSE: [number, number, number] = [244, 63, 94];
+        const COLOR_CYAN: [number, number, number] = [6, 182, 212];
+        const COLOR_VIOLET: [number, number, number] = [139, 92, 246];
+        const COLOR_EMERALD: [number, number, number] = [5, 150, 105];
+        const COLOR_ORANGE: [number, number, number] = [234, 88, 12];
+
+        const cleanText = (text: string): string => {
+            return (text || '').replace(/[\u{1F300}-\u{1F9FF}]|[\u{2700}-\u{27BF}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu, '').trim();
+        };
+
+        const addWrappedText = (text: string, x: number, maxWidth: number, fontSize: number = 10): boolean => {
+            doc.setFontSize(fontSize);
+            const lines = doc.splitTextToSize(text, maxWidth);
+            for (const line of lines) {
+                if (yPos > pageHeight - footerMargin) {
+                    doc.addPage();
+                    yPos = 10;
+                }
+                doc.text(line, x, yPos);
+                yPos += 5;
+            }
+            return yPos < pageHeight - footerMargin;
+        };
+
+        const addSectionHeader = (title: string, color: [number, number, number]) => {
+            if (yPos > pageHeight - 30) { doc.addPage(); yPos = 10; }
+            doc.setFillColor(...color);
+            doc.rect(margin, yPos, pageWidth - margin * 2, 7, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            doc.text(title, margin + 3, yPos + 5);
+            doc.setTextColor(0, 0, 0);
+            yPos += 10;
+        };
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.setTextColor(...COLOR_INDIGO);
+        doc.text('PLANEADOR DE CLASES', pageWidth / 2, yPos, { align: 'center' });
+        yPos += 10;
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(80, 80, 80);
+        const fechaActual = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
+        doc.text(`Fecha de generación: ${fechaActual}`, pageWidth / 2, yPos, { align: 'center' });
+        yPos += 8;
+
+        doc.setDrawColor(200, 200, 200);
+        doc.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 5;
+
+        doc.setFontSize(11);
+        doc.setTextColor(0, 0, 0);
+        
+        const infoRows = [
+            ['Docente:', d.docente || 'N/A'],
+            ['Grado:', d.grado || 'N/A'],
+            ['Materia:', d.subject || 'N/A'],
+            ['Período:', d.period || d.periodo_academico || 'N/A'],
+            ['Tipo:', d.planeacion_tipo || 'Estándar'],
+            ['Fechas:', `${d.fecha_inicio || ''} - ${d.fecha_fin || ''}`]
+        ];
+
+        for (const [label, value] of infoRows) {
+            doc.setFont('helvetica', 'bold');
+            doc.text(label, margin, yPos);
+            doc.setFont('helvetica', 'normal');
+            doc.text(value, margin + 25, yPos);
+            yPos += 5;
+        }
+
+        yPos += 3;
+
+        if (d.competency || d.learning_objectives || d.competencias) {
+            addSectionHeader('COMPETENCIAS Y OBJETIVOS', COLOR_GREEN);
+            if (d.competency) {
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.text('Competencia:', margin, yPos);
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(cleanText(d.competency), margin + 25, pageWidth - margin * 2 - 25) ? yPos + 3 : yPos;
+            }
+            if (d.learning_objectives) {
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.text('Objetivos:', margin, yPos);
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(cleanText(d.learning_objectives), margin + 25, pageWidth - margin * 2 - 25) ? yPos + 3 : yPos;
+            }
+            if (d.competencias) {
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.text('Competencias:', margin, yPos);
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(cleanText(d.competencias), margin + 25, pageWidth - margin * 2 - 25) ? yPos + 3 : yPos;
+            }
+            if (d.indicadores_logro) {
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.text('Indicadores:', margin, yPos);
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(cleanText(d.indicadores_logro), margin + 25, pageWidth - margin * 2 - 25) ? yPos + 3 : yPos;
+            }
+        }
+
+        if (d.dba.length > 0 || d.dba_manual) {
+            addSectionHeader('REFERENTES DE CALIDAD (DBA)', COLOR_CYAN);
+            if (d.dba.length > 0) {
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.text('DBAs:', margin, yPos);
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(cleanText(d.dba.join(', ')), margin + 15, pageWidth - margin * 2 - 15) ? yPos + 3 : yPos;
+            }
+            if (d.dba_manual) {
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.text('DBA Manual:', margin, yPos);
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(cleanText(d.dba_manual), margin + 25, pageWidth - margin * 2 - 25) ? yPos + 3 : yPos;
+            }
+        }
+
+        if (d.has_piar) {
+            addSectionHeader('INCLUSIÓN - PIAR', COLOR_AMBER);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            yPos = addWrappedText(cleanText(d.piar_description || 'Descripción no proporcionada'), margin, pageWidth - margin * 2) ? yPos + 3 : yPos;
+        }
+
+        const sections = [
+            { title: 'EXPLORACIÓN', content: d.exploration, time: d.tiempo_exploracion, color: COLOR_VIOLET },
+            { title: 'ESTRUCTURACIÓN', content: d.structuring, time: d.tiempo_estructuracion, color: COLOR_EMERALD },
+            { title: 'PRÁCTICA', content: d.practice, time: d.tiempo_practica, color: COLOR_ORANGE },
+            { title: 'TRANSFERENCIA', content: d.transfer, time: d.tiempo_transferencia, color: COLOR_ROSE },
+            { title: 'VALORACIÓN', content: d.assessment_moment, time: d.tiempo_valoracion, color: COLOR_AMBER }
+        ];
+
+        for (const section of sections) {
+            if (section.content || section.time) {
+                addSectionHeader(`${section.title}${section.time ? ` (${section.time} min)` : ''}`, section.color);
+                if (section.content) {
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(10);
+                    yPos = addWrappedText(cleanText(section.content), margin, pageWidth - margin * 2) ? yPos + 3 : yPos;
+                }
+            }
+        }
+
+        if (d.eval_type || d.eval_criteria) {
+            addSectionHeader('EVALUACIÓN', COLOR_INDIGO);
+            if (d.eval_type) {
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.text('Tipo:', margin, yPos);
+                doc.setFont('helvetica', 'normal');
+                doc.text(d.eval_type, margin + 15, yPos);
+                yPos += 5;
+            }
+            if (d.eval_criteria) {
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.text('Criterios:', margin, yPos);
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(cleanText(d.eval_criteria), margin + 20, pageWidth - margin * 2 - 20) ? yPos + 3 : yPos;
+            }
+            if (d.eval_evidence) {
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(10);
+                doc.text('Evidencias:', margin, yPos);
+                doc.setFont('helvetica', 'normal');
+                yPos = addWrappedText(cleanText(d.eval_evidence), margin + 25, pageWidth - margin * 2 - 25) ? yPos + 3 : yPos;
+            }
+        }
+
+        if (d.resources) {
+            addSectionHeader('RECURSOS', COLOR_GREEN);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            yPos = addWrappedText(cleanText(d.resources), margin, pageWidth - margin * 2) ? yPos + 3 : yPos;
+        }
+
+        yPos += 5;
+        if (yPos > pageHeight - 40) { doc.addPage(); yPos = 10; }
+
+        doc.setFillColor(...COLOR_GRAY_LIGHT);
+        doc.rect(margin, yPos, pageWidth - margin * 2, 25, 'F');
+        
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Firma del Docente:', margin + 3, yPos + 8);
+        
+        if (d.firma_docente) {
+            try {
+                doc.addImage(d.firma_docente, 'PNG', margin + 3, yPos + 10, 40, 12);
+            } catch {}
+        } else {
+            doc.setDrawColor(150, 150, 150);
+            doc.line(margin + 3, yPos + 20, margin + 50, yPos + 20);
+        }
+        
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Fecha: ${d.fecha_firma ? new Date(d.fecha_firma).toLocaleDateString('es-CO') : 'N/A'}`, margin + 60, yPos + 8);
+        
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text('Generado por Sistema Inasistig - Planeador de Clases', pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+        const blob = doc.output('blob');
+        const fileName = `Planeador_${d.grado || 'Grado'}_${d.subject || 'Materia'}_${d.period || d.periodo_academico || 'Periodo'}.pdf`
+            .replace(/\s+/g, '_')
+            .replace(/[^\w_.-]/g, '');
+
+        return { blob, fileName };
+    };
+
+    const generateAllPlaneacionesForDocente = async (): Promise<void> => {
+        const docenteActual = filtrosBusqueda.docente || formData.docente;
+        
+        if (!docenteActual) {
+            await Swal.fire({
+                icon: "warning",
+                title: "Docente requerido",
+                text: "Por favor seleccione un docente en los filtros o en el formulario.",
+            });
+            return;
+        }
+
+        if (planeacionesOnline.length === 0) {
+            await Swal.fire({
+                icon: "warning",
+                title: "Sin planeaciones",
+                text: "No hay planeaciones para generar. Busque primero.",
+            });
+            return;
+        }
+
+        console.log('[DriveUpload] Iniciando generación para docente:', docenteActual, 'Total planeaciones:', planeacionesOnline.length);
+
+        isGeneratingAll = true;
+        generatedPDFs = [];
+        showUploadProgress = true;
+        uploadPhase = 'generating';
+        uploadCurrent = 0;
+        uploadTotal = planeacionesOnline.length;
+        uploadCurrentFile = 'Preparando generación de planeaciones...';
+        uploadSuccessCount = 0;
+        uploadFailedCount = 0;
+
+        try {
+            for (let i = 0; i < planeacionesOnline.length; i++) {
+                const planeacion = planeacionesOnline[i];
+                uploadCurrent = i + 1;
+                uploadCurrentFile = `Generando PDF ${i + 1}/${planeacionesOnline.length}: ${planeacion.subject || 'Sin materia'} - Grado ${planeacion.grade || 'N/A'}`;
+                
+                console.log('[DriveUpload] Generando PDF', i + 1, '/', planeacionesOnline.length, ':', planeacion.subject, '-', planeacion.grade);
+
+                try {
+                    const { blob, fileName } = await generatePDFBlob(planeacion);
+                    generatedPDFs.push({ name: fileName, blob, data: planeacion });
+                    uploadSuccessCount++;
+                    console.log('[DriveUpload] PDF generado exitoso:', fileName);
+                } catch (error) {
+                    console.error('[DriveUpload] Error generando PDF para planeación', i, ':', error);
+                    uploadFailedCount++;
+                }
+            }
+
+            console.log('[DriveUpload] Generación completada. Exitosos:', uploadSuccessCount, 'Fallidos:', uploadFailedCount);
+
+            if (generatedPDFs.length === 0) {
+                showUploadProgress = false;
+                throw new Error("No se pudo generar ningún PDF.");
+            }
+
+            uploadPhase = 'uploading';
+            uploadCurrent = 0;
+            uploadTotal = generatedPDFs.length;
+            uploadCurrentFile = 'Seleccionando carpeta de Drive...';
+            console.log('[DriveUpload] Mostrando selector de carpeta. showFolderPicker:', true);
+            showFolderPicker = true;
+
+        } catch (error) {
+            console.error("Error generando planeaciones:", error);
+            await Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: error instanceof Error ? error.message : "Error al generar las planeaciones.",
+                confirmButtonColor: "#ef4444",
+            });
+            showUploadProgress = false;
+        } finally {
+            isGeneratingAll = false;
+        }
+    };
+
+    const handleFolderSelected = async (folder: { id: string; name: string } | null): Promise<void> => {
+        console.log('[DriveUpload] handleFolderSelected llamado:', folder);
+        
+        if (!folder) {
+            console.log('[DriveUpload] Carpeta cancelada');
+            showFolderPicker = false;
+            generatedPDFs = [];
+            showUploadProgress = false;
+            return;
+        }
+
+        console.log('[DriveUpload] Carpeta seleccionada:', folder.name, '(ID:', folder.id, ')');
+        selectedFolderId = folder.id;
+        showFolderPicker = false;
+        uploadCurrentFile = `Subiendo ${generatedPDFs.length} archivo(s) a Drive...`;
+
+        const clientId = GOOGLE_CLIENT_ID;
+        let successCount = 0;
+        let failedCount = 0;
+
+        for (let i = 0; i < generatedPDFs.length; i++) {
+            const { name, blob } = generatedPDFs[i];
+            uploadCurrent = i + 1;
+            uploadCurrentFile = `Subiendo ${i + 1}/${generatedPDFs.length}: ${name}`;
+
+            const result = await gdriveService.uploadFile(
+                blob,
+                name,
+                'application/pdf',
+                clientId,
+                folder.id
+            );
+
+            if (result.success) {
+                successCount++;
+            } else {
+                failedCount++;
+                console.error(`Error subiendo ${name}:`, result.error);
+            }
+        }
+
+        uploadSuccessCount = successCount;
+        uploadFailedCount = failedCount;
+        uploadCurrentFile = `Completado: ${successCount} exitosos, ${failedCount} fallidos`;
+
+        await Swal.fire({
+            icon: failedCount > 0 ? "warning" : "success",
+            title: "Subida completada",
+            text: `${successCount} archivo(s) subido(s) a Drive. ${failedCount > 0 ? `${failedCount} fallido(s).` : ''}`,
+            confirmButtonColor: "#22c55e",
+        });
+
+        showUploadProgress = false;
+        generatedPDFs = [];
     };
 
     onMount(() => {
@@ -4915,7 +5355,13 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
             <div class="mt-4 rounded-xl border overflow-hidden transition-colors" style="background-color: {ts.bg2}; border-color: {ts.border}">
                 <button
                     type="button"
-                    onclick={() => { showFiltrosPanel = !showFiltrosPanel; if (showFiltrosPanel && planeacionesOnline.length === 0) buscarPlaneacionesOnline(); }}
+                    onclick={() => { 
+                        if (!showFiltrosPanel && !filtrosBusqueda.docente && $docenteName) {
+                            filtrosBusqueda.docente = $docenteName;
+                        }
+                        showFiltrosPanel = !showFiltrosPanel; 
+                        if (showFiltrosPanel && planeacionesOnline.length === 0) buscarPlaneacionesOnline(); 
+                    }}
                     class="w-full px-4 py-3 flex items-center justify-between transition-colors text-left border-b hover:opacity-80" style="background-color: {ts.bg3}; border-color: {ts.border}"
                 >
                     <span class="flex items-center gap-2 font-medium text-blue-500" style="color: {ts.text}">
@@ -5010,6 +5456,26 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                                 🔍 Buscar Planeaciones
                             {/if}
                         </button>
+
+                        {#if planeacionesOnline.length > 0}
+                            <button
+                                type="button"
+                                onclick={generateAllPlaneacionesForDocente}
+                                disabled={isGeneratingAll || $isUploading}
+                                class="w-full px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {#if isGeneratingAll}
+                                    <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                    </svg>
+                                    Generando todos...
+                                {:else}
+                                    <Sparkles class="w-4 h-4" />
+                                    Generar todos y enviar
+                                {/if}
+                            </button>
+                        {/if}
 
                         <!-- Resultados -->
                         {#if planeacionesOnline.length > 0}
@@ -5471,6 +5937,27 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
                 </div>
             </div>
         </div>
+    {/if}
+
+    <!-- Upload Progress Modal -->
+    {#if showUploadProgress}
+        <UploadProgressModal 
+            phase={uploadPhase}
+            current={uploadCurrent}
+            total={uploadTotal}
+            currentFile={uploadCurrentFile}
+            successCount={uploadSuccessCount}
+            failedCount={uploadFailedCount}
+            fileType="pdf"
+        />
+    {/if}
+
+    <!-- Drive Folder Picker for PDF Upload (renderizar al final para que aparezca sopra) -->
+    {#if showFolderPicker}
+        <DriveFolderPicker 
+            onSelect={handleFolderSelected} 
+            onClose={() => { showFolderPicker = false; generatedPDFs = []; }}
+        />
     {/if}
 </div>
 
