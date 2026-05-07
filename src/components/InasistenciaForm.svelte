@@ -20,13 +20,15 @@
 
   import { theme } from "../lib/themeStore";
   import { docenteName, findMatchingDocente } from "../lib/authStore";
-  import { Cloud, Filter, FileDown, Eye, BarChart3, LayoutGrid, Moon, Sun, CloudMoon, Info, X, Clock, ChevronDown, Pencil, Loader2, Check } from '@lucide/svelte';
+  import { useDraftSave, type InasistenciaDraftData } from "../lib/useDraftSave";
+  import { Cloud, Filter, FileDown, Eye, BarChart3, LayoutGrid, Moon, Sun, CloudMoon, Info, X, Clock, ChevronDown, Pencil, Loader2, Check, Send } from '@lucide/svelte';
   import eieLogo from "../assets/eie.png";
   import InasistenciaFilter from "./InasistenciaFilter.svelte";
   import ReportGeneratorInas from "./ReportGeneratorInas.svelte";
   import ReportGeneratorInasView from "./ReportGeneratorInasView.svelte";
   import FeaturePopup from "./FeaturePopup.svelte";
   import ModuleHeader from "./ModuleHeader.svelte";
+  import { SelectField, DatePicker } from './anotador';
 
   interface Props {
     onBack: () => void;
@@ -150,6 +152,71 @@
 
   // --- Estado para Report Generator ---
   let reportGeneratorLoading = $state(false);
+
+  // --- Borradores ---
+  const { saveDraft, loadDraft, clearDraft, hasDraft } = useDraftSave('inasistencia_draft');
+  let draftRestored = $state(false);
+  let showDraftBanner = $state(false);
+
+  $effect(() => {
+    if (draftRestored) return;
+    const hasContent = formData.docente || formData.materia || formData.grado || inasistencias.length > 0;
+    if (hasContent) {
+      saveDraft({ formData, inasistencias });
+    }
+  });
+
+  $effect(() => {
+    if (!draftRestored && hasDraft()) {
+      showDraftBanner = true;
+    }
+  });
+
+  const restoreDraft = () => {
+    const draft = loadDraft() as InasistenciaDraftData | null;
+    if (draft && 'inasistencias' in draft) {
+      formData = { ...formData, ...draft.formData };
+      inasistencias = draft.inasistencias || [];
+      draftRestored = true;
+      showDraftBanner = false;
+      clearDraft();
+      Swal.fire({
+        icon: 'success',
+        title: 'Borrador restaurado',
+        text: 'Se恢复了 tu borrador guardado',
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
+
+  const dismissDraft = () => {
+    showDraftBanner = false;
+    clearDraft();
+    draftRestored = true;
+  };
+
+  // --- Keyboard shortcuts ---
+  const handleKeydown = (e: KeyboardEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const form = document.querySelector('form');
+        if (form && !isLoading) form.requestSubmit();
+      } else if (e.key === 'n' && !isLoading) {
+        e.preventDefault();
+        formData = {
+          ...formData,
+          grado: "",
+          fecha: new Date().toLocaleDateString('en-CA'),
+          observaciones: "",
+          horas: "",
+        };
+        inasistencias = [];
+        clearDraft();
+      }
+    }
+  };
 
   // --- Alertas Dismissibles ---
   let showInfoAlert = $state(
@@ -827,6 +894,8 @@ let materiasSorted = $derived(
   });
 </script>
 
+<svelte:window onkeydown={handleKeydown} />
+
 <ModuleHeader title="Registro Diario" subtitle="Gestión de Asistencia" {onBack} />
 
 <div
@@ -843,6 +912,21 @@ let materiasSorted = $derived(
     >
       <!-- Botones de Acción -->
       <div class="flex flex-wrap justify-center lg:flex-col gap-3 w-full">
+        <!-- Theme Toggle -->
+        <button
+          onclick={toggleTheme}
+          class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
+          style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+          title={$theme === 'light' ? 'Modo oscuro' : 'Modo claro'}
+        >
+          {#if $theme === 'dark'}
+            <Sun class="w-5 h-5" />
+          {:else}
+            <Moon class="w-5 h-5" />
+          {/if}
+          <span class="text-sm font-medium hidden lg:inline">Tema</span>
+        </button>
+
          <button
            onclick={openSheets}
            class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
@@ -961,6 +1045,47 @@ let materiasSorted = $derived(
         </div>
       {/if}
 
+      <!-- Banner de borrador restaurado -->
+      {#if showDraftBanner && !draftRestored}
+        <div
+          class="mb-4 px-4 py-3 rounded-xl border flex items-center justify-between gap-3 animate-pulse"
+          style="background-color: rgb(var(--bg-secondary)); border-color: rgb(var(--accent-primary));"
+        >
+          <div class="flex items-center gap-3">
+            <div
+              class="p-2 rounded-lg"
+              style="background-color: rgb(var(--accent-primary)); color: white;"
+            >
+              <FileDown class="w-4 h-4" />
+            </div>
+            <div>
+              <p class="text-sm font-medium" style="color: rgb(var(--text-primary));">
+                Borrador guardado encontrado
+              </p>
+              <p class="text-xs" style="color: rgb(var(--text-secondary));">
+                ¿Deseas restaurar tu trabajo anterior?
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              onclick={dismissDraft}
+              class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors hover:bg-black/5"
+              style="border-color: rgb(var(--border-primary)); color: rgb(var(--text-secondary));"
+            >
+              Descartar
+            </button>
+            <button
+              onclick={restoreDraft}
+              class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
+              style="background-color: rgb(var(--accent-primary)); color: white;"
+            >
+              Restaurar
+            </button>
+          </div>
+        </div>
+      {/if}
+
       <!-- Feature Popup Component -->
       <FeaturePopup
         featureMessage={FEATURE_MESSAGE}
@@ -985,40 +1110,18 @@ let materiasSorted = $derived(
 
        <form onsubmit={handleSubmit} class="space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="space-y-2">
-            <label
-              for="docente"
-              class="block text-sm font-medium"
-              style="color: {styles.label};">Docente</label
-            >
-            <select
-              id="docente"
-              name="docente"
-              bind:value={formData.docente}
-              required
-              disabled={isLoadingDocentes}
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showFieldErrors && missingFields.includes('docente') ? 'ring-2 ring-red-500 border-red-500' : ''}"
-              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('docente') ? '#ef4444' : styles.border}; color: {styles.text};"
-            >
-              <option value=""
-                >{isLoadingDocentes
-                  ? "Cargando..."
-                  : "Seleccione docente"}</option
-              >
-              {#each docentes as docente}
-                <option value={docente}>{docente}</option>
-              {/each}
-            </select>
-          </div>
+          <SelectField
+            id="docente"
+            label="Docente"
+            bind:value={formData.docente}
+            options={docentes.map(d => ({ value: d, label: d }))}
+            placeholder={isLoadingDocentes ? "Cargando..." : "Seleccione docente"}
+            selectType="docente"
+            isLoading={isLoadingDocentes}
+            hasError={showFieldErrors && missingFields.includes('docente')}
+          />
 
           <div class="space-y-2 {docenteHasDash ? 'lg:col-span-2' : ''}">
-            <div class="flex items-center justify-between">
-              <label
-                for="materia"
-                class="block text-sm font-medium"
-                style="color: {styles.label};">Materia</label
-              >
-            </div>
             {#if docenteHasDash}
               <div class="border rounded-xl p-2 lg:p-3 flex flex-col lg:flex-row lg:flex-wrap gap-2 lg:gap-2 {showFieldErrors && missingFields.includes('materias') ? 'ring-2 ring-red-500 border-red-500' : ''}" style="border-color: {showFieldErrors && missingFields.includes('materias') ? '#ef4444' : styles.border}; background-color: {styles.inputBg};">
                 {#each materiasSorted as materia}
@@ -1062,32 +1165,19 @@ let materiasSorted = $derived(
                 {/each}
               </div>
             {:else}
-              <select
+              <SelectField
                 id="materia"
-                name="materia"
+                label="Materia"
                 bind:value={formData.materia}
-                required
-                disabled={isLoadingMaterias}
-                class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showFieldErrors && missingFields.includes('materia') ? 'ring-2 ring-red-500 border-red-500' : ''}"
-                style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('materia') ? '#ef4444' : styles.border}; color: {styles.text};"
-              >
-                <option value=""
-                  >{isLoadingMaterias
-                    ? "Cargando..."
-                    : "Seleccione materia"}</option
-                >
-                {#each materiasSorted as materia}
-                  {@const isSaved = docenteMaterias[formData.docente]?.includes(
-                    materia.materia,
-                  )}
-                  <option
-                    value={materia.materia}
-                    style={isSaved ? "color: #6366f1; font-weight: 600;" : ""}
-                  >
-                    {isSaved ? "⭐ " : ""}{materia.materia}
-                  </option>
-                {/each}
-              </select>
+                options={materiasSorted.map(m => ({ 
+                  value: m.materia, 
+                  label: (docenteMaterias[formData.docente]?.includes(m.materia) ? '⭐ ' : '') + m.materia 
+                }))}
+                placeholder={isLoadingMaterias ? "Cargando..." : "Seleccione materia"}
+                selectType="materia"
+                isLoading={isLoadingMaterias}
+                hasError={showFieldErrors && missingFields.includes('materia')}
+              />
             {/if}
           </div>
         </div>
@@ -1118,33 +1208,19 @@ let materiasSorted = $derived(
           </div>
 
           <div class="space-y-2">
-            <label
-              for="grado"
-              class="block text-sm font-medium"
-              style="color: {styles.label};">Grado</label
-            >
-            <select
+            <SelectField
               id="grado"
-              name="grado"
+              label="Grado"
               bind:value={formData.grado}
-              required
-              disabled={isLoadingEstudiantes}
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showFieldErrors && missingFields.includes('grado') ? 'ring-2 ring-red-500 border-red-500' : ''}"
-              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('grado') ? '#ef4444' : styles.border}; color: {styles.text};"
-            >
-              <option value=""
-                >{isLoadingEstudiantes
-                  ? "Cargando..."
-                  : "Seleccione grado"}</option
-              >
-              {#each filteredGrados as g}
-                <option value={g}
-                  >{g
-                    .replace(/0(\d)$/, "°$1")
-                    .replace(/(\d{1,2})0(\d)/, "$1°$2")}</option
-                >
-              {/each}
-            </select>
+              options={filteredGrados.map(g => ({ 
+                value: g, 
+                label: g.replace(/0(\d)$/, "°$1").replace(/(\d{1,2})0(\d)/, "$1°$2") 
+              }))}
+              placeholder={isLoadingEstudiantes ? "Cargando..." : "Seleccione grado"}
+              selectType="grado"
+              isLoading={isLoadingEstudiantes}
+              hasError={showFieldErrors && missingFields.includes('grado')}
+            />
           </div>
         </div>
 

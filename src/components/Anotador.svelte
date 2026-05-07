@@ -19,7 +19,7 @@
   import { theme } from "../lib/themeStore";
   import { docenteName, findMatchingDocente } from "../lib/authStore";
   import { getCategoryColor } from "../lib/design-system";
-  import { useDraftSave } from "../lib/useDraftSave";
+  import { useDraftSave, type DraftData } from "../lib/useDraftSave";
   import eieLogo from "../assets/eie.png";
   import { slide } from "svelte/transition";
   import FeaturePopup from "./FeaturePopup.svelte";
@@ -289,8 +289,8 @@
   });
 
   const restoreDraft = () => {
-    const draft = loadDraft();
-    if (draft) {
+    const draft = loadDraft() as DraftData | null;
+    if (draft && 'docente' in draft) {
       formData = {
         ...formData,
         docente: draft.docente,
