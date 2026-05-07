@@ -18,11 +18,13 @@
   import ReportGenerator from "./ReportGenerator.svelte";
   import { theme } from "../lib/themeStore";
   import { docenteName, findMatchingDocente } from "../lib/authStore";
+  import { getCategoryColor } from "../lib/design-system";
   import eieLogo from "../assets/eie.png";
   import { slide } from "svelte/transition";
   import FeaturePopup from "./FeaturePopup.svelte";
   import ModuleHeader from "./ModuleHeader.svelte";
   import { Cloud, Filter, FileText, LayoutGrid, Moon, Sun, CloudMoon, Info, X, Search, ChevronDown, Check, Loader2, Send } from '@lucide/svelte';
+  import { Accordion, CheckboxCard, Skeleton } from './anotador';
 
   // --- Props ---
   interface AnotadorProps {
@@ -69,14 +71,16 @@
   };
 
   // Función helper para actualizar selección de anotación
-  const toggleAnotacionSeleccion = (categoria: string, index: number) => {
-    const opcion = anotacionGrupos[categoria][index];
+  const toggleAnotacionSeleccion = (categoria: string, opcionText: string) => {
+    const opciones = anotacionGrupos[categoria];
+    if (!opciones) return;
+    
+    const opcion = opciones.find(o => o.text === opcionText);
     if (opcion) {
       opcion.selected = !opcion.selected;
 
       console.log("🔄 Anotación toggle:", {
         categoria,
-        index,
         texto: opcion.text,
         nuevoEstado: opcion.selected,
         totalSeleccionadas: Object.values(anotacionGrupos)
@@ -86,41 +90,7 @@
     }
   };
 
-  const getCategoryColor = (cat: string) => {
-    const colors: Record<string, string> = {
-      // Categorías reales del JSON
-      "CÁTEDRA DE LA PAZ": "#8b5cf6", // Violet
-      "CIENCIAS NATURALES Y EDUCACIÓN AMBIENTAL": "#10b981", // Emerald
-      "CIENCIAS SOCIALES (HISTORIA, GEOGRAFÍA Y": "#f59e0b", // Amber
-      "DIRECCIÓN DE GRUPO": "#3b82f6", // Blue
-      "EDUCACIÓN ARTÍSTICA": "#f43f5e", // Rose
-      "EDUCACIÓN FÍSICA, RECREACIÓN Y DEPORTES": "#ef4444", // Red
-      "EDUCACIÓN RELIGIOSA, ÉTICA Y V. HUMANOS": "#8b5cf6", // Violet
-      EMPRENDIMIENTO: "#f97316", // Orange
-      ESTADÍSTICA: "#06b6d4", // Cyan
-      "FILOSOFÍA Y CIENCIAS SOCIALES (CIENCIAS": "#6366f1", // Indigo
-      FÍSICA: "#3b82f6", // Blue
-      INGLÉS: "#14b8a6", // Teal
-      "LENGUA CASTELLANA": "#10b981", // Emerald
-      MATEMÁTICAS: "#3b82f6", // Blue
-      "PROYECTO Y EMPRENDIMIENTO": "#f97316", // Orange
-      QUÍMICA: "#06b6d4", // Cyan
-      "TECNOLOGÍA E INFORMÁTICA": "#6366f1", // Indigo
-      "ÉTICA PROFESIONAL": "#8b5cf6", // Violet
-
-      // Categorías anteriores (mantener por compatibilidad)
-      "Estrategias de Enseñanza-Aprendizaje": "#6366f1", // Indigo
-      "Evaluación y Verificación de Saberes": "#10b981", // Emerald
-      "Enfoque STEM+ y Contexto Rural": "#f59e0b", // Amber
-      "Prácticas de Laboratorio y Mantenimiento": "#f43f5e", // Rose
-      "Ciudadanía Digital y Ética": "#8b5cf6", // Violet
-      "Pensamiento Computacional y Programación": "#06b6d4", // Cyan
-      "Recursos Analógicos y Contingencias": "#f97316", // Orange
-      "Ofimática y Competencias Productivas": "#14b8a6", // Teal
-      "Gestión Administrativa y Proyectos Transversales": "#3b82f6", // Blue
-    };
-    return colors[cat] || "#6366f1";
-  };
+  // getCategoryColor ahora se importa de design-system.ts
 
   // Mapeo de materias a categorías correspondientes (con nombres exactos del JSON)
   const materiaToCategory: Record<string, string> = {
@@ -982,123 +952,51 @@
           {/if}
         </div>
 
-        <div class="space-y-8">
+<div class="space-y-6">
           {#if isLoadingOpciones}
-            <div class="flex items-center justify-center py-12">
-              <Loader message="Cargando opciones de anotación..." />
+            <div class="space-y-4">
+              {#each [1, 2, 3] as _}
+                <div class="rounded-xl border p-4" style="background-color: rgb(var(--card-bg)); border-color: rgb(var(--border-primary));">
+                  <Skeleton height="32px" width="200px" rounded="full" />
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <Skeleton height="140px" rounded="lg" />
+                    <Skeleton height="140px" rounded="lg" />
+                  </div>
+                </div>
+              {/each}
             </div>
           {:else}
-            {#each sortedFilteredEntries as [categoria, opciones]}
-              {@const catColor = getCategoryColor(categoria)}
-              {@const filteredCount = opciones.length}
-              <div class="space-y-4">
-                <button
-                  type="button"
-                  onclick={() => toggleCategory(categoria)}
-                  class="flex items-center gap-3 w-full text-left cursor-pointer group focus:outline-none"
+            <div class="space-y-4">
+              {#each sortedFilteredEntries as [categoria, opciones]}
+                {@const catColor = getCategoryColor(categoria)}
+                {@const filteredCount = opciones.length}
+                <div
+                  class="rounded-xl border overflow-hidden transition-all duration-200"
+                  style="background-color: rgb(var(--card-bg)); border-color: rgb(var(--border-primary));"
                 >
-                  <div class="flex items-center gap-3 flex-1">
-                    <h3
-                      class="text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full text-white flex-shrink-0 transition-all duration-300 group-hover:shadow-md {categoria ===
-                      highlightedCategory
-                        ? 'animate-glow ring-4 ring-opacity-50'
-                        : ''}"
-                      style="background-color: {catColor}; {categoria ===
-                      highlightedCategory
-                        ? `box-shadow: 0 0 25px ${catColor}60, 0 0 50px ${catColor}30; ring-color: ${catColor}; border: 2px solid ${catColor};`
-                        : ''}"
-                    >
-                      {categoria}
-                      {#if categoria === highlightedCategory}
-                        <span class="ml-2 inline-block animate-bounce">✨</span>
-                      {/if}
-                    </h3>
-                    {#if searchTerm}
-                      <span
-                        class="text-xs font-medium"
-                        style="color: {catColor};"
-                      >
-                        ({filteredCount} resultado{filteredCount !== 1
-                          ? "s"
-                          : ""})
-                      </span>
-                    {/if}
-                  </div>
-                  {#if !searchTerm}
-                    <div
-                      class="h-px flex-1 transition-all duration-300 group-hover:opacity-50"
-                      style="background-color: {catColor}; opacity: 0.2;"
-                    ></div>
-                  {/if}
-                  <ChevronDown class="w-5 h-5 text-gray-500 transform transition-transform duration-200 flex-shrink-0 {expandedCategories[categoria] ? 'rotate-180' : ''}" />
-                </button>
-
-                {#if expandedCategories[categoria]}
-                  <div
-                    transition:slide
-                    class="grid grid-cols-1 md:grid-cols-2 gap-4"
+                  <Accordion
+                    title={categoria}
+                    isExpanded={expandedCategories[categoria]}
+                    onToggle={() => toggleCategory(categoria)}
+                    color={catColor}
+                    count={filteredCount}
+                    showCount={!!searchTerm}
+                    highlighted={categoria === highlightedCategory}
                   >
-                    {#each opciones as opcion, idx}
-                      {@const isHighlighted =
-                        searchTerm &&
-                        opcion.text
-                          .toLowerCase()
-                          .includes(searchTerm.toLowerCase())}
-                      <div
-                        class="relative group flex flex-col p-0 rounded-2xl border transition-all duration-200 shadow-sm hover:shadow-md"
-                        style="
-                          background-color: {opcion.selected
-                          ? `${catColor}10`
-                          : isHighlighted
-                            ? `${catColor}05`
-                            : styles.inputBg};
-                          border-color: {opcion.selected
-                          ? catColor
-                          : isHighlighted
-                            ? catColor
-                            : styles.border};
-                        "
-                      >
-                        <div class="flex items-start gap-1 p-4">
-                          <label class="flex-shrink-0 cursor-pointer p-1 mt-1">
-                              <input
-                                type="checkbox"
-                                checked={opcion.selected}
-                                class="hidden"
-                                onchange={() => toggleAnotacionSeleccion(categoria, idx)}
-                              />
-                            <!-- svelte-ignore a11y_click_events_have_key_events -->
-                            <div
-                              class="w-5 h-5 rounded border flex items-center justify-center transition-colors cursor-pointer"
-                              style="
-                              border-color: {opcion.selected
-                                ? catColor
-                                : styles.border};
-                              background-color: {opcion.selected
-                                ? catColor
-                                : 'transparent'};
-                            "
-                            >
-                              {#if opcion.selected}
-                                <Check class="w-3 h-3 text-white" />
-                              {/if}
-                            </div>
-                          </label>
-
-                          <textarea
-                            bind:value={opcion.text}
-                            rows="8"
-                            class="w-full bg-transparent border-none focus:ring-0 text-base font-medium leading-relaxed resize-none p-1 transition-colors min-h-[180px] pb-6"
-                            style="color: {styles.text};"
-                            placeholder="Escriba aquí..."
-                          ></textarea>
-                        </div>
-                      </div>
-                    {/each}
-                  </div>
-                {/if}
-              </div>
-            {/each}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 pt-2">
+                      {#each opciones as opcion}
+                        <CheckboxCard
+                          bind:checked={opcion.selected}
+                          onchange={() => toggleAnotacionSeleccion(categoria, opcion.text)}
+                          color={catColor}
+                          bind:text={opcion.text}
+                        />
+                      {/each}
+                    </div>
+                  </Accordion>
+                </div>
+              {/each}
+            </div>
           {/if}
         </div>
 
