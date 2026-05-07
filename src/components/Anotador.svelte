@@ -19,12 +19,13 @@
   import { theme } from "../lib/themeStore";
   import { docenteName, findMatchingDocente } from "../lib/authStore";
   import { getCategoryColor } from "../lib/design-system";
+  import { useDraftSave } from "../lib/useDraftSave";
   import eieLogo from "../assets/eie.png";
   import { slide } from "svelte/transition";
   import FeaturePopup from "./FeaturePopup.svelte";
   import ModuleHeader from "./ModuleHeader.svelte";
-  import { Cloud, Filter, FileText, LayoutGrid, Moon, Sun, CloudMoon, Info, X, Search, ChevronDown, Check, Loader2, Send } from '@lucide/svelte';
-  import { Accordion, CheckboxCard, Skeleton } from './anotador';
+  import { Cloud, Filter, FileText, LayoutGrid, Moon, Sun, CloudMoon, Info, X, Search, ChevronDown, Check, Loader2, Send, WifiOff } from '@lucide/svelte';
+  import { Accordion, CheckboxCard, Skeleton, SelectField, SlideOver, Tooltip, DatePicker } from './anotador';
 
   // --- Props ---
   interface AnotadorProps {
@@ -257,6 +258,79 @@
     anotacion: "",
     observacion: "",
   });
+
+  // --- Auto-guardado de borradores ---
+  const { saveDraft, loadDraft, clearDraft, hasDraft } = useDraftSave();
+  let showRestoreDraft = $state(false);
+  let draftRestored = $state(false);
+  let isOnline = $state(true);
+
+  // Estado de conexión
+  $effect(() => {
+    isOnline = navigator.onLine;
+    const handleOnline = () => isOnline = true;
+    const handleOffline = () => isOnline = false;
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  });
+
+  $effect(() => {
+    if (draftRestored) return;
+    if (!formData.docente && !formData.materia) return;
+    
+    const hasContent = formData.docente || formData.materia || formData.anotacion || formData.observacion;
+    if (hasContent) {
+      saveDraft(formData);
+    }
+  });
+
+  const restoreDraft = () => {
+    const draft = loadDraft();
+    if (draft) {
+      formData = {
+        ...formData,
+        docente: draft.docente,
+        materia: draft.materia,
+        grado: draft.grado,
+        horas: draft.horas,
+        fecha: draft.fecha,
+        anotacion: draft.anotacion,
+        observacion: draft.observacion,
+      };
+      draftRestored = true;
+      showRestoreDraft = false;
+      clearDraft();
+      Swal.fire({
+        icon: 'success',
+        title: 'Borrador restaurado',
+        text: 'Se恢复了 tu borrador guardado',
+        timer: 2000,
+        showConfirmButton: false,
+      });
+    }
+  };
+
+  const dismissDraft = () => {
+    showRestoreDraft = false;
+    clearDraft();
+    draftRestored = true;
+  };
+
+  // Check for existing draft on mount
+  $effect(() => {
+    if (!draftRestored && hasDraft()) {
+      showRestoreDraft = true;
+    }
+  });
+
+  const clearFormDraft = () => {
+    clearDraft();
+    draftRestored = true;
+  };
 
   // --- Persistencia de Materias por Docente ---
   let docenteMaterias: Record<string, string[]> = JSON.parse(
@@ -632,8 +706,8 @@
         toast: true,
       });
 
-      formData = {
-    fecha: new Date().toLocaleDateString('en-CA'),
+formData = {
+        fecha: new Date().toLocaleDateString('en-CA'),
         docente: formData.docente,
         materia: formData.materia,
         grado: formData.grado,
@@ -641,6 +715,9 @@
         anotacion: "",
         observacion: "",
       };
+
+      // Limpiar borrador guardado
+      clearFormDraft();
 
       // Resetear selecciones
       for (const cat in anotacionGrupos) {
@@ -670,9 +747,86 @@
     // Inicializar el estado del popup de feature
     showFeatureAlert = checkFeatureAlertVisibility();
   });
+
+  // --- Keyboard Shortcuts ---
+  const handleKeydown = (e: KeyboardEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const form = document.querySelector('form');
+        if (form) form.requestSubmit();
+      } else if (e.key === 'n' && !isLoading) {
+        e.preventDefault();
+        formData = {
+          fecha: new Date().toLocaleDateString('en-CA'),
+          docente: formData.docente,
+          materia: "",
+          grado: "",
+          horas: "",
+          anotacion: "",
+          observacion: "",
+        };
+        for (const cat in anotacionGrupos) {
+          anotacionGrupos[cat] = anotacionGrupos[cat].map((o) => ({ ...o, selected: false }));
+        }
+        clearFormDraft();
+      }
+    }
+  };
 </script>
 
+<svelte:window onkeydown={handleKeydown} />
+
 <ModuleHeader title="Anotador de Clase" subtitle="Seguimiento Ágil" {onBack} />
+
+{#if !isOnline}
+  <div 
+    class="mx-4 mt-2 px-4 py-2 rounded-lg flex items-center gap-2 bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700"
+  >
+    <WifiOff class="w-4 h-4 text-amber-600 dark:text-amber-400" />
+    <span class="text-sm text-amber-800 dark:text-amber-200">Sin conexión - los datos se guardarán cuando se restablezca</span>
+  </div>
+{/if}
+
+{#if showRestoreDraft && !draftRestored}
+  <div 
+    class="mx-4 mt-2 px-4 py-3 rounded-xl border flex items-center justify-between gap-3 animate-pulse"
+    style="background-color: rgb(var(--bg-secondary)); border-color: rgb(var(--accent-primary));"
+  >
+    <div class="flex items-center gap-3">
+      <div 
+        class="p-2 rounded-lg"
+        style="background-color: rgb(var(--accent-primary)); color: white;"
+      >
+        <FileText class="w-4 h-4" />
+      </div>
+      <div>
+        <p class="text-sm font-medium" style="color: rgb(var(--text-primary));">
+          Borrador guardado encontrado
+        </p>
+        <p class="text-xs" style="color: rgb(var(--text-secondary));">
+          ¿Deseas restaurar tu trabajo anterior?
+        </p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button
+        onclick={dismissDraft}
+        class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors hover:bg-black/5"
+        style="border-color: rgb(var(--border-primary)); color: rgb(var(--text-secondary));"
+      >
+        Descartar
+      </button>
+      <button
+        onclick={restoreDraft}
+        class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
+        style="background-color: rgb(var(--accent-primary)); color: white;"
+      >
+        Restaurar
+      </button>
+    </div>
+  </div>
+{/if}
 
 <div
   class="min-h-screen flex flex-col lg:flex-row transition-colors duration-200"
@@ -785,116 +939,70 @@
        <form onsubmit={handleSubmit} novalidate class="space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div class="space-y-2">
-            <label
-              for="fecha"
-              class="block text-sm font-medium"
-              style="color: {styles.label};">Fecha</label
-            >
-            <input
-              type="date"
+            <DatePicker
               id="fecha"
+              label="Fecha"
               bind:value={formData.fecha}
-              required
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none {showFieldErrors && missingFields.includes('fecha') ? 'ring-2 ring-red-500 border-red-500' : ''}"
-              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('fecha') ? '#ef4444' : styles.border}; color: {styles.text}; color-scheme: {$theme ===
-              'light'
-                ? 'light'
-                : 'dark'};"
+              placeholder="Seleccione fecha"
+              hasError={showFieldErrors && missingFields.includes('fecha')}
             />
           </div>
 
           <div class="space-y-2">
-            <label
-              for="docente"
-              class="block text-sm font-medium"
-              style="color: {styles.label};">Docente</label
-            >
-            <select
+            <SelectField
               id="docente"
+              label="Docente"
               bind:value={formData.docente}
-              required
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showFieldErrors && missingFields.includes('docente') ? 'ring-2 ring-red-500 border-red-500' : ''}"
-              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('docente') ? '#ef4444' : styles.border}; color: {styles.text};"
-            >
-              <option value=""
-                >{isLoadingDocentes
-                  ? "Cargando..."
-                  : "Seleccione docente"}</option
-              >
-              {#each docentes as docente}
-                <option value={docente}>{docente}</option>
-              {/each}
-            </select>
+              options={docentes.map(d => ({ value: d, label: d }))}
+              placeholder={isLoadingDocentes ? "Cargando..." : "Seleccione docente"}
+              selectType="docente"
+              isLoading={isLoadingDocentes}
+              hasError={showFieldErrors && missingFields.includes('docente')}
+            />
           </div>
 
           <div class="space-y-2">
-            <label
-              for="materia"
-              class="block text-sm font-medium"
-              style="color: {styles.label};">Asignatura</label
-            >
-            <select
+            <SelectField
               id="materia"
+              label="Asignatura"
               bind:value={formData.materia}
-              required
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showFieldErrors && missingFields.includes('materia') ? 'ring-2 ring-red-500 border-red-500' : ''}"
-              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('materia') ? '#ef4444' : styles.border}; color: {styles.text};"
-            >
-              <option value=""
-                >{isLoadingMaterias
-                  ? "Cargando..."
-                  : "Seleccione asignatura"}</option
-              >
-              {#each materiasSorted as materia}
-                {@const isSaved = docenteMaterias[formData.docente]?.includes(
-                  materia.materia,
-                )}
-                <option
-                  value={materia.materia}
-                  style={isSaved ? "color: #6366f1; font-weight: 600;" : ""}
-                >
-                  {isSaved ? "⭐ " : ""}{materia.materia}
-                </option>
-              {/each}
-            </select>
+              options={materiasSorted.map(m => ({ value: m.materia, label: m.materia }))}
+              placeholder={isLoadingMaterias ? "Cargando..." : "Seleccione asignatura"}
+              selectType="materia"
+              isLoading={isLoadingMaterias}
+              hasError={showFieldErrors && missingFields.includes('materia')}
+            />
           </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="space-y-2">
-            <label
-              for="grado"
-              class="block text-sm font-medium"
-              style="color: {styles.label};">Grado</label
-            >
-            <select
+            <SelectField
               id="grado"
+              label="Grado"
               bind:value={formData.grado}
-              required
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none cursor-pointer disabled:opacity-50 {showFieldErrors && missingFields.includes('grado') ? 'ring-2 ring-red-500 border-red-500' : ''}"
-              style="background-color: {styles.inputBg}; border-color: {showFieldErrors && missingFields.includes('grado') ? '#ef4444' : styles.border}; color: {styles.text};"
-            >
-              <option value=""
-                >{isLoadingEstudiantes
-                  ? "Cargando..."
-                  : "Seleccione grado"}</option
-              >
-              {#each filteredGrados as g}
-                <option value={g}
-                  >{g
-                    .replace(/0(\d)$/, "°$1")
-                    .replace(/(\d{1,2})0(\d)/, "$1°$2")}</option
-                >
-              {/each}
-            </select>
+              options={filteredGrados.map(g => ({ 
+                value: g, 
+                label: g.replace(/0(\d)$/, "°$1").replace(/(\d{1,2})0(\d)/, "$1°$2") 
+              }))}
+              placeholder={isLoadingEstudiantes ? "Cargando..." : "Seleccione grado"}
+              selectType="grado"
+              isLoading={isLoadingEstudiantes}
+              hasError={showFieldErrors && missingFields.includes('grado')}
+            />
           </div>
 
           <div class="space-y-2">
-            <label
-              for="horas"
-              class="block text-sm font-medium"
-              style="color: {styles.label};">Horas</label
-            >
+            <div class="flex items-center gap-2">
+              <label
+                for="horas"
+                class="block text-sm font-medium"
+                style="color: {styles.label};">Horas</label
+              >
+              <Tooltip title="Horas de clase" content="Seleccione el número de períodos de clase">
+                <span class="text-xs" style="color: rgb(var(--text-muted));">1 hora = 1 período de clase</span>
+              </Tooltip>
+            </div>
             <select
               id="horas"
               bind:value={formData.horas}
@@ -1001,11 +1109,16 @@
         </div>
 
         <div class="space-y-2">
-          <label
-            for="observacion"
-            class="block text-sm font-medium"
-            style="color: {styles.label};">Observación</label
-          >
+          <div class="flex items-center gap-2">
+            <label
+              for="observacion"
+              class="block text-sm font-medium"
+              style="color: {styles.label};">Observación</label
+            >
+            <Tooltip title="Observaciones adicionales" content="Información extra que deseas registrar sobre el estudiante o la situación">
+              <span class="text-xs" style="color: rgb(var(--text-muted));">Opcional</span>
+            </Tooltip>
+          </div>
           <textarea
             id="observacion"
             bind:value={formData.observacion}
@@ -1020,14 +1133,29 @@
           <button
             type="submit"
             disabled={isLoading}
-            class="w-16 h-16 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 dark:disabled:bg-slate-700 disabled:cursor-not-allowed disabled:scale-100 text-white rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 active:scale-95 backdrop-blur-sm bg-opacity-95 flex items-center justify-center overflow-hidden border border-white/20"
+            class="group relative w-16 h-16 rounded-full transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Guardar Anotación"
           >
-            {#if isLoading}
-              <Loader2 class="animate-spin h-7 w-7 text-white" />
-            {:else}
-              <Send class="w-8 h-8 transform rotate-90" />
-            {/if}
+            <!-- Shadow/elevation -->
+            <span class="absolute inset-0 rounded-full bg-indigo-600 blur-xl opacity-50 group-hover:opacity-70 transition-opacity duration-300"></span>
+            
+            <!-- Main button -->
+            <span 
+              class="absolute inset-0.5 rounded-full flex items-center justify-center transition-all duration-300 {isLoading ? 'bg-indigo-400' : 'bg-indigo-600 group-hover:bg-indigo-500'}"
+            >
+              {#if isLoading}
+                <Loader2 class="w-7 h-7 text-white animate-spin" />
+              {:else}
+                <!-- Paper plane icon with glow -->
+                <span class="relative">
+                  <span class="absolute inset-0 bg-white/30 blur-md rounded-full"></span>
+                  <Send class="w-7 h-7 text-white transform rotate-45" />
+                </span>
+              {/if}
+            </span>
+            
+            <!-- Ring effect on hover -->
+            <span class="absolute inset-0 rounded-full border-2 border-indigo-400/0 group-hover:border-indigo-400/50 transition-all duration-300"></span>
           </button>
         </div>
       </form>
@@ -1036,7 +1164,9 @@
 </div>
 
 {#if showFilter}
-  <AnotadorFilter onClose={closeFilters} selectedDocente={formData.docente} />
+  <SlideOver bind:isOpen={showFilter} onClose={closeFilters} title="Filtrar anotaciones" size="lg">
+    <AnotadorFilter onClose={closeFilters} selectedDocente={formData.docente} />
+  </SlideOver>
 {/if}
 
 {#if showReportGenerator}

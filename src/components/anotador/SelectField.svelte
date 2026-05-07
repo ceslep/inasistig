@@ -1,11 +1,15 @@
 <script lang="ts">
-  import { Search, ChevronDown, Check, X, Loader2 } from '@lucide/svelte';
+  import { Search, ChevronDown, Check, X, Loader2, BookOpen, User, GraduationCap } from '@lucide/svelte';
   import { fade, slide } from 'svelte/transition';
+  import { getMateriaIcon, getMateriaColor, getGradoIcon, getDocenteIcon } from '../../lib/materiaIcons';
+
+  type SelectType = 'default' | 'materia' | 'docente' | 'grado';
 
   interface Option {
     value: string;
     label: string;
     icon?: string;
+    color?: string;
   }
 
   interface Props {
@@ -19,8 +23,8 @@
     hasError?: boolean;
     errorMessage?: string;
     disabled?: boolean;
-    showRecentBadge?: boolean;
-    recentValues?: string[];
+    selectType?: SelectType;
+    showSearch?: boolean;
   }
 
   let {
@@ -34,8 +38,8 @@
     hasError = false,
     errorMessage,
     disabled = false,
-    showRecentBadge = false,
-    recentValues = [],
+    selectType = 'default',
+    showSearch = true,
   }: Props = $props();
 
   let isOpen = $state(false);
@@ -44,6 +48,31 @@
   let inputRef: HTMLInputElement;
   let listboxRef: HTMLDivElement;
   let buttonRef: HTMLButtonElement;
+
+  // Ocultar buscador si hay menos de 50 opciones
+  const shouldShowSearch = $derived(showSearch && options.length >= 50);
+
+  const getOptionIcon = (option: Option, index: number): string => {
+    if (option.icon) return option.icon;
+    switch (selectType) {
+      case 'materia':
+        return getMateriaIcon(option.label);
+      case 'grado':
+        return getGradoIcon(option.label);
+      case 'docente':
+        return getDocenteIcon();
+      default:
+        return "📄";
+    }
+  };
+
+  const getOptionColor = (option: Option): string => {
+    if (option.color) return option.color;
+    if (selectType === 'materia') {
+      return getMateriaColor(option.label);
+    }
+    return 'rgb(var(--accent-primary))';
+  };
 
   const filteredOptions = $derived(
     searchTerm.trim()
@@ -59,6 +88,14 @@
 
   const selectedIndex = $derived(
     filteredOptions.findIndex(opt => opt.value === value)
+  );
+
+  const selectedIcon = $derived(
+    selectedOption ? getOptionIcon(selectedOption, selectedIndex) : null
+  );
+
+  const selectedColor = $derived(
+    selectedOption ? getOptionColor(selectedOption) : null
   );
 
   const toggleOpen = () => {
@@ -200,9 +237,11 @@
           <span style="color: rgb(var(--text-muted))">Cargando...</span>
         </span>
       {:else if selectedOption}
-        <span class="flex items-center gap-2 select-trigger__content">
-          {#if selectedOption.icon}
-            <span class="select-trigger__icon">{selectedOption.icon}</span>
+        <span class="flex items-center gap-3 select-trigger__content">
+          {#if selectedIcon}
+            <span class="select-trigger__icon-badge" style="background-color: {selectedColor}20; color: {selectedColor}">
+              {selectedIcon}
+            </span>
           {/if}
           <span class="select-trigger__value">{selectedOption.label}</span>
         </span>
@@ -232,6 +271,12 @@
         class="select-dropdown"
         role="listbox"
       >
+        <!-- Contador de opciones -->
+        <div class="select-dropdown__count">
+          {options.length} opción{options.length !== 1 ? 'es' : ''}
+        </div>
+        
+        {#if shouldShowSearch}
         <div class="select-dropdown__search">
           <Search class="select-dropdown__search-icon" />
           <input
@@ -243,6 +288,7 @@
             class="select-dropdown__search-input"
           />
         </div>
+        {/if}
 
         <div class="select-dropdown__options">
           {#if filteredOptions.length === 0}
@@ -264,13 +310,18 @@
                 aria-selected={option.value === value}
               >
                 <span class="select-option__content">
-                  {#if option.icon}
-                    <span class="select-option__icon">{option.icon}</span>
+                  {#if getOptionIcon(option, index)}
+                    <span 
+                      class="select-option__icon" 
+                      style="background-color: {getOptionColor(option)}20; color: {getOptionColor(option)}"
+                    >
+                      {getOptionIcon(option, index)}
+                    </span>
                   {/if}
                   <span class="select-option__label">{option.label}</span>
                 </span>
                 {#if option.value === value}
-                  <span class="select-option__check">
+                  <span class="select-option__check" style="color: {getOptionColor(option)}">
                     <Check class="w-4 h-4" />
                   </span>
                 {/if}
@@ -376,6 +427,17 @@
 
   .select-trigger__icon {
     font-size: 1.125rem;
+    flex-shrink: 0;
+  }
+
+  .select-trigger__icon-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    font-size: 1rem;
     flex-shrink: 0;
   }
 
@@ -502,7 +564,13 @@
   }
 
   .select-option__icon {
-    font-size: 1.125rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    font-size: 1rem;
     flex-shrink: 0;
   }
 
@@ -576,5 +644,46 @@
 
   .select-dropdown__options::-webkit-scrollbar-thumb:hover {
     background-color: rgb(var(--text-muted));
+  }
+
+  /* Contador de opciones */
+  .select-dropdown__count {
+    padding: 8px 16px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: rgb(var(--text-muted));
+    border-bottom: 1px solid rgb(var(--border-primary));
+    background-color: rgb(var(--bg-secondary) / 0.5);
+  }
+
+  /* Media queries para mobile */
+  @media (max-width: 768px) {
+    .select-dropdown {
+      animation: none;
+      box-shadow: 0 4px 20px -5px rgb(0 0 0 / 0.2);
+    }
+
+    .select-trigger {
+      padding: 14px 16px;
+    }
+
+    .select-option {
+      padding: 12px 16px;
+      min-height: 48px;
+    }
+
+    .select-dropdown__options {
+      max-height: 280px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .select-dropdown {
+      max-height: 60vh;
+    }
+
+    .select-trigger {
+      font-size: 1rem;
+    }
   }
 </style>

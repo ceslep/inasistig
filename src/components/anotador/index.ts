@@ -3,3 +3,6 @@ export { default as CheckboxCard } from './CheckboxCard.svelte';
 export { default as Accordion } from './Accordion.svelte';
 export { default as Toast } from './Toast.svelte';
 export { default as Skeleton } from './Skeleton.svelte';
+export { default as SlideOver } from './SlideOver.svelte';
+export { default as Tooltip } from './Tooltip.svelte';
+export { default as DatePicker } from './DatePicker.svelte';
