@@ -8,9 +8,10 @@
   interface Props {
     onSelect: (folder: { id: string; name: string } | null) => void;
     onClose: () => void;
+    isSaving?: boolean;
   }
 
-  let { onSelect, onClose }: Props = $props();
+  let { onSelect, onClose, isSaving = false }: Props = $props();
 
   type RootSection = 'my-drive' | 'starred' | 'shared';
 
@@ -254,6 +255,15 @@
   onclick={(e) => e.stopPropagation()}
   onkeydown={(e) => e.stopPropagation()}
 >
+  {#if isSaving}
+    <div class="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[110] rounded-3xl">
+      <div class="flex flex-col items-center gap-4">
+        <Loader2 class="w-12 h-12 text-white animate-spin" />
+        <p class="text-white font-semibold text-lg">Guardando archivo...</p>
+        <p class="text-white/70 text-sm">Subiendo a Google Drive</p>
+      </div>
+    </div>
+  {/if}
   <div
     class="bg-[rgb(var(--card-bg))] border border-[rgb(var(--card-border))] rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[85vh]"
     in:fly={{ y: 20, duration: 300 }}

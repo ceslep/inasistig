@@ -56,6 +56,7 @@ let showAdminStats = $state(false);
       shortLabel: "Normal",
       color: "bg-blue-500",
       icon: "💼",
+      hours: 6,
     },
     {
       id: "ordinario",
@@ -63,6 +64,7 @@ let showAdminStats = $state(false);
       shortLabel: "Ordinario",
       color: "bg-green-500",
       icon: "📝",
+      hours: 0,
     },
     {
       id: "sindical",
@@ -70,6 +72,7 @@ let showAdminStats = $state(false);
       shortLabel: "Sindical",
       color: "bg-purple-500",
       icon: "⚖️",
+      hours: 0,
     },
     {
       id: "jurado",
@@ -77,6 +80,7 @@ let showAdminStats = $state(false);
       shortLabel: "Jurado",
       color: "bg-emerald-600",
       icon: "🗳️",
+      hours: 0,
     },
     {
       id: "gobernacion",
@@ -84,6 +88,7 @@ let showAdminStats = $state(false);
       shortLabel: "Gobernación",
       color: "bg-cyan-600",
       icon: "🏛️",
+      hours: 0,
     },
     {
       id: "profesor",
@@ -91,6 +96,7 @@ let showAdminStats = $state(false);
       shortLabel: "Profesor",
       color: "bg-rose-500",
       icon: "🍎",
+      hours: 0,
     },
     {
       id: "calamidad",
@@ -98,6 +104,7 @@ let showAdminStats = $state(false);
       shortLabel: "Calamidad",
       color: "bg-stone-500",
       icon: "🏠",
+      hours: 0,
     },
     {
       id: "luto",
@@ -105,6 +112,7 @@ let showAdminStats = $state(false);
       shortLabel: "Luto",
       color: "bg-slate-600",
       icon: "✝️",
+      hours: 0,
     },
     {
       id: "medica",
@@ -112,6 +120,7 @@ let showAdminStats = $state(false);
       shortLabel: "Médica",
       color: "bg-red-500",
       icon: "🏥",
+      hours: 0,
     },
     {
       id: "maternidad",
@@ -119,6 +128,7 @@ let showAdminStats = $state(false);
       shortLabel: "Licencia",
       color: "bg-teal-500",
       icon: "👶",
+      hours: 0,
     },
     {
       id: "secretaria",
@@ -126,6 +136,7 @@ let showAdminStats = $state(false);
       shortLabel: "Secretaría",
       color: "bg-amber-500",
       icon: "🎓",
+      hours: 0,
     },
     {
       id: "bienestar",
@@ -133,6 +144,7 @@ let showAdminStats = $state(false);
       shortLabel: "Bienestar",
       color: "bg-pink-500",
       icon: "🧘",
+      hours: 0,
     },
     {
       id: "pedagogica",
@@ -140,6 +152,7 @@ let showAdminStats = $state(false);
       shortLabel: "Pedagógica",
       color: "bg-violet-500",
       icon: "📓",
+      hours: 0,
     },
     {
       id: "familia",
@@ -147,6 +160,7 @@ let showAdminStats = $state(false);
       shortLabel: "Familia",
       color: "bg-orange-500",
       icon: "👨‍👩‍👧‍👦",
+      hours: 0,
     },
     {
       id: "cumpleaños",
@@ -154,6 +168,7 @@ let showAdminStats = $state(false);
       shortLabel: "Cumpleaños",
       color: "bg-yellow-500",
       icon: "🎂",
+      hours: 0,
     },
     {
       id: "quinquenio",
@@ -161,6 +176,7 @@ let showAdminStats = $state(false);
       shortLabel: "Quinquenio",
       color: "bg-indigo-600",
       icon: "🏅",
+      hours: 0,
     },
     {
       id: "vacaciones",
@@ -168,6 +184,7 @@ let showAdminStats = $state(false);
       shortLabel: "Vacaciones",
       color: "bg-sky-500",
       icon: "✈️",
+      hours: 0,
     },
     {
       id: "paro",
@@ -175,6 +192,7 @@ let showAdminStats = $state(false);
       shortLabel: "Paro",
       color: "bg-red-700",
       icon: "📢",
+      hours: 0,
     },
     {
       id: "extra",
@@ -182,6 +200,7 @@ let showAdminStats = $state(false);
       shortLabel: "Extra",
       color: "bg-orange-700",
       icon: "💪",
+      hours: 0,
     },
     {
       id: "sabdomfest",
@@ -189,6 +208,7 @@ let showAdminStats = $state(false);
       shortLabel: "SDF",
       color: "bg-slate-400",
       icon: "🏝️",
+      hours: 0,
     },
   ];
 
@@ -484,29 +504,12 @@ function triggerAutoSave() {
     const ws = workbook.addWorksheet("Horas Laborables");
     
     const currentYear = new Date().getFullYear();
-    const daysInMonth = new Date(currentYear, monthNames.indexOf(month) + 1, 0).getDate();
+    const monthIndex = monthNames.indexOf(month);
+    const daysInMonth = new Date(currentYear, monthIndex + 1, 0).getDate();
+    const startDay = (new Date(currentYear, monthIndex, 1).getDay() + 6) % 7;
     
-    // Título
-    ws.mergeCells("A1:D1");
-    const title = ws.getCell("A1");
-    title.value = `HORAS LABORABLES - ${teacherName.toUpperCase()} - ${month.toUpperCase()} ${currentYear}`;
-    title.font = { bold: true, size: 14, color: { argb: "FFFFFF" } };
-    title.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "2E75B6" } };
-    title.alignment = { horizontal: "center" };
+    const weekdays = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
     
-    // Información
-    ws.addRow(["Docente:", teacherName]);
-    ws.addRow(["Mes:", month]);
-    ws.addRow(["Año:", currentYear]);
-    ws.addRow([]);
-    
-    // Encabezados
-    const headerRow = ws.addRow(["Día", "Categoría", "Horas", "Color"]);
-    headerRow.font = { bold: true, color: { argb: "FFFFFF" } };
-    headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "4472C4" } };
-    headerRow.alignment = { horizontal: "center" };
-    
-    // Mapeo de colores
     const colorMap: Record<string, string> = {
       "bg-blue-500": "3b82f6",
       "bg-green-500": "22c55e",
@@ -529,46 +532,129 @@ function triggerAutoSave() {
       "bg-slate-400": "94a3b8",
     };
     
-    // Datos del mes
+    const textColorMap: Record<string, string> = {
+      "bg-blue-500": "FFFFFF", "bg-green-500": "FFFFFF", "bg-purple-500": "FFFFFF",
+      "bg-emerald-600": "FFFFFF", "bg-cyan-600": "FFFFFF", "bg-rose-500": "FFFFFF",
+      "bg-stone-500": "FFFFFF", "bg-slate-600": "FFFFFF", "bg-red-500": "FFFFFF",
+      "bg-teal-500": "FFFFFF", "bg-amber-500": "FFFFFF", "bg-pink-500": "FFFFFF",
+      "bg-violet-500": "FFFFFF", "bg-orange-500": "FFFFFF", "bg-yellow-500": "000000",
+      "bg-indigo-600": "FFFFFF", "bg-sky-500": "FFFFFF", "bg-red-700": "FFFFFF",
+      "bg-slate-400": "FFFFFF",
+    };
+    
+    // Título
+    ws.mergeCells("A1:G1");
+    const title = ws.getCell("A1");
+    title.value = `HORAS LABORABLES - ${teacherName.toUpperCase()} - ${month.toUpperCase()} ${currentYear}`;
+    title.font = { bold: true, size: 12, color: { argb: "FFFFFF" } };
+    title.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "2E75B6" } };
+    title.alignment = { horizontal: "center" };
+    ws.addRow([]);
+    
+    // Encabezados días de semana
+    const weekdayRow = ws.addRow(weekdays);
+    weekdayRow.font = { bold: true, size: 10, color: { argb: "FFFFFF" } };
+    weekdayRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "475569" } };
+    weekdayRow.alignment = { horizontal: "center" };
+    
+    // Resumen de datos
     const counts: Record<string, number> = {};
+    const hoursSum: Record<string, number> = {};
+    
+    // Crear matriz de semanas para el calendario
+    const weeks: (number | null)[][] = [];
+    let currentWeek: (number | null)[] = Array(startDay).fill(null);
+    
     for (let day = 1; day <= daysInMonth; day++) {
-      const catId = hoursData[day];
-      const cat = categories.find((c) => c.id === catId);
-      const label = cat?.label || "(sin registro)";
-      const horas = catId ? 1 : 0;
-      const colorHex = cat ? colorMap[cat.color] || "94a3b8" : "e2e8f0";
+      currentWeek.push(day);
+      if (currentWeek.length === 7) {
+        weeks.push(currentWeek);
+        currentWeek = [];
+      }
+    }
+    
+    if (currentWeek.length > 0) {
+      while (currentWeek.length < 7) {
+        currentWeek.push(null);
+      }
+      weeks.push(currentWeek);
+    }
+    
+    // Generar filas del calendario
+    for (let w = 0; w < weeks.length; w++) {
+      const week = weeks[w];
+      const rowValues: string[] = [];
       
-      const row = ws.addRow([day, label, horas]);
-      row.getCell(4).fill = { type: "pattern", pattern: "solid", fgColor: { argb: colorHex } };
+      for (let d = 0; d < 7; d++) {
+        const dayNum = week[d];
+        
+        if (dayNum === null) {
+          rowValues.push("");
+        } else {
+          const catId = hoursData[dayNum];
+          const cat = categories.find((c) => c.id === catId);
+          const shortLabel = cat?.shortLabel || "";
+          rowValues.push(shortLabel ? `${dayNum} ${shortLabel}` : `${dayNum}`);
+          
+          if (cat) {
+            counts[cat.label] = (counts[cat.label] || 0) + 1;
+            hoursSum[cat.label] = (hoursSum[cat.label] || 0) + (cat.hours ?? 0);
+          }
+        }
+      }
       
-      if (cat) {
-        counts[cat.label] = (counts[cat.label] || 0) + 1;
+      const row = ws.addRow(rowValues);
+      row.alignment = { horizontal: "center", vertical: "middle" };
+      
+      // Aplicar colores celda por celda
+      for (let d = 0; d < 7; d++) {
+        const dayNum = week[d];
+        const cell = row.getCell(d + 1);
+        
+        if (dayNum === null) {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "f8fafc" } };
+        } else {
+          const catId = hoursData[dayNum];
+          const cat = categories.find((c) => c.id === catId);
+          
+          if (cat) {
+            const colorHex = colorMap[cat.color] || "94a3b8";
+            const textColor = textColorMap[cat.color] || "FFFFFF";
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: colorHex } };
+            cell.font = { bold: true, size: 10, color: { argb: textColor } };
+          } else {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "f1f5f9" } };
+            cell.font = { size: 10, color: { argb: "94a3b8" } };
+          }
+        }
       }
     }
     
     ws.addRow([]);
+    ws.addRow([]);
     
     // Resumen
-    const resumenRow = ws.addRow(["RESUMEN"]);
+    const resumenRow = ws.addRow(["RESUMEN DE HORAS"]);
     resumenRow.font = { bold: true, size: 12 };
     resumenRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "E2E8F0" } };
-    ws.mergeCells(`A${ws.rowCount}:D${ws.rowCount}`);
+    ws.mergeCells(`A${ws.rowCount}:C${ws.rowCount}`);
     
     Object.entries(counts).forEach(([catName, count]) => {
-      const row = ws.addRow([catName, `${count} horas`, count]);
+      const totalHoras = hoursSum[catName] || 0;
+      const row = ws.addRow([catName, `${totalHoras} horas`, `${count} días`]);
       row.font = { italic: true };
     });
     
     ws.addRow([]);
-    const totalRow = ws.addRow(["TOTAL", "", Object.keys(hoursData).length]);
+    const totalHoras = Object.values(hoursSum).reduce((sum, h) => sum + h, 0);
+    const totalRow = ws.addRow(["TOTAL", `${totalHoras} horas`, `${Object.keys(hoursData).length} días`]);
     totalRow.font = { bold: true };
     totalRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FEF3C7" } };
     
     // Ancho de columnas
-    ws.getColumn(1).width = 8;
+    for (let i = 1; i <= 7; i++) ws.getColumn(i).width = 14;
     ws.getColumn(2).width = 30;
-    ws.getColumn(3).width = 10;
-    ws.getColumn(4).width = 10;
+    ws.getColumn(3).width = 15;
     
     const buffer = await workbook.xlsx.writeBuffer();
     return new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -1285,6 +1371,7 @@ function handleOpenStats() {
   <DriveFolderPicker
     onSelect={handleDriveFolderSelect}
     onClose={() => (showDrivePicker = false)}
+    isSaving={isSavingToDrive}
   />
 {/if}
 

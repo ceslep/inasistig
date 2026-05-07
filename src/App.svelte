@@ -77,6 +77,7 @@
   let Piar: ModuleComponent | null = $state(null);
   let HorasLaborables: ModuleComponent | null = $state(null);
   let ActividadesRecuperacion: ModuleComponent | null = $state(null);
+  let ActaArea: ModuleComponent | null = $state(null);
 
   const handleSelect = async (view: string) => {
     if (view === "dashboard") {
@@ -129,6 +130,9 @@
       } else if (view === "actividades_recuperacion" && !ActividadesRecuperacion) {
         const module = await import("./components/actividades_recuperacion/App.svelte");
         ActividadesRecuperacion = module.default;
+      } else if (view === "acta_area" && !ActaArea) {
+        const module = await import("./components/ActaArea.svelte");
+        ActaArea = module.default;
       }
     } finally {
       isLoadingModule = false;
@@ -178,6 +182,8 @@
     <HorasLaborables onBack={handleBack} />
   {:else if activeView === "actividades_recuperacion" && ActividadesRecuperacion}
     <ActividadesRecuperacion onBack={handleBack} />
+  {:else if activeView === "acta_area" && ActaArea}
+    <ActaArea onBack={handleBack} />
   {:else if externalModuleUrl}
     <div class="w-full h-screen flex flex-col bg-[rgb(var(--bg-primary))]">
       <div

@@ -19,6 +19,7 @@ import {
   GET_PIAR_URL,
   SPREADSHEET_ID_PIAR,
   WORKSHEET_TITLE_PIAR,
+  SAVE_ACTA_URL,
   URL_DBAS,
   URL_EBCS,
   UPLOAD_TEMAS_URL,
@@ -46,6 +47,12 @@ export interface InasistenciaPayload {
 }
 
 export interface AnotadorPayload {
+  spreadsheetId: string;
+  worksheetTitle: string;
+  datos: string[][];
+}
+
+export interface ActaPayload {
   spreadsheetId: string;
   worksheetTitle: string;
   datos: string[][];
@@ -288,6 +295,34 @@ export const saveAnotador = async (payload: AnotadorPayload) => {
       return offlineFallback(SAVE_ANOTADOR_URL, payload, "saveAnotador");
     }
     console.error("Error saving anotador:", error);
+    throw error;
+  }
+};
+
+export const saveActa = async (payload: ActaPayload) => {
+  if (!navigator.onLine) {
+    return offlineFallback(SAVE_ACTA_URL, payload, "saveActa");
+  }
+  try {
+    const response = await fetch(`${SAVE_ACTA_URL}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    if (isNetworkError(error)) {
+      return offlineFallback(SAVE_ACTA_URL, payload, "saveActa");
+    }
+    console.error("Error saving acta:", error);
     throw error;
   }
 };

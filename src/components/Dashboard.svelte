@@ -5,7 +5,7 @@
   import {
     Sun, Moon, CloudMoon,
     ClipboardCheck, BookOpen, Notebook, CalendarDays,
-    Eye, Heart, Clock, RotateCcw,
+    Eye, Heart, Clock, RotateCcw, FileSignature,
   } from '@lucide/svelte'
 
   import { theme, type Theme } from '../lib/themeStore'
@@ -81,6 +81,7 @@
     amber: { border: 'border-l-amber-500', iconBg: 'bg-amber-500/10', iconText: 'text-amber-600' },
     orange: { border: 'border-l-orange-500', iconBg: 'bg-orange-500/10', iconText: 'text-orange-600' },
     emerald: { border: 'border-l-emerald-500', iconBg: 'bg-emerald-500/10', iconText: 'text-emerald-600' },
+    indigo: { border: 'border-l-indigo-500', iconBg: 'bg-indigo-500/10', iconText: 'text-indigo-600' },
   }
 
   const modules = [
@@ -155,6 +156,15 @@
       icon: Heart,
       color: 'amber',
       tag: 'Inclusión',
+    },
+    {
+      id: 'acta_area',
+      title: 'Acta de Reunión',
+      subtitle: 'Reuniones de Área',
+      description: 'Registro legal de actas conforme Ley 115 de 1994 y Decreto 1860 de 1994.',
+      icon: FileSignature,
+      color: 'indigo',
+      tag: 'Normativo',
     },
   ]
 
