@@ -48,6 +48,7 @@
     role="dialog"
     aria-modal="true"
     aria-label={title}
+    tabindex="-1"
     transition:fade={{ duration: 200 }}
     onclick={handleBackdropClick}
     onkeydown={(e) => e.stopPropagation()}

@@ -920,6 +920,7 @@
   });
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
   onclick={(e) => {
@@ -932,12 +933,16 @@
       onClose();
     }
   }}
+  tabindex="-1"
+  role="dialog"
+  aria-modal="true"
 >
   <div
     class="w-full max-w-7xl max-h-[95vh] bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
     style="background-color: {styles.cardBg};"
     onclick={(e) => e.stopPropagation()}
     onkeydown={(e) => e.stopPropagation()}
+    role="presentation"
   >
     <!-- Header Unificado con acciones -->
     <div class="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-indigo-700 px-3 py-3 flex items-center justify-between gap-2">

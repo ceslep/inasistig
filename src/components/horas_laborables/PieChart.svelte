@@ -15,8 +15,8 @@
 
   // ✅ Usar snapshot para obtener datos reales del proxy
   const data = $derived.by(() => $state.snapshot(props.data ?? {}));
-  const categories = props.categories ?? [];
-  const title = props.title ?? "";
+  const categories = $derived(props.categories ?? []);
+  const title = $derived(props.title ?? "");
 
   // ✅ Referencia al canvas: no reactivo → usar $state.raw
   let chartElement = $state.raw<HTMLCanvasElement | undefined>(undefined);

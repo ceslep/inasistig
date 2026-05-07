@@ -23,8 +23,8 @@
   }: Props = $props();
 
   let isOpen = $state(false);
-  let triggerRef: HTMLButtonElement;
-  let popupRef: HTMLDivElement;
+  let triggerRef = $state<HTMLButtonElement>();
+  let popupRef = $state<HTMLDivElement>();
 
   const today = new Date();
   let currentMonth = $state(today.getMonth());
@@ -186,14 +186,16 @@
       {/if}
       
       {#if value && !disabled}
-        <button
-          type="button"
+        <span
+          role="button"
+          tabindex="0"
           onclick={(e) => { e.stopPropagation(); clearDate(); }}
+          onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); clearDate(); } }}
           class="date-picker-trigger__clear"
           aria-label="Limpiar fecha"
         >
           <X class="w-4 h-4" />
-        </button>
+        </span>
       {:else}
         <ChevronRight class="date-picker-trigger__arrow {isOpen ? 'date-picker-trigger__arrow--open' : ''}" />
       {/if}
@@ -213,6 +215,7 @@
           role="dialog"
           aria-modal="true"
           aria-label="Seleccionar fecha"
+          tabindex="-1"
           transition:scale={{ duration: 150, start: 0.95 }}
           onclick={(e) => e.stopPropagation()}
           onkeydown={(e) => e.stopPropagation()}

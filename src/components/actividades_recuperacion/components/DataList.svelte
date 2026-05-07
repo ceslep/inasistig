@@ -863,15 +863,18 @@
      ============================================================ -->
 {#if selectedStudent}
   <div use:portal>
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
     <div
       class="modal-backdrop"
       onclick={closeStudentDetail}
+      onkeydown={(e) => e.key === 'Escape' && closeStudentDetail()}
       role="dialog"
       aria-modal="true"
       aria-label="Detalle del estudiante"
+      tabindex="-1"
     >
-      <div class="modal-content" onclick={(e) => e.stopPropagation()}>
+      <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
+      <div class="modal-content" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
         <!-- Header del modal -->
         <div
           class="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700 shrink-0"

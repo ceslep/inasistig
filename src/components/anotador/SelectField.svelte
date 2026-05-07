@@ -45,9 +45,9 @@
   let isOpen = $state(false);
   let searchTerm = $state("");
   let highlightedIndex = $state(-1);
-  let inputRef: HTMLInputElement;
-  let listboxRef: HTMLDivElement;
-  let buttonRef: HTMLButtonElement;
+  let inputRef = $state<HTMLInputElement>();
+  let listboxRef = $state<HTMLDivElement>();
+  let buttonRef = $state<HTMLButtonElement>();
 
   // Ocultar buscador si hay menos de 50 opciones
   const shouldShowSearch = $derived(showSearch && options.length >= 50);
@@ -425,11 +425,6 @@
     font-size: 0.9375rem;
   }
 
-  .select-trigger__icon {
-    font-size: 1.125rem;
-    flex-shrink: 0;
-  }
-
   .select-trigger__icon-badge {
     display: inline-flex;
     align-items: center;
@@ -478,17 +473,6 @@
     position: relative;
     padding: 12px;
     border-bottom: 1px solid rgb(var(--border-primary));
-  }
-
-  .select-dropdown__search-icon {
-    position: absolute;
-    left: 24px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 18px;
-    height: 18px;
-    color: rgb(var(--text-muted));
-    pointer-events: none;
   }
 
   .select-dropdown__search-input {
