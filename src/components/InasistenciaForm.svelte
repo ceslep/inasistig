@@ -183,7 +183,7 @@
       Swal.fire({
         icon: 'success',
         title: 'Borrador restaurado',
-        text: 'Se恢复了 tu borrador guardado',
+        text: 'Se restauró tu borrador guardado',
         timer: 2000,
         showConfirmButton: false,
       });
@@ -229,16 +229,8 @@
   let showFeatureAlertReport = $state(true); // Control inmediato del popup for report
 
   function shouldShowFeatureAlert(featureKey: string) {
-    // FORZAR MOSTRAR PARA DESARROLLO - Cambiar a false en producción
-    const DEBUG_FORCE_SHOW = true;
-
-    if (DEBUG_FORCE_SHOW) {
-      return true;
-    }
-
     const dismissed = localStorage.getItem(`dismissed${featureKey}Alert`);
 
-    // Si nunca fue descartado, mostrar siempre
     if (!dismissed) {
       return true;
     }
@@ -248,7 +240,6 @@
     const daysSinceDismissed =
       (now.getTime() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
 
-    // Mostrar si han pasado más de 5 días desde que se descartó
     return daysSinceDismissed > 5;
   }
 
@@ -283,21 +274,13 @@
     showFeatureAlertReport = false;
   };
 
-  const tryFeatureNowReport = () => {
-    // Cerrar el popup
+const tryFeatureNowReport = () => {
     localStorage.setItem(
       "dismissedFeatureAlertReport",
       new Date().toISOString(),
     );
-    // Abrir el generador de reportes
     openReportGenerator();
     showFeatureAlertReport = false;
-  };
-
-  // Forzar reset del mensaje para desarrollo (comentar en producción)
-  const resetFeatureAlert = () => {
-    localStorage.removeItem("dismissedFeatureAlertFilters");
-    localStorage.removeItem("dismissedFeatureAlertReport");
   };
 
   // --- Persistencia de Materias por Docente ---
@@ -894,6 +877,14 @@ let materiasSorted = $derived(
   });
 </script>
 
+{#snippet chevronIcon()}
+  <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3" style="color: {styles.icon};">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+    </svg>
+  </div>
+{/snippet}
+
 <svelte:window onkeydown={handleKeydown} />
 
 <ModuleHeader title="Registro Diario" subtitle="Gestión de Asistencia" {onBack} />
@@ -1371,24 +1362,7 @@ let materiasSorted = $derived(
                           </option>
                         {/each}
                       </select>
-                      <div
-                        class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3"
-                        style="color: {styles.icon};"
-                      >
-                        <svg
-                          class="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M19 9l-7 7-7-7"
-                          />
-                        </svg>
-                      </div>
+                      {@render chevronIcon()}
                     </div>
                   </div>
 
@@ -1453,19 +1427,11 @@ let materiasSorted = $derived(
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="space-y-2">
-            <label
-              for="fecha"
-              class="block text-sm font-medium"
-              style="color: {styles.label};">Fecha</label
-            >
-            <input
-              type="date"
+            <DatePicker
               id="fecha"
-              name="fecha"
+              label="Fecha"
               bind:value={formData.fecha}
-              required
-              class="w-full px-4 py-3 rounded-xl border focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
-              style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
+              class="w-full"
             />
           </div>
 
