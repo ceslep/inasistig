@@ -7,17 +7,19 @@
   import Swal from "sweetalert2";
   import Dashboard from "./components/Dashboard.svelte";
   import Loader from "./components/Loader.svelte";
-  import { isOnline, pendingCount, isSyncing } from "./lib/networkStore";
+  import { isOnline, pendingCount, pendingOperations, isSyncing, syncPendingOperations, refreshPendingOperations, discardPendingOperation, discardAllPending } from "./lib/networkStore";
   import { initAnalytics, trackViewChange } from "./lib/analyticsService";
   import { initVersionCheck } from "./version";
   import { isAuthenticated, docenteName, authUser } from "./lib/authStore";
   import LoginScreen from "./components/LoginScreen.svelte";
+  import { X, RefreshCw, Trash2, Clock } from '@lucide/svelte';
 
   let showAnalytics = $state(false);
   let AnalyticsModal: ReturnType<typeof $state<typeof import("./components/AnalyticsModal.svelte").default | null>> = $state(null);
 
   let activeView = $state("dashboard");
   let isLoadingModule = $state(false);
+  let showPending = $state(false);
 
   let externalModuleUrl = $state("");
   let externalModuleTitle = $state("");
@@ -214,30 +216,98 @@
 
 <!-- Indicador flotante global de estado de red -->
 {#if !$isOnline || $pendingCount > 0 || $isSyncing}
-  <div
-    class="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl text-sm font-bold tracking-wide transition-all duration-300"
-    style="
-      background-color: {$isOnline ? ($isSyncing ? 'rgb(59, 130, 246)' : 'rgb(245, 158, 11)') : 'rgb(239, 68, 68)'};
-      color: white;
-    "
-    in:fly={{ y: 40, duration: 300 }}
-    out:fade={{ duration: 200 }}
-  >
-    {#if !$isOnline}
-      <WifiOff class="w-5 h-5" />
-      <span>SIN CONEXIÓN</span>
-      {#if $pendingCount > 0}
-        <span class="px-2 py-0.5 rounded-full bg-white/20 text-[11px]">
-          {$pendingCount} pendiente{$pendingCount > 1 ? "s" : ""}
-        </span>
-      {/if}
-    {:else if $isSyncing}
-      <Loader2 class="w-5 h-5 animate-spin" />
-      <span>SINCRONIZANDO...</span>
-    {:else if $pendingCount > 0}
-      <CloudUpload class="w-5 h-5" />
-      <span>{$pendingCount} PENDIENTE{$pendingCount > 1 ? "S" : ""}</span>
+  <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+    {#if showPending && $pendingCount > 0}
+      <div
+        class="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl overflow-hidden w-72"
+        in:fly={{ y: 20, duration: 200 }}
+      >
+        <div class="px-4 py-3 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
+          <span class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            {$pendingCount} item{$pendingCount > 1 ? 's' : ''} pendiente{$pendingCount > 1 ? 's' : ''}
+          </span>
+          <button
+            type="button"
+            onclick={() => showPending = false}
+            class="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700"
+          >
+            <X class="w-4 h-4 text-zinc-500" />
+          </button>
+        </div>
+        <div class="max-h-48 overflow-y-auto">
+          {#each $pendingOperations as op (op.id)}
+            <div class="px-4 py-2 border-b border-zinc-200 dark:border-zinc-700 flex items-start gap-3 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+              <span class="text-base">{
+                op.operationType === 'inasistencia' ? '📋' :
+                op.operationType === 'acta' ? '📝' :
+                op.operationType === 'anotacion' ? '📌' :
+                op.operationType === 'diario' ? '📅' : '📤'
+              }</span>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm truncate text-zinc-900 dark:text-zinc-100">{op.summary}</p>
+                <p class="text-xs text-zinc-500">{new Date(op.timestamp).toLocaleTimeString('es-CO')}</p>
+              </div>
+              <button
+                type="button"
+                onclick={() => discardPendingOperation(op.id)}
+                class="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
+              >
+                <X class="w-3.5 h-3.5" />
+              </button>
+            </div>
+          {/each}
+        </div>
+        <div class="px-4 py-2 border-t border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 flex justify-between">
+          <button
+            type="button"
+            onclick={() => { discardAllPending(); showPending = false; }}
+            class="text-xs text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 px-2 py-1 rounded flex items-center gap-1"
+          >
+            <Trash2 class="w-3 h-3" />
+            Descartar
+          </button>
+          {#if $isOnline}
+            <button
+              type="button"
+              onclick={() => { syncPendingOperations(); showPending = false; }}
+              disabled={$isSyncing}
+              class="text-xs bg-emerald-500 text-white px-3 py-1 rounded flex items-center gap-1 hover:bg-emerald-600 disabled:opacity-50"
+            >
+              <RefreshCw class="w-3 h-3 {$isSyncing ? 'animate-spin' : ''}" />
+              Sincronizar
+            </button>
+          {/if}
+        </div>
+      </div>
     {/if}
+
+    <button
+      type="button"
+      onclick={() => { showPending = !showPending; if (showPending) refreshPendingOperations(); }}
+      class="flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl text-sm font-bold tracking-wide transition-all duration-300 hover:scale-105 active:scale-95"
+      style="
+        background-color: {$isOnline ? ($isSyncing ? 'rgb(59, 130, 246)' : 'rgb(245, 158, 11)') : 'rgb(239, 68, 68)'};
+        color: white;
+      "
+      in:fly={{ y: 40, duration: 300 }}
+      out:fade={{ duration: 200 }}
+    >
+      {#if !$isOnline}
+        <WifiOff class="w-5 h-5" />
+        <span>SIN CONEXIÓN</span>
+        {#if $pendingCount > 0}
+          <span class="px-2 py-0.5 rounded-full bg-white/20 text-[11px]">
+            {$pendingCount}
+          </span>
+        {/if}
+      {:else if $isSyncing}
+        <Loader2 class="w-5 h-5 animate-spin" />
+        <span>SINCRONIZANDO...</span>
+      {:else if $pendingCount > 0}
+        <CloudUpload class="w-5 h-5" />
+        <span>{$pendingCount} PENDIENTE{$pendingCount > 1 ? "S" : ""}</span>
+      {/if}
+    </button>
   </div>
 {/if}
 

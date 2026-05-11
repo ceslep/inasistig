@@ -52,6 +52,48 @@ export async function getPendingCount(): Promise<number> {
   return db.count(STORE_NAME)
 }
 
+export interface PendingOperationSummary {
+  id: number
+  operationType: string
+  timestamp: number
+  endpoint: string
+  summary: string
+}
+
+function extractSummary(op: QueuedOperation): string {
+  const payload = op.payload as Record<string, unknown>;
+  switch (op.operationType) {
+    case 'inasistencia':
+      return `${payload.cantidad || payload.cantidadInasistencias || '?'} inasistencia(s) - ${payload.docente || payload.grado || ''}`;
+    case 'acta':
+      return `Acta de área - ${payload.areaAcademica || payload.docenteCreador || ''}`;
+    case 'anotacion':
+      return `Anotación - ${payload.docente || ''}`;
+    case 'diario':
+      return `Diario - ${payload.docente || ''}`;
+    case 'planeacion':
+      return `Planeación - ${payload.docente || ''}`;
+    default:
+      return op.endpoint.split('/').pop() || op.operationType;
+  }
+}
+
+export async function getPendingSummary(): Promise<PendingOperationSummary[]> {
+  const pending = await getAllPending();
+  return pending.map(op => ({
+    id: op.id!,
+    operationType: op.operationType,
+    timestamp: op.timestamp,
+    endpoint: op.endpoint,
+    summary: extractSummary(op),
+  }));
+}
+
+export async function clearAllPending(): Promise<void> {
+  const db = await getDb()
+  await db.clear(STORE_NAME)
+}
+
 export async function processQueue(): Promise<{
   synced: number
   failed: number

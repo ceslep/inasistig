@@ -7,9 +7,13 @@
     label?: string;
     value?: string;
     placeholder?: string;
-    onchange?: (value: string) => void;
+    dateFormat?: string;
+    minDate?: string;
+    maxDate?: string;
     hasError?: boolean;
     disabled?: boolean;
+    class?: string;
+    onchange?: (value: string) => void;
   }
 
   let {
@@ -17,9 +21,13 @@
     label = '',
     value = $bindable(''),
     placeholder = 'Seleccione fecha',
-    onchange,
+    dateFormat = 'Y-m-d',
+    minDate = undefined,
+    maxDate = undefined,
     hasError = false,
     disabled = false,
+    class: className = '',
+    onchange,
   }: Props = $props();
 
   let isOpen = $state(false);
@@ -153,7 +161,7 @@
   };
 </script>
 
-<div class="date-picker-container">
+<div class="date-picker-container {className}">
   {#if label}
     <label
       for={id}
