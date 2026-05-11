@@ -13,18 +13,21 @@ Single file check: `npx svelte-check --tsconfig ./tsconfig.app.json src/path/to/
 
 **No test framework** — manual testing via `npm run dev` only.
 
+## Svelte Skills
+Use `svelte5-best-practices` and `svelte-code-writer` for Svelte component work.
+
 ## Environment
 - Requires `VITE_OPENROUTER_API_KEY` in `.env` for AI features (free tier at openrouter.ai)
 - Build deploys to GitHub Pages at `/inasistig/`
 
 ## Version Sync Required
-**Both** `src/version.ts` (`APP_VERSION`) **and** `public/version.json` (`version`) must match before `npm run deploy`. Current: `1.0.17`.
+**Both** `src/version.ts` (`APP_VERSION`) **and** `public/version.json` (`version`) must match before `npm run deploy`. Current: `1.0.23`.
 
 ## Architecture
 
 **Routing**: String-based SPA via `activeView` state in `App.svelte`. Browser back always returns to `"dashboard"`. Views dynamically imported.
 
-**Views**: `dashboard`, `inasistencia`, `anotador`, `diario`, `planeador`, `observador`, `piar`, `horas_laborables`, `actividades_recuperacion`
+**Views**: `dashboard`, `inasistencia`, `anotador`, `diario`, `planeador`, `observador`, `piar`, `horas_laborables`, `actividades_recuperacion`, `acta_area`
 
 **Integrated Modules**: `horas_laborables` and `activ_recuperacion` are internal Svelte components (not iframes). Use auth from `authStore.ts`.
 
@@ -43,7 +46,7 @@ Single file check: `npx svelte-check --tsconfig ./tsconfig.app.json src/path/to/
 
 **Exports**: ExcelJS (chunked), jsPDF + jspdf-autotable, file-saver. Chart.js for PieChart.
 
-**PWA**: Service worker with auto-update. Caches `/ig/` read endpoints (getprofes, getMaterias, getEstudiantes, getOpcionesAnotador, adiario) — 20 entries max, 1 day TTL.
+**PWA**: Service worker with auto-update. Caches `/ig/` read endpoints (getprofes, getMaterias, getEstudiantes, getOpcionesAnotador, adiario) — 20 entries max, 1 day TTL. Auto-update clears all caches and unregisters service workers, then reloads.
 
 **Google Drive**: `gdriveService.ts` for direct uploads. Used by report generators, PIAR, planeador, anotador, horas.
 

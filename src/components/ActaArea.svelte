@@ -9,13 +9,23 @@
     Save,
     FileDown,
     Cloud,
+    CloudOff,
     X,
     Info,
     AlertCircle,
     Loader2,
+    Upload,
+    Download,
+    Check,
+    Clock,
+    Keyboard,
+    Copy,
+    Undo2,
+    Search,
   } from '@lucide/svelte'
 
   import { saveActa, getDocentes, getMaterias } from '../../api/service'
+  import TimeRangePicker from './TimeRangePicker.svelte'
   import {
     SPREADSHEET_ID_ACTA,
     WORKSHEET_TITLE_ACTA,
@@ -33,8 +43,12 @@
     ROLES,
     ESTADOS_ACUERDO,
     VOTOS,
+    TEMAS_ORDEN_DIA,
+    PLANTILLAS_ACUERDOS,
+    CATEGORIAS_TEMAS,
     type ActaReunion,
     type DesarrolloItem,
+    type OrdenItem,
     type Rol,
     type EstadoAcuerdo,
     type Voto,
@@ -112,12 +126,172 @@
   let pendingPdfName = $state('')
   let showFolderPicker = $state(false)
   let showInfo = $state(true)
+  let lastSaved = $state<Date | null>(null)
+  let showKeyboardShortcuts = $state(false)
+  let importError = $state<string | null>(null)
+
+  // Quick topic selector
+  let selectedTemaIds = $state<Set<string>>(new Set())
+  let showTemaCustomInput = $state(false)
+  let customTemaDescripcion = $state('')
+
+  // Acuerdo template selector
+  let showAcuerdoSelector = $state(false)
+  let acuerdoSearch = $state('')
+  let selectedAcuerdoCategoria = $state<string | null>(null)
+
+  // Get tema predefinido by ID
+  const getTemaPredefinido = (id: string) => {
+    for (const categoria of Object.values(TEMAS_ORDEN_DIA)) {
+      const tema = categoria.find(t => t.id === id)
+      if (tema) return tema
+    }
+    return null
+  }
+
+  // All temas flattened
+  const allTemas = $derived(
+    Object.entries(TEMAS_ORDEN_DIA).flatMap(([cat, temas]) =>
+      temas.map(t => ({ ...t, categoriaKey: cat }))
+    )
+  )
+
+  // Toggle quick topic
+  const toggleQuickTopic = (temaId: string) => {
+    const newSet = new Set(selectedTemaIds)
+    if (newSet.has(temaId)) {
+      newSet.delete(temaId)
+      // Remove from ordenDia if exists
+      acta.ordenDia = acta.ordenDia.filter(o => o.temaPredefinidoId !== temaId)
+    } else {
+      newSet.add(temaId)
+      const tema = getTemaPredefinido(temaId)
+      if (tema) {
+        acta.ordenDia = [...acta.ordenDia, {
+          descripcion: tema.label,
+          responsable: '',
+          tiempoMin: tema.tiempo,
+          temaPredefinidoId: temaId,
+        }]
+        // Auto-expand desarrollo if this is the first topic
+        if (acta.ordenDia.length === 1) {
+          expanded.desarrollo = true
+        }
+      }
+    }
+    selectedTemaIds = newSet
+  }
+
+  // Check if tema is selected
+  const isTemaSelected = (temaId: string) => selectedTemaIds.has(temaId)
+
+  // Add custom tema
+  const addCustomTema = () => {
+    if (!customTemaDescripcion.trim()) return
+    const customId = `custom_${Date.now()}`
+    acta.ordenDia = [...acta.ordenDia, {
+      descripcion: customTemaDescripcion.trim(),
+      responsable: '',
+      tiempoMin: 10,
+      temaPredefinidoId: customId,
+    }]
+    customTemaDescripcion = ''
+    showTemaCustomInput = false
+  }
+
+  // Remove tema from ordenDia
+  const removeTemaFromOrden = (index: number) => {
+    const removed = acta.ordenDia[index]
+    if (removed?.temaPredefinidoId && !removed.temaPredefinidoId.startsWith('custom_')) {
+      const newSet = new Set(selectedTemaIds)
+      newSet.delete(removed.temaPredefinidoId)
+      selectedTemaIds = newSet
+    }
+    acta.ordenDia = acta.ordenDia.filter((_, i) => i !== index)
+  }
+
+  // Sync selectedTemaIds with existing ordenDia on mount
+  $effect(() => {
+    const existingIds = new Set<string>()
+    for (const item of acta.ordenDia) {
+      if (item.temaPredefinidoId && !item.temaPredefinidoId.startsWith('custom_')) {
+        existingIds.add(item.temaPredefinidoId)
+      }
+    }
+    selectedTemaIds = existingIds
+  })
+
+  // Filtered acuerdo templates
+  const filteredAcuerdos = $derived(() => {
+    let templates = PLANTILLAS_ACUERDOS
+    if (selectedAcuerdoCategoria) {
+      // Filter by category (label contains category name)
+      const catLower = selectedAcuerdoCategoria.toLowerCase()
+      templates = templates.filter(t => t.value.toLowerCase().includes(catLower))
+    }
+    if (acuerdoSearch.trim()) {
+      const search = acuerdoSearch.toLowerCase()
+      templates = templates.filter(t =>
+        t.value.toLowerCase().includes(search) ||
+        t.label.toLowerCase().includes(search)
+      )
+    }
+    return templates
+  })
+
+  // Apply acuerdo template to new row
+  let newAcuerdoActividad = $state('')
+  const applyAcuerdoTemplate = (template: string) => {
+    newAcuerdoActividad = template
+    showAcuerdoSelector = false
+    acuerdoSearch = ''
+  }
+
+  // Start new acuerdo with template
+  const startNewAcuerdo = (template?: string) => {
+    acta.acuerdos = [
+      ...acta.acuerdos,
+      {
+        actividad: template || newAcuerdoActividad || '',
+        responsable: '',
+        fechaLimite: '',
+        estado: 'pendiente' as const,
+      },
+    ]
+    newAcuerdoActividad = ''
+  }
 
   // Firma canvas modal
   let firmaTarget = $state<'coordinador' | 'secretario' | { participanteIndex: number } | null>(
     null,
   )
   let firmaCanvas = $state<HTMLCanvasElement | null>(null)
+
+  // Section completion status
+  const sectionStatus = $derived({
+    cabecera: Boolean(
+      acta.institucion.trim() &&
+      acta.areaAcademica &&
+      acta.fecha &&
+      acta.horaInicio &&
+      acta.grados.length > 0
+    ),
+    participantes: Boolean(
+      acta.participantes.some(
+        (p) => (p.rol === 'coordinador' || p.rol === 'secretario') && p.nombre.trim()
+      )
+    ),
+    orden: Boolean(acta.ordenDia.some((o) => o.descripcion.trim())),
+    desarrollo: Boolean(acta.desarrollo.some((d) => d.discusion.trim() || d.decisiones.trim())),
+    acuerdos: Boolean(acta.acuerdos.some((a) => a.actividad.trim())),
+    cierre: Boolean(acta.actaLeidaAprobada),
+  })
+
+  const completionPercent = $derived(() => {
+    const sections = Object.values(sectionStatus)
+    const completed = sections.filter(Boolean).length
+    return Math.round((completed / sections.length) * 100)
+  })
 
   // Sync desarrollo with ordenDia changes
   $effect(() => {
@@ -138,10 +312,42 @@
     acta.desarrollo = next.map((d, i) => ({ ...d, temaIndex: i }))
   })
 
-  // Autosave draft
+  // Autosave with timestamp
+  let saveTimeout: ReturnType<typeof setTimeout> | null = null
   $effect(() => {
     const snapshot = $state.snapshot(acta)
-    draft.saveDraft(snapshot as unknown as Record<string, unknown>)
+    if (saveTimeout) clearTimeout(saveTimeout)
+    saveTimeout = setTimeout(() => {
+      draft.saveDraft(snapshot as unknown as Record<string, unknown>)
+      lastSaved = new Date()
+    }, 2000)
+    return () => {
+      if (saveTimeout) clearTimeout(saveTimeout)
+    }
+  })
+
+  // Keyboard shortcuts
+  $effect(() => {
+    const handleKeydown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        handleSave()
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault()
+        handleGeneratePdf()
+      }
+      if (e.key === 'Escape') {
+        if (firmaTarget) closeFirma()
+        else if (asignaturaPickerOpen) asignaturaPickerOpen = false
+        else if (showFolderPicker) showFolderPicker = false
+        else if (showKeyboardShortcuts) showKeyboardShortcuts = false
+      }
+    }
+    window.addEventListener('keydown', handleKeydown)
+    return () => window.removeEventListener('keydown', handleKeydown)
   })
 
   const loadRefData = async () => {
@@ -560,6 +766,74 @@
 
   const fieldClass =
     'w-full px-3 py-2 rounded-lg bg-[rgb(var(--bg-secondary))] border border-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] focus:outline-none focus:border-[rgb(var(--accent-primary))] transition-colors'
+
+  // --- Copy agreement ---
+  const copyAcuerdo = (i: number) => {
+    const source = acta.acuerdos[i]
+    acta.acuerdos = [
+      ...acta.acuerdos,
+      {
+        actividad: source.actividad,
+        responsable: source.responsable,
+        fechaLimite: '',
+        estado: 'pendiente' as const,
+      },
+    ]
+  }
+
+  // --- Import/Export JSON ---
+  const exportJson = () => {
+    const snapshot = $state.snapshot(acta)
+    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `acta_area_${acta.fecha || 'borrador'}.json`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  const importJson = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.json'
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
+      try {
+        const text = await file.text()
+        const parsed = JSON.parse(text)
+        if (parsed && parsed.id && parsed.institucion !== undefined) {
+          acta = {
+            ...createInitialActa(),
+            ...parsed,
+            participantes: parsed.participantes || [],
+            ordenDia: parsed.ordenDia || [],
+            desarrollo: parsed.desarrollo || [],
+            acuerdos: parsed.acuerdos || [],
+            proxima: parsed.proxima || { fecha: '', hora: '', lugar: '' },
+          }
+          await Swal.fire({
+            icon: 'success',
+            title: 'Importación exitosa',
+            text: 'El acta se cargó correctamente.',
+            timer: 2000,
+            showConfirmButton: false,
+            position: 'top-end',
+            toast: true,
+          })
+        } else {
+          throw new Error('Formato inválido')
+        }
+      } catch {
+        importError = 'Archivo no válido. Selecciona un JSON exportado de esta aplicación.'
+        setTimeout(() => (importError = null), 4000)
+      }
+    }
+    input.click()
+  }
 </script>
 
 <div class="min-h-screen bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))]">
@@ -567,10 +841,20 @@
     {#snippet actions()}
       <button
         type="button"
+        onclick={() => (showKeyboardShortcuts = true)}
+        class="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl bg-[rgb(var(--bg-secondary))] border border-[rgb(var(--border-primary))] hover:border-[rgb(var(--accent-primary))] transition-colors"
+        title="Atajos de teclado"
+        aria-label="Mostrar atajos de teclado"
+      >
+        <Keyboard class="w-4 h-4" />
+      </button>
+      <button
+        type="button"
         onclick={handleGeneratePdf}
         disabled={isGeneratingPdf}
         class="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl bg-[rgb(var(--bg-secondary))] border border-[rgb(var(--border-primary))] hover:border-[rgb(var(--accent-primary))] disabled:opacity-50 transition-colors"
         title="Generar PDF"
+        aria-label="Generar PDF"
       >
         {#if isGeneratingPdf}
           <Loader2 class="w-4 h-4 animate-spin" />
@@ -587,16 +871,108 @@
       <div
         in:fade={{ duration: 200 }}
         class="flex items-start gap-3 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/30"
+        role="region"
+        aria-label="Información del módulo"
       >
         <Info class="w-5 h-5 text-indigo-500 flex-shrink-0 mt-0.5" />
         <p class="text-sm text-[rgb(var(--text-secondary))] flex-1">{INFO_ACTA}</p>
         <button
-          aria-label="Cerrar"
+          aria-label="Cerrar información"
           onclick={() => (showInfo = false)}
           class="text-[rgb(var(--text-muted))] hover:text-[rgb(var(--text-primary))]"
         >
           <X class="w-4 h-4" />
         </button>
+      </div>
+    {/if}
+
+    <!-- Progress bar + Auto-save indicator -->
+    <div
+      class="rounded-2xl bg-[rgb(var(--card-bg))] border border-[rgb(var(--card-border))] p-4 space-y-3"
+      role="region"
+      aria-label="Progreso del formulario"
+    >
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-semibold">Completado:</span>
+          <span class="text-lg font-bold text-indigo-500">{completionPercent()}%</span>
+        </div>
+        <div class="flex items-center gap-2 text-xs text-[rgb(var(--text-muted))]" aria-live="polite">
+          {#if lastSaved}
+            <Check class="w-3.5 h-3.5 text-emerald-500" />
+            <span>Guardado a las {lastSaved.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span>
+          {:else}
+            <Cloud class="w-3.5 h-3.5" />
+            <span>Sin guardar</span>
+          {/if}
+        </div>
+      </div>
+      <div
+        class="h-2 rounded-full bg-[rgb(var(--bg-secondary))] overflow-hidden"
+        role="progressbar"
+        aria-valuenow={completionPercent()}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Progreso de completado del acta"
+      >
+        <div
+          class="h-full rounded-full transition-all duration-500 ease-out"
+          style="width: {completionPercent()}%; background: linear-gradient(90deg, rgb(var(--accent-primary)), #6366f1);"
+        ></div>
+      </div>
+      <div class="flex flex-wrap gap-2 pt-1">
+        {#each Object.entries(sectionStatus) as [key, completed]}
+          {@const labels: Record<string, string> = {
+            cabecera: 'Info general',
+            participantes: 'Participantes',
+            orden: 'Orden del día',
+            desarrollo: 'Desarrollo',
+            acuerdos: 'Acuerdos',
+            cierre: 'Cierre',
+          }}
+          <span
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-colors"
+            style={completed ? 'background-color: rgb(16 185 129 / 0.15); color: rgb(5 150 105);' : 'background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-muted));'}
+          >
+            {#if completed}
+              <Check class="w-3 h-3" />
+            {:else}
+              <Clock class="w-3 h-3" />
+            {/if}
+            {labels[key] || key}
+          </span>
+        {/each}
+      </div>
+    </div>
+
+    <!-- Import/Export actions -->
+    <div class="flex gap-2" role="group" aria-label="Acciones de importación y exportación">
+      <button
+        type="button"
+        onclick={importJson}
+        class="flex items-center gap-2 px-3 py-2 rounded-xl bg-[rgb(var(--bg-secondary))] border border-[rgb(var(--border-primary))] hover:border-indigo-500 text-sm font-medium transition-colors"
+      >
+        <Upload class="w-4 h-4" />
+        Importar JSON
+      </button>
+      <button
+        type="button"
+        onclick={exportJson}
+        class="flex items-center gap-2 px-3 py-2 rounded-xl bg-[rgb(var(--bg-secondary))] border border-[rgb(var(--border-primary))] hover:border-indigo-500 text-sm font-medium transition-colors"
+      >
+        <Download class="w-4 h-4" />
+        Exportar JSON
+      </button>
+    </div>
+
+    {#if importError}
+      <div
+        in:fade={{ duration: 150 }}
+        class="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-300 text-sm"
+        role="alert"
+      >
+        <AlertCircle class="w-4 h-4 flex-shrink-0" />
+        {importError}
       </div>
     {/if}
 
@@ -661,13 +1037,13 @@
 
           <div class="md:col-span-2">
             <span class="text-sm font-semibold mb-2 block">Grados *</span>
-            <div class="flex flex-wrap gap-2">
+            <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {#each GRADOS as g (g)}
                 {@const sel = acta.grados.includes(g)}
                 <button
                   type="button"
                   onclick={() => toggleGrado(g)}
-                  class="px-4 py-2 rounded-xl border-2 font-semibold text-sm transition-all"
+                  class="px-3 py-2 rounded-xl border-2 font-semibold text-sm transition-all text-center"
                   class:bg-indigo-500={sel}
                   class:text-white={sel}
                   class:border-indigo-500={sel}
@@ -683,15 +1059,12 @@
 
           <DatePicker id="fecha" label="Fecha de reunión *" bind:value={acta.fecha} />
 
-          <label class="block">
-            <span class="text-sm font-semibold mb-1 block">Hora inicio *</span>
-            <input type="time" bind:value={acta.horaInicio} class={fieldClass} />
-          </label>
-
-          <label class="block">
-            <span class="text-sm font-semibold mb-1 block">Hora fin</span>
-            <input type="time" bind:value={acta.horaFin} class={fieldClass} />
-          </label>
+          <TimeRangePicker
+            bind:horaInicio={acta.horaInicio}
+            bind:horaFin={acta.horaFin}
+            labelInicio="Hora inicio *"
+            labelFin="Hora fin"
+          />
 
           <label class="block">
             <span class="text-sm font-semibold mb-1 block">Lugar</span>
@@ -700,7 +1073,23 @@
               bind:value={acta.lugar}
               placeholder="Sala de profesores, biblioteca…"
               class={fieldClass}
+              list="lugar-presets"
             />
+            <datalist id="lugar-presets">
+              <option value="Sala de profesores"></option>
+              <option value="Biblioteca"></option>
+              <option value="Auditorio"></option>
+              <option value="Sala de conferencias"></option>
+              <option value="Sala de reuniones"></option>
+              <option value="Laboratorio de informática"></option>
+              <option value="Sala de informática"></option>
+              <option value="Laboratorio de ciencias"></option>
+              <option value="Sala de audiovisual"></option>
+              <option value="Cancha"></option>
+              <option value="Patio"></option>
+              <option value="Virtual (Google Meet)"></option>
+              <option value="Virtual (Zoom)"></option>
+            </datalist>
           </label>
         </div>
       </Accordion>
@@ -718,21 +1107,31 @@
           {#each acta.participantes as p, i (i)}
             <div
               in:fly={{ y: 6, duration: 200 }}
-              class="grid grid-cols-12 gap-2 items-end p-3 rounded-xl bg-[rgb(var(--bg-secondary))]"
+              class="p-4 rounded-xl bg-[rgb(var(--bg-secondary))] space-y-3"
             >
-              <div class="col-span-12 sm:col-span-6">
-                <SelectField
-                  id={`participante-${i}`}
-                  label="Nombre completo"
-                  value={p.nombre}
-                  options={docenteOptions}
-                  placeholder={isLoadingRefData ? 'Cargando docentes…' : 'Selecciona docente'}
-                  isLoading={isLoadingRefData}
-                  selectType="docente"
-                  onchange={(v) => (acta.participantes[i].nombre = v)}
-                />
+              <div class="flex items-start gap-3">
+                <div class="flex-1 min-w-0">
+                  <SelectField
+                    id={`participante-${i}`}
+                    label="Nombre completo"
+                    value={p.nombre}
+                    options={docenteOptions}
+                    placeholder={isLoadingRefData ? 'Cargando docentes…' : 'Selecciona docente'}
+                    isLoading={isLoadingRefData}
+                    selectType="docente"
+                    onchange={(v) => (acta.participantes[i].nombre = v)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onclick={() => removeParticipante(i)}
+                  aria-label="Eliminar participante"
+                  class="p-2 rounded-lg text-rose-500 hover:bg-rose-500/10 mt-5"
+                >
+                  <Trash2 class="w-4 h-4" />
+                </button>
               </div>
-              <div class="col-span-7 sm:col-span-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <SelectField
                   id={`rol-${i}`}
                   label="Rol"
@@ -741,34 +1140,24 @@
                   showSearch={false}
                   onchange={(v) => (acta.participantes[i].rol = v as Rol)}
                 />
-              </div>
-              <div class="col-span-3 sm:col-span-2 flex flex-col">
-                <span class="text-xs font-semibold mb-1 opacity-80">Firma</span>
-                <button
-                  type="button"
-                  onclick={() => openFirma({ participanteIndex: i })}
-                  class="flex items-center justify-center gap-1 px-2 py-2 rounded-lg border border-dashed border-[rgb(var(--border-primary))] hover:border-indigo-500 text-xs"
-                >
-                  <PenLine class="w-3.5 h-3.5" />
-                  {p.firma ? 'Refirmar' : 'Firmar'}
-                </button>
-              </div>
-              <div class="col-span-2 sm:col-span-1 flex justify-end">
-                <button
-                  type="button"
-                  onclick={() => removeParticipante(i)}
-                  aria-label="Eliminar participante"
-                  class="p-2 rounded-lg text-rose-500 hover:bg-rose-500/10"
-                >
-                  <Trash2 class="w-4 h-4" />
-                </button>
+                <div>
+                  <span class="text-xs font-semibold mb-1 block opacity-80">Firma</span>
+                  <button
+                    type="button"
+                    onclick={() => openFirma({ participanteIndex: i })}
+                    class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-dashed border-[rgb(var(--border-primary))] hover:border-indigo-500 text-sm"
+                  >
+                    <PenLine class="w-3.5 h-3.5" />
+                    {p.firma ? 'Refirmar' : 'Firmar'}
+                  </button>
+                </div>
               </div>
             </div>
           {/each}
           <button
             type="button"
             onclick={addParticipante}
-            class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-[rgb(var(--border-primary))] hover:border-indigo-500 text-sm font-semibold transition-colors"
+            class="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-[rgb(var(--border-primary))] hover:border-indigo-500 text-sm font-semibold transition-colors"
           >
             <Plus class="w-4 h-4" /> Agregar participante
           </button>
@@ -788,53 +1177,139 @@
         onToggle={() => toggle('orden')}
         color="#10b981"
       >
-        <div class="space-y-3 pt-2">
-          {#each acta.ordenDia as o, i (i)}
-            <div
-              in:fly={{ y: 6, duration: 200 }}
-              class="grid grid-cols-12 gap-2 items-end p-3 rounded-xl bg-[rgb(var(--bg-secondary))]"
-            >
-              <span class="col-span-12 text-xs font-bold text-emerald-500">Tema {i + 1}</span>
-              <label class="col-span-12 sm:col-span-6 block">
-                <span class="text-xs font-semibold mb-1 block opacity-80">Descripción</span>
-                <input type="text" bind:value={o.descripcion} class={fieldClass} />
-              </label>
-              <div class="col-span-7 sm:col-span-4">
-                <SelectField
-                  id={`orden-resp-${i}`}
-                  label="Responsable"
-                  value={o.responsable}
-                  options={docenteOptions}
-                  placeholder={isLoadingRefData ? 'Cargando…' : 'Selecciona docente'}
-                  isLoading={isLoadingRefData}
-                  selectType="docente"
-                  onchange={(v) => (acta.ordenDia[i].responsable = v)}
-                />
-              </div>
-              <label class="col-span-4 sm:col-span-1 block">
-                <span class="text-xs font-semibold mb-1 block opacity-80">Min</span>
-                <input type="number" min="1" bind:value={o.tiempoMin} class={fieldClass} />
-              </label>
-              <div class="col-span-1 flex justify-end">
-                <button
-                  type="button"
-                  onclick={() => removeOrden(i)}
-                  disabled={acta.ordenDia.length <= 1}
-                  aria-label="Eliminar tema"
-                  class="p-2 rounded-lg text-rose-500 hover:bg-rose-500/10 disabled:opacity-30"
-                >
-                  <Trash2 class="w-4 h-4" />
-                </button>
-              </div>
+        <div class="space-y-4 pt-2">
+          <!-- Quick topic selector -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-300">Temas rápidos</span>
+              <span class="text-xs text-[rgb(var(--text-muted))]">{selectedTemaIds.size} seleccionados</span>
             </div>
-          {/each}
-          <button
-            type="button"
-            onclick={addOrden}
-            class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-[rgb(var(--border-primary))] hover:border-emerald-500 text-sm font-semibold transition-colors"
-          >
-            <Plus class="w-4 h-4" /> Agregar tema
-          </button>
+            {#each Object.entries(TEMAS_ORDEN_DIA) as [categoriaKey, temas]}
+              <div class="space-y-1.5">
+                <span class="text-xs font-medium text-[rgb(var(--text-muted))] uppercase tracking-wide">
+                  {CATEGORIAS_TEMAS[categoriaKey] || categoriaKey}
+                </span>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {#each temas as tema}
+                    {@const selected = isTemaSelected(tema.id)}
+                    <button
+                      type="button"
+                      onclick={() => toggleQuickTopic(tema.id)}
+                      class="flex items-center gap-2 px-3 py-2 rounded-lg border text-left text-sm transition-all"
+                      style={selected ? 'background-color: rgb(16 185 129 / 0.15); border-color: rgb(16 185 129); color: rgb(5 150 105);' : 'background-color: rgb(var(--bg-secondary)); border-color: rgb(var(--border-primary)); color: rgb(var(--text-primary));'}
+                    >
+                      <span
+                        class="w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors"
+                        style={selected ? 'background-color: rgb(16 185 129); border-color: rgb(16 185 129);' : 'background-color: transparent; border-color: rgb(var(--border-primary));'}
+                      >
+                        {#if selected}
+                          <Check class="w-3 h-3 text-white" />
+                        {/if}
+                      </span>
+                      <span class="flex-1 min-w-0 truncate">{tema.label}</span>
+                      <span class="text-xs opacity-60">{tema.tiempo}m</span>
+                    </button>
+                  {/each}
+                </div>
+              </div>
+            {/each}
+          </div>
+
+          <!-- Custom tema input -->
+          {#if showTemaCustomInput}
+            <div class="flex gap-2 items-end p-3 rounded-xl bg-[rgb(var(--bg-secondary))]" in:fly={{ y: 6, duration: 200 }}>
+              <div class="flex-1">
+                <label class="block">
+                  <span class="text-xs font-semibold mb-1 block opacity-80">Tema personalizado</span>
+                  <input
+                    type="text"
+                    bind:value={customTemaDescripcion}
+                    placeholder="Describe el tema..."
+                    class="{fieldClass} min-w-0"
+                    onkeydown={(e) => { if (e.key === 'Enter') addCustomTema() }}
+                  />
+                </label>
+              </div>
+              <button
+                type="button"
+                onclick={addCustomTema}
+                class="px-3 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 text-sm font-medium"
+              >
+                Agregar
+              </button>
+              <button
+                type="button"
+                onclick={() => { showTemaCustomInput = false; customTemaDescripcion = '' }}
+                class="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+              >
+                <X class="w-4 h-4" />
+              </button>
+            </div>
+          {:else}
+            <button
+              type="button"
+              onclick={() => (showTemaCustomInput = true)}
+              class="w-full flex items-center justify-center gap-2 py-2 text-sm text-emerald-600 dark:text-emerald-300 hover:underline"
+            >
+              <Plus class="w-4 h-4" /> Agregar tema personalizado
+            </button>
+          {/if}
+
+          <!-- Divider -->
+          <div class="border-t border-[rgb(var(--border-primary))] pt-3">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-semibold text-[rgb(var(--text-muted))]">
+                Temas agregados ({acta.ordenDia.length})
+              </span>
+              <span class="text-xs text-[rgb(var(--text-muted))]">
+                Total: {acta.ordenDia.reduce((sum, o) => sum + (o.tiempoMin || 0), 0)} min
+              </span>
+            </div>
+            {#each acta.ordenDia as o, i (i)}
+              <div
+                in:fly={{ y: 6, duration: 200 }}
+                class="mb-2 p-3 rounded-xl bg-[rgb(var(--bg-secondary))] space-y-2"
+              >
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-emerald-500">Tema {i + 1}</span>
+                  <div class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onclick={() => removeTemaFromOrden(i)}
+                      aria-label="Eliminar tema"
+                      class="p-1 rounded text-rose-500 hover:bg-rose-500/10"
+                    >
+                      <Trash2 class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+                <label class="block">
+                  <span class="text-xs font-semibold mb-1 block opacity-80">Descripción</span>
+                  <input type="text" bind:value={o.descripcion} class="{fieldClass} min-w-0" />
+                </label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <SelectField
+                    id={`orden-resp-${i}`}
+                    label="Responsable"
+                    value={o.responsable}
+                    options={docenteOptions}
+                    placeholder={isLoadingRefData ? 'Cargando…' : 'Selecciona docente'}
+                    isLoading={isLoadingRefData}
+                    selectType="docente"
+                    onchange={(v) => (acta.ordenDia[i].responsable = v)}
+                  />
+                  <label class="block">
+                    <span class="text-xs font-semibold mb-1 block opacity-80">Tiempo (min)</span>
+                    <input type="number" min="1" bind:value={o.tiempoMin} class={fieldClass} />
+                  </label>
+                </div>
+              </div>
+            {:else}
+              <p class="text-sm text-[rgb(var(--text-muted))] italic text-center py-4">
+                Selecciona temas rápidos o agrega uno personalizado
+              </p>
+            {/each}
+          </div>
         </div>
       </Accordion>
     </section>
@@ -890,61 +1365,169 @@
         onToggle={() => toggle('acuerdos')}
         color="#ef4444"
       >
-        <div class="space-y-3 pt-2">
-          {#each acta.acuerdos as a, i (i)}
-            <div
-              in:fly={{ y: 6, duration: 200 }}
-              class="grid grid-cols-12 gap-2 items-end p-3 rounded-xl bg-[rgb(var(--bg-secondary))]"
-            >
-              <label class="col-span-12 sm:col-span-5 block">
-                <span class="text-xs font-semibold mb-1 block opacity-80">Actividad</span>
-                <input type="text" bind:value={a.actividad} class={fieldClass} />
-              </label>
-              <div class="col-span-6 sm:col-span-3">
-                <SelectField
-                  id={`acuerdo-resp-${i}`}
-                  label="Responsable"
-                  value={a.responsable}
-                  options={docenteOptions}
-                  placeholder={isLoadingRefData ? 'Cargando…' : 'Selecciona docente'}
-                  isLoading={isLoadingRefData}
-                  selectType="docente"
-                  onchange={(v) => (acta.acuerdos[i].responsable = v)}
-                />
-              </div>
-              <label class="col-span-6 sm:col-span-2 block">
-                <span class="text-xs font-semibold mb-1 block opacity-80">Fecha límite</span>
-                <input type="date" bind:value={a.fechaLimite} class={fieldClass} />
-              </label>
-              <div class="col-span-10 sm:col-span-1">
-                <SelectField
-                  id={`estado-${i}`}
-                  label="Estado"
-                  bind:value={a.estado as string}
-                  options={estadoOptions}
-                  showSearch={false}
-                  onchange={(v) => (acta.acuerdos[i].estado = v as EstadoAcuerdo)}
-                />
-              </div>
-              <div class="col-span-2 sm:col-span-1 flex justify-end">
+        <div class="space-y-4 pt-2">
+          <!-- Template selector -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-rose-600 dark:text-rose-300">Plantillas de acuerdos</span>
+              <span class="text-xs text-[rgb(var(--text-muted))]">{acta.acuerdos.length} acuerdos</span>
+            </div>
+
+            <!-- Search input -->
+            <div class="relative">
+              <input
+                type="text"
+                bind:value={acuerdoSearch}
+                placeholder="Buscar plantilla..."
+                class="{fieldClass} pl-9"
+              />
+              <Search class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[rgb(var(--text-muted))]" />
+            </div>
+
+            <!-- Category filter buttons -->
+            <div class="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onclick={() => (selectedAcuerdoCategoria = null)}
+                class="px-2 py-1 rounded-full text-xs font-medium transition-colors"
+                class:bg-rose-500={!selectedAcuerdoCategoria}
+                class:text-white={!selectedAcuerdoCategoria}
+                class:bg-[rgb(var(--bg-secondary))]={selectedAcuerdoCategoria}
+                class:text-[rgb(var(--text-primary))]={selectedAcuerdoCategoria}
+              >
+                Todos
+              </button>
+              {#each ['planeacion', 'seguimiento', 'coordinacion', 'evaluacion', 'administrativo', 'formacion'] as cat}
                 <button
                   type="button"
-                  onclick={() => removeAcuerdo(i)}
-                  aria-label="Eliminar acuerdo"
-                  class="p-2 rounded-lg text-rose-500 hover:bg-rose-500/10"
+                  onclick={() => (selectedAcuerdoCategoria = selectedAcuerdoCategoria === cat ? null : cat)}
+                  class="px-2 py-1 rounded-full text-xs font-medium transition-colors capitalize"
+                  style={selectedAcuerdoCategoria === cat ? 'background-color: rgb(244 63 94); color: white;' : 'background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary));'}
                 >
-                  <Trash2 class="w-4 h-4" />
+                  {cat}
+                </button>
+              {/each}
+            </div>
+
+            <!-- Template list -->
+            <div class="max-h-48 overflow-auto rounded-lg border border-[rgb(var(--border-primary))]">
+              {#each filteredAcuerdos() as template}
+                <button
+                  type="button"
+                  onclick={() => { newAcuerdoActividad = template.value; showAcuerdoSelector = false }}
+                  class="w-full flex items-start gap-2 px-3 py-2.5 text-left text-sm hover:bg-[rgb(var(--bg-secondary))] border-b border-[rgb(var(--border-primary))] last:border-b-0 transition-colors"
+                >
+                  <span class="w-2 h-2 rounded-full bg-rose-500 mt-1.5 flex-shrink-0"></span>
+                  <span class="flex-1">{template.label}</span>
+                </button>
+              {:else}
+                <p class="px-3 py-4 text-xs text-[rgb(var(--text-muted))] italic text-center">
+                  Sin coincidencias
+                </p>
+              {/each}
+            </div>
+
+            <!-- New acuerdo input with template preview -->
+            {#if newAcuerdoActividad}
+              <div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30" in:fly={{ y: 6, duration: 200 }}>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-medium text-rose-600 dark:text-rose-300">Plantilla seleccionada</span>
+                  <button
+                    type="button"
+                    onclick={() => (newAcuerdoActividad = '')}
+                    class="p-1 rounded hover:bg-rose-500/20"
+                  >
+                    <X class="w-3 h-3" />
+                  </button>
+                </div>
+                <p class="text-sm font-medium mb-2">{newAcuerdoActividad}</p>
+                <button
+                  type="button"
+                  onclick={() => startNewAcuerdo()}
+                  class="w-full py-2 rounded-lg bg-rose-500 text-white hover:bg-rose-600 text-sm font-medium"
+                >
+                  Usar esta plantilla
                 </button>
               </div>
+            {/if}
+
+            <!-- Manual input option -->
+            <button
+              type="button"
+              onclick={() => startNewAcuerdo()}
+              class="w-full flex items-center justify-center gap-2 py-2 text-sm text-rose-600 dark:text-rose-300 hover:underline"
+            >
+              <Plus class="w-4 h-4" /> Agregar acuerdo manualmente
+            </button>
+          </div>
+
+          <!-- Existing acuerdos list -->
+          {#if acta.acuerdos.length > 0}
+            <div class="border-t border-[rgb(var(--border-primary))] pt-4">
+              <span class="text-xs font-semibold text-[rgb(var(--text-muted))] mb-3 block">
+                Acuerdos registrados ({acta.acuerdos.length})
+              </span>
+              {#each acta.acuerdos as a, i (i)}
+                <div
+                  in:fly={{ y: 6, duration: 200 }}
+                  class="mb-3 p-4 rounded-xl bg-[rgb(var(--bg-secondary))] space-y-3"
+                >
+                  <div class="flex items-start gap-3">
+                    <div class="flex-1 min-w-0">
+                      <label class="block">
+                        <span class="text-xs font-semibold mb-1 block opacity-80">Actividad</span>
+                        <input type="text" bind:value={a.actividad} class="{fieldClass} min-w-0" />
+                      </label>
+                    </div>
+                    <div class="flex items-center gap-1 pt-5">
+                      <button
+                        type="button"
+                        onclick={() => copyAcuerdo(i)}
+                        aria-label="Copiar acuerdo"
+                        class="p-2 rounded-lg text-sky-500 hover:bg-sky-500/10"
+                        title="Copiar este acuerdo"
+                      >
+                        <Copy class="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onclick={() => removeAcuerdo(i)}
+                        aria-label="Eliminar acuerdo"
+                        class="p-2 rounded-lg text-rose-500 hover:bg-rose-500/10"
+                      >
+                        <Trash2 class="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <SelectField
+                        id={`acuerdo-resp-${i}`}
+                        label="Responsable"
+                        value={a.responsable}
+                        options={docenteOptions}
+                        placeholder={isLoadingRefData ? 'Cargando…' : 'Selecciona docente'}
+                        isLoading={isLoadingRefData}
+                        selectType="docente"
+                        onchange={(v) => (acta.acuerdos[i].responsable = v)}
+                      />
+                    </div>
+                    <DatePicker id={`fechaLimite-${i}`} label="Fecha límite" bind:value={a.fechaLimite} />
+                    <div>
+                      <SelectField
+                        id={`estado-${i}`}
+                        label="Estado"
+                        bind:value={a.estado as string}
+                        options={estadoOptions}
+                        showSearch={false}
+                        onchange={(v) => (acta.acuerdos[i].estado = v as EstadoAcuerdo)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              {/each}
             </div>
-          {/each}
-          <button
-            type="button"
-            onclick={addAcuerdo}
-            class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-[rgb(var(--border-primary))] hover:border-rose-500 text-sm font-semibold transition-colors"
-          >
-            <Plus class="w-4 h-4" /> Agregar acuerdo
-          </button>
+          {/if}
         </div>
       </Accordion>
     </section>
@@ -958,17 +1541,37 @@
         color="#8b5cf6"
       >
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-          <label class="block">
-            <span class="text-sm font-semibold mb-1 block">Fecha</span>
-            <input type="date" bind:value={acta.proxima.fecha} class={fieldClass} />
-          </label>
+          <DatePicker id="proximaFecha" label="Fecha" bind:value={acta.proxima.fecha} />
           <label class="block">
             <span class="text-sm font-semibold mb-1 block">Hora</span>
-            <input type="time" bind:value={acta.proxima.hora} class={fieldClass} />
+            <input
+              type="time"
+              bind:value={acta.proxima.hora}
+              class={fieldClass}
+              list="proxima-hora-presets"
+            />
+            <datalist id="proxima-hora-presets">
+              <option value="07:00"></option>
+              <option value="07:30"></option>
+              <option value="08:00"></option>
+              <option value="08:30"></option>
+              <option value="09:00"></option>
+              <option value="14:00"></option>
+              <option value="14:30"></option>
+              <option value="15:00"></option>
+              <option value="15:30"></option>
+              <option value="16:00"></option>
+            </datalist>
           </label>
           <label class="block">
             <span class="text-sm font-semibold mb-1 block">Lugar</span>
-            <input type="text" bind:value={acta.proxima.lugar} class={fieldClass} />
+            <input
+              type="text"
+              bind:value={acta.proxima.lugar}
+              class={fieldClass}
+              list="lugar-presets"
+              placeholder="Sala de profesores, biblioteca…"
+            />
           </label>
         </div>
       </Accordion>
@@ -1216,4 +1819,53 @@
       pendingPdfBlob = null
     }}
   />
+{/if}
+
+<!-- Keyboard shortcuts modal -->
+{#if showKeyboardShortcuts}
+  <div
+    in:fade={{ duration: 150 }}
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Atajos de teclado"
+    onclick={(e) => { if (e.target === e.currentTarget) showKeyboardShortcuts = false }}
+    onkeydown={(e) => { if (e.key === 'Escape') showKeyboardShortcuts = false }}
+    tabindex="-1"
+  >
+    <div
+      in:fly={{ y: 20, duration: 200 }}
+      class="w-full max-w-md rounded-2xl bg-[rgb(var(--card-bg))] border border-[rgb(var(--card-border))] p-5 space-y-4"
+    >
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold flex items-center gap-2">
+          <Keyboard class="w-5 h-5 text-indigo-500" /> Atajos de teclado
+        </h3>
+        <button
+          onclick={() => (showKeyboardShortcuts = false)}
+          aria-label="Cerrar"
+          class="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+        >
+          <X class="w-5 h-5" />
+        </button>
+      </div>
+      <div class="space-y-3 text-sm">
+        <div class="flex justify-between items-center py-2 border-b border-[rgb(var(--border-primary))]">
+          <span>Guardar acta</span>
+          <kbd class="px-2 py-1 rounded bg-[rgb(var(--bg-secondary))] font-mono text-xs">Ctrl + S</kbd>
+        </div>
+        <div class="flex justify-between items-center py-2 border-b border-[rgb(var(--border-primary))]">
+          <span>Generar PDF</span>
+          <kbd class="px-2 py-1 rounded bg-[rgb(var(--bg-secondary))] font-mono text-xs">Ctrl + P</kbd>
+        </div>
+        <div class="flex justify-between items-center py-2 border-b border-[rgb(var(--border-primary))]">
+          <span>Cerrar modal / panel</span>
+          <kbd class="px-2 py-1 rounded bg-[rgb(var(--bg-secondary))] font-mono text-xs">Escape</kbd>
+        </div>
+      </div>
+      <p class="text-xs text-[rgb(var(--text-muted))] text-center">
+        Los atajos funcionan cuando no estés escribiendo en un campo de texto.
+      </p>
+    </div>
+  </div>
 {/if}
