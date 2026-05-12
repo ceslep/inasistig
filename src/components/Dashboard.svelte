@@ -5,7 +5,8 @@
   import {
     Sun, Moon, CloudMoon,
     ClipboardCheck, BookOpen, Notebook, CalendarDays,
-    Eye, Heart, Clock, RotateCcw, FileSignature,
+    Eye, Heart, Clock, RotateCcw, FileSignature, Flag,
+    Users,
   } from '@lucide/svelte'
 
   import { theme, type Theme } from '../lib/themeStore'
@@ -159,11 +160,29 @@
     },
     {
       id: 'acta_area',
-      title: 'Acta de Reunión',
+      title: 'Acta de Reunión de Area',
       subtitle: 'Reuniones de Área',
       description: 'Registro legal de actas conforme Ley 115 de 1994 y Decreto 1860 de 1994.',
       icon: FileSignature,
       color: 'indigo',
+      tag: 'Normativo',
+    },
+    {
+      id: 'acta_izada',
+      title: 'Acta de Izada',
+      subtitle: 'Ceremonia Cívica',
+      description: 'Registro de izada de bandera semanal conforme al Decreto 1860 de 1994. Genera PDF, Excel y guarda en Drive.',
+      icon: Flag,
+      color: 'amber',
+      tag: 'Cívico',
+    },
+    {
+      id: 'acta_padres',
+      title: 'Acta de Padres',
+      subtitle: 'Reuniones de Familia',
+      description: 'Registro de reuniones de padres de familia conforme al Decreto 1286 de 2005. Genera PDF, Excel y guarda en Drive.',
+      icon: Users,
+      color: 'teal',
       tag: 'Normativo',
     },
   ]

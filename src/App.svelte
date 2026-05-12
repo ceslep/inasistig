@@ -79,7 +79,9 @@
   let Piar: ModuleComponent | null = $state(null);
   let HorasLaborables: ModuleComponent | null = $state(null);
   let ActividadesRecuperacion: ModuleComponent | null = $state(null);
-  let ActaArea: ModuleComponent | null = $state(null);
+  let ActaArea: ModuleComponent | null = $state(null)
+  let ActaIzada: ModuleComponent | null = $state(null);
+  let ActaPadres: ModuleComponent | null = $state(null);
 
   const handleSelect = async (view: string) => {
     if (view === "dashboard") {
@@ -135,6 +137,12 @@
       } else if (view === "acta_area" && !ActaArea) {
         const module = await import("./components/ActaArea.svelte");
         ActaArea = module.default;
+      } else if (view === "acta_izada" && !ActaIzada) {
+        const module = await import("./components/ActaIzada.svelte");
+        ActaIzada = module.default;
+      } else if (view === "acta_padres" && !ActaPadres) {
+        const module = await import("./components/ActaPadres.svelte");
+        ActaPadres = module.default;
       }
     } finally {
       isLoadingModule = false;
@@ -186,6 +194,10 @@
     <ActividadesRecuperacion onBack={handleBack} />
   {:else if activeView === "acta_area" && ActaArea}
     <ActaArea onBack={handleBack} />
+  {:else if activeView === "acta_izada" && ActaIzada}
+    <ActaIzada onBack={handleBack} />
+  {:else if activeView === "acta_padres" && ActaPadres}
+    <ActaPadres onBack={handleBack} />
   {:else if externalModuleUrl}
     <div class="w-full h-screen flex flex-col bg-[rgb(var(--bg-primary))]">
       <div

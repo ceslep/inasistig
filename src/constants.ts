@@ -36,12 +36,26 @@ export const SAVE_PIAR_URL = `${API_URL_GS}/save_piar.php`;
 export const GET_PIAR_URL = `${API_URL_GS}/get_piar.php`;
 export const WORKSHEET_TITLE_PIAR = "PIAR";
 
+// Acta de Reunión de Padres de Familia
+export const SPREADSHEET_ID_PADRES = "PENDIENTE_CONFIGURAR";
+export const SAVE_ACTA_PADRES_URL = `${API_URL_GS}/save_acta_padres.php`;
+export const WORKSHEET_TITLE_PADRES = "ActaPadres";
+export const INFO_PADRES =
+  "Registra el acta de reunión de padres conforme al Decreto 1286 de 2005 (artículo 23). Genera PDF, Excel y guarda en Drive.";
+
 // Acta de Reunión de Área
 export const SPREADSHEET_ID_ACTA = "PENDIENTE_CONFIGURAR";
 export const SAVE_ACTA_URL = `${API_URL_GS}/save_acta_area.php`;
 export const WORKSHEET_TITLE_ACTA = "ActaArea";
 export const INFO_ACTA =
   "Registra el acta de reunión de área conforme a la Ley 115 de 1994 y el Decreto 1860 de 1994. El borrador se guarda automáticamente.";
+
+// Acta de Izada de Bandera
+export const SPREADSHEET_ID_IZADA = "PENDIENTE_CONFIGURAR";
+export const SAVE_ACTA_IZADA_URL = `${API_URL_GS}/save_acta_izada.php`;
+export const WORKSHEET_TITLE_IZADA = "ActaIzada";
+export const INFO_IZADA =
+  "Registra el acta de izadas de bandera conforme al Decreto 1860 de 1994 (artículos 36 al 40). Genera PDF, Excel y guarda en Drive.";
 
 // Temas del Docente (JSON)
 export const UPLOAD_TEMAS_URL = `${BASE_URL}/arjson.php`;
