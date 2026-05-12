@@ -1,5 +1,6 @@
 <script lang="ts">
     interface Props {
+        id?: string;
         value?: string;
         placeholder?: string;
         dateFormat?: string;
@@ -11,6 +12,7 @@
     }
 
     let {
+        id = undefined,
         value = $bindable(""),
         placeholder = "Seleccione fecha",
         dateFormat = "Y-m-d",
@@ -31,6 +33,7 @@
 <div class="dp-wrapper {className}" class:disabled>
     <input
         type="date"
+        id={id}
         value={value ?? ""}
         min={minDate ?? ""}
         max={maxDate ?? ""}

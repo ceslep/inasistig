@@ -164,7 +164,7 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <div class="tc-wrapper {className}" class:disabled>
-  <label class="tc-label">{label}</label>
+  <span class="tc-label">{label}</span>
   <button
     type="button"
     class="tc-trigger"
@@ -179,17 +179,20 @@
 </div>
 
 {#if isOpen}
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div
     class="tc-backdrop"
     onclick={handleBackdropClick}
     transition:fade={{ duration: 150 }}
-    role="dialog"
-    aria-modal="true"
-    aria-label="Selector de hora"
   >
     <div
       class="tc-popup"
       transition:scale={{ duration: 200, start: 0.95 }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Selector de hora"
+      tabindex="-1"
     >
       <div class="tc-popup-header">
         <span class="tc-popup-title">{label}</span>
@@ -208,7 +211,9 @@
               {#each HOURS as h}
                 {@const pos = getHourPosition(h)}
                 {@const isSelected = h === selectedHour}
-                <g class="tc-hour-group" onclick={() => handleClockClick(h)} style="cursor: pointer;">
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <g class="tc-hour-group" onclick={() => handleClockClick(h)} style="cursor: pointer;" role="button" tabindex="0" onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClockClick(h) }}>
                   <circle
                     cx={pos.x}
                     cy={pos.y}
@@ -236,7 +241,9 @@
               {#each MINUTES as m}
                 {@const pos = getMinutePosition(m)}
                 {@const isSelected = m === selectedMinute}
-                <g class="tc-minute-group" onclick={() => handleClockClick(m)} style="cursor: pointer;">
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <g class="tc-minute-group" onclick={() => handleClockClick(m)} style="cursor: pointer;" role="button" tabindex="0" onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClockClick(m) }}>
                   <circle
                     cx={pos.x}
                     cy={pos.y}

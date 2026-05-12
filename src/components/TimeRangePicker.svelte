@@ -86,7 +86,7 @@
 <div class="trp-wrapper {className}" class:disabled>
     <div class="trp-grid">
         <div class="trp-field">
-            <label class="trp-label">{labelInicio} *</label>
+            <span class="trp-label">{labelInicio} *</span>
             <div class="trp-presets">
                 {#each PRESETS_AM as preset}
                     <button
@@ -118,7 +118,7 @@
         </div>
 
         <div class="trp-field">
-            <label class="trp-label">{labelFin}</label>
+            <span class="trp-label">{labelFin}</span>
             <div class="trp-presets">
                 {#each ALL_PRESETS as preset}
                     <button

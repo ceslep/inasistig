@@ -818,10 +818,10 @@
           <!-- Fila 3: Materia(s) -->
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <label
+              <span
                 class="block text-sm font-medium"
                 style="color: {styles.label};"
-              >{docenteHasDash ? "Materias" : "Materia"}</label>
+              >{docenteHasDash ? "Materias" : "Materia"}</span>
             </div>
             {#if docenteHasDash}
               <div id="materias-multi" class="space-y-3">

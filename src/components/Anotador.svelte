@@ -1237,7 +1237,4 @@ formData = {
     }
   }
 
-  .animate-glow {
-    animation: glow-pulse 2s ease-in-out 3;
-  }
-</style>
+  </style>

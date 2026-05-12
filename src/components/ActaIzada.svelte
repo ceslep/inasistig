@@ -713,23 +713,24 @@
 <div class="space-y-4">
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div>
-          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Fecha *</label>
+          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1" for="fecha-izada">Fecha *</label>
           <DatePicker id="fecha-izada" bind:value={acta.fecha} />
         </div>
 <div>
-          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Hora inicio *</label>
+          <span class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Hora inicio *</span>
           <TimeSelector bind:value={acta.horaInicio} label="Hora inicio" />
         </div>
         <div>
-          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Hora fin</label>
+          <span class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Hora fin</span>
           <TimeSelector bind:value={acta.horaFin} label="Hora fin" />
         </div>
       </div>
 
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div>
-          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Tipo</label>
+<label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1" for="tipo-izada">Tipo</label>
           <select
+            id="tipo-izada"
             bind:value={acta.tipo}
             class="w-full px-3 py-2 rounded-lg border border-[rgb(var--border-primary))] bg-[rgb(var--bg-secondary))] text-[rgb(var--text-primary))] text-sm"
           >
@@ -739,8 +740,9 @@
           </select>
         </div>
         <div>
-          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Momento</label>
+          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1" for="momento-izada">Momento</label>
           <select
+            id="momento-izada"
             bind:value={acta.momento}
             class="w-full px-3 py-2 rounded-lg border border-[rgb(var--border-primary))] bg-[rgb(var--bg-secondary))] text-[rgb(var--text-primary))] text-sm"
           >
@@ -750,8 +752,9 @@
           </select>
         </div>
         <div>
-          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Lugar</label>
+          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1" for="lugar-izada">Lugar</label>
           <select
+            id="lugar-izada"
             bind:value={acta.lugar}
             class="w-full px-3 py-2 rounded-lg border border-[rgb(var--border-primary))] bg-[rgb(var--bg-secondary))] text-[rgb(var--text-primary))] text-sm"
           >
@@ -764,7 +767,7 @@
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-2">Grados *</label>
+          <span class="block text-xs font-medium text-[rgb(var--text-muted))] mb-2">Grados *</span>
           {#if isLoadingEstudiantes}
             <div class="flex items-center gap-2 text-sm text-[rgb(var--text-muted))]">
               <Loader2 class="w-4 h-4 animate-spin" />
@@ -796,7 +799,7 @@
           {/if}
         </div>
         <div>
-          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-2">Grupos</label>
+          <span class="block text-xs font-medium text-[rgb(var--text-muted))] mb-2">Grupos</span>
           <div class="flex flex-wrap gap-2">
             {#each ['A', 'B', 'C', 'D', 'E'] as grupo}
               {@const isSelected = acta.grupos.includes(grupo)}
@@ -819,7 +822,7 @@
           </div>
         </div>
         <div>
-          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-2">Áreas Académicas</label>
+          <span class="block text-xs font-medium text-[rgb(var--text-muted))] mb-2">Áreas Académicas</span>
           <div class="flex flex-wrap gap-2">
             {#each AREAS_IZADA as area}
               {@const isSelected = acta.areasAcademicas.includes(area)}
@@ -844,9 +847,10 @@
       </div>
 
       <div>
-        <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Tema Principal *</label>
+        <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1" for="tema-principal-izada">Tema Principal *</label>
         <div class="relative">
           <input
+            id="tema-principal-izada"
             type="text"
             bind:value={acta.temaPrincipal}
             onfocus={() => showTemaSelector = true}
@@ -876,8 +880,9 @@
       </div>
 
       <div>
-        <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Subtema</label>
+        <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1" for="subtema-izada">Subtema</label>
         <input
+          id="subtema-izada"
           type="text"
           bind:value={acta.subtema}
           placeholder="Subtema o aspekto específico"
@@ -1019,9 +1024,9 @@
       <!-- Evidencia Fotográfica -->
       <div class="mt-5 pt-4 border-t border-[rgb(var--border-primary))]">
         <div class="flex items-center justify-between mb-3">
-          <label class="block text-xs font-semibold text-[rgb(var--text-muted))] uppercase tracking-wide">
+          <span class="block text-xs font-semibold text-[rgb(var--text-muted))] uppercase tracking-wide">
             Evidencia Fotográfica (máx {MAX_FOTOS_IZADA})
-          </label>
+          </span>
           <span class="text-xs text-[rgb(var--text-muted))]">{fotos.length}/{MAX_FOTOS_IZADA}</span>
         </div>
 
@@ -1146,8 +1151,9 @@
         <div class="p-3 rounded-lg bg-[rgb(var--bg-secondary))] border border-[rgb(var--border-primary))]">
           <div class="flex items-end gap-2 mb-2">
             <div class="flex-1">
-              <label class="block text-xs text-[rgb(var--text-muted))] mb-1">Actividad</label>
+              <label class="block text-xs text-[rgb(var--text-muted))] mb-1" for="actividad-{i}">Actividad</label>
               <input
+                id="actividad-{i}"
                 type="text"
                 bind:value={compromiso.actividad}
                 placeholder="Descripción del compromiso"
@@ -1166,8 +1172,9 @@
           </div>
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
             <div>
-              <label class="block text-xs text-[rgb(var--text-muted))] mb-1">Responsable</label>
+              <label class="block text-xs text-[rgb(var--text-muted))] mb-1" for="responsable-{i}">Responsable</label>
               <input
+                id="responsable-{i}"
                 type="text"
                 bind:value={compromiso.responsable}
                 placeholder="Nombre"
@@ -1175,15 +1182,16 @@
               />
             </div>
             <div>
-              <label class="block text-xs text-[rgb(var--text-muted))] mb-1">Fecha límite</label>
+              <span class="block text-xs text-[rgb(var--text-muted))] mb-1">Fecha límite</span>
               <DatePicker
                   id="fecha-limite-{i}"
                   bind:value={compromiso.fechaLimite}
                 />
             </div>
             <div>
-              <label class="block text-xs text-[rgb(var--text-muted))] mb-1">Estado</label>
+              <label class="block text-xs text-[rgb(var--text-muted))] mb-1" for="estado-{i}">Estado</label>
               <select
+                id="estado-{i}"
                 bind:value={compromiso.estado}
                 class="w-full px-3 py-2 rounded-lg border border-[rgb(var--border-primary))] bg-[rgb(var--bg-primary))] text-sm"
               >

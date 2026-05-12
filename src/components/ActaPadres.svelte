@@ -649,23 +649,24 @@
     <div class="space-y-4">
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div>
-          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Fecha *</label>
+          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1" for="fecha-padres">Fecha *</label>
           <DatePicker id="fecha-padres" bind:value={acta.fecha} />
         </div>
         <div>
-          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Hora inicio *</label>
+          <span class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Hora inicio *</span>
           <TimeSelector bind:value={acta.horaInicio} label="Hora inicio" />
         </div>
         <div>
-          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Hora fin</label>
+          <span class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Hora fin</span>
           <TimeSelector bind:value={acta.horaFin} label="Hora fin" />
         </div>
       </div>
 
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div>
-          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Tipo</label>
+          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1" for="tipo-padres">Tipo</label>
           <select
+            id="tipo-padres"
             bind:value={acta.tipo}
             class="w-full px-3 py-2 rounded-lg border border-[rgb(var--border-primary))] bg-[rgb(var--bg-secondary))] text-[rgb(var--text-primary))] text-sm"
           >
@@ -675,8 +676,9 @@
           </select>
         </div>
         <div>
-          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Lugar</label>
+          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1" for="lugar-padres">Lugar</label>
           <select
+            id="lugar-padres"
             bind:value={acta.lugar}
             class="w-full px-3 py-2 rounded-lg border border-[rgb(var--border-primary))] bg-[rgb(var--bg-secondary))] text-[rgb(var--text-primary))] text-sm"
           >
@@ -686,14 +688,14 @@
           </select>
         </div>
         <div>
-          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Próxima reunión</label>
-          <DatePicker id="prox-fecha" bind:value={acta.proxFechaReunion} />
+          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1" for="prox-fecha-padres">Próxima reunión</label>
+          <DatePicker id="prox-fecha-padres" bind:value={acta.proxFechaReunion} />
         </div>
       </div>
 
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Grado</label>
+          <span class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Grado</span>
           {#if isLoadingEstudiantes}
             <div class="flex items-center gap-2 text-sm text-[rgb(var--text-muted))]">
               <Loader2 class="w-4 h-4 animate-spin" />
@@ -719,8 +721,9 @@
           {/if}
         </div>
         <div>
-          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Grupo</label>
+          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1" for="grupo-padres">Grupo</label>
           <select
+            id="grupo-padres"
             bind:value={acta.grupo}
             class="w-full px-3 py-2 rounded-lg border border-[rgb(var--border-primary))] bg-[rgb(var--bg-secondary))] text-[rgb(var--text-primary))] text-sm"
           >
@@ -733,8 +736,9 @@
       </div>
 
       <div>
-        <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Tema Principal *</label>
+        <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1" for="tema-padres">Tema Principal *</label>
         <input
+          id="tema-padres"
           type="text"
           bind:value={acta.temaPrincipal}
           placeholder="Tema central de la reunión"
@@ -767,7 +771,7 @@
           </div>
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="block text-xs text-[rgb(var--text-muted))] mb-1">Hijos en la institución</label>
+              <span class="block text-xs text-[rgb(var--text-muted))] mb-1">Hijos en la institución</span>
               <input
                 type="number"
                 bind:value={participante.hijosEnInstitucion}
@@ -777,7 +781,7 @@
               />
             </div>
             <div>
-              <label class="block text-xs text-[rgb(var--text-muted))] mb-1">Grados de hijos</label>
+              <span class="block text-xs text-[rgb(var--text-muted))] mb-1">Grados de hijos</span>
               <input
                 type="text"
                 bind:value={participante.hijosGrados}
@@ -838,8 +842,9 @@
       {/each}
 
       <div>
-        <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Acuerdos generales</label>
+        <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1" for="acuerdos-padres">Acuerdos generales</label>
         <textarea
+          id="acuerdos-padres"
           bind:value={acta.acuerdos}
           placeholder="Resumen de acuerdos alcanzados en la reunión..."
           rows="3"
@@ -856,8 +861,9 @@
         <div class="p-3 rounded-lg bg-[rgb(var--bg-secondary))] border border-[rgb(var--border-primary))]">
           <div class="flex items-end gap-2 mb-2">
             <div class="flex-1">
-              <label class="block text-xs text-[rgb(var--text-muted))] mb-1">Actividad</label>
+              <label class="block text-xs text-[rgb(var--text-muted))] mb-1" for="actividad-padres-{i}">Actividad</label>
               <input
+                id="actividad-padres-{i}"
                 type="text"
                 bind:value={compromiso.actividad}
                 placeholder="Descripción del compromiso"
@@ -876,8 +882,9 @@
           </div>
           <div class="grid grid-cols-3 gap-2">
             <div>
-              <label class="block text-xs text-[rgb(var--text-muted))] mb-1">Responsable</label>
+              <label class="block text-xs text-[rgb(var--text-muted))] mb-1" for="responsable-padres-{i}">Responsable</label>
               <input
+                id="responsable-padres-{i}"
                 type="text"
                 bind:value={compromiso.responsable}
                 placeholder="Nombre"
@@ -885,15 +892,16 @@
               />
             </div>
             <div>
-              <label class="block text-xs text-[rgb(var--text-muted))] mb-1">Fecha límite</label>
+              <span class="block text-xs text-[rgb(var--text-muted))] mb-1">Fecha límite</span>
               <DatePicker
                 id="fecha-limite-padres-{i}"
                 bind:value={compromiso.fechaLimite}
               />
             </div>
             <div>
-              <label class="block text-xs text-[rgb(var--text-muted))] mb-1">Estado</label>
+              <label class="block text-xs text-[rgb(var--text-muted))] mb-1" for="estado-padres-{i}">Estado</label>
               <select
+                id="estado-padres-{i}"
                 bind:value={compromiso.estado}
                 class="w-full px-3 py-2 rounded-lg border border-[rgb(var--border-primary))] bg-[rgb(var--bg-primary))] text-sm"
               >
@@ -920,8 +928,9 @@
   <Accordion title="Cierre y Firmas" isExpanded={expanded.cierre} onToggle={() => toggle('cierre')} color="#14B8A6">
     <div class="space-y-4">
       <div>
-        <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Observaciones generales</label>
+        <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1" for="observaciones-padres">Observaciones generales</label>
         <textarea
+          id="observaciones-padres"
           bind:value={acta.observacionesGenerales}
           placeholder="Observaciones adicionales de la reunión..."
           rows="2"
@@ -977,9 +986,9 @@
   <!-- Evidencia Fotográfica -->
   <div class="mt-5 pt-4 border-t border-[rgb(var--border-primary))]">
     <div class="flex items-center justify-between mb-3">
-      <label class="block text-xs font-semibold text-[rgb(var--text-muted))] uppercase tracking-wide">
-        Evidencia Fotográfica (máx 4)
-      </label>
+<span class="block text-xs font-semibold text-[rgb(var--text-muted))] uppercase tracking-wide">
+            Evidencia Fotográfica (máx 4)
+          </span>
       <span class="text-xs text-[rgb(var--text-muted))]">{fotos.length}/4</span>
     </div>
 
@@ -1060,9 +1069,9 @@
   <!-- Firmas fotográficas de padres -->
   <div class="mt-5 pt-4 border-t border-[rgb(var--border-primary))]">
     <div class="flex items-center justify-between mb-3">
-      <label class="block text-xs font-semibold text-[rgb(var--text-muted))] uppercase tracking-wide">
+      <span class="block text-xs font-semibold text-[rgb(var--text-muted))] uppercase tracking-wide">
         Firmas de Padres (fotografía)
-      </label>
+      </span>
       <span class="text-xs text-[rgb(var--text-muted))]">{fotosFirmas.length}/4</span>
     </div>
 
