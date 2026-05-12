@@ -1,4 +1,6 @@
 <script lang="ts">
+    import TimeSelector from './TimeSelector.svelte'
+
     interface Props {
         horaInicio?: string;
         horaFin?: string;
@@ -99,13 +101,7 @@
                 {/each}
             </div>
             <div class="trp-input-row">
-                <input
-                    type="time"
-                    value={horaInicio ?? ""}
-                    {disabled}
-                    class="trp-input"
-                    onchange={(e) => handleManualChange(true, e)}
-                />
+                <TimeSelector bind:value={horaInicio} label={labelInicio} />
                 <span class="trp-am-pm">
                     {#if horaInicio}
                         {@const h = parseInt(horaInicio.split(":")[0])}
@@ -137,13 +133,7 @@
                 {/each}
             </div>
             <div class="trp-input-row">
-                <input
-                    type="time"
-                    value={horaFin ?? ""}
-                    {disabled}
-                    class="trp-input"
-                    onchange={(e) => handleManualChange(false, e)}
-                />
+                <TimeSelector bind:value={horaFin} label={labelFin} />
                 <span class="trp-am-pm">
                     {#if horaFin}
                         {@const h = parseInt(horaFin.split(":")[0])}

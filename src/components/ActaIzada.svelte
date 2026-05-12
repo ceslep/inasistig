@@ -724,14 +724,6 @@
           <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Hora fin</label>
           <TimeSelector bind:value={acta.horaFin} label="Hora fin" />
         </div>
-        <div>
-          <label class="block text-xs font-medium text-[rgb(var--text-muted))] mb-1">Hora fin</label>
-          <input
-            type="time"
-            bind:value={acta.horaFin}
-            class="w-full px-3 py-2 rounded-lg border border-[rgb(var--border-primary))] bg-[rgb(var--bg-secondary))] text-[rgb(var--text-primary))] text-sm"
-          />
-        </div>
       </div>
 
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">

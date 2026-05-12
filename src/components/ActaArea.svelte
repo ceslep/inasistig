@@ -26,6 +26,7 @@
 
   import { saveActa, getDocentes, getMaterias } from '../../api/service'
   import TimeRangePicker from './TimeRangePicker.svelte'
+  import TimeSelector from './TimeSelector.svelte'
   import {
     SPREADSHEET_ID_ACTA,
     WORKSHEET_TITLE_ACTA,
@@ -1544,24 +1545,7 @@
           <DatePicker id="proximaFecha" label="Fecha" bind:value={acta.proxima.fecha} />
           <label class="block">
             <span class="text-sm font-semibold mb-1 block">Hora</span>
-            <input
-              type="time"
-              bind:value={acta.proxima.hora}
-              class={fieldClass}
-              list="proxima-hora-presets"
-            />
-            <datalist id="proxima-hora-presets">
-              <option value="07:00"></option>
-              <option value="07:30"></option>
-              <option value="08:00"></option>
-              <option value="08:30"></option>
-              <option value="09:00"></option>
-              <option value="14:00"></option>
-              <option value="14:30"></option>
-              <option value="15:00"></option>
-              <option value="15:30"></option>
-              <option value="16:00"></option>
-            </datalist>
+            <TimeSelector bind:value={acta.proxima.hora} label="Hora" />
           </label>
           <label class="block">
             <span class="text-sm font-semibold mb-1 block">Lugar</span>
