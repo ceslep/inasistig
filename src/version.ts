@@ -7,8 +7,8 @@
 
 import Swal from "sweetalert2";
 
-export const APP_VERSION = "1.0.25";
-export const APP_BUILD_DATE = "2026-05-12";
+export const APP_VERSION = "1.0.26";
+export const APP_BUILD_DATE = "2026-05-13";
 
 const VERSION_STORAGE_KEY = "app_version";
 let updateAvailable = false;
