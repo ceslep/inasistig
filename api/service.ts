@@ -854,3 +854,170 @@ export const getPiar = async (filtros: PiarFiltros = {}): Promise<PiarData[]> =>
     throw error;
   }
 };
+
+// ==================== INASISTENCIA STATS ====================
+
+export interface InasistenciaStatsPayload {
+  spreadsheetId: string;
+  worksheetTitle: string;
+  docente: string;
+  grado: string;
+  materias: string[];
+}
+
+export interface StudentRankingEntry {
+  nombre: string;
+  count: number;
+}
+
+export interface InasistenciaStats {
+  totalCount: number;
+  currentMonthCount: number;
+  prevMonthCount: number;
+  trendPercent: number;
+  byMotivo: Record<string, number>;
+  byDayOfWeek: Record<string, number>;
+  studentRanking: StudentRankingEntry[];
+  topStudents: StudentRankingEntry[];
+}
+
+const DAY_NAMES: Record<number, string> = {
+  1: "Lunes",
+  2: "Martes",
+  3: "Miércoles",
+  4: "Jueves",
+  5: "Viernes",
+  6: "Sábado",
+};
+
+export const loadInasistenciaStats = async (payload: InasistenciaStatsPayload): Promise<InasistenciaStats> => {
+  const { spreadsheetId, worksheetTitle, docente, grado, materias } = payload;
+
+  const response = await getInasistencias({ spreadsheetId, worksheetTitle });
+
+  if (!response?.records || !Array.isArray(response.records)) {
+    throw new Error("No se pudieron obtener los registros");
+  }
+
+  const dataRows = response.records.slice(1);
+
+  const normalize = (str: string | null | undefined): string => {
+    if (!str) return "";
+    return str
+      .toString()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9\s]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  };
+
+  const normalizeFecha = (fecha: string): string => {
+    if (!fecha) return "";
+    const parts = fecha.split("/");
+    if (parts.length === 3) {
+      const day = parts[0].padStart(2, "0");
+      const month = parts[1].padStart(2, "0");
+      const year = parts[2];
+      return `${year}-${month}-${day}`;
+    }
+    return fecha;
+  };
+
+  const targetDocente = normalize(docente);
+  const targetGrado = grado.toString().trim();
+
+  const filtered = dataRows
+    .map((row: any) => {
+      const values = row.values || [];
+      return {
+        fecha: values[2] || "",
+        docente: values[1] || "",
+        materia: values[4] || "",
+        grado: (values[6] || "").toString().trim(),
+        nombre: values[7] || "",
+        motivo: values[5] || "",
+        horas: values[3] || "0",
+      };
+    })
+    .filter((item: any) => {
+      const itemDocente = normalize(item.docente);
+      const itemGrado = item.grado;
+      const itemMateria = normalize(item.materia);
+
+      const matchDocente =
+        itemDocente.includes(targetDocente) ||
+        targetDocente.includes(itemDocente);
+      const matchGrado =
+        itemGrado === targetGrado ||
+        itemGrado.startsWith(targetGrado) ||
+        targetGrado.startsWith(itemGrado);
+      const matchMateria = materias.some((m) => {
+        const nm = normalize(m);
+        return itemMateria.includes(nm) || nm.includes(itemMateria);
+      });
+
+      return matchDocente && matchGrado && matchMateria;
+    });
+
+  const now = new Date();
+  const currentYear = now.getUTCFullYear();
+  const currentMonth = now.getUTCMonth();
+  const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+  const prevMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+  let currentMonthCount = 0;
+  let prevMonthCount = 0;
+  const byMotivo: Record<string, number> = {};
+  const byDayOfWeek: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+  const studentCounts: Record<string, number> = {};
+
+  for (const item of filtered) {
+    const fechaNorm = normalizeFecha(item.fecha);
+    const itemDate = new Date(fechaNorm);
+    if (isNaN(itemDate.getTime())) continue;
+
+    const itemMonth = itemDate.getUTCMonth();
+    const itemYear = itemDate.getUTCFullYear();
+
+    if (itemYear === currentYear && itemMonth === currentMonth) {
+      currentMonthCount++;
+    } else if (itemYear === prevMonthYear && itemMonth === prevMonth) {
+      prevMonthCount++;
+    }
+
+    byMotivo[item.motivo] = (byMotivo[item.motivo] || 0) + 1;
+
+    const dayOfWeek = itemDate.getUTCDay();
+    if (dayOfWeek >= 1 && dayOfWeek <= 6) {
+      byDayOfWeek[dayOfWeek]++;
+    }
+
+    studentCounts[item.nombre] = (studentCounts[item.nombre] || 0) + 1;
+  }
+
+  const trendPercent =
+    prevMonthCount > 0
+      ? Math.round(((currentMonthCount - prevMonthCount) / prevMonthCount) * 100)
+      : currentMonthCount > 0
+        ? 100
+        : 0;
+
+  const studentRanking = Object.entries(studentCounts)
+    .map(([nombre, count]) => ({ nombre, count }))
+    .sort((a, b) => b.count - a.count);
+
+  const topStudents = studentRanking.slice(0, 5);
+
+  return {
+    totalCount: filtered.length,
+    currentMonthCount,
+    prevMonthCount,
+    trendPercent,
+    byMotivo,
+    byDayOfWeek,
+    studentRanking,
+    topStudents,
+  };
+};

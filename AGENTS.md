@@ -21,17 +21,17 @@ Use `svelte5-best-practices` and `svelte-code-writer` for Svelte component work.
 - Build deploys to GitHub Pages at `/inasistig/`
 
 ## Version Sync Required
-**Both** `src/version.ts` (`APP_VERSION`) **and** `public/version.json` (`version`) must match before `npm run deploy`. Current: `1.0.23`.
+**Both** `src/version.ts` (`APP_VERSION`) **and** `public/version.json` (`version`) must match before `npm run deploy`. Current mismatch: `src/version.ts` = `1.0.25`, `public/version.json` = `1.0.23`.
 
 ## Architecture
 
 **Routing**: String-based SPA via `activeView` state in `App.svelte`. Browser back always returns to `"dashboard"`. Views dynamically imported.
 
-**Views**: `dashboard`, `inasistencia`, `anotador`, `diario`, `planeador`, `observador`, `piar`, `horas_laborables`, `actividades_recuperacion`, `acta_area`
+**Views**: `dashboard`, `inasistencia`, `anotador`, `diario`, `planeador`, `observador`, `piar`, `horas_laborables`, `actividades_recuperacion`, `acta_area`, `acta_izada`, `acta_padres`
 
 **Integrated Modules**: `horas_laborables` and `activ_recuperacion` are internal Svelte components (not iframes). Use auth from `authStore.ts`.
 
-**Admin Access**: `horas_laborables/AdminStats.svelte` shows only for `ceslep@gmail.com` or `rectoria.guatica@gmail.com`.
+**Admin Access**: `horas_laborables/AdminStats.svelte` is shown after user confirms via Swal dialog; no email whitelist check.
 
 **Auth**: Google OAuth via `LoginScreen.svelte`, stored in `authStore.ts`. Teacher matching strips trailing `-N` suffix ("Juan-5" → "Juan"). Token expiry checked every 5 min + on visibility change.
 

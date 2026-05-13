@@ -6,6 +6,7 @@
     getDocentes,
     getMaterias,
     getEstudiantes,
+    loadInasistenciaStats,
   } from "../../api/service";
   import {
     SPREADSHEET_ID,
@@ -124,6 +125,10 @@
   // Verificar si el docente tiene "-"
   let docenteHasDash = $derived(formData.docente.includes("-"));
 
+  let statsReady = $derived(
+    formData.grado && (docenteHasDash ? selectedMaterias.length > 0 : formData.materia),
+  );
+
   // --- Filtros ---
   let showFilter = $state(false);
   let showReportGenerator = $state(false);
@@ -150,8 +155,33 @@
     showOnlineReport = false;
   };
 
-  // --- Estado para Report Generator ---
-  let reportGeneratorLoading = $state(false);
+  // --- Stats popup ---
+  let statsLoading = $state(false);
+  let statsData = $state<import("../../api/service").InasistenciaStats | null>(null);
+  let statsError = $state<string | null>(null);
+
+  $effect(() => {
+    if (statsReady) {
+      statsLoading = true;
+      statsError = null;
+      const materias = docenteHasDash
+        ? selectedMaterias.map((m) => m.materia)
+        : [formData.materia];
+      loadInasistenciaStats({
+        spreadsheetId: SPREADSHEET_ID,
+        worksheetTitle: WORKSHEET_TITLE,
+        docente: formData.docente,
+        grado: formData.grado,
+        materias,
+      })
+        .then((data) => { statsData = data; })
+        .catch((err) => { statsError = err instanceof Error ? err.message : "Error desconocido"; })
+        .finally(() => { statsLoading = false; });
+    } else {
+      statsData = null;
+      statsError = null;
+    }
+  });
 
   // --- Borradores ---
   const { saveDraft, loadDraft, clearDraft, hasDraft } = useDraftSave('inasistencia_draft');
@@ -970,7 +1000,7 @@ let materiasSorted = $derived(
           {/if}
         </button>
 
-        <!-- Botón de Reporte Online -->
+         <!-- Botón de Reporte Online -->
          <button
            onclick={openOnlineReport}
            class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
@@ -1422,6 +1452,112 @@ let materiasSorted = $derived(
                 </div>
               {/if}
             </div>
+          </div>
+        {/if}
+
+        {#if statsReady}
+          <div
+            class="p-4 rounded-2xl border animate-fade-in"
+            style="background: linear-gradient(to right, rgb(var(--bg-secondary) / 0.4), rgb(var(--bg-secondary) / 0.2)); border-color: rgb(var(--border-primary));"
+          >
+            <div class="flex items-center justify-between mb-3">
+              <p
+                class="text-sm font-semibold flex items-center gap-1.5"
+                style="color: rgb(var(--text-primary));"
+              >
+                <BarChart3 class="w-4 h-4 text-indigo-500" />
+                Estadísticas
+              </p>
+              <div class="flex items-center gap-2 text-xs" style="color: rgb(var(--text-muted));">
+                {#if statsLoading}
+                  <div class="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Cargando...</span>
+                {:else if statsError}
+                  <span style="color: rgb(239, 68, 68);">Error: {statsError}</span>
+                {:else if statsData}
+                  <span>{statsData.totalCount} total</span>
+                {/if}
+              </div>
+            </div>
+
+            {#if statsLoading}
+              <div class="flex justify-center py-4">
+                <div class="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            {:else if statsError}
+              <p class="text-xs text-center py-2" style="color: rgb(var(--text-muted));">
+                No se pudieron cargar las estadísticas
+              </p>
+            {:else if statsData}
+              <div class="space-y-3">
+                <!-- Trend cards -->
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="p-2 rounded-xl text-center" style="background-color: rgb(var(--bg-secondary)); border: 1px solid rgb(var(--border-primary));">
+                    <p class="text-xs font-medium" style="color: rgb(var(--text-secondary));">Mes actual</p>
+                    <p class="text-xl font-bold" style="color: rgb(var(--accent-primary));">{statsData.currentMonthCount}</p>
+                  </div>
+                  <div class="p-2 rounded-xl text-center" style="background-color: rgb(var(--bg-secondary)); border: 1px solid rgb(var(--border-primary));">
+                    <p class="text-xs font-medium" style="color: rgb(var(--text-secondary));">Mes anterior</p>
+                    <p class="text-xl font-bold" style="color: rgb(var(--text-primary));">{statsData.prevMonthCount}</p>
+                  </div>
+                  <div
+                    class="p-2 rounded-xl text-center"
+                    style="background-color: {statsData.trendPercent >= 0 ? 'rgb(var(--accent-primary) / 0.1)' : 'rgb(239, 68, 68 / 0.1)'}; border: 1px solid {statsData.trendPercent >= 0 ? 'rgb(var(--accent-primary))' : 'rgb(239, 68, 68)'};"
+                  >
+                    <p class="text-xs font-medium" style="color: rgb(var(--text-secondary));">Tendencia</p>
+                    <p class="text-xl font-bold" style="color: {statsData.trendPercent >= 0 ? 'rgb(var(--accent-primary))' : 'rgb(239, 68, 68)'};">
+                      {statsData.trendPercent >= 0 ? '↑' : '↓'}{Math.abs(statsData.trendPercent)}%
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Top students compact -->
+                {#if statsData.topStudents.length > 0}
+                  <div>
+                    <p class="text-xs font-medium mb-1.5" style="color: rgb(var(--text-secondary));">
+                      🏆 Top estudiantes
+                    </p>
+                    <div class="flex flex-wrap gap-1.5">
+                      {#each statsData.topStudents as student, i}
+                        <span
+                          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border"
+                          style="background-color: rgb(var(--bg-secondary)); border-color: rgb(var(--border-primary)); color: rgb(var(--text-primary)); {i === 0 ? 'border-color: rgb(var(--accent-primary));' : ''}"
+                        >
+                          <span class="font-bold" style="color: rgb(var(--accent-primary));">{student.count}</span>
+                          <span class="truncate max-w-[80px]">{student.nombre.split(' ')[0]}</span>
+                        </span>
+                      {/each}
+                    </div>
+                  </div>
+                {/if}
+
+                <!-- Day of week mini bars -->
+                {#if statsData && Object.values(statsData.byDayOfWeek).some(v => v > 0)}
+                  {@const sd = statsData}
+                  <div>
+                    <p class="text-xs font-medium mb-1.5" style="color: rgb(var(--text-secondary));">
+                      📅 Por día
+                    </p>
+                    <div class="flex gap-1">
+                      {#each [1, 2, 3, 4, 5, 6] as d}
+                        {@const count = sd.byDayOfWeek[d] || 0}
+                        {@const maxCount = Math.max(...[1, 2, 3, 4, 5, 6].map(d => sd.byDayOfWeek[d] || 0), 1)}
+                        <div class="flex-1 flex flex-col items-center gap-0.5">
+                          <div class="w-full h-8 rounded overflow-hidden flex flex-col justify-end" style="background-color: rgb(var(--bg-secondary));">
+                            <div
+                              class="rounded-sm transition-all"
+                              style="height: {Math.max((count / maxCount) * 100, count > 0 ? 20 : 0)}%; background-color: rgb(var(--accent-primary));"
+                            ></div>
+                          </div>
+                          <span class="text-[10px] font-medium" style="color: rgb(var(--text-muted));">{['', 'L', 'M', 'X', 'J', 'V', 'S'][d]}</span>
+                          <span class="text-[10px] font-bold" style="color: rgb(var(--accent-primary));">{count}</span>
+                        </div>
+                      {/each}
+                    </div>
+                  </div>
+                {/if}
+              </div>
+            {/if}
           </div>
         {/if}
 
