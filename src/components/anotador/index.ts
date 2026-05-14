@@ -6,3 +6,5 @@ export { default as Skeleton } from './Skeleton.svelte';
 export { default as SlideOver } from './SlideOver.svelte';
 export { default as Tooltip } from './Tooltip.svelte';
 export { default as DatePicker } from './DatePicker.svelte';
+export { default as AnnotationHistory } from './AnnotationHistory.svelte';
+export { default as DiarioHistory } from './DiarioHistory.svelte';

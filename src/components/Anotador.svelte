@@ -24,8 +24,8 @@
   import { slide } from "svelte/transition";
   import FeaturePopup from "./FeaturePopup.svelte";
   import ModuleHeader from "./ModuleHeader.svelte";
-  import { Cloud, Filter, FileText, LayoutGrid, Moon, Sun, CloudMoon, Info, X, Search, ChevronDown, Check, Loader2, Send, WifiOff } from '@lucide/svelte';
-  import { Accordion, CheckboxCard, Skeleton, SelectField, SlideOver, Tooltip, DatePicker } from './anotador';
+  import { Cloud, Filter, FileText, LayoutGrid, Moon, Sun, CloudMoon, Info, X, Search, ChevronDown, Check, Loader2, Send, WifiOff, History } from '@lucide/svelte';
+  import { Accordion, CheckboxCard, Skeleton, SelectField, SlideOver, Tooltip, DatePicker, AnnotationHistory } from './anotador';
 
   // --- Props ---
   interface AnotadorProps {
@@ -332,6 +332,56 @@
     draftRestored = true;
   };
 
+  // --- Cargar desde Historial ---
+  interface AnnotationData {
+    timestamp: string;
+    fecha: string;
+    docente: string;
+    materia: string;
+    grado: string;
+    horas: string;
+    anotacion: string;
+    observacion: string;
+  }
+
+  const loadFromHistory = (data: AnnotationData) => {
+    formData = {
+      fecha: data.fecha,
+      docente: data.docente,
+      materia: data.materia,
+      grado: data.grado,
+      horas: data.horas,
+      anotacion: data.anotacion,
+      observacion: data.observacion,
+    };
+
+    if (data.anotacion) {
+      for (const [categoria, opciones] of Object.entries(anotacionGrupos)) {
+        for (const opcion of opciones) {
+          opcion.selected = data.anotacion.toLowerCase().includes(opcion.text.toLowerCase());
+        }
+      }
+
+      for (const [categoria] of Object.entries(anotacionGrupos)) {
+        const hasSelected = anotacionGrupos[categoria]?.some(o => o.selected);
+        if (hasSelected) {
+          expandedCategories[categoria] = true;
+        }
+      }
+    }
+
+    draftRestored = true;
+    clearDraft();
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Anotación cargada',
+      text: 'La anotación se ha cargado. Puedes editarla antes de guardar.',
+      timer: 2000,
+      showConfirmButton: false,
+    });
+  };
+
   // --- Persistencia de Materias por Docente ---
   let docenteMaterias: Record<string, string[]> = JSON.parse(
     localStorage.getItem("docenteMaterias") || "{}",
@@ -427,6 +477,7 @@
   // --- Filtros ---
   let showFilter = $state(false);
   let showReportGenerator = $state(false);
+  let showAnnotationHistory = $state(false);
 
   const openFilters = () => {
     showFilter = true;
@@ -440,6 +491,16 @@
   };
   const closeReportGenerator = () => {
     showReportGenerator = false;
+  };
+
+  const openAnnotationHistory = (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    showFieldErrors = false;
+    showAnnotationHistory = true;
+  };
+  const closeAnnotationHistory = () => {
+    showAnnotationHistory = false;
   };
 
   // --- Alertas Dismissibles ---
@@ -1129,7 +1190,20 @@ formData = {
           ></textarea>
         </div>
 
-        <div class="fixed bottom-8 right-8 z-50">
+        <div class="fixed bottom-8 right-8 z-50 flex items-center gap-4">
+          <!-- Botón Historial -->
+          <button
+            type="button"
+            onclick={(e) => openAnnotationHistory(e)}
+            class="group relative w-12 h-12 rounded-full border transition-all duration-300 hover:scale-105 active:scale-95"
+            style="background-color: rgb(var(--card-bg)); border-color: rgb(var(--border-primary)); color: rgb(var(--accent-primary)); box-shadow: 0 4px 12px rgb(0 0 0 / 0.1);"
+            aria-label="Ver historial de anotaciones"
+            title="Ver historial"
+          >
+            <History class="w-5 h-5 mx-auto" />
+          </button>
+
+          <!-- Botón Enviar -->
           <button
             type="submit"
             disabled={isLoading}
@@ -1173,6 +1247,16 @@ formData = {
   <ReportGenerator
     onClose={closeReportGenerator}
     initialDocente={formData.docente}
+  />
+{/if}
+
+{#if showAnnotationHistory}
+  <AnnotationHistory
+    bind:isOpen={showAnnotationHistory}
+    onClose={closeAnnotationHistory}
+    onSelect={loadFromHistory}
+    filterGrado={formData.grado}
+    filterMateria={formData.materia}
   />
 {/if}
 

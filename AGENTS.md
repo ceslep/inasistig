@@ -21,7 +21,7 @@ Use `svelte5-best-practices` and `svelte-code-writer` for Svelte component work.
 - Build deploys to GitHub Pages at `/inasistig/`
 
 ## Version Sync Required
-**Both** `src/version.ts` (`APP_VERSION`) **and** `public/version.json` (`version`) must match before `npm run deploy`. Current mismatch: `src/version.ts` = `1.0.25`, `public/version.json` = `1.0.23`.
+**Both** `src/version.ts` (`APP_VERSION`) **and** `public/version.json` (`version`) must match before `npm run deploy`.
 
 ## Architecture
 
@@ -52,11 +52,12 @@ Use `svelte5-best-practices` and `svelte-code-writer` for Svelte component work.
 
 **Offline Queue**: IndexedDB queue in `src/lib/offlineQueue.ts` — stops on first error (no retry). Planeador uses localStorage drafts (max 100) with JSON import/export.
 
-## Large Components
-- `ClassPlannerForm.svelte` (~6000 lines)
-- `Piar.svelte` (~2700 lines)
-- `InasistenciaForm.svelte` (~1600 lines)
-- `HoursRegistration.svelte` (~1300 lines)
+## Large Components (by line count)
+- `ClassPlannerForm.svelte` (~6030 lines)
+- `Piar.svelte` (~2740 lines)
+- `ActaArea.svelte` (~1855 lines)
+- `InasistenciaForm.svelte` (~1750 lines)
+- `HoursRegistration.svelte` (~1400 lines)
 
 ## Key localStorage Keys
 `theme`, `docenteMaterias`, `docenteMateriasDiario`, `lastDocente`, `lastDocenteDiario`, `planeaciones_local`, `app_version`, `dismissedFeatureAlert*`

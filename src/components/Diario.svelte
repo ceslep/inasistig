@@ -18,10 +18,10 @@
   import { useDraftSave, type DiarioDraftData } from "../lib/useDraftSave";
   import DiarioAnotacionOptions from "./DiarioAnotacionOptions.svelte";
   import ReportGeneratorDiario from "./ReportGeneratorDiario.svelte";
-  import { Cloud, FileText, Info, X, Send, Loader2, Check, AlertTriangle, ChevronDown, ChevronUp, Wifi, WifiOff, Eraser, Sun, Moon } from '@lucide/svelte';
+  import { Cloud, FileText, Info, X, Send, Loader2, Check, AlertTriangle, ChevronDown, ChevronUp, Wifi, WifiOff, Eraser, Sun, Moon, History } from '@lucide/svelte';
   import ModuleHeader from "./ModuleHeader.svelte";
   import { Skeleton } from "./ui";
-  import { SelectField, DatePicker } from './anotador';
+  import { SelectField, DatePicker, DiarioHistory } from './anotador';
 
   interface DiarioProps {
     onBack: () => void;
@@ -257,6 +257,54 @@
   };
   const closeReportGenerator = () => {
     showReportGenerator = false;
+  };
+
+  // --- Historial ---
+  let showDiarioHistory = $state(false);
+
+  const openDiarioHistory = (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    showFieldErrors = false;
+    showDiarioHistory = true;
+  };
+  const closeDiarioHistory = () => {
+    showDiarioHistory = false;
+  };
+
+  interface DiarioData {
+    timestamp: string;
+    fecha: string;
+    horas: string;
+    docente: string;
+    materia: string;
+    grado: string;
+    diarioCampo: string;
+  }
+
+  const loadFromDiarioHistory = (data: DiarioData) => {
+    formData = {
+      ...formData,
+      fecha: data.fecha,
+      grado: data.grado,
+      materia: data.materia,
+    };
+
+    if (data.diarioCampo) {
+      selectedDiarioAnots = data.diarioCampo.split(" | ").filter(Boolean);
+    }
+
+    draftRestored = true;
+    clearDraft();
+    showDraftBanner = false;
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Diario cargado',
+      text: 'El diario se ha cargado. Puedes editarlo antes de guardar.',
+      timer: 2000,
+      showConfirmButton: false,
+    });
   };
 
   // Ordenar docentes: el reciente al top
@@ -942,6 +990,17 @@
 
           <!-- FAB -->
           <div class="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
+            <!-- Botón Historial -->
+            <button
+              type="button"
+              onclick={(e) => openDiarioHistory(e)}
+              title="Ver historial"
+              aria-label="Ver historial de diarios"
+              class="w-12 h-12 rounded-full border shadow-lg transition-transform hover:scale-105 active:scale-95 flex items-center justify-center"
+              style="background-color: rgb(var(--card-bg)); border-color: rgb(var(--border-primary)); color: rgb(var(--accent-primary));"
+            >
+              <History class="w-5 h-5" />
+            </button>
             <button
               type="button"
               onclick={handleClearForm}
@@ -984,6 +1043,16 @@
   <ReportGeneratorDiario
     onClose={closeReportGenerator}
     initialDocente={formData.docente}
+  />
+{/if}
+
+{#if showDiarioHistory}
+  <DiarioHistory
+    bind:isOpen={showDiarioHistory}
+    onClose={closeDiarioHistory}
+    onSelect={loadFromDiarioHistory}
+    filterGrado={formData.grado}
+    filterMateria={formData.materia}
   />
 {/if}
 
