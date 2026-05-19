@@ -1021,3 +1021,5 @@ export const loadInasistenciaStats = async (payload: InasistenciaStatsPayload): 
     topStudents,
   };
 };
+
+

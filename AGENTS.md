@@ -5,13 +5,18 @@
 npm run dev        # Dev server - http://localhost:5173
 npm run build      # Production build to dist/
 npm run preview    # Preview production build
-npm run check      # Type checking (svelte-check + tsc)
+npm run check      # Type checking (svelte-check + tsc -p tsconfig.node.json)
 npm run deploy     # Build + deploy to GitHub Pages
 ```
 
 Single file check: `npx svelte-check --tsconfig ./tsconfig.app.json src/path/to/file.svelte`
 
 **No test framework** — manual testing via `npm run dev` only.
+
+## TypeScript Config Notes
+- `tsconfig.app.json`: `checkJs: false` — JS files in `src/` are NOT type-checked
+- `tsconfig.app.json`: `allowArbitraryExtensions: true` — allows `.svelte.ts` etc.
+- `tsconfig.node.json` is checked by `npm run check` (vite types)
 
 ## Svelte Skills
 Use `svelte5-best-practices` and `svelte-code-writer` for Svelte component work.
@@ -35,7 +40,7 @@ Use `svelte5-best-practices` and `svelte-code-writer` for Svelte component work.
 
 **Auth**: Google OAuth via `LoginScreen.svelte`, stored in `authStore.ts`. Teacher matching strips trailing `-N` suffix ("Juan-5" → "Juan"). Token expiry checked every 5 min + on visibility change.
 
-**API**: Two paths - `/ig/` (read), `/gs/` (write). PHP backend at `app.iedeoccidente.com`.
+**API**: `/ig/` (read), `/gs/` (write). PHP backend at `app.iedeoccidente.com`. Defined in `src/constants.ts`.
 
 **State Management**:
 - Svelte 5 runes: `$state()`, `$derived()`, `$props()`
@@ -43,6 +48,8 @@ Use `svelte5-best-practices` and `svelte-code-writer` for Svelte component work.
 - Global stores: `authStore.ts`, `networkStore.ts`, `themeStore.ts` use Svelte 4 `writable()` (imported with `$` prefix)
 
 **Theming**: Three themes (light/dim/dark) via CSS custom properties. Theme class on `<html>`. Use Tailwind: `bg-[rgb(var(--bg-primary))]`. Key vars: `--bg-primary`, `--text-primary`, `--accent-primary`, `--card-bg`, `--border-primary`.
+
+**Tailwind**: v4 with `@tailwindcss/vite` plugin (not PostCSS). Use CSS custom properties for theming, not Tailwind config.
 
 **Exports**: ExcelJS (chunked), jsPDF + jspdf-autotable, file-saver. Chart.js for PieChart.
 
@@ -65,6 +72,6 @@ Use `svelte5-best-practices` and `svelte-code-writer` for Svelte component work.
 ## Before Commit
 - [ ] `npm run check` passes
 - [ ] All themes work (light/dim/dark)
-- [ ] No `any` types
+- [ ] No `any` types (tsconfig.app.json has `checkJs: false` so `.js` files won't catch this — manually review)
 - [ ] Spanish error messages (SweetAlert2)
 - [ ] Ask before git commit

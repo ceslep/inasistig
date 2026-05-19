@@ -82,6 +82,7 @@
   let ActaArea: ModuleComponent | null = $state(null)
   let ActaIzada: ModuleComponent | null = $state(null);
   let ActaPadres: ModuleComponent | null = $state(null);
+  let ComisionEvaluacion: ModuleComponent | null = $state(null);
 
   const handleSelect = async (view: string) => {
     if (view === "dashboard") {
@@ -143,6 +144,9 @@
       } else if (view === "acta_padres" && !ActaPadres) {
         const module = await import("./components/ActaPadres.svelte");
         ActaPadres = module.default;
+      } else if (view === "comision_evaluacion" && !ComisionEvaluacion) {
+        const module = await import("./components/ComisionEvaluacion.svelte");
+        ComisionEvaluacion = module.default;
       }
     } finally {
       isLoadingModule = false;
@@ -198,6 +202,8 @@
     <ActaIzada onBack={handleBack} />
   {:else if activeView === "acta_padres" && ActaPadres}
     <ActaPadres onBack={handleBack} />
+  {:else if activeView === "comision_evaluacion" && ComisionEvaluacion}
+    <ComisionEvaluacion onBack={handleBack} />
   {:else if externalModuleUrl}
     <div class="w-full h-screen flex flex-col bg-[rgb(var(--bg-primary))]">
       <div

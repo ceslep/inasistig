@@ -1011,23 +1011,21 @@ let materiasSorted = $derived(
           <span class="text-sm font-medium hidden lg:inline">Ver Online</span>
         </button>
 
-         <!-- Botón de Locker Studio -->
+<!-- Botón de Locker Studio -->
          <button
            onclick={openLocker}
            class="inline-flex items-center justify-center gap-2 px-3 lg:px-4 py-2 lg:py-3 border rounded-lg transition-all duration-200 hover:bg-black/5 dark:hover:bg-white/5"
           style="background-color: {styles.inputBg}; border-color: {styles.border}; color: {styles.text};"
           title="Abrir Looker Studio"
-        >
-          <BarChart3 class="w-5 h-5" />
-          <span class="text-sm font-medium hidden lg:inline">Looker Studio</span
-          >
-        </button>
+         >
+           <BarChart3 class="w-5 h-5" />
+           <span class="text-sm font-medium hidden lg:inline">Looker Studio</span
+           >
+         </button>
 
-
-
-      </div>
-    </div>
-  </aside>
+        </div>
+     </div>
+   </aside>
 
   <!-- Contenido Principal -->
   <main class="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">

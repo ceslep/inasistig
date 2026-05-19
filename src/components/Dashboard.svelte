@@ -6,7 +6,7 @@
     Sun, Moon, CloudMoon,
     ClipboardCheck, BookOpen, Notebook, CalendarDays,
     Eye, Heart, Clock, RotateCcw, FileSignature, Flag,
-    Users,
+    Users, ClipboardList,
   } from '@lucide/svelte'
 
   import { theme, type Theme } from '../lib/themeStore'
@@ -83,6 +83,7 @@
     orange: { border: 'border-l-orange-500', iconBg: 'bg-orange-500/10', iconText: 'text-orange-600' },
     emerald: { border: 'border-l-emerald-500', iconBg: 'bg-emerald-500/10', iconText: 'text-emerald-600' },
     indigo: { border: 'border-l-indigo-500', iconBg: 'bg-indigo-500/10', iconText: 'text-indigo-600' },
+    violet: { border: 'border-l-violet-500', iconBg: 'bg-violet-500/10', iconText: 'text-violet-600' },
   }
 
   const modules = [
@@ -183,6 +184,15 @@
       description: 'Registro de reuniones de padres de familia conforme al Decreto 1286 de 2005. Genera PDF, Excel y guarda en Drive.',
       icon: Users,
       color: 'teal',
+      tag: 'Normativo',
+    },
+    {
+      id: 'comision_evaluacion',
+      title: 'Comision de Evaluacion',
+      subtitle: 'Evaluacion y Promocion',
+      description: 'Seguimiento y decisiones de la comision de evaluacion y promocion conforme al Decreto 1290 de 2009.',
+      icon: ClipboardList,
+      color: 'violet',
       tag: 'Normativo',
     },
   ]
