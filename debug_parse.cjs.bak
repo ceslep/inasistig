@@ -1,0 +1,17 @@
+const fs = require('fs');
+const data = fs.readFileSync('debug_horarios.csv', 'utf8');
+const lines = data.split('\n');
+
+const cesarLine = lines.find(l => l.startsWith('"CESAR'));
+if (cesarLine) {
+  const cols = cesarLine.split(',');
+  console.log('Total columns for CESAR:', cols.length);
+  console.log('\nColumns 1-44:');
+  cols.slice(0, 44).forEach((c, i) => {
+    console.log((i+1) + ': [' + c.replace(/"/g, '').replace(/\n/g, ' ') + ']');
+  });
+} else {
+  console.log('CESAR row not found');
+  console.log('First few lines:');
+  lines.slice(0, 5).forEach((l, i) => console.log(i + ': ' + l.substring(0, 80)));
+}

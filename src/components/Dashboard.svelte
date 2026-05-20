@@ -6,7 +6,7 @@
     Sun, Moon, CloudMoon,
     ClipboardCheck, BookOpen, Notebook, CalendarDays,
     Eye, Heart, Clock, RotateCcw, FileSignature, Flag,
-    Users, ClipboardList,
+    Users, ClipboardList, CalendarClock,
   } from '@lucide/svelte'
 
   import { theme, type Theme } from '../lib/themeStore'
@@ -139,6 +139,15 @@
       description: 'Calculadora especializada para el seguimiento de jornadas y horas docentes.',
       icon: Clock,
       color: 'orange',
+      tag: 'Herramienta',
+    },
+    {
+      id: 'horarios',
+      title: 'Horario General',
+      subtitle: 'Consulta de Horarios',
+      description: 'Consulta el horario general semanal de todos los docentes del Instituto Guática.',
+      icon: CalendarClock,
+      color: 'cyan',
       tag: 'Herramienta',
     },
     {

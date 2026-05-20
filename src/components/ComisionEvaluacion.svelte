@@ -262,7 +262,7 @@
       );
   };
 
-  const saveToSheets = async () => {
+  const saveToSheets = async (): Promise<boolean> => {
     isLoading = true;
     try {
       const payload = generatePayload();
@@ -287,14 +287,16 @@
         position: 'top-end',
         toast: true,
       });
+      return true;
     } catch (error) {
       console.error('Error:', error);
       await Swal.fire({
         icon: 'error',
         title: 'Error',
-        text: 'No se pudo guardar el acta',
+        text: 'No se pudo guardar el acta en Sheets',
         confirmButtonColor: '#ef4444',
       });
+      return false;
     } finally {
       isLoading = false;
     }
@@ -324,31 +326,24 @@
     }
   };
 
-  const generatePDF = async () => {
-    if (!formData.periodo || !formData.grado) {
-      await Swal.fire({
-        icon: 'warning',
-        title: 'Campos requeridos para PDF',
-        text: 'Seleccione periodo y grado antes de generar el PDF',
-        confirmButtonColor: '#6366f1',
-      });
-      return;
-    }
-
+  const buildPDF = async () => {
     const { jsPDF, autoTable } = await loadPdfLibraries();
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 15;
-    const contentWidth = pageWidth - margin * 2;
 
     const logoWidth = 25;
     const logoHeight = 25;
     const logoX = (pageWidth - logoWidth) / 2;
     const logoY = 12;
 
-    doc.addImage(eieLogo, 'PNG', logoX, logoY, logoWidth, logoHeight);
+    try {
+      doc.addImage(eieLogo, 'PNG', logoX, logoY, logoWidth, logoHeight);
+    } catch (e) {
+      console.error("Error al agregar el logo:", e);
+    }
 
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
@@ -505,15 +500,44 @@
       doc.text(`Pagina ${i} de ${totalPages}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
     }
 
-    const filename = `Acta_Comision_${formData.grado}_${formData.periodo}_${formData.fecha}.pdf`;
-    doc.save(filename);
-
-    return filename;
+    return doc;
   };
 
   let currentPdfBlob: Blob | null = null;
 
-  const saveToDrive = async () => {
+  const generatePDF = async (): Promise<string | null> => {
+    if (!formData.periodo || !formData.grado) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Campos requeridos para PDF',
+        text: 'Seleccione periodo y grado antes de generar el PDF',
+        confirmButtonColor: '#6366f1',
+      });
+      return null;
+    }
+
+    isLoading = true;
+    try {
+      const doc = await buildPDF();
+      currentPdfBlob = doc.output('blob');
+      const filename = `Acta_Comision_${formData.grado}_${formData.periodo}_${formData.fecha}.pdf`;
+      doc.save(filename);
+      return filename;
+    } catch (error) {
+      console.error('Error generando PDF:', error);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'No se pudo generar el PDF',
+        confirmButtonColor: '#ef4444',
+      });
+      return null;
+    } finally {
+      isLoading = false;
+    }
+  };
+
+  const saveToDrive = async (): Promise<boolean> => {
     if (!currentPdfBlob) {
       await Swal.fire({
         icon: 'info',
@@ -521,7 +545,7 @@
         text: 'Genere el PDF primero usando el boton Generar PDF',
         confirmButtonColor: '#6366f1',
       });
-      return;
+      return false;
     }
     isLoading = true;
     try {
@@ -544,6 +568,9 @@
           position: 'top-end',
           toast: true,
         });
+        return true;
+      } else {
+        throw new Error(result.error || 'Error al subir a Drive');
       }
     } catch (error) {
       console.error('Error:', error);
@@ -553,6 +580,7 @@
         text: 'No se pudo guardar en Drive',
         confirmButtonColor: '#ef4444',
       });
+      return false;
     } finally {
       isLoading = false;
     }
@@ -571,11 +599,11 @@
       return;
     }
 
-    if (!formData.periodo || !formData.grado) {
+    if (selectedDocentes.length === 0) {
       await Swal.fire({
         icon: 'warning',
-        title: 'Campos requeridos para PDF',
-        text: 'Seleccione periodo y grado antes de guardar',
+        title: 'Campos requeridos',
+        text: 'Seleccione al menos un docente asistente',
         confirmButtonColor: '#6366f1',
       });
       return;
@@ -593,63 +621,31 @@
 
     isLoading = true;
     try {
-      const { jsPDF, autoTable } = await loadPdfLibraries();
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
-
-      const pageWidth = doc.internal.pageSize.getWidth();
-
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('COMISION DE EVALUACION Y PROMOCION', pageWidth / 2, 20, { align: 'center' });
-
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Instituto Guatica', pageWidth / 2, 26, { align: 'center' });
-
-      doc.setFontSize(9);
-      doc.text(`Fecha: ${formData.fecha}  |  Periodo: ${formData.periodo}  |  Grado: ${formData.grado}`, pageWidth / 2, 32, { align: 'center' });
-      doc.text(`Presidente: ${formData.presidente}`, pageWidth / 2, 37, { align: 'center' });
-      doc.text(`Docentes: ${selectedDocentes.join(', ')}`, pageWidth / 2, 42, { align: 'center' });
-
-      const tableData = decisiones.map((d, i) => {
-        const counts = getMateriaDecisionCount(d);
-        const overall = getStudentOverallDecision(d);
-        return [
-          (i + 1).toString(),
-          d.nombre,
-          `${counts.promovido}/${d.decisiones.length}`,
-          overall.replace('_', ' ').toUpperCase(),
-          d.observaciones || '-',
-        ];
-      });
-
-      autoTable(doc, {
-        startY: 50,
-        head: [['#', 'Estudiante', 'Materias', 'Decision', 'Observaciones']],
-        body: tableData,
-        theme: 'striped',
-        headStyles: { fillColor: [99, 102, 241], textColor: 255 },
-        styles: { fontSize: 8, cellPadding: 3 },
-        columnStyles: {
-          0: { cellWidth: 10 },
-          1: { cellWidth: 45 },
-          2: { cellWidth: 30 },
-          3: { cellWidth: 30 },
-          4: { cellWidth: 75 },
-        },
-      });
-
-      const filename = `Acta_Comision_${formData.grado}_${formData.periodo}_${formData.fecha}.pdf`;
+      const doc = await buildPDF();
       currentPdfBlob = doc.output('blob');
+      const filename = `Acta_Comision_${formData.grado}_${formData.periodo}_${formData.fecha}.pdf`;
 
-      await saveToSheets();
+      // Intentar guardar en Google Sheets primero
+      const sheetsSuccess = await saveToSheets();
+      if (!sheetsSuccess) {
+        return; // Abortar si falla Sheets
+      }
+
+      // Guardar el PDF de forma local
       doc.save(filename);
-      await saveToDrive();
 
+      // Guardar en Google Drive
+      const driveSuccess = await saveToDrive();
+      if (!driveSuccess) {
+        return; // Abortar si falla Drive (el docente conserva sus datos para reintentar)
+      }
+
+      // Solo si todo tuvo éxito se limpia el formulario
       formData = { fecha: new Date().toLocaleDateString('en-CA'), periodo: '', grado: '', presidente: '' };
       selectedDocentes = [];
       decisiones = [];
       showFieldErrors = false;
+      currentPdfBlob = null;
     } catch (error) {
       console.error('Error:', error);
       await Swal.fire({
@@ -821,9 +817,9 @@
           />
 
           <div class="space-y-2">
-            <label class="block text-sm font-medium" style="color: {styles.label};">
+            <span class="block text-sm font-medium" style="color: {styles.label};">
               Docentes Asistentes
-            </label>
+            </span>
             <div class="flex flex-wrap gap-1.5 p-2 border rounded-xl min-h-[36px] {showFieldErrors && selectedDocentes.length === 0 ? 'ring-2 ring-red-500 border-red-500' : ''}"
               style="background-color: {styles.inputBg}; border-color: {showFieldErrors && selectedDocentes.length === 0 ? '#ef4444' : styles.border};"
             >
@@ -976,8 +972,9 @@
                     </div>
 
                     <div class="pt-3 border-t" style="border-color: {styles.border};">
-                      <label class="block text-xs font-medium mb-2" style="color: {styles.label};">Observaciones</label>
+                      <label for="obs-{i}" class="block text-xs font-medium mb-2" style="color: {styles.label};">Observaciones</label>
                       <input
+                        id="obs-{i}"
                         type="text"
                         value={studentDecision?.observaciones || ''}
                         oninput={(e) => setObservaciones(estudiante.nombre, e.currentTarget.value)}

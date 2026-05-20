@@ -83,6 +83,7 @@
   let ActaIzada: ModuleComponent | null = $state(null);
   let ActaPadres: ModuleComponent | null = $state(null);
   let ComisionEvaluacion: ModuleComponent | null = $state(null);
+  let Horarios: ModuleComponent | null = $state(null);
 
   const handleSelect = async (view: string) => {
     if (view === "dashboard") {
@@ -147,6 +148,9 @@
       } else if (view === "comision_evaluacion" && !ComisionEvaluacion) {
         const module = await import("./components/ComisionEvaluacion.svelte");
         ComisionEvaluacion = module.default;
+      } else if (view === "horarios" && !Horarios) {
+        const module = await import("./components/Horarios.svelte");
+        Horarios = module.default;
       }
     } finally {
       isLoadingModule = false;
@@ -204,6 +208,8 @@
     <ActaPadres onBack={handleBack} />
   {:else if activeView === "comision_evaluacion" && ComisionEvaluacion}
     <ComisionEvaluacion onBack={handleBack} />
+  {:else if activeView === "horarios" && Horarios}
+    <Horarios onBack={handleBack} />
   {:else if externalModuleUrl}
     <div class="w-full h-screen flex flex-col bg-[rgb(var(--bg-primary))]">
       <div
