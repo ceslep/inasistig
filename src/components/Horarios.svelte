@@ -2,6 +2,9 @@
   import ModuleHeader from "./ModuleHeader.svelte";
   import horariosData from "../lib/horarios.json";
   import CoberturasManager from "./horarios/CoberturasManager.svelte";
+  import type { CoberturaHistorica } from "../lib/coberturaUtils";
+  import { coberturaSheetsService } from "../services/coberturaSheetsService";
+  import { getSemanaDelAno } from "../lib/coberturaUtils";
 
   let { onBack }: { onBack: () => void } = $props();
 
@@ -21,6 +24,7 @@
   const diasAbreviado = ["LUN", "MAR", "MIE", "JUE", "VIE"];
 
   let docenteSeleccionado = $state<string | null>(null);
+  let coberturasHistoricas = $state<CoberturaHistorica[]>([]);
 
   const docenteActual = $derived(
     docenteSeleccionado
@@ -42,6 +46,147 @@
     if (!contenido) return "LIBRE";
     if (contenido === "DESC" || contenido === "PEDAG" || contenido === "DEESC") return contenido;
     return contenido.replace(/\n/g, " ");
+  }
+
+  function calcularCargaLaboral(docente: HorarioDocente) {
+    let horasClase = 0;
+    let horasDescanso = 0;
+    let horasLibres = 0;
+    const porDia = { lunes: 0, martes: 0, miercoles: 0, jueves: 0, viernes: 0 };
+    const horasDisponibles: { dia: string; hora: number }[] = [];
+
+    for (const dia of dias) {
+      const jornada = docente[dia];
+      for (let i = 0; i < jornada.length; i++) {
+        const slot = jornada[i];
+        if (!slot || slot === "") {
+          horasLibres++;
+          porDia[dia]++;
+          horasDisponibles.push({ dia, hora: i });
+        } else if (slot === "DESC" || slot === "PEDAG" || slot === "DEESC") {
+          horasDescanso++;
+        } else {
+          horasClase++;
+        }
+      }
+    }
+
+    const hoy = new Date();
+    const hace14dias = new Date(hoy);
+    hace14dias.setDate(hoy.getDate() - 14);
+    const hace7dias = new Date(hoy);
+    hace7dias.setDate(hoy.getDate() - 7);
+    const semanaActual = getSemanaDelAno(hoy.toISOString().split("T")[0]);
+
+    const coberturasSemana = coberturasHistoricas.filter((c) => {
+      if (c.docente_cubre !== docente.docente) return false;
+      if (c.estado !== "aprobado") return false;
+      const cpSemana = getSemanaDelAno(c.fecha);
+      return cpSemana === semanaActual;
+    });
+
+    const ultimaSemanaCoberturas = coberturasHistoricas.filter((c) => {
+      if (c.docente_cubre !== docente.docente) return false;
+      if (c.estado !== "aprobado") return false;
+      if (c.dia_semana !== "") return false;
+      const cpFecha = new Date(c.fecha + "T00:00:00");
+      return cpFecha >= hace14dias && cpFecha < hace7dias;
+    });
+
+    const horasDisponiblesCobertura = horasDisponibles.filter((h) => {
+      if (h.dia === "lunes" && h.hora === 6) {
+        const allDaysLibre = dias.every((d) => docente[d as keyof HorarioDocente][6] === "");
+        if (allDaysLibre) return false;
+      }
+      const diaCoberturas = coberturasSemana.filter((c) => c.dia_semana === h.dia);
+      return diaCoberturas.length === 0;
+    });
+
+    return {
+      horasClase,
+      horasDescanso,
+      horasLibres,
+      porDia,
+      coberturasSemana: coberturasSemana.length,
+      ultimaSemanaCoberturas: ultimaSemanaCoberturas.length,
+      horasDisponiblesCobertura: horasDisponiblesCobertura.length,
+    };
+  }
+
+  async function verCargaLaboral(docente: HorarioDocente) {
+    try {
+      if (coberturasHistoricas.length === 0) {
+        coberturasHistoricas = await coberturaSheetsService.getCoberturas();
+      }
+    } catch {}
+
+    const carga = calcularCargaLaboral(docente);
+    const puedeCubrir = carga.horasDisponiblesCobertura;
+
+    let htmlContent = `
+      <div style="text-align:left; font-family:Arial,sans-serif;">
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:16px;">
+          <div style="background:#dcfce7; padding:12px; border-radius:8px; text-align:center;">
+            <div style="font-size:24px; font-weight:bold; color:#166534;">${carga.horasClase}</div>
+            <div style="font-size:11px; color:#166534;">Horas Clase</div>
+          </div>
+          <div style="background:#fed7aa; padding:12px; border-radius:8px; text-align:center;">
+            <div style="font-size:24px; font-weight:bold; color:#9a3412;">${carga.horasDescanso}</div>
+            <div style="font-size:11px; color:#9a3412;">DESC/PEDAG</div>
+          </div>
+          <div style="background:#e0e7ff; padding:12px; border-radius:8px; text-align:center;">
+            <div style="font-size:24px; font-weight:bold; color:#3730a3;">${carga.horasLibres}</div>
+            <div style="font-size:11px; color:#3730a3;">Horas Libres</div>
+          </div>
+        </div>
+
+        <div style="background:#f3f4f6; padding:12px; border-radius:8px; margin-bottom:16px;">
+          <div style="font-weight:bold; margin-bottom:8px; color:#374151;">Distribución por día:</div>
+          <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:4px; font-size:12px;">
+            <div><strong>LUN:</strong> ${carga.porDia.lunes}h</div>
+            <div><strong>MAR:</strong> ${carga.porDia.martes}h</div>
+            <div><strong>MIE:</strong> ${carga.porDia.miercoles}h</div>
+            <div><strong>JUE:</strong> ${carga.porDia.jueves}h</div>
+            <div><strong>VIE:</strong> ${carga.porDia.viernes}h</div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <div style="background:#fef3c7; padding:10px; border-radius:8px; text-align:center;">
+            <div style="font-size:18px; font-weight:bold; color:#92400e;">${carga.coberturasSemana}</div>
+            <div style="font-size:10px; color:#92400e;">Coberturas esta semana</div>
+          </div>
+          <div style="background:#dbeafe; padding:10px; border-radius:8px; text-align:center;">
+            <div style="font-size:18px; font-weight:bold; color:#1e40af;">${carga.ultimaSemanaCoberturas}</div>
+            <div style="font-size:10px; color:#1e40af;">Coberturas hace 1-2 sem</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    if (puedeCubrir > 0) {
+      htmlContent += `
+        <div style="margin-top:12px; padding:10px; background:#bbf7d0; border-radius:8px; text-align:center;">
+          <div style="font-size:18px; font-weight:bold; color:#166534;">${puedeCubrir} horas disponibles para cubrir</div>
+          <div style="font-size:10px; color:#166534;">(dentro del límite 1h/día, 2h/semana)</div>
+        </div>
+      `;
+    } else if (carga.coberturasSemana >= 2) {
+      htmlContent += `
+        <div style="margin-top:12px; padding:10px; background:#fee2e2; border-radius:8px; text-align:center;">
+          <div style="font-size:14px; font-weight:bold; color:#991b1b;">Límite semanal alcanzado (2h)</div>
+          <div style="font-size:10px; color:#991b1b;">No puede cubrir más esta semana</div>
+        </div>
+      `;
+    }
+
+    const { default: Swal } = await import("sweetalert2");
+    Swal.fire({
+      title: `Carga Laboral: ${docente.docente}`,
+      html: htmlContent,
+      confirmButtonText: "Cerrar",
+      width: "450px",
+    });
   }
 </script>
 
@@ -88,13 +233,22 @@
       {/each}
     </div>
   {:else}
-    <button
-      onclick={() => docenteSeleccionado = null}
-      class="mb-4 flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors"
-      style="background-color: rgb(var(--accent-primary)); color: white;"
-    >
-      ← Ver todos los docentes
-    </button>
+    <div class="flex items-center gap-3 mb-4">
+      <button
+        onclick={() => docenteSeleccionado = null}
+        class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors"
+        style="background-color: rgb(var(--accent-primary)); color: white;"
+      >
+        ← Ver todos
+      </button>
+      <button
+        onclick={() => verCargaLaboral(docenteActual)}
+        class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors"
+        style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border: 1px solid rgb(var(--border-primary));"
+      >
+        📊 Carga Laboral
+      </button>
+    </div>
 
     <div class="rounded-2xl overflow-hidden border" style="border-color: rgb(var(--border-primary));">
       <div

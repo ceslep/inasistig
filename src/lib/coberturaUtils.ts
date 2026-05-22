@@ -163,21 +163,44 @@ export function asignarAutomaticamente(
   slotsLibresPorAusencia: SlotInfo[],
   horarios: HorarioDocente[],
   coberturasPrevias: CoberturaHistorica[],
-  dia: string
+  dia: string,
+  fechaActual: string
 ): CoberturaSugerida[] {
   const coberturas: CoberturaSugerida[] = [];
-  const cargaSemanal = new Map<string, number>();
   const cargaDiaria = new Map<string, number>();
+  const diasUsadosSemana = new Map<string, Set<string>>();
+  const rotacionSemanaActual = new Map<string, number>();
+  const semanaActual = getSemanaDelAno(fechaActual);
 
   for (const cp of coberturasPrevias) {
     if (cp.estado !== "aprobado") continue;
-    const semana = getSemanaDelAno(cp.fecha);
-    cargaSemanal.set(cp.docente_cubre, (cargaSemanal.get(cp.docente_cubre) || 0) + 1);
+    const cpSemana = getSemanaDelAno(cp.fecha);
+    if (cpSemana !== semanaActual) continue;
+    const doc = cp.docente_cubre;
+    cargaDiaria.set(doc, (cargaDiaria.get(doc) || 0) + 1);
+    if (!diasUsadosSemana.has(doc)) diasUsadosSemana.set(doc, new Set());
+    diasUsadosSemana.get(doc)!.add(cp.fecha);
+    rotacionSemanaActual.set(doc, (rotacionSemanaActual.get(doc) || 0) + 1);
+  }
+
+  const hoy = new Date(fechaActual + "T00:00:00");
+  const hace14dias = new Date(hoy);
+  hace14dias.setDate(hoy.getDate() - 14);
+  const hace7dias = new Date(hoy);
+  hace7dias.setDate(hoy.getDate() - 7);
+
+  const historialRotacion = new Map<string, number>();
+  for (const cp of coberturasPrevias) {
+    if (cp.estado !== "aprobado") continue;
+    if (cp.dia_semana !== dia) continue;
+    const cpFecha = new Date(cp.fecha + "T00:00:00");
+    if (cpFecha < hace14dias || cpFecha >= hace7dias) continue;
+    historialRotacion.set(cp.docente_cubre, (historialRotacion.get(cp.docente_cubre) || 0) + 1);
   }
 
   const slotsDisponibles = [...slotsLibresPorAusencia].sort((a, b) => {
-    const cargaA = cargaSemanal.get(a.docente) || 0;
-    const cargaB = cargaSemanal.get(b.docente) || 0;
+    const cargaA = rotacionSemanaActual.get(a.docente) || 0;
+    const cargaB = rotacionSemanaActual.get(b.docente) || 0;
     return cargaA - cargaB;
   });
 
@@ -200,30 +223,48 @@ export function asignarAutomaticamente(
         }
 
         const yaAsignadoEnSesion = coberturas.some((c) => c.docenteCubre === h.docente);
-        return !yaAsignadoEnSesion;
+        if (yaAsignadoEnSesion) return false;
+
+        const cargaHoy = cargaDiaria.get(h.docente) || 0;
+        if (cargaHoy >= 1) return false;
+
+        const diasUsados = diasUsadosSemana.get(h.docente)?.size || 0;
+        if (diasUsados >= 2) return false;
+
+        return true;
       })
       .map((h) => h.docente);
 
     let mejorCobrador = "";
     let violation = "";
 
-    if (posiblesCobradores.length > 0 && !coberturas.some((c) => c.docenteCubre === posiblesCobradores[0])) {
+    if (posiblesCobradores.length > 0) {
+      let menorRotacion = historialRotacion.get(posiblesCobradores[0]) || 0;
       mejorCobrador = posiblesCobradores[0];
-      let menorCarga = cargaSemanal.get(mejorCobrador) || 0;
       for (const doc of posiblesCobradores.slice(1)) {
-        if (coberturas.some((c) => c.docenteCubre === doc)) continue;
-        const sem = cargaSemanal.get(doc) || 0;
-        if (sem < menorCarga) {
-          menorCarga = sem;
+        const rot = historialRotacion.get(doc) || 0;
+        if (rot < menorRotacion) {
+          menorRotacion = rot;
           mejorCobrador = doc;
         }
       }
+    } else {
+      const sinLimite = horarios
+        .filter((h) => {
+          if (slotsLibresPorAusencia.some((s) => s.docenteAusente === h.docente)) return false;
+          const jornada = h[dia as keyof HorarioDocente] as string[];
+          if (jornada[slot.hora] !== "") return false;
+          if (slot.hora === 6) {
+            const allDaysLibre = DIAS.every((d) => h[d as keyof HorarioDocente][6] === "");
+            if (allDaysLibre) return false;
+          }
+          return true;
+        })
+        .map((h) => h.docente);
 
-      if (mejorCobrador && !coberturas.some((c) => c.docenteCubre === mejorCobrador)) {
-        const sem = cargaSemanal.get(mejorCobrador) || 0;
-        if (sem >= 2) violation = "⚠️ Ya cubrió 2 horas esta semana";
-      } else {
-        mejorCobrador = "";
+      if (sinLimite.length > 0) {
+        violation = "⚠️ Límite diario/semanal alcanzado";
+        mejorCobrador = sinLimite[0];
       }
     }
 
@@ -242,8 +283,11 @@ export function asignarAutomaticamente(
       posiblesCobradores,
     });
 
-    if (mejorCobrador) {
-      cargaSemanal.set(mejorCobrador, (cargaSemanal.get(mejorCobrador) || 0) + 1);
+    if (mejorCobrador && !violation) {
+      cargaDiaria.set(mejorCobrador, (cargaDiaria.get(mejorCobrador) || 0) + 1);
+      if (!diasUsadosSemana.has(mejorCobrador)) diasUsadosSemana.set(mejorCobrador, new Set());
+      diasUsadosSemana.get(mejorCobrador)!.add(fechaActual);
+      rotacionSemanaActual.set(mejorCobrador, (rotacionSemanaActual.get(mejorCobrador) || 0) + 1);
     }
   }
 

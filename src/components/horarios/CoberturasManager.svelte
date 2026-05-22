@@ -134,7 +134,8 @@ function recalcularCoberturas() {
       libresPorAusencia,
       horariosData,
       coberturasHistoricas,
-      diaSeleccionado
+      diaSeleccionado,
+      fechaSeleccionada
     );
     gruposSugeridosAAusentar = analizarGruposAAusentar(
       libresPorAusencia,
