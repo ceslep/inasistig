@@ -22,17 +22,27 @@ Single file check: `npx svelte-check --tsconfig ./tsconfig.app.json src/path/to/
 Use `svelte5-best-practices` and `svelte-code-writer` for Svelte component work.
 
 ## Environment
-- Requires `VITE_OPENROUTER_API_KEY` in `.env` for AI features (free tier at openrouter.ai)
 - Build deploys to GitHub Pages at `/inasistig/`
+- `VITE_OPENROUTER_API_KEY` is NOT in `.env` - keys handled server-side via `ai_proxy.php`
 
 ## Version Sync Required
-**Both** `src/version.ts` (`APP_VERSION`) **and** `public/version.json` (`version`) must match before `npm run deploy`.
+**Both** `src/version.ts` (`APP_VERSION`) **and** `public/version.json` (`version`) must match before `npm run deploy`. Currently MISMATCHED: src=1.0.27, public=1.0.26.
 
 ## Architecture
 
 **Routing**: String-based SPA via `activeView` state in `App.svelte`. Browser back always returns to `"dashboard"`. Views dynamically imported.
 
-**Views**: `dashboard`, `inasistencia`, `anotador`, `diario`, `planeador`, `observador`, `piar`, `horas_laborables`, `actividades_recuperacion`, `acta_area`, `acta_izada`, `acta_padres`
+**Views**: `dashboard`, `inasistencia`, `anotador`, `diario`, `planeador`, `observador`, `piar`, `horarios`, `horas_laborables`, `actividades_recuperacion`, `acta_area`, `acta_izada`, `acta_padres`
+
+**Horario Module**: `src/components/Horarios.svelte` has two modes: "Ver Horario" (static schedule from `src/lib/horarios.json`) and "Gestionar Coberturas" (coverage management).
+
+**Cobertura System** (`src/components/horarios/`):
+- Step 1: Select day + checkboxes for absent teachers/groups
+- Step 2: Analysis table — red slots = hours freed by absence
+- Step 3: Auto-assigned coverage suggestions — toggle to approve each
+- Rules: max 1 hour/day per teacher, max 2 hours/week per teacher
+- Saves to Google Sheets `historial` tab (spreadsheet `1N-94FYW5kvGmOcJ4CCqQRWC71guFLxlXltlM7GvDQDw`)
+- PHP endpoints: `save_cobertura.php`, `get_coberturas.php`, `delete_cobertura.php` at `/gs/`
 
 **Integrated Modules**: `horas_laborables` and `activ_recuperacion` are internal Svelte components (not iframes). Use auth from `authStore.ts`.
 

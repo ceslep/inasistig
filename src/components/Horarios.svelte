@@ -1,8 +1,12 @@
 <script lang="ts">
   import ModuleHeader from "./ModuleHeader.svelte";
   import horariosData from "../lib/horarios.json";
+  import CoberturasManager from "./horarios/CoberturasManager.svelte";
 
   let { onBack }: { onBack: () => void } = $props();
+
+  type ViewMode = "horario" | "coberturas";
+  let viewMode = $state<ViewMode>("horario");
 
   type HorarioDocente = {
     docente: string;
@@ -44,7 +48,26 @@
 <ModuleHeader title="Horario General" {onBack} />
 
 <div class="p-4 max-w-7xl mx-auto">
-  {#if !docenteActual}
+  <div class="flex gap-2 mb-4">
+    <button
+      onclick={() => viewMode = "horario"}
+      class="px-4 py-2 rounded-lg font-medium text-sm transition-all"
+      style="background-color: {viewMode === 'horario' ? 'rgb(var(--accent-primary))' : 'rgb(var(--card-bg))'}; color: {viewMode === 'horario' ? 'white' : 'rgb(var(--text-primary))'}; border: 1px solid {viewMode === 'horario' ? 'rgb(var(--accent-primary))' : 'rgb(var(--border-primary))'};"
+    >
+      Ver Horario
+    </button>
+    <button
+      onclick={() => viewMode = "coberturas"}
+      class="px-4 py-2 rounded-lg font-medium text-sm transition-all"
+      style="background-color: {viewMode === 'coberturas' ? 'rgb(var(--accent-primary))' : 'rgb(var(--card-bg))'}; color: {viewMode === 'coberturas' ? 'white' : 'rgb(var(--text-primary))'}; border: 1px solid {viewMode === 'coberturas' ? 'rgb(var(--accent-primary))' : 'rgb(var(--border-primary))'};"
+    >
+      Gestionar Coberturas
+    </button>
+  </div>
+
+  {#if viewMode === "coberturas"}
+    <CoberturasManager onBack={() => viewMode = "horario"} />
+  {:else if !docenteActual}
     <div class="mb-4">
       <p class="text-sm text-zinc-500 dark:text-zinc-400">
         Selecciona un docente para ver su horario semanal

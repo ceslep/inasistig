@@ -36,6 +36,7 @@
     "exceljs": "^4.1.1",
     "file-saver": "^2.0.5",
     "flatpickr": "^4.6.13",
+    "html2canvas": "^1.4.1",
     "idb": "^8.0.3",
     "jspdf": "^4.1.0",
     "jspdf-autotable": "^5.0.7",
