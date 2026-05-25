@@ -14,7 +14,7 @@
     ROLES_SIN_LIMITE,
   } from "../../lib/coberturaUtils";
   import { coberturaSheetsService } from "../../services/coberturaSheetsService";
-  import type { SlotInfo, CoberturaSugerida, CoberturaHistorica, Ausencia, SugerenciaGrupo } from "../../lib/coberturaUtils";
+  import type { SlotInfo, CoberturaSugerida, CoberturaHistorica, Ausencia, SugerenciaGrupo, HorarioDocente } from "../../lib/coberturaUtils";
   import { analizarGruposAAusentar } from "../../lib/coberturaUtils";
   import AnalisisView from "./AnalisisView.svelte";
   import AsignacionesView from "./AsignacionesView.svelte";
@@ -23,6 +23,23 @@
   import Swal from "sweetalert2";
   import ModuleHeader from "../ModuleHeader.svelte";
   import { Flame, GraduationCap, Car, Heart, Shield, Stethoscope, Briefcase, Calendar, Users, Scale, Skull, Laptop, Award } from "@lucide/svelte";
+
+  const TIPOS_ICONOS: Record<string, { icono: any; color: string }> = {
+    "CALAMIDAD": { icono: Flame, color: "#f97316" },
+    "CAPACITACION": { icono: GraduationCap, color: "#8b5cf6" },
+    "DESPLAZAMIENTO": { icono: Car, color: "#06b6d4" },
+    "FAMILIAR": { icono: Heart, color: "#ec4899" },
+    "FUERZA MAYOR": { icono: Shield, color: "#6366f1" },
+    "INCAPACIDAD": { icono: Stethoscope, color: "#ef4444" },
+    "LICENCIA": { icono: Award, color: "#eab308" },
+    "LUTO": { icono: Skull, color: "#1f2937" },
+    "MEDICO": { icono: Stethoscope, color: "#10b981" },
+    "PERSONAL": { icono: Briefcase, color: "#f59e0b" },
+    "QUINQUENIO": { icono: Calendar, color: "#3b82f6" },
+    "REUNION": { icono: Users, color: "#14b8a6" },
+    "SECRETARIA": { icono: Laptop, color: "#0ea5e9" },
+    "SINDICATO": { icono: Scale, color: "#78716c" },
+  };
 
   let { onBack }: { onBack: () => void } = $props();
 
@@ -44,6 +61,7 @@
   let coberturasSugeridas = $state<CoberturaSugerida[]>([]);
   let coberturasHistoricas = $state<CoberturaHistorica[]>([]);
   let gruposSugeridosAAusentar = $state<SugerenciaGrupo[]>([]);
+  let slotsExcluidos = $state<Set<string>>(new Set());
   let mostrarModalGrupos = $state(false);
   let mostrarReporteWhatsApp = $state(false);
   let coberturasGuardadas = $state<CoberturaSugerida[]>([]);
@@ -115,6 +133,7 @@
   }
 
 function recalcularCoberturas() {
+    console.log("recalcularCoberturas INI gruposAusentes:", gruposAusentes);
     const allSlots = getSlotsDelDia(diaSeleccionado, horariosData);
     slotsDelDia = allSlots;
 
@@ -122,11 +141,21 @@ function recalcularCoberturas() {
       ...docentesAusentes.map((n) => ({ tipo: "docente" as const, nombre: n.nombre, motivo: n.tipo })),
       ...gruposAusentes.map((g) => ({ tipo: "grupo" as const, nombre: g.grupo, horaInicio: g.horaInicio, motivo: "GRUPO AUSENTE" })),
     ];
+    console.log("ausencias:", JSON.stringify(ausencias, null, 2));
+    console.log("gruposAusentes.length:", gruposAusentes.length);
 
     slotsConAusencia = aplicarAusencias(allSlots, ausencias, horariosData);
 
-    const libresPorAusencia = getSlotsLibresPorAusencia(slotsConAusencia);
+    let libresPorAusencia = getSlotsLibresPorAusencia(slotsConAusencia);
+    if (slotsExcluidos.size > 0) {
+      libresPorAusencia = libresPorAusencia.filter((s) => {
+        const key = `${s.hora}-${s.docenteAusente || s.docente}`;
+        return !slotsExcluidos.has(key);
+      });
+    }
+    console.log("libresPorAusencia.length:", libresPorAusencia.length);
     if (libresPorAusencia.length === 0) {
+      console.log("No hay slots libres, saliendo");
       coberturasSugeridas = [];
       gruposSugeridosAAusentar = [];
       return;
@@ -139,6 +168,7 @@ function recalcularCoberturas() {
       diaSeleccionado,
       fechaSeleccionada
     );
+    console.log("coberturasSugeridas.length =", coberturasSugeridas.length);
     gruposSugeridosAAusentar = analizarGruposAAusentar(
       libresPorAusencia,
       coberturasSugeridas,
@@ -146,6 +176,7 @@ function recalcularCoberturas() {
       horariosData,
       diaSeleccionado
     );
+    console.log("recalcularCoberturas FIN");
   }
 
   function isGrupoAusente(grupo: string): boolean {
@@ -180,13 +211,11 @@ function recalcularCoberturas() {
     }
   }
 
-  function liberarGrupoDesdeHora(grupo: string, hora: number) {
-    const horaInicio = hora + 1;
-    if (!gruposAusentes.some((g) => g.grupo === grupo)) {
-      gruposAusentes = [...gruposAusentes, { grupo, horaInicio }];
-      gruposSugeridosAAusentar = gruposSugeridosAAusentar.filter((g) => g.grupo !== grupo);
-      recalcularCoberturas();
-    }
+  function liberarGrupoDesdeHora(grupo: string, hora: number, docenteAusente: string) {
+    console.log("liberarGrupoDesdeHora llamado:", grupo, hora, docenteAusente);
+    const key = `${hora}-${docenteAusente}`;
+    slotsExcluidos = new Set(slotsExcluidos).add(key);
+    recalcularCoberturas();
   }
 
   async function generarAsignaciones() {
@@ -277,26 +306,81 @@ function recalcularCoberturas() {
 
   function cambiarDocenteCubre(index: number, docente: string) {
     const docenteAnterior = coberturasSugeridas[index].docenteCubre;
+    const esSpecialRole = ROLES_SIN_LIMITE.some((r) => docente.includes(r));
+    const eraSpecialRole = ROLES_SIN_LIMITE.some((r) => docenteAnterior?.includes(r));
+
+    if (!esSpecialRole) {
+      const cobertura = coberturasSugeridas[index];
+      const jornada = horariosData.find((h) => h.docente === docente)?.[diaSeleccionado as keyof HorarioDocente] as string[] || [];
+      const slotOcupado = jornada[cobertura.hora];
+      if (slotOcupado && slotOcupado !== "") {
+        Swal.fire({ icon: "warning", title: "Docente ocupado", text: `${docente} ya tiene clase a esa hora (${slotOcupado})`, confirmButtonColor: "#ef4444" });
+        return;
+      }
+
+      const countOcurrencias = coberturasSugeridas.filter((c, i) => i !== index && c.docenteCubre === docente && !c.aprobada).length;
+      if (countOcurrencias > 0) {
+        Swal.fire({ icon: "warning", title: "Docente ya asignado", text: `${docente} ya está asignado en otra coverage (máximo 1 hora/día para docentes regulares)`, confirmButtonColor: "#ef4444" });
+        return;
+      }
+    }
+
+    const previosMap = new Map<number, CoberturaSugerida>();
+    coberturasSugeridas.forEach((c, i) => {
+      if (c.aprobada) {
+        previosMap.set(i, { ...c });
+      }
+    });
+
     coberturasSugeridas[index].docenteCubre = docente;
 
-    const ocupados = coberturasSugeridas
-      .filter((c, i) => i !== index && c.docenteCubre && !ROLES_SIN_LIMITE.some(r => c.docenteCubre?.includes(r)))
-      .map(c => c.docenteCubre);
-
-    coberturasSugeridas = coberturasSugeridas.map((c, i) => {
-      if (i === index) return c;
-      const nuevosCobradores = horariosData
-        .filter((h: any) => {
-          if (ocupados.includes(h.docente)) return false;
-          return true;
-        })
-        .map((h: any) => h.docente);
-      const disponibles = [...nuevosCobradores, ...ROLES_SIN_LIMITE];
-      if (docenteAnterior && !ocupados.includes(docenteAnterior) && !ROLES_SIN_LIMITE.some(r => docenteAnterior.includes(r))) {
-        disponibles.push(docenteAnterior);
-      }
-      return { ...c, posiblesCobradores: disponibles };
+    const libresFiltrado = getSlotsLibresPorAusencia(slotsConAusencia).filter((s) => {
+      const key = `${s.hora}-${s.docenteAusente || s.docente}`;
+      return !slotsExcluidos.has(key);
     });
+
+    const nuevas = asignarAutomaticamente(
+      libresFiltrado,
+      horariosData,
+      coberturasHistoricas,
+      diaSeleccionado,
+      fechaSeleccionada
+    );
+
+    coberturasSugeridas = nuevas.map((c, i) => {
+      if (previosMap.has(i)) {
+        return previosMap.get(i)!;
+      }
+      if (i === index) {
+        return { ...c, docenteCubre: docente };
+      }
+      return c;
+    });
+
+    if (eraSpecialRole && docenteAnterior && !esSpecialRole) {
+      for (let i = 0; i < coberturasSugeridas.length; i++) {
+        if (i === index) continue;
+        if (!coberturasSugeridas[i].posiblesCobradores.includes(docenteAnterior)) {
+          coberturasSugeridas[i].posiblesCobradores = [docenteAnterior, ...coberturasSugeridas[i].posiblesCobradores];
+        }
+      }
+    }
+
+    if (eraSpecialRole && docenteAnterior && esSpecialRole) {
+      for (let i = 0; i < coberturasSugeridas.length; i++) {
+        if (i === index) continue;
+        if (!coberturasSugeridas[i].posiblesCobradores.includes(docenteAnterior)) {
+          coberturasSugeridas[i].posiblesCobradores = [docenteAnterior, ...coberturasSugeridas[i].posiblesCobradores];
+        }
+      }
+    }
+
+    if (!esSpecialRole && docenteAnterior) {
+      for (let i = 0; i < coberturasSugeridas.length; i++) {
+        if (i === index) continue;
+        coberturasSugeridas[i].posiblesCobradores = coberturasSugeridas[i].posiblesCobradores.filter((d: string) => d !== docente);
+      }
+    }
   }
 
   function liberarGrupoAsignacion(grupo: string, horaInicio: number) {
@@ -413,8 +497,9 @@ function recalcularCoberturas() {
                   class="w-4 h-4 accent-[rgb(var(--accent-primary))]"
                 />
                 <span class="text-xs truncate" style="color: rgb(var(--text-primary));">{docente}</span>
-                {#if ausencia}
-                  <span class="text-[10px] px-1 rounded" style="background-color: rgb(var(--accent-primary)); color: white;">{ausencia.tipo}</span>
+                {#if ausencia && TIPOS_ICONOS[ausencia.tipo]}
+                  {@const Icon = TIPOS_ICONOS[ausencia.tipo].icono}
+                  <Icon size={14} style="color: {TIPOS_ICONOS[ausencia.tipo].color}" />
                 {/if}
               </label>
             {/each}

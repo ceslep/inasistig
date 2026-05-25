@@ -243,14 +243,14 @@ describe('asignarAutomaticamente', () => {
     expect(hora7Cobertura.every(c => c.docenteCubre !== 'Carlos')).toBe(true);
   });
 
-  it('debería asignar approved: false por defecto', () => {
+  it('debería asignar approved: true por defecto', () => {
     const slots = getSlotsDelDia('lunes', horariosTest);
     const slotsConAusencia = aplicarAusencias(slots, ausenciaDocenteAna, horariosTest);
     const libresPorAusencia = getSlotsLibresPorAusencia(slotsConAusencia);
 
     const coberturas = asignarAutomaticamente(libresPorAusencia, horariosTest, [], 'lunes', fechaActual);
 
-    expect(coberturas.every(c => c.aprobada === false)).toBe(true);
+    expect(coberturas.every(c => c.aprobada === true)).toBe(true);
   });
 
   it('debería incluir posiblesCobradores en cada cobertura', () => {

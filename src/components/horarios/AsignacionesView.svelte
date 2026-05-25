@@ -28,7 +28,7 @@
     onGuardar: () => void;
     onBack: () => void;
     onOpenGruposModal?: () => void;
-    onLiberarGrupoDesdeHora?: (grupo: string, hora: number) => void;
+    onLiberarGrupoDesdeHora?: (grupo: string, hora: number, docenteAusente: string) => void;
     onAprobarTodo: () => void;
   } = $props();
 
@@ -130,7 +130,7 @@
               style="border-color: rgb(var(--border-primary)); background-color: {esViolacion ? 'rgba(239,68,68,0.05)' : 'transparent'};"
             >
               <td class="p-3 text-center font-bold border-t" style="border-color: rgb(var(--border-primary)); color: rgb(var(--text-primary));">
-                {formatoHora(cov.hora)}
+                {formatoHora(cov.hora)}{console.log("RENDER ROW", i, cov.hora, cov.docenteAusente, cov.grupoAusente, cov.docenteCubre)}
               </td>
               <td class="p-3 text-center border-t" style="border-color: rgb(var(--border-primary)); color: rgb(var(--text-secondary));">
                 {cov.docenteAusente}
@@ -167,18 +167,6 @@
                   <span class="px-2 py-1 rounded text-xs font-bold bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200">
                     {cov.violation}
                   </span>
-                  {#if !cov.docenteCubre && cov.violation?.includes("Sin docentes disponibles") && (cov.hora === 5 || cov.hora === 6) && onLiberarGrupoDesdeHora}
-                    {@const grupoLiberar = cov.grupoAusente || cov.grupoACubrir}
-                    {#if grupoLiberar}
-                      <button
-                        onclick={() => onLiberarGrupoDesdeHora(grupoLiberar, cov.hora)}
-                        class="ml-2 px-2 py-1 rounded text-xs font-medium transition-all"
-                        style="background-color: rgb(var(--accent-primary)); color: white;"
-                      >
-                        Liberar {grupoLiberar}
-                      </button>
-                    {/if}
-                  {/if}
                 {:else if cov.aprobada}
                   <span class="px-2 py-1 rounded text-xs font-bold bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-200">
                     ✓ Aprobada
@@ -187,6 +175,16 @@
                   <span class="px-2 py-1 rounded text-xs font-bold bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400">
                     Pendiente
                   </span>
+                {/if}
+                {#if cov.grupoAusente && (cov.hora === 5 || cov.hora === 6 || cov.hora === 7) && onLiberarGrupoDesdeHora}
+                  <span class="text-xs" style="color: rgb(var(--text-secondary));">|</span>
+                  <button
+                    onclick={() => { console.log("CLICK Liberar", cov.grupoAusente, cov.hora, cov.docenteAusente); onLiberarGrupoDesdeHora(cov.grupoAusente, cov.hora, cov.docenteAusente); }}
+                    class="ml-2 px-3 py-1 rounded text-xs font-bold transition-all border-2"
+                    style="background-color: #ef4444; color: white; border-color: #b91c1c;"
+                  >
+                    🗑️ Liberar {cov.grupoAusente} (hora {cov.hora + 1})
+                  </button>
                 {/if}
               </td>
               <td class="p-3 text-center border-t" style="border-color: rgb(var(--border-primary));">

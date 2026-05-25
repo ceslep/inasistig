@@ -200,6 +200,12 @@ export function asignarAutomaticamente(
   }
 
   const slotsDisponibles = [...slotsLibresPorAusencia];
+  console.log("asignarAutomaticamente: slotsDisponibles.length =", slotsDisponibles.length);
+  const tipoCounts: Record<string, number> = {};
+  for (const s of slotsDisponibles) {
+    tipoCounts[s.tipo] = (tipoCounts[s.tipo] || 0) + 1;
+  }
+  console.log("asignarAutomaticamente: tipoCounts =", tipoCounts);
 
   for (const slot of slotsDisponibles) {
     if (slot.tipo !== "libre_ausencia") continue;
@@ -280,7 +286,7 @@ export function asignarAutomaticamente(
       grupoAusente: slot.grupoAusente || getGrupoFromSlot(slot.slot),
       docenteCubre: mejorCobrador,
       grupoACubrir: slot.grupoAusente || (slot.slot ? getGrupoFromSlot(slot.slot) : slot.docente.split(" ").pop() || ""),
-      aprobada: false,
+      aprobada: true,
       violation,
       posiblesCobradores: posiblesCobradores.map((c) => c.docente),
       motivoAusencia: slot.motivoAusencia || "",
@@ -362,7 +368,7 @@ export function analizarGruposAAusentar(
   }
 
   const suggestions = Array.from(horasPorGrupo.entries())
-    .filter(([_, data]) => data.count >= 2)
+    .filter(([_, data]) => data.count >= 4)
     .map(([grupo, data]) => ({
       grupo,
       horasAfectadas: data.count,
