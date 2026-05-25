@@ -11,6 +11,7 @@
     asignarAutomaticamente,
     getSlotsLibresPorAusencia,
     formatoDia,
+    ROLES_SIN_LIMITE,
   } from "../../lib/coberturaUtils";
   import { coberturaSheetsService } from "../../services/coberturaSheetsService";
   import type { SlotInfo, CoberturaSugerida, CoberturaHistorica, Ausencia, SugerenciaGrupo } from "../../lib/coberturaUtils";
@@ -21,6 +22,7 @@
   import WhatsAppReport from "./WhatsAppReport.svelte";
   import Swal from "sweetalert2";
   import ModuleHeader from "../ModuleHeader.svelte";
+  import { Flame, GraduationCap, Car, Heart, Shield, Stethoscope, Briefcase, Calendar, Users, Scale, Skull, Laptop, Award } from "@lucide/svelte";
 
   let { onBack }: { onBack: () => void } = $props();
 
@@ -104,8 +106,8 @@
     slotsDelDia = allSlots;
 
     const ausencias: Ausencia[] = [
-      ...docentesAusentes.map((n) => ({ tipo: "docente" as const, nombre: n.nombre })),
-      ...gruposAusentes.map((g) => ({ tipo: "grupo" as const, nombre: g.grupo, horaInicio: g.horaInicio })),
+      ...docentesAusentes.map((n) => ({ tipo: "docente" as const, nombre: n.nombre, motivo: n.tipo })),
+      ...gruposAusentes.map((g) => ({ tipo: "grupo" as const, nombre: g.grupo, horaInicio: g.horaInicio, motivo: "GRUPO AUSENTE" })),
     ];
 
     slotsConAusencia = aplicarAusencias(allSlots, ausencias, horariosData);
@@ -117,8 +119,8 @@ function recalcularCoberturas() {
     slotsDelDia = allSlots;
 
     const ausencias: Ausencia[] = [
-      ...docentesAusentes.map((n) => ({ tipo: "docente" as const, nombre: n.nombre })),
-      ...gruposAusentes.map((g) => ({ tipo: "grupo" as const, nombre: g.grupo, horaInicio: g.horaInicio })),
+      ...docentesAusentes.map((n) => ({ tipo: "docente" as const, nombre: n.nombre, motivo: n.tipo })),
+      ...gruposAusentes.map((g) => ({ tipo: "grupo" as const, nombre: g.grupo, horaInicio: g.horaInicio, motivo: "GRUPO AUSENTE" })),
     ];
 
     slotsConAusencia = aplicarAusencias(allSlots, ausencias, horariosData);
@@ -224,6 +226,7 @@ function recalcularCoberturas() {
           docente_cubre: c.docenteCubre,
           grupo_a_cubrir: c.grupoACubrir,
           estado: "aprobado",
+          motivo: c.motivoAusencia,
         });
       }
 
@@ -265,8 +268,39 @@ function recalcularCoberturas() {
     coberturasSugeridas[index].aprobada = !coberturasSugeridas[index].aprobada;
   }
 
+  function aprobarTodo() {
+    coberturasSugeridas = coberturasSugeridas.map((c) => ({
+      ...c,
+      aprobada: true,
+    }));
+  }
+
   function cambiarDocenteCubre(index: number, docente: string) {
+    const docenteAnterior = coberturasSugeridas[index].docenteCubre;
     coberturasSugeridas[index].docenteCubre = docente;
+
+    const ocupados = coberturasSugeridas
+      .filter((c, i) => i !== index && c.docenteCubre && !ROLES_SIN_LIMITE.some(r => c.docenteCubre?.includes(r)))
+      .map(c => c.docenteCubre);
+
+    coberturasSugeridas = coberturasSugeridas.map((c, i) => {
+      if (i === index) return c;
+      const nuevosCobradores = horariosData
+        .filter((h: any) => {
+          if (ocupados.includes(h.docente)) return false;
+          return true;
+        })
+        .map((h: any) => h.docente);
+      const disponibles = [...nuevosCobradores, ...ROLES_SIN_LIMITE];
+      if (docenteAnterior && !ocupados.includes(docenteAnterior) && !ROLES_SIN_LIMITE.some(r => docenteAnterior.includes(r))) {
+        disponibles.push(docenteAnterior);
+      }
+      return { ...c, posiblesCobradores: disponibles };
+    });
+  }
+
+  function liberarGrupoAsignacion(grupo: string, horaInicio: number) {
+    agregarGrupoAusente(grupo, horaInicio);
   }
 
   function goToStep(s: number) {
@@ -411,10 +445,19 @@ function recalcularCoberturas() {
 
         <button
           onclick={analizarHorasLibres}
-          class="w-full py-3 rounded-xl font-bold text-white transition-all"
-          style="background-color: rgb(var(--accent-primary));"
+          disabled={loading}
+          class="w-full py-3 rounded-xl font-bold text-white transition-all flex items-center justify-center gap-2"
+          style="background-color: rgb(var(--accent-primary)); opacity: {loading ? 0.7 : 1};"
         >
-          Analizar horas libres →
+          {#if loading}
+            <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Calculando...
+          {:else}
+            Analizar horas libres →
+          {/if}
         </button>
       </div>
     {/if}
@@ -447,6 +490,7 @@ function recalcularCoberturas() {
         onBack={() => step = 2}
         onOpenGruposModal={() => mostrarModalGrupos = true}
         onLiberarGrupoDesdeHora={liberarGrupoDesdeHora}
+        onAprobarTodo={aprobarTodo}
       />
       {#if isDev}
         <div class="mt-4 p-4 rounded-xl border-2 border-dashed" style="border-color: rgb(var(--accent-primary));">
@@ -547,17 +591,34 @@ function recalcularCoberturas() {
             Selecciona el tipo de ausencia para <strong>{docenteSeleccionado}</strong>
           </p>
           <div class="grid grid-cols-2 gap-2 mb-4">
-            {#each ["INCAPACIDAD", "MEDICO", "QUINQUENIO", "CALAMIDAD", "SINDICATO", "CAPACITACION", "REUNION"] as tipo}
+            {#each [
+              { tipo: "CALAMIDAD", icono: Flame, color: "#f97316" },
+              { tipo: "CAPACITACION", icono: GraduationCap, color: "#8b5cf6" },
+              { tipo: "DESPLAZAMIENTO", icono: Car, color: "#06b6d4" },
+              { tipo: "FAMILIAR", icono: Heart, color: "#ec4899" },
+              { tipo: "FUERZA MAYOR", icono: Shield, color: "#6366f1" },
+              { tipo: "INCAPACIDAD", icono: Stethoscope, color: "#ef4444" },
+              { tipo: "LICENCIA", icono: Award, color: "#eab308" },
+              { tipo: "LUTO", icono: Skull, color: "#1f2937" },
+              { tipo: "MEDICO", icono: Stethoscope, color: "#10b981" },
+              { tipo: "PERSONAL", icono: Briefcase, color: "#f59e0b" },
+              { tipo: "QUINQUENIO", icono: Calendar, color: "#3b82f6" },
+              { tipo: "REUNION", icono: Users, color: "#14b8a6" },
+              { tipo: "SECRETARIA", icono: Laptop, color: "#0ea5e9" },
+              { tipo: "SINDICATO", icono: Scale, color: "#78716c" },
+            ] as item}
+              {@const Icon = item.icono}
               <button
                 onclick={() => {
-                  docentesAusentes = [...docentesAusentes.filter((a) => a.nombre !== docenteSeleccionado), { nombre: docenteSeleccionado, tipo }];
+                  docentesAusentes = [...docentesAusentes.filter((a) => a.nombre !== docenteSeleccionado), { nombre: docenteSeleccionado, tipo: item.tipo }];
                   mostrarModalTipoAusencia = false;
                   docenteSeleccionado = "";
                 }}
-                class="py-2 px-3 rounded-lg text-sm font-medium transition-all"
+                class="py-2 px-3 rounded-lg text-sm font-medium transition-all flex items-center gap-2"
                 style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border: 1px solid rgb(var(--border-primary));"
               >
-                {tipo}
+                <Icon size={16} style="color: {item.color}" />
+                {item.tipo}
               </button>
             {/each}
           </div>

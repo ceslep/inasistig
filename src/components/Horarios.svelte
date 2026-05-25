@@ -5,6 +5,7 @@
   import type { CoberturaHistorica } from "../lib/coberturaUtils";
   import { coberturaSheetsService } from "../services/coberturaSheetsService";
   import { getSemanaDelAno } from "../lib/coberturaUtils";
+  import { User } from "@lucide/svelte";
 
   let { onBack }: { onBack: () => void } = $props();
 
@@ -214,21 +215,24 @@
     <CoberturasManager onBack={() => viewMode = "horario"} />
   {:else if !docenteActual}
     <div class="mb-4">
-      <p class="text-sm text-zinc-500 dark:text-zinc-400">
+      <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-3">
         Selecciona un docente para ver su horario semanal
       </p>
     </div>
 
-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
       {#each horariosData as docente (docente.docente)}
         <button
           onclick={() => seleccionarDocente(docente.docente)}
-          class="p-3 rounded-xl text-center font-medium transition-all duration-200
-                 bg-[rgb(var(--card-bg))] border border-[rgb(var(--border-primary))]
-                 hover:border-[rgb(var(--accent-primary))] hover:shadow-md"
+          class="p-4 rounded-xl text-center transition-all duration-200 flex flex-col items-center gap-2
+                 bg-[rgb(var(--card-bg))] border-2 border-[rgb(var(--border-primary))]
+                 hover:border-[rgb(var(--accent-primary))] hover:shadow-lg hover:scale-105"
           style="color: rgb(var(--text-primary));"
         >
-          {docente.docente}
+          <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background-color: rgb(var(--accent-primary));">
+            <User size={20} class="text-white" />
+          </div>
+          <span class="text-xs font-semibold leading-tight">{docente.docente}</span>
         </button>
       {/each}
     </div>

@@ -16,9 +16,10 @@ export type SlotInfo = {
   tipo: TipoSlot;
   grupoAusente?: string;
   docenteAusente?: string;
+  motivoAusencia?: string;
 };
 
-export type Ausencia = { tipo: "docente"; nombre: string } | { tipo: "grupo"; nombre: string; horaInicio?: number };
+export type Ausencia = { tipo: "docente"; nombre: string; motivo: string } | { tipo: "grupo"; nombre: string; horaInicio?: number; motivo: string };
 
 export type CoberturaSugerida = {
   hora: number;
@@ -29,6 +30,7 @@ export type CoberturaSugerida = {
   aprobada: boolean;
   violation?: string;
   posiblesCobradores: string[];
+  motivoAusencia: string;
 };
 
 export type SesionCobertura = {
@@ -48,10 +50,12 @@ export type CoberturaHistorica = {
   docente_cubre: string;
   grupo_a_cubrir: string;
   estado: string;
+  motivo: string;
 };
 
 export const DIAS = ["lunes", "martes", "miercoles", "jueves", "viernes"] as const;
 export const DIAS_ABREV = ["LUN", "MAR", "MIE", "JUE", "VIE"];
+export const ROLES_SIN_LIMITE = ["ORIENTADOR", "COORDINADOR", "BIBLIOTECA"];
 
 export function getGruposDisponibles(horarios: HorarioDocente[]): string[] {
   const grupos = new Set<string>();
@@ -120,18 +124,18 @@ export function aplicarAusencias(
   ausencias: Ausencia[],
   horarios: HorarioDocente[]
 ): SlotInfo[] {
-  const ausenciaSet = new Set(ausencias.map((a) => (a.tipo === "docente" ? a.nombre : `GRUPO:${a.nombre}`)));
-
   const slotsConAusencia = slots.map((s) => {
     let tipo = s.tipo;
     let grupoAusente = "";
     let docenteAusente = "";
+    let motivoAusencia = "";
 
     for (const ausencia of ausencias) {
       if (ausencia.tipo === "docente" && ausencia.nombre === s.docente) {
         if (s.tipo === "clase") {
           tipo = "libre_ausencia";
           docenteAusente = s.docente;
+          motivoAusencia = ausencia.motivo;
         }
       } else if (ausencia.tipo === "grupo") {
         const grupoSlot = getGrupoFromSlot(s.slot);
@@ -141,12 +145,13 @@ export function aplicarAusencias(
             tipo = "libre_ausencia";
             grupoAusente = ausencia.nombre;
             docenteAusente = "";
+            motivoAusencia = ausencia.motivo || "GRUPO AUSENTE";
           }
         }
       }
     }
 
-    return { ...s, tipo, grupoAusente, docenteAusente };
+    return { ...s, tipo, grupoAusente, docenteAusente, motivoAusencia };
   });
 
   return slotsConAusencia;
@@ -167,21 +172,9 @@ export function asignarAutomaticamente(
   fechaActual: string
 ): CoberturaSugerida[] {
   const coberturas: CoberturaSugerida[] = [];
-  const cargaDiaria = new Map<string, number>();
-  const diasUsadosSemana = new Map<string, Set<string>>();
-  const rotacionSemanaActual = new Map<string, number>();
+  const cargaDiariaSesion = new Map<string, number>();
+  const horasCubiertasSemana = new Map<string, number>();
   const semanaActual = getSemanaDelAno(fechaActual);
-
-  for (const cp of coberturasPrevias) {
-    if (cp.estado !== "aprobado") continue;
-    const cpSemana = getSemanaDelAno(cp.fecha);
-    if (cpSemana !== semanaActual) continue;
-    const doc = cp.docente_cubre;
-    cargaDiaria.set(doc, (cargaDiaria.get(doc) || 0) + 1);
-    if (!diasUsadosSemana.has(doc)) diasUsadosSemana.set(doc, new Set());
-    diasUsadosSemana.get(doc)!.add(cp.fecha);
-    rotacionSemanaActual.set(doc, (rotacionSemanaActual.get(doc) || 0) + 1);
-  }
 
   const hoy = new Date(fechaActual + "T00:00:00");
   const hace14dias = new Date(hoy);
@@ -189,24 +182,27 @@ export function asignarAutomaticamente(
   const hace7dias = new Date(hoy);
   hace7dias.setDate(hoy.getDate() - 7);
 
-  const historialRotacion = new Map<string, number>();
   for (const cp of coberturasPrevias) {
     if (cp.estado !== "aprobado") continue;
-    if (cp.dia_semana !== dia) continue;
-    const cpFecha = new Date(cp.fecha + "T00:00:00");
-    if (cpFecha < hace14dias || cpFecha >= hace7dias) continue;
-    historialRotacion.set(cp.docente_cubre, (historialRotacion.get(cp.docente_cubre) || 0) + 1);
+    const cpSemana = getSemanaDelAno(cp.fecha);
+    if (cpSemana !== semanaActual) continue;
+    const doc = cp.docente_cubre;
+    horasCubiertasSemana.set(doc, (horasCubiertasSemana.get(doc) || 0) + 1);
   }
 
-  const slotsDisponibles = [...slotsLibresPorAusencia].sort((a, b) => {
-    const cargaA = rotacionSemanaActual.get(a.docente) || 0;
-    const cargaB = rotacionSemanaActual.get(b.docente) || 0;
-    return cargaA - cargaB;
-  });
+  const indiceAusencias = new Map<string, number>();
+  for (const cp of coberturasPrevias) {
+    const cpFecha = new Date(cp.fecha + "T00:00:00");
+    if (cpFecha < hace14dias || cpFecha >= hace7dias) continue;
+    if (cp.docente_ausente) {
+      indiceAusencias.set(cp.docente_ausente, (indiceAusencias.get(cp.docente_ausente) || 0) + 1);
+    }
+  }
+
+  const slotsDisponibles = [...slotsLibresPorAusencia];
 
   for (const slot of slotsDisponibles) {
     if (slot.tipo !== "libre_ausencia") continue;
-    if (slot.grupoAusente && slot.hora >= 4) continue;
 
     const posiblesCobradores = horarios
       .filter((h) => {
@@ -222,32 +218,30 @@ export function asignarAutomaticamente(
           if (allDaysLibre) return false;
         }
 
+        const esSinLimite = ROLES_SIN_LIMITE.some(r => h.docente.includes(r));
+
         const yaAsignadoEnSesion = coberturas.some((c) => c.docenteCubre === h.docente);
-        if (yaAsignadoEnSesion) return false;
+        if (yaAsignadoEnSesion && !esSinLimite) return false;
 
-        const cargaHoy = cargaDiaria.get(h.docente) || 0;
-        if (cargaHoy >= 1) return false;
+        const cargaSesion = cargaDiariaSesion.get(h.docente) || 0;
+        if (!esSinLimite && cargaSesion >= 1) return false;
 
-        const diasUsados = diasUsadosSemana.get(h.docente)?.size || 0;
-        if (diasUsados >= 2) return false;
+        const horasSemana = horasCubiertasSemana.get(h.docente) || 0;
+        if (!esSinLimite && horasSemana >= 2) return false;
 
         return true;
       })
-      .map((h) => h.docente);
+      .map((h) => ({
+        docente: h.docente,
+        indice: indiceAusencias.get(h.docente) || 0,
+      }));
 
     let mejorCobrador = "";
     let violation = "";
 
     if (posiblesCobradores.length > 0) {
-      let menorRotacion = historialRotacion.get(posiblesCobradores[0]) || 0;
-      mejorCobrador = posiblesCobradores[0];
-      for (const doc of posiblesCobradores.slice(1)) {
-        const rot = historialRotacion.get(doc) || 0;
-        if (rot < menorRotacion) {
-          menorRotacion = rot;
-          mejorCobrador = doc;
-        }
-      }
+      posiblesCobradores.sort((a, b) => b.indice - a.indice);
+      mejorCobrador = posiblesCobradores[0].docente;
     } else {
       const sinLimite = horarios
         .filter((h) => {
@@ -265,6 +259,14 @@ export function asignarAutomaticamente(
       if (sinLimite.length > 0) {
         violation = "⚠️ Límite diario/semanal alcanzado";
         mejorCobrador = sinLimite[0];
+      } else {
+        const sinLimiteTotal = ROLES_SIN_LIMITE.filter(r =>
+          !slotsLibresPorAusencia.some((s) => s.docenteAusente?.includes(r))
+        );
+        if (sinLimiteTotal.length > 0) {
+          violation = "";
+          mejorCobrador = sinLimiteTotal[0];
+        }
       }
     }
 
@@ -280,14 +282,13 @@ export function asignarAutomaticamente(
       grupoACubrir: slot.grupoAusente || (slot.slot ? getGrupoFromSlot(slot.slot) : slot.docente.split(" ").pop() || ""),
       aprobada: false,
       violation,
-      posiblesCobradores,
+      posiblesCobradores: posiblesCobradores.map((c) => c.docente),
+      motivoAusencia: slot.motivoAusencia || "",
     });
 
     if (mejorCobrador && !violation) {
-      cargaDiaria.set(mejorCobrador, (cargaDiaria.get(mejorCobrador) || 0) + 1);
-      if (!diasUsadosSemana.has(mejorCobrador)) diasUsadosSemana.set(mejorCobrador, new Set());
-      diasUsadosSemana.get(mejorCobrador)!.add(fechaActual);
-      rotacionSemanaActual.set(mejorCobrador, (rotacionSemanaActual.get(mejorCobrador) || 0) + 1);
+      cargaDiariaSesion.set(mejorCobrador, (cargaDiariaSesion.get(mejorCobrador) || 0) + 1);
+      horasCubiertasSemana.set(mejorCobrador, (horasCubiertasSemana.get(mejorCobrador) || 0) + 1);
     }
   }
 

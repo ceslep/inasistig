@@ -3,7 +3,7 @@
  * save_cobertura.php - Guardado de coberturas en Google Sheets
  *
  * Recibe datos de cobertura y los guarda en Google Sheets.
- * Estructura: [fecha, dia_semana, hora, docente_ausente, grupo_ausente, docente_cubre, grupo_a_cubrir, estado]
+ * Estructura: [fecha, dia_semana, hora, docente_ausente, grupo_ausente, docente_cubre, grupo_a_cubrir, estado, motivo]
  */
 
 require __DIR__ . '/vendor/autoload.php';
@@ -69,7 +69,7 @@ try {
     $nextRow = count($allValues) + 1;
     if ($nextRow < 2) $nextRow = 2;
 
-    $insertRange = $worksheetTitle . '!A' . $nextRow . ':H' . ($nextRow + count($values) - 1);
+    $insertRange = $worksheetTitle . '!A' . $nextRow . ':I' . ($nextRow + count($values) - 1);
     $body = new ValueRange(['values' => $values]);
     $params = ['valueInputOption' => 'RAW'];
 

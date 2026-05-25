@@ -1,8 +1,8 @@
 <script lang="ts">
-import type { CoberturaSugerida, SugerenciaGrupo } from "../../lib/coberturaUtils";
+  import type { CoberturaSugerida, SugerenciaGrupo } from "../../lib/coberturaUtils";
   import { formatoDia, formatoHora } from "../../lib/coberturaUtils";
 
-let {
+  let {
     diaSeleccionado,
     fechaSeleccionada,
     coberturasSugeridas,
@@ -15,6 +15,7 @@ let {
     onBack,
     onOpenGruposModal,
     onLiberarGrupoDesdeHora,
+    onAprobarTodo,
   }: {
     diaSeleccionado: string;
     fechaSeleccionada: string;
@@ -28,6 +29,7 @@ let {
     onBack: () => void;
     onOpenGruposModal?: () => void;
     onLiberarGrupoDesdeHora?: (grupo: string, hora: number) => void;
+    onAprobarTodo: () => void;
   } = $props();
 
   let seleccionadas = $state(0);
@@ -63,12 +65,19 @@ let {
       <p class="text-xs" style="color: rgb(var(--text-secondary));">Con violación de reglas</p>
     </div>
   </div>
-    <div class="flex justify-end mb-2">
+    <div class="flex justify-end gap-2 mb-2">
+      <button
+        onclick={onAprobarTodo}
+        class="px-3 py-1.5 rounded-lg font-medium transition-all text-xs"
+        style="background-color: rgb(var(--accent-primary)); color: white;"
+      >
+        ✓ APROBAR TODO
+      </button>
       {#if onOpenGruposModal}
         <button
           onclick={onOpenGruposModal}
           class="px-3 py-1.5 rounded-lg font-medium transition-all text-xs"
-          style="background-color: rgb(var(--accent-primary)); color: white;"
+          style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--accent-primary)); border: 1px solid rgb(var(--accent-primary));"
         >
           + LIBERAR GRUPOS
         </button>
@@ -146,6 +155,7 @@ let {
                   <optgroup label="Opciones adicionales">
                     <option value="ORIENTACION">ORIENTACION</option>
                     <option value="COORDINADOR">COORDINADOR</option>
+                    <option value="BIBLIOTECA">BIBLIOTECA</option>
                   </optgroup>
                 </select>
               </td>
@@ -206,10 +216,18 @@ let {
     <button
       onclick={onGuardar}
       disabled={loading || seleccionadas === 0}
-      class="flex-1 py-3 rounded-xl font-bold text-white transition-all disabled:opacity-50"
-      style="background-color: rgb(var(--accent-primary));"
+      class="flex-1 py-3 rounded-xl font-bold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+      style="background-color: rgb(var(--accent-primary)); opacity: {loading ? 0.7 : 1};"
     >
-      {loading ? "Guardando..." : `Guardar ${seleccionadas} cobertura(s)`}
+      {#if loading}
+        <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Guardando...
+      {:else}
+        Guardar {seleccionadas} cobertura(s)
+      {/if}
     </button>
   </div>
 </div>

@@ -1,13 +1,13 @@
 import {
   SPREADSHEET_ID_COBERTURA,
-  WORKSHEET_TITLE_COBERTURA,
+  WORKSHEET_TITLE_COBERTURA_PRUEBAS,
   API_URL_GS,
 } from "../constants";
 import type { CoberturaHistorica } from "../lib/coberturaUtils";
 
-export class CoberturaSheetsService {
+export class CoberturaSheetsPruebasService {
   private spreadsheetId = SPREADSHEET_ID_COBERTURA;
-  private worksheetTitle = WORKSHEET_TITLE_COBERTURA;
+  private worksheetTitle = WORKSHEET_TITLE_COBERTURA_PRUEBAS;
 
   async saveCobertura(row: {
     fecha: string;
@@ -42,7 +42,7 @@ export class CoberturaSheetsService {
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({ error: "Error desconocido" }));
-      throw new Error(err.error || "Error al guardar cobertura");
+      throw new Error(err.error || "Error al guardar cobertura en pruebas");
     }
   }
 
@@ -55,7 +55,7 @@ export class CoberturaSheetsService {
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({ error: "Error desconocido" }));
-      throw new Error(err.error || "Error al obtener coberturas");
+      throw new Error(err.error || "Error al obtener coberturas de pruebas");
     }
 
     const data = await response.json();
@@ -89,7 +89,7 @@ export class CoberturaSheetsService {
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({ error: "Error desconocido" }));
-      throw new Error(err.error || "Error al eliminar cobertura");
+      throw new Error(err.error || "Error al eliminar cobertura de pruebas");
     }
   }
 
@@ -106,9 +106,9 @@ export class CoberturaSheetsService {
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({ error: "Error desconocido" }));
-      throw new Error(err.error || "Error al eliminar coberturas del día");
+      throw new Error(err.error || "Error al eliminar coberturas del día en pruebas");
     }
   }
 }
 
-export const coberturaSheetsService = new CoberturaSheetsService();
+export const coberturaSheetsPruebasService = new CoberturaSheetsPruebasService();

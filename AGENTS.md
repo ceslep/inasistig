@@ -5,83 +5,63 @@
 npm run dev        # Dev server - http://localhost:5173
 npm run build      # Production build to dist/
 npm run preview    # Preview production build
-npm run check      # Type checking (svelte-check + tsc -p tsconfig.node.json)
-npm run deploy     # Build + deploy to GitHub Pages
+npm run check      # svelte-check + tsc -p tsconfig.node.json (runs BOTH)
+npm run deploy     # Build + gh-pages to GitHub Pages at /inasistig/
 ```
 
 Single file check: `npx svelte-check --tsconfig ./tsconfig.app.json src/path/to/file.svelte`
 
 **No test framework** — manual testing via `npm run dev` only.
 
-## TypeScript Config Notes
-- `tsconfig.app.json`: `checkJs: false` — JS files in `src/` are NOT type-checked
-- `tsconfig.app.json`: `allowArbitraryExtensions: true` — allows `.svelte.ts` etc.
-- `tsconfig.node.json` is checked by `npm run check` (vite types)
+## TypeScript
+- `tsconfig.app.json`: `checkJs: false` — JS files NOT type-checked
+- `tsconfig.node.json`: strict, checked by `npm run check` (vite.config.ts only)
+- No `any` types — use `interface` for shapes, `type` for unions, `unknown` when needed
 
-## Svelte Skills
-Use `svelte5-best-practices` and `svelte-code-writer` for Svelte component work.
+## Version Sync (REQUIRED before deploy)
+**Both** `src/version.ts` (`APP_VERSION`) **and** `public/version.json` (`version`) must match.
 
-## Environment
-- Build deploys to GitHub Pages at `/inasistig/`
-- `VITE_OPENROUTER_API_KEY` is NOT in `.env` - keys handled server-side via `ai_proxy.php`
+## Routing
+String-based SPA via `activeView` in `App.svelte`. Browser back always returns to `"dashboard"`. Views dynamically imported. Views: `dashboard`, `inasistencia`, `anotador`, `diario`, `planeador`, `observador`, `piar`, `horarios`, `horas_laborables`, `actividades_recuperacion`, `acta_area`, `acta_izada`, `acta_padres`
 
-## Version Sync Required
-**Both** `src/version.ts` (`APP_VERSION`) **and** `public/version.json` (`version`) must match before `npm run deploy`. Currently MISMATCHED: src=1.0.27, public=1.0.26.
+## Auth & API
+- Google OAuth via `LoginScreen.svelte` → `authStore.ts` (Svelte 4 `writable()` stores)
+- Teacher matching strips trailing `-N` suffix ("Juan-5" → "Juan")
+- Token expiry checked every 5 min + on visibility change
+- API: `/ig/` (read), `/gs/` (write). PHP backend at `app.iedeoccidente.com`. Defined in `src/constants.ts`.
+- `VITE_OPENROUTER_API_KEY` handled server-side via `ai_proxy.php` — no need in `.env` for AI features
 
-## Architecture
+## State Management
+- **Components**: Svelte 5 runes (`$state()`, `$derived()`, `$props()`)
+- **Two-way binding**: `$bindable()` for bindable props
+- **Global stores** (`authStore`, `networkStore`, `themeStore`): Svelte 4 `writable()` — use `$storeName` in components
+- **Snippets**: `children: Snippet` prop + `{@render children()}` instead of slots
 
-**Routing**: String-based SPA via `activeView` state in `App.svelte`. Browser back always returns to `"dashboard"`. Views dynamically imported.
+## Theming
+Three themes (light/dim/dark) via CSS custom properties on `<html>`. Tailwind arbitrary values: `bg-[rgb(var(--bg-primary))]`. Key vars: `--bg-primary`, `--text-primary`, `--accent-primary`, `--card-bg`, `--border-primary`.
 
-**Views**: `dashboard`, `inasistencia`, `anotador`, `diario`, `planeador`, `observador`, `piar`, `horarios`, `horas_laborables`, `actividades_recuperacion`, `acta_area`, `acta_izada`, `acta_padres`
+Tailwind v4 with `@tailwindcss/vite` plugin (not PostCSS). Use CSS custom properties for theming, not Tailwind config.
 
-**Horario Module**: `src/components/Horarios.svelte` has two modes: "Ver Horario" (static schedule from `src/lib/horarios.json`) and "Gestionar Coberturas" (coverage management).
+## Admin Access
+`horas_laborables/AdminStats.svelte` shown after user clicks "Ver Estadísticas Globales" (calendar view → Swal → confirm). Password-gated per-month access using date-based password. **No email whitelist** in code.
 
-**Cobertura System** (`src/components/horarios/`):
-- Step 1: Select day + checkboxes for absent teachers/groups
-- Step 2: Analysis table — red slots = hours freed by absence
-- Step 3: Auto-assigned coverage suggestions — toggle to approve each
-- Rules: max 1 hour/day per teacher, max 2 hours/week per teacher
+## Cobertura System (`src/components/horarios/`)
+- Step 1: Select day + absent teachers (with absence type/motivo)
+- Step 2: Analysis table — red = hours freed by absence
+- Step 3: Auto-assign coverage — toggle each to approve
+- Rules: max 1 h/day per teacher, max 2 h/week per teacher
+- **ORIENTADOR, COORDINADOR and BIBLIOTECA have NO limits** — can cover any amount
 - Saves to Google Sheets `historial` tab (spreadsheet `1N-94FYW5kvGmOcJ4CCqQRWC71guFLxlXltlM7GvDQDw`)
-- PHP endpoints: `save_cobertura.php`, `get_coberturas.php`, `delete_cobertura.php` at `/gs/`
+- PHP: `save_cobertura.php`, `get_coberturas.php`, `delete_cobertura.php` at `/gs/`
+- Tests: `npm run test:unit` (22 tests), `npm run test:integration` (4 tests, requires Google Sheets column I header "MOTIVO")
 
-**Integrated Modules**: `horas_laborables` and `activ_recuperacion` are internal Svelte components (not iframes). Use auth from `authStore.ts`.
+## Key Conventions
+- All UI text in Spanish
+- Error messages via SweetAlert2 (`confirmButtonColor: "#ef4444"`)
+- Icons: `@lucide/svelte` (individual imports). Brand icons: `@icons-pack/svelte-simple-icons`. `@iconify/svelte` in `actividades_recuperacion`
+- localStorage keys: `theme`, `docenteMaterias`, `docenteMateriasDiario`, `lastDocente`, `lastDocenteDiario`, `planeaciones_local`, `app_version`, `dismissedFeatureAlert*`
+- Mobile-first Tailwind (`w-full sm:w-auto`)
+- Commit checklist: `npm run check` passes, all 3 themes work, no `any` types, Spanish errors, ask before commit
 
-**Admin Access**: `horas_laborables/AdminStats.svelte` is shown after user confirms via Swal dialog; no email whitelist check.
-
-**Auth**: Google OAuth via `LoginScreen.svelte`, stored in `authStore.ts`. Teacher matching strips trailing `-N` suffix ("Juan-5" → "Juan"). Token expiry checked every 5 min + on visibility change.
-
-**API**: `/ig/` (read), `/gs/` (write). PHP backend at `app.iedeoccidente.com`. Defined in `src/constants.ts`.
-
-**State Management**:
-- Svelte 5 runes: `$state()`, `$derived()`, `$props()`
-- `$bindable()` for two-way bound props
-- Global stores: `authStore.ts`, `networkStore.ts`, `themeStore.ts` use Svelte 4 `writable()` (imported with `$` prefix)
-
-**Theming**: Three themes (light/dim/dark) via CSS custom properties. Theme class on `<html>`. Use Tailwind: `bg-[rgb(var(--bg-primary))]`. Key vars: `--bg-primary`, `--text-primary`, `--accent-primary`, `--card-bg`, `--border-primary`.
-
-**Tailwind**: v4 with `@tailwindcss/vite` plugin (not PostCSS). Use CSS custom properties for theming, not Tailwind config.
-
-**Exports**: ExcelJS (chunked), jsPDF + jspdf-autotable, file-saver. Chart.js for PieChart.
-
-**PWA**: Service worker with auto-update. Caches `/ig/` read endpoints (getprofes, getMaterias, getEstudiantes, getOpcionesAnotador, adiario) — 20 entries max, 1 day TTL. Auto-update clears all caches and unregisters service workers, then reloads.
-
-**Google Drive**: `gdriveService.ts` for direct uploads. Used by report generators, PIAR, planeador, anotador, horas.
-
-**Offline Queue**: IndexedDB queue in `src/lib/offlineQueue.ts` — stops on first error (no retry). Planeador uses localStorage drafts (max 100) with JSON import/export.
-
-## Large Components (by line count)
-- `ClassPlannerForm.svelte` (~6030 lines)
-- `Piar.svelte` (~2740 lines)
-- `ActaArea.svelte` (~1855 lines)
-- `InasistenciaForm.svelte` (~1750 lines)
-- `HoursRegistration.svelte` (~1400 lines)
-
-## Key localStorage Keys
-`theme`, `docenteMaterias`, `docenteMateriasDiario`, `lastDocente`, `lastDocenteDiario`, `planeaciones_local`, `app_version`, `dismissedFeatureAlert*`
-
-## Before Commit
-- [ ] `npm run check` passes
-- [ ] All themes work (light/dim/dark)
-- [ ] No `any` types (tsconfig.app.json has `checkJs: false` so `.js` files won't catch this — manually review)
-- [ ] Spanish error messages (SweetAlert2)
-- [ ] Ask before git commit
+## Skills
+Use `svelte5-best-practices` and `svelte-code-writer` for Svelte component work.

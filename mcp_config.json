@@ -156,6 +156,13 @@
         "OUTPUT_FORMATS": "excel,pdf,csv"
       },
       "description": "Automatiza la generación de reportes periódicos desde bases de datos o archivos JSON."
+    },
+    "TestSprite": {
+      "command": "npx",
+      "args": ["@testsprite/testsprite-mcp@latest"],
+      "env": {
+        "API_KEY": "sk-user-ivE1w-l0-OH_gDWmOlID8JqfU8IHTiC9G-c25KRH10NOgRamGGNk-BuyapiQwPJn7W2LPVWX8RmmsbD0D3Zda1flvFyoHlCWDUpka2JIpr9J1UAiwz5D_Lzn0WR_UH-WZ4A"
+      }
     }
   }
 }
