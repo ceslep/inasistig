@@ -55,7 +55,7 @@ export type CoberturaHistorica = {
 
 export const DIAS = ["lunes", "martes", "miercoles", "jueves", "viernes"] as const;
 export const DIAS_ABREV = ["LUN", "MAR", "MIE", "JUE", "VIE"];
-export const ROLES_SIN_LIMITE = ["ORIENTADOR", "COORDINADOR", "BIBLIOTECA"];
+export const ROLES_SIN_LIMITE = ["ORIENTACION", "ORIENTADOR", "COORDINADOR", "BIBLIOTECA"];
 
 export function getGruposDisponibles(horarios: HorarioDocente[]): string[] {
   const grupos = new Set<string>();
@@ -130,6 +130,7 @@ export function aplicarAusencias(
     let docenteAusente = "";
     let motivoAusencia = "";
 
+    // 1) Aplicar ausencias de docente — slot necesita cubrimiento
     for (const ausencia of ausencias) {
       if (ausencia.tipo === "docente" && ausencia.nombre === s.docente) {
         if (s.tipo === "clase") {
@@ -137,15 +138,23 @@ export function aplicarAusencias(
           docenteAusente = s.docente;
           motivoAusencia = ausencia.motivo;
         }
-      } else if (ausencia.tipo === "grupo") {
+      }
+    }
+
+    // 2) Aplicar ausencias de grupo — slot del docente queda LIBRE (no necesita cubrirse).
+    //    Si su clase es con grupo ausente, su hora pasa a libre. Si además era libre_ausencia
+    //    por docente ausente, también queda libre (no hay grupo a cubrir).
+    for (const ausencia of ausencias) {
+      if (ausencia.tipo === "grupo") {
         const grupoSlot = getGrupoFromSlot(s.slot);
         if (grupoSlot === ausencia.nombre && s.tipo === "clase") {
           const horaMin = ausencia.horaInicio ?? 1;
           if (s.hora >= horaMin - 1) {
-            tipo = "libre_ausencia";
-            grupoAusente = ausencia.nombre;
+            // Grupo no asiste — no hay clase que cubrir. Slot queda libre.
+            tipo = "libre";
+            grupoAusente = "";
             docenteAusente = "";
-            motivoAusencia = ausencia.motivo || "GRUPO AUSENTE";
+            motivoAusencia = "";
           }
         }
       }
@@ -162,6 +171,30 @@ export function encontrarCoberturasPosibles(
   docenteCubre: string
 ): SlotInfo[] {
   return slots.filter((s) => s.docente === docenteCubre && s.tipo === "libre");
+}
+
+/**
+ * Determina si el slot original del docente a `hora` en `dia` era una clase
+ * con un grupo que está ausente desde su horaInicio cumplida. En ese caso,
+ * el slot equivale a tiempo libre del docente — sus cubrimientos en esas
+ * horas NO cuentan contra el límite 1h/día (martes scenario).
+ */
+export function esHoraLibrePorGrupoAusente(
+  docente: string,
+  hora: number,
+  dia: string,
+  horarios: HorarioDocente[],
+  ausenciasGrupo: { grupo: string; horaInicio: number }[]
+): boolean {
+  if (!ausenciasGrupo.length) return false;
+  const h = horarios.find((x) => x.docente === docente);
+  if (!h) return false;
+  const jornada = h[dia as keyof HorarioDocente] as string[];
+  const slotRaw = jornada?.[hora];
+  if (!slotRaw) return false;
+  const grupo = getGrupoFromSlot(slotRaw);
+  if (!grupo) return false;
+  return ausenciasGrupo.some((g) => g.grupo === grupo && hora >= (g.horaInicio ?? 1) - 1);
 }
 
 export function construirCargaDiariaHistorica(
@@ -184,21 +217,34 @@ export function construirCargaDiariaSesion(
   coberturas: CoberturaSugerida[],
   indiceExcluir: number,
   docenteNuevo: string,
-  cargaInicial?: Map<string, number>
+  cargaInicial?: Map<string, number>,
+  ctx?: {
+    dia: string;
+    horarios: HorarioDocente[];
+    ausenciasGrupo: { grupo: string; horaInicio: number }[];
+  }
 ): Map<string, number> {
   const carga = new Map<string, number>(cargaInicial ?? []);
+  const esLibre = (docente: string, hora: number): boolean => {
+    if (!ctx) return false;
+    return esHoraLibrePorGrupoAusente(docente, hora, ctx.dia, ctx.horarios, ctx.ausenciasGrupo);
+  };
   for (let i = 0; i < coberturas.length; i++) {
     const c = coberturas[i];
     if (!c.docenteCubre) continue;
     if (ROLES_SIN_LIMITE.some((r) => c.docenteCubre.includes(r))) continue;
     if (i === indiceExcluir) {
       if (docenteNuevo && !ROLES_SIN_LIMITE.some((r) => docenteNuevo.includes(r))) {
-        carga.set(docenteNuevo, (carga.get(docenteNuevo) || 0) + 1);
+        if (!esLibre(docenteNuevo, c.hora)) {
+          carga.set(docenteNuevo, (carga.get(docenteNuevo) || 0) + 1);
+        }
       }
       continue;
     }
     if (c.aprobada || c.docenteCubre) {
-      carga.set(c.docenteCubre, (carga.get(c.docenteCubre) || 0) + 1);
+      if (!esLibre(c.docenteCubre, c.hora)) {
+        carga.set(c.docenteCubre, (carga.get(c.docenteCubre) || 0) + 1);
+      }
     }
   }
   return carga;
@@ -212,7 +258,8 @@ export function getPosiblesCobradoresParaSlot(
   cargaDiariaSesion: Map<string, number>,
   horasCubiertasSemana: Map<string, number>,
   indiceAusencias: Map<string, number>,
-  asignacionesSesion: CoberturaSugerida[]
+  asignacionesSesion: CoberturaSugerida[],
+  ausenciasGrupo: { grupo: string; horaInicio: number }[] = []
 ): { docente: string; indice: number }[] {
   return horarios
     .filter((h) => {
@@ -221,7 +268,15 @@ export function getPosiblesCobradoresParaSlot(
       const jornada = h[dia as keyof HorarioDocente] as string[];
       const slotDelDocente = jornada[slot.hora];
 
-      if (slotDelDocente !== "") return false;
+      // Si slot pertenece a grupo ausente desde horaInicio cumplida, equivale a libre.
+      const grupoDelSlot = getGrupoFromSlot(slotDelDocente);
+      const slotLiberadoPorGrupo =
+        !!grupoDelSlot &&
+        ausenciasGrupo.some(
+          (g) => g.grupo === grupoDelSlot && slot.hora >= (g.horaInicio ?? 1) - 1
+        );
+
+      if (slotDelDocente !== "" && !slotLiberadoPorGrupo) return false;
 
       if (slot.hora === 6) {
         const allDaysLibre = DIAS.every((d) => h[d as keyof HorarioDocente][6] === "");
@@ -230,14 +285,18 @@ export function getPosiblesCobradoresParaSlot(
 
       const esSinLimite = ROLES_SIN_LIMITE.some((r) => h.docente.includes(r));
 
+      // Martes scenario: si el slot del candidato a esta hora era una clase con grupo
+      // ausente, su hora ya es libre — puede cubrir aunque ya tenga otro cubrimiento.
+      const slotLibrePorGrupo = slotLiberadoPorGrupo;
+
       const yaAsignadoEnSesion = asignacionesSesion.some((c) => c.docenteCubre === h.docente);
-      if (yaAsignadoEnSesion && !esSinLimite) return false;
+      if (yaAsignadoEnSesion && !esSinLimite && !slotLibrePorGrupo) return false;
 
       const cargaSesion = cargaDiariaSesion.get(h.docente) || 0;
-      if (!esSinLimite && cargaSesion >= 1) return false;
+      if (!esSinLimite && !slotLibrePorGrupo && cargaSesion >= 1) return false;
 
       const horasSemana = horasCubiertasSemana.get(h.docente) || 0;
-      if (!esSinLimite && horasSemana >= 2) return false;
+      if (!esSinLimite && !slotLibrePorGrupo && horasSemana >= 2) return false;
 
       return true;
     })
@@ -252,7 +311,8 @@ export function asignarAutomaticamente(
   horarios: HorarioDocente[],
   coberturasPrevias: CoberturaHistorica[],
   dia: string,
-  fechaActual: string
+  fechaActual: string,
+  ausenciasGrupo: { grupo: string; horaInicio: number }[] = []
 ): CoberturaSugerida[] {
   const coberturas: CoberturaSugerida[] = [];
   const cargaDiariaSesion = construirCargaDiariaHistorica(coberturasPrevias, fechaActual);
@@ -309,7 +369,8 @@ export function asignarAutomaticamente(
       cargaDiariaSesion,
       horasCubiertasSemana,
       indiceAusencias,
-      coberturas
+      coberturas,
+      ausenciasGrupo
     );
 
     let mejorCobrador = "";
@@ -323,11 +384,23 @@ export function asignarAutomaticamente(
         .filter((h) => {
           if (slotsLibresPorAusencia.some((s) => s.docenteAusente === h.docente)) return false;
           const jornada = h[dia as keyof HorarioDocente] as string[];
-          if (jornada[slot.hora] !== "") return false;
+          const slotRaw = jornada[slot.hora];
+          const grupoDelSlot = getGrupoFromSlot(slotRaw);
+          const slotLiberadoPorGrupo =
+            !!grupoDelSlot &&
+            ausenciasGrupo.some(
+              (g) => g.grupo === grupoDelSlot && slot.hora >= (g.horaInicio ?? 1) - 1
+            );
+          if (slotRaw !== "" && !slotLiberadoPorGrupo) return false;
           if (slot.hora === 6) {
             const allDaysLibre = DIAS.every((d) => h[d as keyof HorarioDocente][6] === "");
             if (allDaysLibre) return false;
           }
+          // no reasignar mismo docente — máximo 1h/día
+          // excepción: si en esta hora el slot del docente era de un grupo ausente,
+          // su hora es libre y puede cubrir adicionalmente.
+          const esSinLimite = ROLES_SIN_LIMITE.some((r) => h.docente.includes(r));
+          if (!esSinLimite && !slotLiberadoPorGrupo && coberturas.some((c) => c.docenteCubre === h.docente)) return false;
           return true;
         })
         .map((h) => h.docente);
@@ -362,9 +435,19 @@ export function asignarAutomaticamente(
       motivoAusencia: slot.motivoAusencia || "",
     });
 
-    if (mejorCobrador && !violation) {
-      cargaDiariaSesion.set(mejorCobrador, (cargaDiariaSesion.get(mejorCobrador) || 0) + 1);
-      horasCubiertasSemana.set(mejorCobrador, (horasCubiertasSemana.get(mejorCobrador) || 0) + 1);
+    if (mejorCobrador) {
+      const esSinLimite = ROLES_SIN_LIMITE.some((r) => mejorCobrador.includes(r));
+      const slotLibre = esHoraLibrePorGrupoAusente(
+        mejorCobrador,
+        slot.hora,
+        dia,
+        horarios,
+        ausenciasGrupo
+      );
+      if (!esSinLimite && !slotLibre) {
+        cargaDiariaSesion.set(mejorCobrador, (cargaDiariaSesion.get(mejorCobrador) || 0) + 1);
+        horasCubiertasSemana.set(mejorCobrador, (horasCubiertasSemana.get(mejorCobrador) || 0) + 1);
+      }
     }
   }
 

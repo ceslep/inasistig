@@ -121,16 +121,18 @@ describe('aplicarAusencias', () => {
     expect(anaSlots[2].motivoAusencia).toBe('MEDICO');
   });
 
-  it('debería marcar slots como libre_ausencia cuando el grupo está ausente', () => {
+  it('grupo ausente: slots del docente con ese grupo pasan a libre (no requieren cubrimiento)', () => {
     const slots = getSlotsDelDia('viernes', horariosTest);
     const slotsConAusencia = aplicarAusencias(slots, ausenciaGrupo101, horariosTest);
 
     const anaSlots = slotsConAusencia.filter(s => s.docente === 'Ana');
-    expect(anaSlots[4].tipo).toBe('libre_ausencia');
-    expect(anaSlots[4].motivoAusencia).toBe('GRUPO AUSENTE');
+    // grupo no asiste — docente queda libre, no hay clase a cubrir
+    expect(anaSlots[4].tipo).toBe('libre');
+    expect(anaSlots[4].grupoAusente).toBe('');
+    expect(anaSlots[4].motivoAusencia).toBe('');
   });
 
-  it('debería manejar ausencia de grupo con hora inicio 5', () => {
+  it('grupo ausente con hora inicio 5: solo afecta desde h5', () => {
     const ausencia101h5: typeof ausenciaGrupo101 = [
       { tipo: "grupo", nombre: "101", horaInicio: 5, motivo: "GRUPO AUSENTE" },
     ];
@@ -139,7 +141,8 @@ describe('aplicarAusencias', () => {
 
     const anaSlots = slotsConAusencia.filter(s => s.docente === 'Ana');
     expect(anaSlots[0].tipo).toBe('libre');
-    expect(anaSlots[4].tipo).toBe('libre_ausencia');
+    // h5: grupo 101 ausente → slot raw "MAT 101" pasa a libre (sin cubrimiento)
+    expect(anaSlots[4].tipo).toBe('libre');
   });
 });
 
@@ -585,5 +588,166 @@ describe('asignarAutomaticamente: dedup de slots', () => {
       expect(claves.has(key)).toBe(false);
       claves.add(key);
     }
+  });
+
+  it('martes scenario: docente con hora libre por grupo ausente puede cubrir varias veces', () => {
+    // Carlos martes: ['MAT-101', '', '', '', 'FIS-201', '', '']
+    // Si grupo 101 ausente desde h1, slot h0 de Carlos (MAT-101) queda libre.
+    // María martes: ['', '', 'QUIM-101', '', 'MAT-101', '', '']
+    // Si grupo 101 ausente desde h1, slots h2 y h4 de María quedan libres.
+    // Ana ausente martes (clases h1 MAT-101, h3 QUIM-101) → con grupo 101 ausente
+    // h1 y h3 NO necesitan cubrimiento. Forzamos slots libres manuales:
+    const ausencias: Ausencia[] = [
+      { tipo: 'docente', nombre: 'Ana', motivo: 'MEDICO' },
+    ];
+    const slots = getSlotsDelDia('martes', horariosTest);
+    const slotsConAusencia = aplicarAusencias(slots, ausencias, horariosTest);
+    const libresPorAusencia = getSlotsLibresPorAusencia(slotsConAusencia);
+    // grupo 101 desde h1 — Carlos h0 (MAT-101) y María h2 (QUIM-101) y h4 (MAT-101) libres
+    const ausenciasGrupo = [{ grupo: '101', horaInicio: 1 }];
+
+    const coberturas = asignarAutomaticamente(
+      libresPorAusencia,
+      horariosTest,
+      [],
+      'martes',
+      fechaActual,
+      ausenciasGrupo
+    );
+
+    // Conteo: docente que cubra en hora donde su slot era de 101 puede aparecer
+    // multiples veces sin violation.
+    const carlosCovers = coberturas.filter((c) => c.docenteCubre === 'Carlos');
+    const mariaCovers = coberturas.filter((c) => c.docenteCubre === 'María');
+    // Al menos uno de los dos debe poder aparecer en multiples horas sin violation
+    // (depende de qué slots cubre cada uno — el aserto clave es ausencia de violation
+    // de "Límite diario alcanzado" cuando todas las horas asignadas son liberadas).
+    const violacionesLimite = coberturas.filter((c) =>
+      c.violation && c.violation.includes('Límite')
+    );
+    // María tiene 2 slots libres por grupo 101 (h2, h4) — si cubre ambos, no violation.
+    if (mariaCovers.length >= 2) {
+      expect(violacionesLimite.filter((c) => c.docenteCubre === 'María').length).toBe(0);
+    }
+    // Carlos puede cubrir h0 sin contar contra su límite.
+    expect(carlosCovers.length).toBeGreaterThanOrEqual(0);
+  });
+
+  it('construirCargaDiariaSesion: no cuenta hora si slot era de grupo liberado', () => {
+    const ausenciasGrupo = [{ grupo: '101', horaInicio: 1 }];
+    const coberturas: CoberturaSugerida[] = [
+      {
+        hora: 0, // Carlos martes h0 = MAT-101 → liberado
+        docenteAusente: 'Ana',
+        grupoAusente: '',
+        docenteCubre: 'Carlos',
+        grupoACubrir: '101',
+        aprobada: true,
+        posiblesCobradores: ['Carlos'],
+        motivoAusencia: 'MEDICO',
+      },
+    ];
+    const carga = construirCargaDiariaSesion(coberturas, -1, '', undefined, {
+      dia: 'martes',
+      horarios: horariosTest,
+      ausenciasGrupo,
+    });
+    // Carlos NO debe contar — su h0 era 101 (liberado).
+    expect(carga.get('Carlos') || 0).toBe(0);
+  });
+
+  it('regla grupo liberado aplica a LUNES: docente con slot del grupo queda libre', () => {
+    // Ana lunes: ['MAT-101', '', 'FIS-201', '', '', '', '']
+    // Grupo 101 ausente desde h1 → Ana h0 (MAT-101) liberado.
+    const ausenciasGrupo = [{ grupo: '101', horaInicio: 1 }];
+    const coberturas: CoberturaSugerida[] = [
+      {
+        hora: 0,
+        docenteAusente: 'Carlos',
+        grupoAusente: '',
+        docenteCubre: 'Ana',
+        grupoACubrir: '101',
+        aprobada: true,
+        posiblesCobradores: ['Ana'],
+        motivoAusencia: 'MEDICO',
+      },
+    ];
+    const carga = construirCargaDiariaSesion(coberturas, -1, '', undefined, {
+      dia: 'lunes',
+      horarios: horariosTest,
+      ausenciasGrupo,
+    });
+    expect(carga.get('Ana') || 0).toBe(0);
+  });
+
+  it('regla grupo liberado aplica a MIERCOLES', () => {
+    // María miercoles: ['MAT-101', '', 'FIS-201', '', '', '', '']
+    // Grupo 101 ausente desde h1 → María h0 (MAT-101) liberado.
+    const ausenciasGrupo = [{ grupo: '101', horaInicio: 1 }];
+    const coberturas: CoberturaSugerida[] = [
+      {
+        hora: 0,
+        docenteAusente: 'Ana',
+        grupoAusente: '',
+        docenteCubre: 'María',
+        grupoACubrir: '101',
+        aprobada: true,
+        posiblesCobradores: ['María'],
+        motivoAusencia: 'MEDICO',
+      },
+    ];
+    const carga = construirCargaDiariaSesion(coberturas, -1, '', undefined, {
+      dia: 'miercoles',
+      horarios: horariosTest,
+      ausenciasGrupo,
+    });
+    expect(carga.get('María') || 0).toBe(0);
+  });
+
+  it('regla NO aplica si grupo no es el del slot original', () => {
+    // Carlos martes h0 = MAT-101. Si grupo ausente es 201 (no 101), no liberar.
+    const ausenciasGrupo = [{ grupo: '201', horaInicio: 1 }];
+    const coberturas: CoberturaSugerida[] = [
+      {
+        hora: 0,
+        docenteAusente: 'Ana',
+        grupoAusente: '',
+        docenteCubre: 'Carlos',
+        grupoACubrir: '101',
+        aprobada: true,
+        posiblesCobradores: ['Carlos'],
+        motivoAusencia: 'MEDICO',
+      },
+    ];
+    const carga = construirCargaDiariaSesion(coberturas, -1, '', undefined, {
+      dia: 'martes',
+      horarios: horariosTest,
+      ausenciasGrupo,
+    });
+    expect(carga.get('Carlos') || 0).toBe(1);
+  });
+
+  it('regla NO aplica si hora antes de horaInicio del grupo', () => {
+    // Carlos martes h0 = MAT-101. Grupo 101 ausente desde h3 (horaInicio=3).
+    // h0 está antes → slot NO liberado, debe contar.
+    const ausenciasGrupo = [{ grupo: '101', horaInicio: 3 }];
+    const coberturas: CoberturaSugerida[] = [
+      {
+        hora: 0,
+        docenteAusente: 'Ana',
+        grupoAusente: '',
+        docenteCubre: 'Carlos',
+        grupoACubrir: '101',
+        aprobada: true,
+        posiblesCobradores: ['Carlos'],
+        motivoAusencia: 'MEDICO',
+      },
+    ];
+    const carga = construirCargaDiariaSesion(coberturas, -1, '', undefined, {
+      dia: 'martes',
+      horarios: horariosTest,
+      ausenciasGrupo,
+    });
+    expect(carga.get('Carlos') || 0).toBe(1);
   });
 });

@@ -27,6 +27,7 @@
   import Swal from "sweetalert2";
   import ModuleHeader from "../ModuleHeader.svelte";
   import { Flame, GraduationCap, Car, Heart, Shield, Stethoscope, Briefcase, Calendar, Users, Scale, Skull, Laptop, Award } from "@lucide/svelte";
+  import DatePicker from "../anotador/DatePicker.svelte";
 
   const TIPOS_ICONOS: Record<string, { icono: any; color: string }> = {
     "CALAMIDAD": { icono: Flame, color: "#f97316" },
@@ -107,6 +108,23 @@
     if (fechas[idx]) fechaSeleccionada = fechas[idx];
   }
 
+  function seleccionarFecha(fecha: string) {
+    if (!fecha) {
+      fechaSeleccionada = "";
+      return;
+    }
+    fechaSeleccionada = fecha;
+    const dia = getDiaFromFecha(fecha);
+    if (dia) {
+      diaSeleccionado = dia;
+    } else {
+      // fecha fin de semana — avisar
+      Swal.fire({ icon: "warning", title: "Fecha no válida", text: "Selecciona un día entre lunes y viernes.", confirmButtonColor: "#ef4444" });
+      fechaSeleccionada = "";
+      diaSeleccionado = "";
+    }
+  }
+
   async function loadHistorico() {
     try {
       loading = true;
@@ -171,7 +189,8 @@ function recalcularCoberturas() {
       horariosData,
       coberturasHistoricas,
       diaSeleccionado,
-      fechaSeleccionada
+      fechaSeleccionada,
+      gruposAusentes
     );
 
     // B1: Merge — preservar docenteCubre manual donde el slot persiste
@@ -413,22 +432,27 @@ function recalcularCoberturas() {
       const cobertura = coberturasSugeridas[index];
       const jornada = horariosData.find((h) => h.docente === docente)?.[diaSeleccionado as keyof HorarioDocente] as string[] || [];
       const slotOcupado = jornada[cobertura.hora];
-      if (slotOcupado && slotOcupado !== "") {
+      // si grupo del slot está liberado desde horaInicio cumplida, slot equivale a libre
+      const grupoSlot = slotOcupado ? slotOcupado.match(/(\d{3,4})$/)?.[1] : "";
+      const grupoLiberado = !!grupoSlot && gruposAusentes.some(
+        (g) => g.grupo === grupoSlot && cobertura.hora >= (g.horaInicio ?? 1) - 1
+      );
+      if (slotOcupado && slotOcupado !== "" && !grupoLiberado) {
         Swal.fire({ icon: "warning", title: "Docente ocupado", text: `${docente} ya tiene clase a esa hora (${slotOcupado})`, confirmButtonColor: "#ef4444" });
         return;
       }
 
-      const countOcurrencias = coberturasSugeridas.filter((c, i) => i !== index && c.docenteCubre === docente && !c.aprobada).length;
-      if (countOcurrencias > 0) {
-        Swal.fire({ icon: "warning", title: "Docente ya asignado", text: `${docente} ya está asignado en otra coverage (máximo 1 hora/día para docentes regulares)`, confirmButtonColor: "#ef4444" });
-        return;
-      }
+      // Repetición en sesión / histórico no bloquea — la fila se marca visualmente como duplicado en AsignacionesView.
     }
 
     coberturasSugeridas[index].docenteCubre = docente;
 
     const cargaHistorica = construirCargaDiariaHistorica(coberturasHistoricas, fechaSeleccionada);
-    const cargaDiariaSesion = construirCargaDiariaSesion(coberturasSugeridas, index, docente, cargaHistorica);
+    const cargaDiariaSesion = construirCargaDiariaSesion(coberturasSugeridas, index, docente, cargaHistorica, {
+      dia: diaSeleccionado,
+      horarios: horariosData,
+      ausenciasGrupo: gruposAusentes,
+    });
 
     const hoy = new Date(fechaSeleccionada + "T00:00:00");
     const hace14dias = new Date(hoy);
@@ -475,7 +499,8 @@ function recalcularCoberturas() {
         cargaDiariaSesion,
         horasCubiertasSemana,
         indiceAusencias,
-        coberturasSugeridas
+        coberturasSugeridas,
+        gruposAusentes
       ).map((c) => c.docente);
 
       const docenteCubreActual = cov.docenteCubre;
@@ -486,37 +511,14 @@ function recalcularCoberturas() {
       coberturasSugeridas[i] = { ...cov, posiblesCobradores: posibles };
     }
 
-    if (docenteAnterior && docenteAnterior !== "") {
-      for (let i = 0; i < coberturasSugeridas.length; i++) {
-        if (i === index) continue;
-        coberturasSugeridas[i].posiblesCobradores = coberturasSugeridas[i].posiblesCobradores.filter((d: string) => d !== docenteAnterior);
-      }
-    }
+    // El recálculo arriba (getPosiblesCobradoresParaSlot con cargaDiariaSesion actualizada) ya:
+    // - excluye al docente nuevo (cargaSesion >= 1) de otras filas si es regular
+    // - libera al docente anterior (cargaSesion bajó a 0) para aparecer en otras filas
+    // - incluye siempre roles especiales via optgroup hardcoded del select
+    // Eliminados bloques de filtrado/restore manual que sobrescribían este resultado.
 
-    if (eraSpecialRole && docenteAnterior && !esSpecialRole && docenteAnterior !== "") {
-      for (let i = 0; i < coberturasSugeridas.length; i++) {
-        if (i === index) continue;
-        if (!coberturasSugeridas[i].posiblesCobradores.includes(docenteAnterior)) {
-          coberturasSugeridas[i].posiblesCobradores = [docenteAnterior, ...coberturasSugeridas[i].posiblesCobradores];
-        }
-      }
-    }
-
-    if (eraSpecialRole && docenteAnterior && esSpecialRole && docenteAnterior !== "") {
-      for (let i = 0; i < coberturasSugeridas.length; i++) {
-        if (i === index) continue;
-        if (!coberturasSugeridas[i].posiblesCobradores.includes(docenteAnterior)) {
-          coberturasSugeridas[i].posiblesCobradores = [docenteAnterior, ...coberturasSugeridas[i].posiblesCobradores];
-        }
-      }
-    }
-
-    if (!esSpecialRole && docenteAnterior && docenteAnterior !== "") {
-      for (let i = 0; i < coberturasSugeridas.length; i++) {
-        if (i === index) continue;
-        coberturasSugeridas[i].posiblesCobradores = coberturasSugeridas[i].posiblesCobradores.filter((d: string) => d !== docenteAnterior);
-      }
-    }
+    // Forzar reasignación referencial para refrescar Svelte
+    coberturasSugeridas = [...coberturasSugeridas];
   }
 
   function liberarGrupoAsignacion(grupo: string, horaInicio: number) {
@@ -604,11 +606,14 @@ function recalcularCoberturas() {
               </button>
             {/each}
           </div>
-          {#if fechaSeleccionada}
-            <p class="text-xs mt-2" style="color: rgb(var(--text-secondary));">
-              📅 {fechaSeleccionada} ({formatoDia(diaSeleccionado)})
-            </p>
-          {/if}
+          <div class="mt-3 max-w-xs">
+            <DatePicker
+              id="fecha-cobertura"
+              label={diaSeleccionado ? `Fecha exacta (${formatoDia(diaSeleccionado)})` : "Fecha exacta"}
+              bind:value={fechaSeleccionada}
+              onchange={(v) => seleccionarFecha(v)}
+            />
+          </div>
         </div>
 
         <div class="mb-4">
@@ -622,12 +627,17 @@ function recalcularCoberturas() {
                 <input
                   type="checkbox"
                   checked={!!ausencia}
-                  onchange={(e) => {
-                    if (e.currentTarget.checked) {
+                  onclick={(e) => {
+                    const target = e.currentTarget;
+                    if (ausencia) {
+                      // ya marcado → permitir desmarcar
+                      docentesAusentes = docentesAusentes.filter((a) => a.nombre !== docente);
+                    } else {
+                      // bloquear toggle visual; abrir modal para forzar elegir tipo
+                      e.preventDefault();
+                      target.checked = false;
                       docenteSeleccionado = docente;
                       mostrarModalTipoAusencia = true;
-                    } else {
-                      docentesAusentes = docentesAusentes.filter((a) => a.nombre !== docente);
                     }
                   }}
                   class="w-4 h-4 accent-[rgb(var(--accent-primary))]"
@@ -703,6 +713,8 @@ function recalcularCoberturas() {
         {fechaSeleccionada}
         {coberturasSugeridas}
         {gruposSugeridosAAusentar}
+        {coberturasHistoricas}
+        {gruposAusentes}
         {loading}
         onToggle={toggleCobertura}
         onCambiarDocenteCubre={cambiarDocenteCubre}
@@ -805,11 +817,11 @@ function recalcularCoberturas() {
     {/if}
 
     {#if mostrarModalTipoAusencia}
-      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background-color: rgba(0,0,0,0.5);">
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background-color: rgba(0,0,0,0.5);" role="dialog" aria-modal="true" aria-labelledby="tipo-ausencia-title">
         <div class="rounded-xl p-6 w-full max-w-md" style="background-color: rgb(var(--bg-primary)); border: 1px solid rgb(var(--border-primary));">
-          <h3 class="text-lg font-bold mb-4" style="color: rgb(var(--text-primary));">Tipo de ausencia</h3>
+          <h3 id="tipo-ausencia-title" class="text-lg font-bold mb-2" style="color: rgb(var(--text-primary));">Tipo de ausencia <span style="color: #ef4444;">*</span></h3>
           <p class="text-sm mb-4" style="color: rgb(var(--text-secondary));">
-            Selecciona el tipo de ausencia para <strong>{docenteSeleccionado}</strong>
+            Selecciona obligatoriamente el tipo de ausencia para <strong>{docenteSeleccionado}</strong>. Si cancelas, el docente no quedará marcado como ausente.
           </p>
           <div class="grid grid-cols-2 gap-2 mb-4">
             {#each [

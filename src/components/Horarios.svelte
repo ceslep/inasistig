@@ -5,7 +5,7 @@
   import type { CoberturaHistorica } from "../lib/coberturaUtils";
   import { coberturaSheetsService } from "../services/coberturaSheetsService";
   import { getSemanaDelAno } from "../lib/coberturaUtils";
-  import { User } from "@lucide/svelte";
+  import { User, Search, ArrowLeft, BarChart3, Calendar, X } from "@lucide/svelte";
 
   let { onBack }: { onBack: () => void } = $props();
 
@@ -26,12 +26,22 @@
 
   let docenteSeleccionado = $state<string | null>(null);
   let coberturasHistoricas = $state<CoberturaHistorica[]>([]);
+  let filtroDocente = $state("");
+  let cargandoCarga = $state(false);
 
   const docenteActual = $derived(
     docenteSeleccionado
       ? horariosData.find((h: HorarioDocente) => h.docente === docenteSeleccionado)
       : null
   );
+
+  const docentesFiltrados = $derived.by(() => {
+    const q = filtroDocente.trim().toLocaleLowerCase("es");
+    if (!q) return horariosData as HorarioDocente[];
+    return (horariosData as HorarioDocente[]).filter((h) =>
+      h.docente.toLocaleLowerCase("es").includes(q)
+    );
+  });
 
   function seleccionarDocente(nombre: string) {
     docenteSeleccionado = docenteSeleccionado === nombre ? null : nombre;
@@ -115,35 +125,55 @@
   }
 
   async function verCargaLaboral(docente: HorarioDocente) {
+    cargandoCarga = true;
     try {
       if (coberturasHistoricas.length === 0) {
         coberturasHistoricas = await coberturaSheetsService.getCoberturas();
       }
     } catch {}
+    finally {
+      cargandoCarga = false;
+    }
 
     const carga = calcularCargaLaboral(docente);
     const puedeCubrir = carga.horasDisponiblesCobertura;
 
-    let htmlContent = `
-      <div style="text-align:left; font-family:Arial,sans-serif;">
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:16px;">
-          <div style="background:#dcfce7; padding:12px; border-radius:8px; text-align:center;">
-            <div style="font-size:24px; font-weight:bold; color:#166534;">${carga.horasClase}</div>
-            <div style="font-size:11px; color:#166534;">Horas Clase</div>
-          </div>
-          <div style="background:#fed7aa; padding:12px; border-radius:8px; text-align:center;">
-            <div style="font-size:24px; font-weight:bold; color:#9a3412;">${carga.horasDescanso}</div>
-            <div style="font-size:11px; color:#9a3412;">DESC/PEDAG</div>
-          </div>
-          <div style="background:#e0e7ff; padding:12px; border-radius:8px; text-align:center;">
-            <div style="font-size:24px; font-weight:bold; color:#3730a3;">${carga.horasLibres}</div>
-            <div style="font-size:11px; color:#3730a3;">Horas Libres</div>
-          </div>
-        </div>
+    // Tokens semánticos con buen contraste light + dark
+    const stat = (val: number | string, label: string, hueLight: string, hueDark: string) => `
+      <div class="cl-stat" style="--bg-l:${hueLight}; --bg-d:${hueDark};">
+        <div class="cl-stat-val">${val}</div>
+        <div class="cl-stat-lbl">${label}</div>
+      </div>`;
 
-        <div style="background:#f3f4f6; padding:12px; border-radius:8px; margin-bottom:16px;">
-          <div style="font-weight:bold; margin-bottom:8px; color:#374151;">Distribución por día:</div>
-          <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:4px; font-size:12px;">
+    let htmlContent = `
+      <style>
+        .cl-wrap { text-align:left; font: 14px/1.5 system-ui,sans-serif; color: rgb(var(--text-primary)); }
+        .cl-grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+        .cl-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+        .cl-grid-5 { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; font-size:12px; }
+        .cl-stat { padding:12px; border-radius:10px; text-align:center;
+          background: var(--bg-l); color: #0b3b1f; border: 1px solid rgb(var(--border-primary)); }
+        :is(.dim, .dark) .cl-stat { background: var(--bg-d); color: rgb(var(--text-primary)); }
+        .cl-stat-val { font-size:22px; font-weight:700; line-height:1.1; }
+        .cl-stat-lbl { font-size:11px; opacity:.85; margin-top:2px; }
+        .cl-section { background: rgb(var(--bg-secondary)); padding:12px; border-radius:10px; margin-bottom:12px;
+          border: 1px solid rgb(var(--border-primary)); }
+        .cl-section h4 { font-weight:600; margin:0 0 8px 0; color: rgb(var(--text-secondary)); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+        .cl-banner { margin-top:8px; padding:12px; border-radius:10px; text-align:center; border:1px solid; }
+        .cl-banner-ok { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.4); color:#14532d; }
+        :is(.dim, .dark) .cl-banner-ok { color:#bbf7d0; }
+        .cl-banner-bad { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.4); color:#7f1d1d; }
+        :is(.dim, .dark) .cl-banner-bad { color:#fecaca; }
+      </style>
+      <div class="cl-wrap">
+        <div class="cl-grid-3">
+          ${stat(carga.horasClase, "Horas Clase", "#dcfce7", "rgba(34,197,94,.18)")}
+          ${stat(carga.horasDescanso, "DESC/PEDAG", "#fed7aa", "rgba(249,115,22,.2)")}
+          ${stat(carga.horasLibres, "Horas Libres", "#e0e7ff", "rgba(99,102,241,.22)")}
+        </div>
+        <div class="cl-section">
+          <h4>Distribución por día</h4>
+          <div class="cl-grid-5">
             <div><strong>LUN:</strong> ${carga.porDia.lunes}h</div>
             <div><strong>MAR:</strong> ${carga.porDia.martes}h</div>
             <div><strong>MIE:</strong> ${carga.porDia.miercoles}h</div>
@@ -151,42 +181,32 @@
             <div><strong>VIE:</strong> ${carga.porDia.viernes}h</div>
           </div>
         </div>
-
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-          <div style="background:#fef3c7; padding:10px; border-radius:8px; text-align:center;">
-            <div style="font-size:18px; font-weight:bold; color:#92400e;">${carga.coberturasSemana}</div>
-            <div style="font-size:10px; color:#92400e;">Coberturas esta semana</div>
-          </div>
-          <div style="background:#dbeafe; padding:10px; border-radius:8px; text-align:center;">
-            <div style="font-size:18px; font-weight:bold; color:#1e40af;">${carga.ultimaSemanaCoberturas}</div>
-            <div style="font-size:10px; color:#1e40af;">Coberturas hace 1-2 sem</div>
-          </div>
+        <div class="cl-grid-2">
+          ${stat(carga.coberturasSemana, "Coberturas esta semana", "#fef3c7", "rgba(234,179,8,.2)")}
+          ${stat(carga.ultimaSemanaCoberturas, "Coberturas hace 1-2 sem", "#dbeafe", "rgba(59,130,246,.2)")}
         </div>
+        ${
+          puedeCubrir > 0
+            ? `<div class="cl-banner cl-banner-ok" role="status">
+                 <div style="font-size:18px; font-weight:700;">${puedeCubrir} horas disponibles para cubrir</div>
+                 <div style="font-size:11px; opacity:.85;">(dentro del límite 1h/día, 2h/semana)</div>
+               </div>`
+            : carga.coberturasSemana >= 2
+            ? `<div class="cl-banner cl-banner-bad" role="alert">
+                 <div style="font-size:14px; font-weight:700;">Límite semanal alcanzado (2h)</div>
+                 <div style="font-size:11px; opacity:.85;">No puede cubrir más esta semana</div>
+               </div>`
+            : ""
+        }
       </div>
     `;
-
-    if (puedeCubrir > 0) {
-      htmlContent += `
-        <div style="margin-top:12px; padding:10px; background:#bbf7d0; border-radius:8px; text-align:center;">
-          <div style="font-size:18px; font-weight:bold; color:#166534;">${puedeCubrir} horas disponibles para cubrir</div>
-          <div style="font-size:10px; color:#166534;">(dentro del límite 1h/día, 2h/semana)</div>
-        </div>
-      `;
-    } else if (carga.coberturasSemana >= 2) {
-      htmlContent += `
-        <div style="margin-top:12px; padding:10px; background:#fee2e2; border-radius:8px; text-align:center;">
-          <div style="font-size:14px; font-weight:bold; color:#991b1b;">Límite semanal alcanzado (2h)</div>
-          <div style="font-size:10px; color:#991b1b;">No puede cubrir más esta semana</div>
-        </div>
-      `;
-    }
 
     const { default: Swal } = await import("sweetalert2");
     Swal.fire({
       title: `Carga Laboral: ${docente.docente}`,
       html: htmlContent,
       confirmButtonText: "Cerrar",
-      width: "450px",
+      width: "500px",
     });
   }
 </script>
@@ -194,79 +214,147 @@
 <ModuleHeader title="Horario General" {onBack} />
 
 <div class="p-4 max-w-7xl mx-auto">
-  <div class="flex gap-2 mb-4">
+  <div role="tablist" aria-label="Vista de horarios" class="flex gap-2 mb-4">
     <button
+      type="button"
+      role="tab"
+      aria-selected={viewMode === "horario"}
+      aria-controls="panel-horario"
       onclick={() => viewMode = "horario"}
-      class="px-4 py-2 rounded-lg font-medium text-sm transition-all"
-      style="background-color: {viewMode === 'horario' ? 'rgb(var(--accent-primary))' : 'rgb(var(--card-bg))'}; color: {viewMode === 'horario' ? 'white' : 'rgb(var(--text-primary))'}; border: 1px solid {viewMode === 'horario' ? 'rgb(var(--accent-primary))' : 'rgb(var(--border-primary))'};"
+      class="px-4 py-2 rounded-lg font-medium text-sm transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+      style="background-color: {viewMode === 'horario' ? 'rgb(var(--accent-primary))' : 'rgb(var(--card-bg))'}; color: {viewMode === 'horario' ? 'white' : 'rgb(var(--text-primary))'}; border: 1px solid {viewMode === 'horario' ? 'rgb(var(--accent-primary))' : 'rgb(var(--border-primary))'}; --tw-ring-color: rgb(var(--accent-primary));"
     >
       Ver Horario
     </button>
     <button
+      type="button"
+      role="tab"
+      aria-selected={viewMode === "coberturas"}
+      aria-controls="panel-coberturas"
       onclick={() => viewMode = "coberturas"}
-      class="px-4 py-2 rounded-lg font-medium text-sm transition-all"
-      style="background-color: {viewMode === 'coberturas' ? 'rgb(var(--accent-primary))' : 'rgb(var(--card-bg))'}; color: {viewMode === 'coberturas' ? 'white' : 'rgb(var(--text-primary))'}; border: 1px solid {viewMode === 'coberturas' ? 'rgb(var(--accent-primary))' : 'rgb(var(--border-primary))'};"
+      class="px-4 py-2 rounded-lg font-medium text-sm transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+      style="background-color: {viewMode === 'coberturas' ? 'rgb(var(--accent-primary))' : 'rgb(var(--card-bg))'}; color: {viewMode === 'coberturas' ? 'white' : 'rgb(var(--text-primary))'}; border: 1px solid {viewMode === 'coberturas' ? 'rgb(var(--accent-primary))' : 'rgb(var(--border-primary))'}; --tw-ring-color: rgb(var(--accent-primary));"
     >
       Gestionar Coberturas
     </button>
   </div>
 
   {#if viewMode === "coberturas"}
-    <CoberturasManager onBack={() => viewMode = "horario"} />
+    <div id="panel-coberturas" role="tabpanel">
+      <CoberturasManager onBack={() => viewMode = "horario"} />
+    </div>
   {:else if !docenteActual}
-    <div class="mb-4">
-      <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-3">
+    <div id="panel-horario" role="tabpanel" class="mb-4">
+      <p id="filtro-docente-hint" class="text-sm text-zinc-500 dark:text-zinc-400 mb-3">
         Selecciona un docente para ver su horario semanal
+      </p>
+      <div class="relative mb-4 max-w-md">
+        <label for="filtro-docente" class="sr-only">Filtrar docentes por nombre</label>
+        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none" style="color: rgb(var(--text-secondary));">
+          <Search size={18} aria-hidden="true" />
+        </div>
+        <input
+          id="filtro-docente"
+          type="search"
+          bind:value={filtroDocente}
+          placeholder="Buscar docente..."
+          aria-describedby="filtro-docente-hint filtro-resultados"
+          autocomplete="off"
+          class="w-full pl-10 pr-10 py-3 rounded-xl text-sm border focus-visible:outline-none focus-visible:ring-2"
+          style="background-color: rgb(var(--card-bg)); color: rgb(var(--text-primary)); border-color: rgb(var(--border-primary)); --tw-ring-color: rgb(var(--accent-primary));"
+        />
+        {#if filtroDocente}
+          <button
+            type="button"
+            onclick={() => (filtroDocente = "")}
+            aria-label="Limpiar filtro"
+            class="absolute inset-y-0 right-0 flex items-center pr-3 hover:opacity-70 transition-opacity"
+            style="color: rgb(var(--text-secondary));"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        {/if}
+      </div>
+      <p id="filtro-resultados" class="sr-only" aria-live="polite">
+        {docentesFiltrados.length} docente{docentesFiltrados.length === 1 ? "" : "s"} encontrado{docentesFiltrados.length === 1 ? "" : "s"}
       </p>
     </div>
 
-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-      {#each horariosData as docente (docente.docente)}
-        <button
-          onclick={() => seleccionarDocente(docente.docente)}
-          class="p-4 rounded-xl text-center transition-all duration-200 flex flex-col items-center gap-2
-                 bg-[rgb(var(--card-bg))] border-2 border-[rgb(var(--border-primary))]
-                 hover:border-[rgb(var(--accent-primary))] hover:shadow-lg hover:scale-105"
-          style="color: rgb(var(--text-primary));"
-        >
-          <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background-color: rgb(var(--accent-primary));">
-            <User size={20} class="text-white" />
-          </div>
-          <span class="text-xs font-semibold leading-tight">{docente.docente}</span>
-        </button>
-      {/each}
-    </div>
+    {#if docentesFiltrados.length === 0}
+      <div class="text-center py-12 rounded-xl border-2 border-dashed" style="border-color: rgb(var(--border-primary)); color: rgb(var(--text-secondary));">
+        <p class="text-sm">No se encontraron docentes con "{filtroDocente}"</p>
+      </div>
+    {:else}
+      <ul role="list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+        {#each docentesFiltrados as docente (docente.docente)}
+          <li>
+            <button
+              type="button"
+              onclick={() => seleccionarDocente(docente.docente)}
+              aria-label={`Ver horario de ${docente.docente}`}
+              class="w-full p-4 rounded-xl text-center transition-transform duration-200 flex flex-col items-center gap-2
+                     bg-[rgb(var(--card-bg))] border-2 border-[rgb(var(--border-primary))]
+                     hover:border-[rgb(var(--accent-primary))] hover:shadow-lg motion-safe:hover:scale-[1.03]
+                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+              style="color: rgb(var(--text-primary)); --tw-ring-color: rgb(var(--accent-primary));"
+            >
+              <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background-color: rgb(var(--accent-primary));">
+                <User size={20} class="text-white" aria-hidden="true" />
+              </div>
+              <span class="text-xs font-semibold leading-tight">{docente.docente}</span>
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {/if}
   {:else}
-    <div class="flex items-center gap-3 mb-4">
+    <div id="panel-horario" role="tabpanel" class="flex items-center gap-3 mb-4 flex-wrap">
       <button
+        type="button"
         onclick={() => docenteSeleccionado = null}
-        class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors"
-        style="background-color: rgb(var(--accent-primary)); color: white;"
+        class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        style="background-color: rgb(var(--accent-primary)); color: white; --tw-ring-color: rgb(var(--accent-primary));"
       >
-        ← Ver todos
+        <ArrowLeft size={16} aria-hidden="true" />
+        <span>Ver todos</span>
       </button>
       <button
+        type="button"
         onclick={() => verCargaLaboral(docenteActual)}
-        class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors"
-        style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border: 1px solid rgb(var(--border-primary));"
+        disabled={cargandoCarga}
+        aria-busy={cargandoCarga}
+        class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors min-h-[44px] disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border: 1px solid rgb(var(--border-primary)); --tw-ring-color: rgb(var(--accent-primary));"
       >
-        📊 Carga Laboral
+        {#if cargandoCarga}
+          <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+          <span>Cargando...</span>
+        {:else}
+          <BarChart3 size={16} aria-hidden="true" />
+          <span>Carga Laboral</span>
+        {/if}
       </button>
     </div>
 
     <div class="rounded-2xl overflow-hidden border" style="border-color: rgb(var(--border-primary));">
       <div
-        class="p-4 text-center font-bold text-lg"
+        class="p-4 text-center font-bold text-lg flex items-center justify-center gap-2"
         style="background-color: rgb(var(--accent-primary)); color: white;"
       >
-        {docenteActual.docente}
+        <Calendar size={20} aria-hidden="true" />
+        <span>{docenteActual.docente}</span>
       </div>
 
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
+          <caption class="sr-only">Horario semanal de {docenteActual.docente}</caption>
           <thead>
             <tr style="background-color: rgb(var(--bg-secondary));">
               <th
+                scope="col"
                 class="p-3 text-center font-bold uppercase tracking-wider w-16"
                 style="color: rgb(var(--text-primary));"
               >
@@ -274,6 +362,7 @@
               </th>
               {#each diasAbreviado as dia}
                 <th
+                  scope="col"
                   class="p-3 text-center font-bold uppercase tracking-wider"
                   style="color: rgb(var(--text-primary));"
                 >
@@ -283,14 +372,15 @@
             </tr>
           </thead>
           <tbody>
-            {#each Array(7) as _, horaIdx}
+            {#each Array(7) as _, horaIdx (horaIdx)}
               <tr>
-                <td
+                <th
+                  scope="row"
                   class="p-3 text-center font-bold border-t"
                   style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-secondary)); border-color: rgb(var(--border-primary));"
                 >
-                  {horaIdx + 1}
-                </td>
+                  <span aria-label={`Hora ${horaIdx + 1}`}>{horaIdx + 1}</span>
+                </th>
                 {#each dias as dia}
                   {@const slot = docenteActual[dia][horaIdx]}
                   {@const estilo = getClaseSlot(slot)}

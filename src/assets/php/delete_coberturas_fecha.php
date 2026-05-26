@@ -87,11 +87,32 @@ try {
     $clearRange = $worksheetTitle . '!A2:Z5000';
     $service->spreadsheets_values->clear($spreadsheetId, $clearRange, new Sheets\ClearValuesRequest());
 
-    // Si hay filas filtradas, escribirlas de nuevo
+    // Si hay filas filtradas, escribirlas de nuevo respetando todas las columnas
     if (count($filteredDataRows) > 0) {
+        // Calcular cantidad máxima de columnas para construir rango correcto
+        $maxCols = 0;
+        foreach ($filteredDataRows as $row) {
+            if (count($row) > $maxCols) $maxCols = count($row);
+        }
+        if ($maxCols < 1) $maxCols = 1;
+
+        // Convertir índice columna a letra (A, B, ... Z, AA, ...)
+        $colLetter = function($n) {
+            $letter = '';
+            while ($n > 0) {
+                $n--;
+                $letter = chr(65 + ($n % 26)) . $letter;
+                $n = intdiv($n, 26);
+            }
+            return $letter;
+        };
+
+        $lastCol = $colLetter($maxCols);
+        $lastRow = count($filteredDataRows) + 1;
+        $writeRange = $worksheetTitle . '!A2:' . $lastCol . $lastRow;
+
         $body = new ValueRange(['values' => $filteredDataRows]);
         $params = ['valueInputOption' => 'RAW'];
-        $writeRange = $worksheetTitle . '!A2:A' . (count($filteredDataRows) + 1);
         $service->spreadsheets_values->update($spreadsheetId, $writeRange, $body, $params);
     }
 

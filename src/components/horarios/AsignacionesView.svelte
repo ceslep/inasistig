@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { CoberturaSugerida, SugerenciaGrupo, HorarioDocente } from "../../lib/coberturaUtils";
-  import { formatoDia, formatoHora } from "../../lib/coberturaUtils";
+  import type { CoberturaSugerida, SugerenciaGrupo, HorarioDocente, CoberturaHistorica } from "../../lib/coberturaUtils";
+  import { formatoDia, formatoHora, ROLES_SIN_LIMITE, esHoraLibrePorGrupoAusente } from "../../lib/coberturaUtils";
   import horariosData from "../../lib/horarios.json";
   import Swal from "sweetalert2";
 
@@ -9,6 +9,8 @@
     fechaSeleccionada,
     coberturasSugeridas,
     gruposSugeridosAAusentar,
+    coberturasHistoricas = [],
+    gruposAusentes = [],
     loading,
     onToggle,
     onCambiarDocenteCubre,
@@ -23,6 +25,8 @@
     fechaSeleccionada: string;
     coberturasSugeridas: CoberturaSugerida[];
     gruposSugeridosAAusentar: SugerenciaGrupo[];
+    coberturasHistoricas?: CoberturaHistorica[];
+    gruposAusentes?: { grupo: string; horaInicio: number }[];
     loading: boolean;
     onToggle: (index: number) => void;
     onCambiarDocenteCubre: (index: number, docente: string) => void;
@@ -33,6 +37,52 @@
     onLiberarGrupoDesdeHora?: (grupo: string, hora: number, docenteAusente: string) => void;
     onAprobarTodo: () => void;
   } = $props();
+
+  // Conteo de ocurrencias por docente en sesión (excluyendo roles sin límite y
+  // horas que originalmente eran del grupo liberado — esas no cuentan porque
+  // el docente ya las tenía libres por ausencia de grupo).
+  const conteoSesion = $derived.by(() => {
+    const m = new Map<string, number>();
+    for (const c of coberturasSugeridas) {
+      const d = c.docenteCubre;
+      if (!d) continue;
+      if (ROLES_SIN_LIMITE.some((r) => d.includes(r))) continue;
+      if (esHoraLibrePorGrupoAusente(d, c.hora, diaSeleccionado, horariosData as HorarioDocente[], gruposAusentes)) {
+        continue;
+      }
+      m.set(d, (m.get(d) || 0) + 1);
+    }
+    return m;
+  });
+
+  // Conteo histórico mismo día
+  const conteoHistorico = $derived.by(() => {
+    const m = new Map<string, number>();
+    for (const cp of coberturasHistoricas) {
+      if (cp.estado !== "aprobado") continue;
+      if (cp.fecha !== fechaSeleccionada) continue;
+      const d = cp.docente_cubre;
+      if (!d) continue;
+      if (ROLES_SIN_LIMITE.some((r) => d.includes(r))) continue;
+      m.set(d, (m.get(d) || 0) + 1);
+    }
+    return m;
+  });
+
+  function esDuplicado(docente: string, hora: number): { dup: boolean; sesion: number; historico: number; porGrupoLiberado: boolean } {
+    if (!docente) return { dup: false, sesion: 0, historico: 0, porGrupoLiberado: false };
+    if (ROLES_SIN_LIMITE.some((r) => docente.includes(r))) return { dup: false, sesion: 0, historico: 0, porGrupoLiberado: false };
+    const horaEsLibrePorGrupo = esHoraLibrePorGrupoAusente(docente, hora, diaSeleccionado, horariosData as HorarioDocente[], gruposAusentes);
+    const s = conteoSesion.get(docente) || 0;
+    const h = conteoHistorico.get(docente) || 0;
+    // Si esta hora es libre por grupo liberado, no marcamos como duplicado real.
+    if (horaEsLibrePorGrupo) {
+      // Repite pero válido — aviso informativo si hay otros covers reales del mismo docente.
+      const repiteReal = s >= 1 || h >= 1;
+      return { dup: false, sesion: s, historico: h, porGrupoLiberado: repiteReal };
+    }
+    return { dup: s > 1 || h > 0, sesion: s, historico: h, porGrupoLiberado: false };
+  }
 
   let seleccionadas = $state(0);
   let violaciones = $state(0);
@@ -58,6 +108,15 @@
   }
 
   function abrirHorarioDocente(nombre: string) {
+    if (ROLES_SIN_LIMITE.some((r) => nombre.includes(r))) {
+      Swal.fire({
+        icon: "info",
+        title: nombre,
+        text: "Rol administrativo sin horario fijo de clases.",
+        confirmButtonText: "Cerrar",
+      });
+      return;
+    }
     const horario = (horariosData as HorarioDocente[]).find((h) => h.docente === nombre);
     if (!horario) {
       Swal.fire("Error", `No se encontró el horario para ${nombre}`, "error");
@@ -191,6 +250,7 @@
           {#each coberturasSugeridas as cov, i}
             {@const esViolacion = !!cov.violation}
             {@const checked = cov.aprobada && !esViolacion}
+            {@const dupInfo = esDuplicado(cov.docenteCubre, cov.hora)}
             <tr
               class="transition-colors"
               style="border-color: rgb(var(--border-primary)); background-color: {esViolacion ? 'rgba(239,68,68,0.05)' : 'transparent'};"
@@ -215,8 +275,8 @@
                 <select
                   value={cov.docenteCubre || ""}
                   onchange={(e) => onCambiarDocenteCubre(i, e.currentTarget.value)}
-                  class="w-full max-w-[180px] px-2 py-1.5 rounded-lg text-sm font-medium border transition-all"
-                  style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--accent-primary)); border-color: rgb(var(--border-primary));"
+                  class="w-full max-w-[180px] px-2 py-1.5 rounded-lg text-sm font-medium border transition-all {dupInfo.dup ? 'cobertura-blink-dup' : ''}"
+                  style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--accent-primary)); border-color: {dupInfo.dup ? '#ef4444' : dupInfo.porGrupoLiberado ? '#eab308' : 'rgb(var(--border-primary))'}; border-width: {dupInfo.dup || dupInfo.porGrupoLiberado ? '2px' : '1px'};"
                 >
                   {#if cov.posiblesCobradores.length > 0}
                     <optgroup label="Docentes disponibles">
@@ -231,9 +291,29 @@
                     <option value="BIBLIOTECA">BIBLIOTECA</option>
                   </optgroup>
                 </select>
+                {#if dupInfo.dup}
+                  <div class="text-xs mt-1 font-semibold" style="color: #ef4444;">
+                    ⚠️ {dupInfo.sesion > 1 ? `Repetido (${dupInfo.sesion}× hoy)` : ""}{dupInfo.sesion > 1 && dupInfo.historico > 0 ? " · " : ""}{dupInfo.historico > 0 ? `Ya cubrió ${dupInfo.historico}h en historial` : ""}
+                  </div>
+                {:else if dupInfo.porGrupoLiberado}
+                  <div class="text-xs mt-1 font-medium" style="color: #b45309;">
+                    ℹ️ Repite válido — hora libre por grupo liberado
+                  </div>
+                {/if}
               </td>
-              <td class="p-3 text-center border-t" style="border-color: rgb(var(--border-primary)); color: rgb(var(--text-secondary));">
-                {cov.grupoACubrir}
+              <td class="p-3 text-center border-t" style="border-color: rgb(var(--border-primary));">
+                {#if cov.docenteCubre}
+                  <button
+                    onclick={() => abrirHorarioDocente(cov.docenteCubre)}
+                    class="font-medium hover:underline cursor-pointer"
+                    style="color: rgb(var(--accent-primary));"
+                    title="Ver horario semanal de {cov.docenteCubre}"
+                  >
+                    {cov.grupoACubrir}
+                  </button>
+                {:else}
+                  <span style="color: rgb(var(--text-secondary));">{cov.grupoACubrir}</span>
+                {/if}
               </td>
               <td class="p-3 text-center border-t" style="border-color: rgb(var(--border-primary));">
                 {#if esViolacion}
@@ -302,3 +382,19 @@
     </button>
   </div>
 </div>
+
+<style>
+  @keyframes cobertura-blink {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+      border-color: #ef4444;
+    }
+    50% {
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15);
+      border-color: #fca5a5;
+    }
+  }
+  .cobertura-blink-dup {
+    animation: cobertura-blink 1s ease-in-out infinite;
+  }
+</style>

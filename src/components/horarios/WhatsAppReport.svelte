@@ -31,6 +31,21 @@
     return `${parseInt(d)} ${meses[parseInt(m) - 1]} ${y}`;
   }
 
+  // Horarios reales del IE de Occidente — hora 1-indexed
+  const HORAS_INICIO_REAL: Record<number, string> = {
+    1: "6:45 a.m.",
+    2: "7:35 a.m.",
+    3: "8:25 a.m.",
+    4: "9:30 a.m.",
+    5: "10:20 a.m.",
+    6: "11:10 a.m.",
+    7: "12:00 m.",
+  };
+
+  function horaReal(h: number): string {
+    return HORAS_INICIO_REAL[h] || `Hora ${h}`;
+  }
+
   async function generarImagen() {
     generando = true;
     try {
@@ -124,57 +139,83 @@
           <p class="text-sm" style="color: #9ca3af;">{formatearFecha(fechaSeleccionada)}</p>
         </div>
 
-        <div class="mb-5">
-          <p class="text-base font-semibold mb-3" style="color: #374151;">
+        {#if gruposAusentes.length > 0}
+          <div style="margin-bottom: 20px; padding: 16px; background-color: #fef3c7; border: 3px solid #f59e0b; border-radius: 12px;">
+            <p style="font-size: 16px; font-weight: bold; color: #92400e; margin: 0 0 8px 0;">
+              ⚠️ AVISO A PADRES Y ACUDIENTES
+            </p>
+            <p style="font-size: 13px; color: #78350f; margin: 0 0 12px 0; line-height: 1.5;">
+              Los siguientes grupos serán <strong>liberados antes del horario habitual</strong>. Por favor recoger a los estudiantes en la hora indicada:
+            </p>
+            <table style="width: 100%; font-size: 13px; line-height: 1.6; border-collapse: collapse;">
+              <thead>
+                <tr style="background-color: #fde68a;">
+                  <th style="padding: 8px; text-align: left; font-weight: bold; color: #92400e; border: 1px solid #f59e0b;">Grupo</th>
+                  <th style="padding: 8px; text-align: left; font-weight: bold; color: #92400e; border: 1px solid #f59e0b;">Sale desde</th>
+                  <th style="padding: 8px; text-align: left; font-weight: bold; color: #92400e; border: 1px solid #f59e0b;">Hora de salida</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each gruposAusentes as g}
+                  <tr>
+                    <td style="padding: 8px; font-weight: bold; color: #b45309; border: 1px solid #fde68a; background-color: #fffbeb;">{g.grupo}</td>
+                    <td style="padding: 8px; color: #78350f; border: 1px solid #fde68a; background-color: #fffbeb;">Hora {g.horaInicio}</td>
+                    <td style="padding: 8px; color: #78350f; border: 1px solid #fde68a; background-color: #fffbeb; font-weight: bold;">{horaReal(g.horaInicio)}</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+            <p style="font-size: 11px; color: #92400e; margin: 10px 0 0 0; font-style: italic;">
+              Compartir esta información con los acudientes vía WhatsApp.
+            </p>
+          </div>
+        {/if}
+
+        <div style="margin-bottom: 20px;">
+          <p style="font-size: 15px; font-weight: 600; margin: 0 0 12px 0; color: #374151;">
             Coberturas asignadas ({coberturas.length})
           </p>
-          <table class="w-full text-sm" style="line-height: 1.6;">
+          <table style="width: 100%; font-size: 13px; line-height: 1.6; border-collapse: collapse;">
             <thead>
               <tr style="background-color: #f3f4f6;">
-                <th class="p-3 text-left font-bold" style="color: #374151;">Hora</th>
-                <th class="p-3 text-left font-bold" style="color: #374151;">Ausente</th>
-                <th class="p-3 text-left font-bold" style="color: #374151;">Cubre</th>
+                <th style="padding: 10px; text-align: left; font-weight: bold; color: #374151;">Hora</th>
+                <th style="padding: 10px; text-align: left; font-weight: bold; color: #374151;">Ausente</th>
+                <th style="padding: 10px; text-align: left; font-weight: bold; color: #374151;">Cubre</th>
               </tr>
             </thead>
             <tbody>
               {#each coberturas as cov}
-                <tr class="border-b" style="border-color: #f3f4f6;">
-                  <td class="p-3 font-semibold" style="color: #1e40af;">{formatoHora(cov.hora)}</td>
-                  <td class="p-3" style="color: #6b7280;">
-                    <div class="font-medium">{cov.docenteAusente}</div>
-                    <div class="text-xs" style="color: #9ca3af;">Grupo {cov.grupoAusente || cov.grupoACubrir}</div>
+                <tr style="border-bottom: 1px solid #f3f4f6;">
+                  <td style="padding: 10px; font-weight: 600; color: #1e40af;">{formatoHora(cov.hora)}</td>
+                  <td style="padding: 10px; color: #6b7280;">
+                    <div style="font-weight: 500;">{cov.docenteAusente}</div>
+                    <div style="font-size: 11px; color: #9ca3af;">Grupo {cov.grupoAusente || cov.grupoACubrir}</div>
                   </td>
-                  <td class="p-3 font-semibold" style="color: #059669;">{cov.docenteCubre || "Por asignar"}</td>
+                  <td style="padding: 10px; font-weight: 600; color: #059669;">{cov.docenteCubre || "Por asignar"}</td>
                 </tr>
               {/each}
             </tbody>
           </table>
         </div>
 
-        <div class="pt-4 border-t" style="border-color: #e5e7eb;">
-          <p class="text-base font-bold mb-3" style="color: #374151;">INFORMACIÓN PARA PADRES Y ACUDIENTES</p>
-          <div class="text-sm" style="color: #6b7280;">
-            {#if gruposAusentes.length > 0}
-              <p class="mb-2"><strong>Grupos que no asisten:</strong></p>
-              <ul class="list-disc list-inside mb-4 pl-4">
-                {#each gruposAusentes as g}
-                  <li>Grupo {g.grupo} (desde hora {g.horaInicio})</li>
-                {/each}
-              </ul>
-            {/if}
-            {#if docentesAusentes.length > 0}
-              <p class="mb-2"><strong>Docentes ausentes:</strong></p>
-              <ul class="list-disc list-inside pl-4">
-                {#each docentesAusentes as d}
-                  <li>{d.nombre} <span class="font-semibold" style="color: #dc2626;">({d.tipo})</span></li>
-                {/each}
-              </ul>
-            {/if}
-            {#if gruposAusentes.length === 0 && docentesAusentes.length === 0}
-              <p>No hay ausencias registradas.</p>
-            {/if}
+        {#if docentesAusentes.length > 0 || gruposAusentes.length === 0}
+          <div style="padding-top: 16px; border-top: 1px solid #e5e7eb;">
+            <p style="font-size: 15px; font-weight: bold; margin: 0 0 12px 0; color: #374151;">RESUMEN DE AUSENCIAS</p>
+            <div style="font-size: 13px; color: #6b7280;">
+              {#if docentesAusentes.length > 0}
+                <p style="margin: 0 0 8px 0;"><strong>Docentes ausentes:</strong></p>
+                <ul style="list-style: disc; padding-left: 24px; margin: 0;">
+                  {#each docentesAusentes as d}
+                    <li>{d.nombre} <span style="font-weight: 600; color: #dc2626;">({d.tipo})</span></li>
+                  {/each}
+                </ul>
+              {/if}
+              {#if gruposAusentes.length === 0 && docentesAusentes.length === 0}
+                <p style="margin: 0;">No hay ausencias registradas.</p>
+              {/if}
+            </div>
           </div>
-        </div>
+        {/if}
 
         <div class="text-center text-sm pt-4 mt-4 border-t" style="color: #9ca3af;">
           Generado por Inasistig
