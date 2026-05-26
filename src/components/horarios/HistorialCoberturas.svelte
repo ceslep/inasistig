@@ -8,10 +8,12 @@
     coberturasHistoricas,
     loading,
     onReload,
+    onGenerarReporte,
   }: {
     coberturasHistoricas: CoberturaHistorica[];
     loading: boolean;
     onReload: () => void;
+    onGenerarReporte?: (fecha: string) => void;
   } = $props();
 
   let filterFechaDesde = $state("");
@@ -24,6 +26,13 @@
       return true;
     })
   );
+
+  const fechasDisponibles = $derived.by(() => {
+    const fechas = [...new Set(filtradas.map((c) => c.fecha))].sort().reverse();
+    return fechas;
+  });
+
+  let fechaSeleccionadaReporte = $state("");
 
   async function eliminarCobertura(c: CoberturaHistorica) {
     const result = await Swal.fire({
@@ -50,7 +59,33 @@
 
 <div class="rounded-2xl border" style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--card-bg));">
   <div class="p-4 border-b" style="border-color: rgb(var(--border-primary));">
-    <h2 class="text-lg font-bold" style="color: rgb(var(--text-primary));">Historial de Coberturas</h2>
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="text-lg font-bold" style="color: rgb(var(--text-primary));">Historial de Coberturas</h2>
+      {#if fechasDisponibles.length > 0 && onGenerarReporte}
+        <div class="flex items-center gap-2">
+          <select
+            bind:value={fechaSeleccionadaReporte}
+            class="px-3 py-1.5 rounded-lg text-sm border"
+            style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border-color: rgb(var(--border-primary));"
+          >
+            <option value="">Seleccionar fecha...</option>
+            {#each fechasDisponibles as fecha}
+              {@const dia = filtradas.find(c => c.fecha === fecha)?.dia_semana}
+              <option value={fecha}>{formatoDia(dia || "")} {fecha}</option>
+            {/each}
+          </select>
+          <button
+            onclick={() => fechaSeleccionadaReporte && onGenerarReporte(fechaSeleccionadaReporte)}
+            disabled={!fechaSeleccionadaReporte}
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+            style="background-color: rgb(var(--accent-primary)); color: white;"
+            title="Generar reporte PDF del día"
+          >
+            📄 Generar PDF
+          </button>
+        </div>
+      {/if}
+    </div>
     <p class="text-xs mt-1" style="color: rgb(var(--text-secondary));">
       {filtradas.length} registro(s) • Hoja: <span class="font-mono">historial</span>
     </p>

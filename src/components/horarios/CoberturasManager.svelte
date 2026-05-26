@@ -26,7 +26,7 @@
   import WhatsAppReport from "./WhatsAppReport.svelte";
   import Swal from "sweetalert2";
   import ModuleHeader from "../ModuleHeader.svelte";
-  import { Flame, GraduationCap, Car, Heart, Shield, Stethoscope, Briefcase, Calendar, Users, Scale, Skull, Laptop, Award } from "@lucide/svelte";
+  import { Flame, GraduationCap, Car, Heart, Shield, Stethoscope, Briefcase, Calendar, Users, Scale, Skull, Laptop, Award,SportShoe } from "@lucide/svelte";
   import DatePicker from "../anotador/DatePicker.svelte";
 
   const TIPOS_ICONOS: Record<string, { icono: any; color: string }> = {
@@ -36,6 +36,7 @@
     "FAMILIAR": { icono: Heart, color: "#ec4899" },
     "FUERZA MAYOR": { icono: Shield, color: "#6366f1" },
     "INCAPACIDAD": { icono: Stethoscope, color: "#ef4444" },
+    "INTERCOLEGIADOS": { icono: SportShoe, color: "#ef4466" },
     "LICENCIA": { icono: Award, color: "#eab308" },
     "LUTO": { icono: Skull, color: "#1f2937" },
     "MEDICO": { icono: Stethoscope, color: "#10b981" },
@@ -73,6 +74,12 @@
   let vistaPreviaReporte = $state(false);
   let mostrarModalTipoAusencia = $state(false);
   let docenteSeleccionado = $state("");
+  let mostrarReportePDF = $state(false);
+  let coberturasReportePDF = $state<CoberturaSugerida[]>([]);
+  let gruposReportePDF = $state<{ grupo: string; horaInicio: number }[]>([]);
+  let diaReportePDF = $state("");
+  let fechaReportePDF = $state("");
+  let permitirRepetir = $state(false);
 
   const isDev = import.meta.env.DEV;
 
@@ -190,7 +197,8 @@ function recalcularCoberturas() {
       coberturasHistoricas,
       diaSeleccionado,
       fechaSeleccionada,
-      gruposAusentes
+      gruposAusentes,
+      permitirRepetir
     );
 
     // B1: Merge — preservar docenteCubre manual donde el slot persiste
@@ -500,7 +508,8 @@ function recalcularCoberturas() {
         horasCubiertasSemana,
         indiceAusencias,
         coberturasSugeridas,
-        gruposAusentes
+        gruposAusentes,
+        permitirRepetir
       ).map((c) => c.docente);
 
       const docenteCubreActual = cov.docenteCubre;
@@ -527,6 +536,33 @@ function recalcularCoberturas() {
 
   function goToStep(s: number) {
     step = s;
+  }
+
+  function generarReporteDelDia(fecha: string) {
+    const delDia = coberturasHistoricas.filter((c) => c.fecha === fecha);
+    if (delDia.length === 0) {
+      Swal.fire("Sin datos", "No hay coberturas para esa fecha", "info");
+      return;
+    }
+
+    diaReportePDF = delDia[0].dia_semana;
+    fechaReportePDF = fecha;
+
+    const gruposUnicos = [...new Set(delDia.filter((c) => c.grupo_ausente && c.grupo_ausente !== "").map((c) => c.grupo_ausente))];
+    gruposReportePDF = gruposUnicos.map((g) => ({ grupo: g, horaInicio: 1 }));
+
+    coberturasReportePDF = delDia.map((c): CoberturaSugerida => ({
+      hora: c.hora,
+      docenteAusente: c.docente_ausente,
+      grupoAusente: c.grupo_ausente,
+      docenteCubre: c.docente_cubre,
+      grupoACubrir: c.grupo_a_cubrir,
+      aprobada: c.estado === "aprobado",
+      posiblesCobradores: [],
+      motivoAusencia: c.motivo,
+    }));
+
+    mostrarReportePDF = true;
   }
 
   onMount(() => {
@@ -559,7 +595,7 @@ function recalcularCoberturas() {
   </div>
 
   {#if subView === "historial"}
-    <HistorialCoberturas {coberturasHistoricas} {loading} onReload={loadHistorico} />
+    <HistorialCoberturas {coberturasHistoricas} {loading} onReload={loadHistorico} onGenerarReporte={generarReporteDelDia} />
   {:else}
     {#if step >= 1}
       <div class="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
@@ -701,6 +737,7 @@ function recalcularCoberturas() {
         {gruposAusentes}
         slots={slotsConAusencia}
         {loading}
+        bind:permitirRepetir
         onGenerar={generarAsignaciones}
         onBack={() => step = 1}
         onOpenGruposModal={() => mostrarModalGrupos = true}
@@ -831,6 +868,7 @@ function recalcularCoberturas() {
               { tipo: "FAMILIAR", icono: Heart, color: "#ec4899" },
               { tipo: "FUERZA MAYOR", icono: Shield, color: "#6366f1" },
               { tipo: "INCAPACIDAD", icono: Stethoscope, color: "#ef4444" },
+              { tipo: "INTERCOLEGIADOS", icono: SportShoe, color: "#aa4466" },
               { tipo: "LICENCIA", icono: Award, color: "#eab308" },
               { tipo: "LUTO", icono: Skull, color: "#1f2937" },
               { tipo: "MEDICO", icono: Stethoscope, color: "#10b981" },
@@ -874,6 +912,17 @@ function recalcularCoberturas() {
         {gruposAusentes}
         {docentesAusentes}
         onClose={() => mostrarReporteWhatsApp = false}
+      />
+    {/if}
+
+    {#if mostrarReportePDF}
+      <WhatsAppReport
+        diaSeleccionado={diaReportePDF}
+        fechaSeleccionada={fechaReportePDF}
+        coberturas={coberturasReportePDF}
+        gruposAusentes={gruposReportePDF}
+        modoPDF={true}
+        onClose={() => mostrarReportePDF = false}
       />
     {/if}
 

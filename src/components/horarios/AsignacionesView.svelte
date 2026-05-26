@@ -324,7 +324,13 @@
                   <span class="px-2 py-1 rounded text-xs font-bold bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-200">
                     ✓ Aprobada
                   </span>
-                {:else}
+                {/if}
+                {#if cov.porGrupoAusente}
+                  <span class="ml-1 text-xs font-medium" style="color: rgb(var(--accent-primary));" title="Cubre hora libre por ausencia de grupo">
+                    ↻ grado liberado
+                  </span>
+                {/if}
+                {#if !esViolacion && !cov.aprobada}
                   <span class="px-2 py-1 rounded text-xs font-bold bg-zinc-100 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400">
                     Pendiente
                   </span>

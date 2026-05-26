@@ -12,6 +12,7 @@
     gruposAusentes,
     slots,
     loading = false,
+    permitirRepetir = $bindable(false),
     onGenerar,
     onBack,
     onOpenGruposModal,
@@ -22,6 +23,7 @@
     gruposAusentes: GrupoAusente[];
     slots: SlotInfo[];
     loading?: boolean;
+    permitirRepetir?: boolean;
     onGenerar: () => void;
     onBack: () => void;
     onOpenGruposModal?: () => void;
@@ -192,6 +194,11 @@
       <span class="text-zinc-500">Por docente/grupo ausente</span>
     </div>
   </div>
+
+  <label class="flex items-center gap-2 mt-4 cursor-pointer">
+    <input type="checkbox" bind:checked={permitirRepetir} class="w-4 h-4" style="accent-color: rgb(var(--accent-primary));" />
+    <span style="color: rgb(var(--text-primary));">Permitir repetir (mismo docente varias horas)</span>
+  </label>
 
   <button
     onclick={onGenerar}

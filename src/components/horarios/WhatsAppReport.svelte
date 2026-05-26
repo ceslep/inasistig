@@ -12,6 +12,7 @@
     coberturas,
     gruposAusentes = [],
     docentesAusentes = [],
+    modoPDF = false,
     onClose,
   }: {
     diaSeleccionado: string;
@@ -19,6 +20,7 @@
     coberturas: CoberturaSugerida[];
     gruposAusentes?: Array<{ grupo: string; horaInicio: number }>;
     docentesAusentes?: DocenteAusente[];
+    modoPDF?: boolean;
     onClose: () => void;
   } = $props();
 
@@ -132,118 +134,199 @@
     </div>
 
     <div class="flex-1 overflow-y-auto p-4 min-h-0">
-      <div id="report-card" class="bg-white rounded-lg p-5 text-gray-800" style="font-family: Arial, sans-serif; background-color: #ffffff; color: #374151;">
-        <div class="text-center mb-5 pb-4 border-b" style="border-color: #e5e7eb;">
-          <h1 class="text-xl font-bold" style="color: #1e40af;">INSTITUTO GUATICA</h1>
-          <p class="text-base font-medium" style="color: #6b7280;">Reporte de Coberturas - {formatoDia(diaSeleccionado)}</p>
-          <p class="text-sm" style="color: #9ca3af;">{formatearFecha(fechaSeleccionada)}</p>
-        </div>
+      {#if modoPDF}
+        <div id="report-card" class="bg-white text-black" style="font-family: Arial, sans-serif; background-color: #ffffff; color: #000000; padding: 40px 50px; max-width: 8.5in; margin: 0 auto;">
+          <div class="text-center mb-6" style="border-bottom: 2px solid #000; padding-bottom: 12px;">
+            <h1 class="text-2xl font-bold" style="color: #000; margin: 0 0 4px 0;">INSTITUCION EDUCATIVA</h1>
+            <h2 class="text-xl font-bold" style="color: #000; margin: 0;">INSTITUTO GUATICA</h2>
+            <p class="text-sm" style="color: #333; margin: 8px 0 0 0;">Reporte de Coberturas - {formatoDia(diaSeleccionado)}</p>
+            <p class="text-sm" style="color: #333; margin: 4px 0 0 0;">{formatearFecha(fechaSeleccionada)}</p>
+          </div>
 
-        {#if gruposAusentes.length > 0}
-          <div style="margin-bottom: 20px; padding: 16px; background-color: #fef3c7; border: 3px solid #f59e0b; border-radius: 12px;">
-            <p style="font-size: 16px; font-weight: bold; color: #92400e; margin: 0 0 8px 0;">
-              ⚠️ AVISO A PADRES Y ACUDIENTES
-            </p>
-            <p style="font-size: 13px; color: #78350f; margin: 0 0 12px 0; line-height: 1.5;">
-              Los siguientes grupos serán <strong>liberados antes del horario habitual</strong>. Por favor recoger a los estudiantes en la hora indicada:
-            </p>
-            <table style="width: 100%; font-size: 13px; line-height: 1.6; border-collapse: collapse;">
+          {#if gruposAusentes.filter(g => g.horaInicio === 1).length > 0}
+            <div style="margin: 16px 0;">
+              <p class="font-bold" style="margin: 0 0 8px 0; text-decoration: underline;">GRUPOS QUE NO ASISTEN:</p>
+              <ul style="list-style: disc; padding-left: 24px; margin: 0;">
+                {#each gruposAusentes.filter(g => g.horaInicio === 1) as g}
+                  <li>Grupo {g.grupo} (desde hora {g.horaInicio})</li>
+                {/each}
+              </ul>
+            </div>
+          {/if}
+
+          <div style="margin: 16px 0;">
+            <p class="font-bold" style="margin: 0 0 8px 0; text-decoration: underline;">COBERTURAS DEL DIA:</p>
+            <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
               <thead>
-                <tr style="background-color: #fde68a;">
-                  <th style="padding: 8px; text-align: left; font-weight: bold; color: #92400e; border: 1px solid #f59e0b;">Grupo</th>
-                  <th style="padding: 8px; text-align: left; font-weight: bold; color: #92400e; border: 1px solid #f59e0b;">Sale desde</th>
-                  <th style="padding: 8px; text-align: left; font-weight: bold; color: #92400e; border: 1px solid #f59e0b;">Hora de salida</th>
+                <tr style="background-color: #f3f4f6;">
+                  <th style="padding: 6px; text-align: left; font-weight: bold; border: 1px solid #000;">Hora</th>
+                  <th style="padding: 6px; text-align: left; font-weight: bold; border: 1px solid #000;">Ausente</th>
+                  <th style="padding: 6px; text-align: left; font-weight: bold; border: 1px solid #000;">Cubre</th>
+                  <th style="padding: 6px; text-align: left; font-weight: bold; border: 1px solid #000;">Grupo</th>
                 </tr>
               </thead>
               <tbody>
-                {#each gruposAusentes as g}
+                {#each coberturas as cov}
                   <tr>
-                    <td style="padding: 8px; font-weight: bold; color: #b45309; border: 1px solid #fde68a; background-color: #fffbeb;">{g.grupo}</td>
-                    <td style="padding: 8px; color: #78350f; border: 1px solid #fde68a; background-color: #fffbeb;">Hora {g.horaInicio}</td>
-                    <td style="padding: 8px; color: #78350f; border: 1px solid #fde68a; background-color: #fffbeb; font-weight: bold;">{horaReal(g.horaInicio)}</td>
+                    <td style="padding: 6px; border: 1px solid #000;">{formatoHora(cov.hora)}</td>
+                    <td style="padding: 6px; border: 1px solid #000;">{cov.docenteAusente}</td>
+                    <td style="padding: 6px; border: 1px solid #000;">{cov.docenteCubre || "Por asignar"}</td>
+                    <td style="padding: 6px; border: 1px solid #000;">{cov.grupoAusente || cov.grupoACubrir}</td>
                   </tr>
                 {/each}
               </tbody>
             </table>
-            <p style="font-size: 11px; color: #92400e; margin: 10px 0 0 0; font-style: italic;">
-              Compartir esta información con los acudientes vía WhatsApp.
-            </p>
           </div>
-        {/if}
 
-        <div style="margin-bottom: 20px;">
-          <p style="font-size: 15px; font-weight: 600; margin: 0 0 12px 0; color: #374151;">
-            Coberturas asignadas ({coberturas.length})
-          </p>
-          <table style="width: 100%; font-size: 13px; line-height: 1.6; border-collapse: collapse;">
-            <thead>
-              <tr style="background-color: #f3f4f6;">
-                <th style="padding: 10px; text-align: left; font-weight: bold; color: #374151;">Hora</th>
-                <th style="padding: 10px; text-align: left; font-weight: bold; color: #374151;">Ausente</th>
-                <th style="padding: 10px; text-align: left; font-weight: bold; color: #374151;">Cubre</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each coberturas as cov}
-                <tr style="border-bottom: 1px solid #f3f4f6;">
-                  <td style="padding: 10px; font-weight: 600; color: #1e40af;">{formatoHora(cov.hora)}</td>
-                  <td style="padding: 10px; color: #6b7280;">
-                    <div style="font-weight: 500;">{cov.docenteAusente}</div>
-                    <div style="font-size: 11px; color: #9ca3af;">Grupo {cov.grupoAusente || cov.grupoACubrir}</div>
-                  </td>
-                  <td style="padding: 10px; font-weight: 600; color: #059669;">{cov.docenteCubre || "Por asignar"}</td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
-
-        {#if docentesAusentes.length > 0 || gruposAusentes.length === 0}
-          <div style="padding-top: 16px; border-top: 1px solid #e5e7eb;">
-            <p style="font-size: 15px; font-weight: bold; margin: 0 0 12px 0; color: #374151;">RESUMEN DE AUSENCIAS</p>
-            <div style="font-size: 13px; color: #6b7280;">
-              {#if docentesAusentes.length > 0}
-                <p style="margin: 0 0 8px 0;"><strong>Docentes ausentes:</strong></p>
-                <ul style="list-style: disc; padding-left: 24px; margin: 0;">
-                  {#each docentesAusentes as d}
-                    <li>{d.nombre} <span style="font-weight: 600; color: #dc2626;">({d.tipo})</span></li>
-                  {/each}
-                </ul>
-              {/if}
-              {#if gruposAusentes.length === 0 && docentesAusentes.length === 0}
-                <p style="margin: 0;">No hay ausencias registradas.</p>
-              {/if}
+          <div style="margin-top: 40px; padding-top: 16px; border-top: 1px solid #000;">
+            <div style="display: flex; justify-content: space-between; margin-top: 40px;">
+              <div style="text-align: center;">
+                <div style="width: 200px; border-bottom: 1px solid #000; margin-bottom: 4px;">&nbsp;</div>
+                <p style="margin: 0; font-size: 11px;">Firma Director(a)</p>
+              </div>
+              <div style="text-align: center;">
+                <div style="width: 150px; border-bottom: 1px solid #000; margin-bottom: 4px;">&nbsp;</div>
+                <p style="margin: 0; font-size: 11px;">Fecha</p>
+              </div>
             </div>
           </div>
-        {/if}
 
-        <div class="text-center text-sm pt-4 mt-4 border-t" style="color: #9ca3af;">
-          Generado por Inasistig
+          <div class="text-center" style="margin-top: 30px; font-size: 10px; color: #666;">
+            Generado por Sistema de Inasistencias
+          </div>
         </div>
-      </div>
+      {:else}
+        <div id="report-card" class="bg-white rounded-lg p-5 text-gray-800" style="font-family: Arial, sans-serif; background-color: #ffffff; color: #374151;">
+          <div class="text-center mb-5 pb-4 border-b" style="border-color: #e5e7eb;">
+            <h1 class="text-xl font-bold" style="color: #1e40af;">INSTITUTO GUATICA</h1>
+            <p class="text-base font-medium" style="color: #6b7280;">Reporte de Coberturas - {formatoDia(diaSeleccionado)}</p>
+            <p class="text-sm" style="color: #9ca3af;">{formatearFecha(fechaSeleccionada)}</p>
+          </div>
+
+          {#if gruposAusentes.filter(g => g.horaInicio === 1).length > 0}
+            <div style="margin-bottom: 20px; padding: 16px; background-color: #fef3c7; border: 3px solid #f59e0b; border-radius: 12px;">
+              <p style="font-size: 16px; font-weight: bold; color: #92400e; margin: 0 0 8px 0;">
+                ⚠️ AVISO A PADRES Y ACUDIENTES
+              </p>
+              <p style="font-size: 13px; color: #78350f; margin: 0 0 12px 0; line-height: 1.5;">
+                Los siguientes grupos <strong>NO ASISTIRÁN</strong> el día de hoy. Por favor no enviar los estudiantes al colegio:
+              </p>
+              <table style="width: 100%; font-size: 13px; line-height: 1.6; border-collapse: collapse;">
+                <thead>
+                  <tr style="background-color: #fde68a;">
+                    <th style="padding: 8px; text-align: left; font-weight: bold; color: #92400e; border: 1px solid #f59e0b;">Grupo</th>
+                    <th style="padding: 8px; text-align: left; font-weight: bold; color: #92400e; border: 1px solid #f59e0b;">No asisten desde</th>
+                    <th style="padding: 8px; text-align: left; font-weight: bold; color: #92400e; border: 1px solid #f59e0b;">Hora de salida</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each gruposAusentes.filter(g => g.horaInicio === 1) as g}
+                    <tr>
+                      <td style="padding: 8px; font-weight: bold; color: #b45309; border: 1px solid #fde68a; background-color: #fffbeb;">{g.grupo}</td>
+                      <td style="padding: 8px; color: #78350f; border: 1px solid #fde68a; background-color: #fffbeb;">Hora {g.horaInicio}</td>
+                      <td style="padding: 8px; color: #78350f; border: 1px solid #fde68a; background-color: #fffbeb; font-weight: bold;">{horaReal(g.horaInicio)}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+              <p style="font-size: 11px; color: #92400e; margin: 10px 0 0 0; font-style: italic;">
+                Compartir esta información con los acudientes vía WhatsApp.
+              </p>
+            </div>
+          {/if}
+
+          <div style="margin-bottom: 20px;">
+            <p style="font-size: 15px; font-weight: 600; margin: 0 0 12px 0; color: #374151;">
+              Coberturas asignadas ({coberturas.length})
+            </p>
+            <table style="width: 100%; font-size: 13px; line-height: 1.6; border-collapse: collapse;">
+              <thead>
+                <tr style="background-color: #f3f4f6;">
+                  <th style="padding: 10px; text-align: left; font-weight: bold; color: #374151;">Hora</th>
+                  <th style="padding: 10px; text-align: left; font-weight: bold; color: #374151;">Ausente</th>
+                  <th style="padding: 10px; text-align: left; font-weight: bold; color: #374151;">Cubre</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each coberturas as cov}
+                  <tr style="border-bottom: 1px solid #f3f4f6;">
+                    <td style="padding: 10px; font-weight: 600; color: #1e40af;">{formatoHora(cov.hora)}</td>
+                    <td style="padding: 10px; color: #6b7280;">
+                      <div style="font-weight: 500;">{cov.docenteAusente}</div>
+                      <div style="font-size: 11px; color: #9ca3af;">Grupo {cov.grupoAusente || cov.grupoACubrir}</div>
+                    </td>
+                    <td style="padding: 10px; font-weight: 600; color: #059669;">{cov.docenteCubre || "Por asignar"}</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+
+          {#if docentesAusentes.length > 0 || gruposAusentes.length === 0}
+            <div style="padding-top: 16px; border-top: 1px solid #e5e7eb;">
+              <p style="font-size: 15px; font-weight: bold; margin: 0 0 12px 0; color: #374151;">RESUMEN DE AUSENCIAS</p>
+              <div style="font-size: 13px; color: #6b7280;">
+                {#if docentesAusentes.length > 0}
+                  <p style="margin: 0 0 8px 0;"><strong>Docentes ausentes:</strong></p>
+                  <ul style="list-style: disc; padding-left: 24px; margin: 0;">
+                    {#each docentesAusentes as d}
+                      <li>{d.nombre} <span style="font-weight: 600; color: #dc2626;">({d.tipo})</span></li>
+                    {/each}
+                  </ul>
+                {/if}
+                {#if gruposAusentes.length === 0 && docentesAusentes.length === 0}
+                  <p style="margin: 0;">No hay ausencias registradas.</p>
+                {/if}
+              </div>
+            </div>
+          {/if}
+
+          <div class="text-center text-sm pt-4 mt-4 border-t" style="color: #9ca3af;">
+            Generado por Inasistig
+          </div>
+        </div>
+      {/if}
     </div>
 
     <div class="flex gap-3 p-4 border-t shrink-0" style="border-color: rgb(var(--border-primary));">
-      <button
-        onclick={generarImagen}
-        disabled={generando}
-        class="flex-1 py-2 rounded-lg font-medium transition-all flex items-center justify-center gap-2"
-        style="background-color: rgb(var(--accent-primary)); color: white;"
-      >
-        {#if generando}
-          Generando...
-        {:else}
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Descargar Imagen
-        {/if}
-      </button>
-      <button
-        onclick={onClose}
-        class="flex-1 py-2 rounded-lg font-medium transition-all"
-        style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border: 1px solid rgb(var(--border-primary));"
-      >
-        Cerrar
-      </button>
+      {#if modoPDF}
+        <button
+          onclick={() => window.print()}
+          class="flex-1 py-2 rounded-lg font-medium transition-all flex items-center justify-center gap-2"
+          style="background-color: rgb(var(--accent-primary)); color: white;"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Imprimir / Guardar PDF
+        </button>
+        <button
+          onclick={onClose}
+          class="flex-1 py-2 rounded-lg font-medium transition-all"
+          style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border: 1px solid rgb(var(--border-primary));"
+        >
+          Cerrar
+        </button>
+      {:else}
+        <button
+          onclick={generarImagen}
+          disabled={generando}
+          class="flex-1 py-2 rounded-lg font-medium transition-all flex items-center justify-center gap-2"
+          style="background-color: rgb(var(--accent-primary)); color: white;"
+        >
+          {#if generando}
+            Generando...
+          {:else}
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Descargar Imagen
+          {/if}
+        </button>
+        <button
+          onclick={onClose}
+          class="flex-1 py-2 rounded-lg font-medium transition-all"
+          style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border: 1px solid rgb(var(--border-primary));"
+        >
+          Cerrar
+        </button>
+      {/if}
     </div>
   </div>
 </div>

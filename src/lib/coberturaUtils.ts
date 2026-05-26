@@ -31,6 +31,7 @@ export type CoberturaSugerida = {
   violation?: string;
   posiblesCobradores: string[];
   motivoAusencia: string;
+  porGrupoAusente?: boolean;
 };
 
 export type SesionCobertura = {
@@ -55,7 +56,7 @@ export type CoberturaHistorica = {
 
 export const DIAS = ["lunes", "martes", "miercoles", "jueves", "viernes"] as const;
 export const DIAS_ABREV = ["LUN", "MAR", "MIE", "JUE", "VIE"];
-export const ROLES_SIN_LIMITE = ["ORIENTACION", "ORIENTADOR", "COORDINADOR", "BIBLIOTECA"];
+export const ROLES_SIN_LIMITE = ["ORIENTACION", "ORIENTADOR", "COORDINADOR", "BIBLIOTECA","AUDITORIO"];
 
 export function getGruposDisponibles(horarios: HorarioDocente[]): string[] {
   const grupos = new Set<string>();
@@ -259,7 +260,8 @@ export function getPosiblesCobradoresParaSlot(
   horasCubiertasSemana: Map<string, number>,
   indiceAusencias: Map<string, number>,
   asignacionesSesion: CoberturaSugerida[],
-  ausenciasGrupo: { grupo: string; horaInicio: number }[] = []
+  ausenciasGrupo: { grupo: string; horaInicio: number }[] = [],
+  permitirRepetir = false
 ): { docente: string; indice: number }[] {
   return horarios
     .filter((h) => {
@@ -293,10 +295,10 @@ export function getPosiblesCobradoresParaSlot(
       if (yaAsignadoEnSesion && !esSinLimite && !slotLibrePorGrupo) return false;
 
       const cargaSesion = cargaDiariaSesion.get(h.docente) || 0;
-      if (!esSinLimite && !slotLibrePorGrupo && cargaSesion >= 1) return false;
+      if (!permitirRepetir && !esSinLimite && !slotLibrePorGrupo && cargaSesion >= 1) return false;
 
       const horasSemana = horasCubiertasSemana.get(h.docente) || 0;
-      if (!esSinLimite && !slotLibrePorGrupo && horasSemana >= 2) return false;
+      if (!permitirRepetir && !esSinLimite && !slotLibrePorGrupo && horasSemana >= 2) return false;
 
       return true;
     })
@@ -312,7 +314,8 @@ export function asignarAutomaticamente(
   coberturasPrevias: CoberturaHistorica[],
   dia: string,
   fechaActual: string,
-  ausenciasGrupo: { grupo: string; horaInicio: number }[] = []
+  ausenciasGrupo: { grupo: string; horaInicio: number }[] = [],
+  permitirRepetir = false
 ): CoberturaSugerida[] {
   const coberturas: CoberturaSugerida[] = [];
   const cargaDiariaSesion = construirCargaDiariaHistorica(coberturasPrevias, fechaActual);
@@ -423,6 +426,9 @@ export function asignarAutomaticamente(
       violation = posiblesCobradores.length === 0 ? "⚠️ Sin docentes disponibles" : "⚠️ Todos ocupados";
     }
 
+    const esSinLimite = mejorCobrador ? ROLES_SIN_LIMITE.some((r) => mejorCobrador.includes(r)) : false;
+    const slotLibre = mejorCobrador ? esHoraLibrePorGrupoAusente(mejorCobrador, slot.hora, dia, horarios, ausenciasGrupo) : false;
+
     coberturas.push({
       hora: slot.hora,
       docenteAusente: slot.docenteAusente || slot.docente,
@@ -433,21 +439,12 @@ export function asignarAutomaticamente(
       violation,
       posiblesCobradores: posiblesCobradores.map((c) => c.docente),
       motivoAusencia: slot.motivoAusencia || "",
+      porGrupoAusente: slotLibre,
     });
 
-    if (mejorCobrador) {
-      const esSinLimite = ROLES_SIN_LIMITE.some((r) => mejorCobrador.includes(r));
-      const slotLibre = esHoraLibrePorGrupoAusente(
-        mejorCobrador,
-        slot.hora,
-        dia,
-        horarios,
-        ausenciasGrupo
-      );
-      if (!esSinLimite && !slotLibre) {
-        cargaDiariaSesion.set(mejorCobrador, (cargaDiariaSesion.get(mejorCobrador) || 0) + 1);
-        horasCubiertasSemana.set(mejorCobrador, (horasCubiertasSemana.get(mejorCobrador) || 0) + 1);
-      }
+    if (mejorCobrador && !esSinLimite && !slotLibre && !permitirRepetir) {
+      cargaDiariaSesion.set(mejorCobrador, (cargaDiariaSesion.get(mejorCobrador) || 0) + 1);
+      horasCubiertasSemana.set(mejorCobrador, (horasCubiertasSemana.get(mejorCobrador) || 0) + 1);
     }
   }
 
