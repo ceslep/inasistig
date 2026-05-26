@@ -12,6 +12,10 @@
     getSlotsLibresPorAusencia,
     formatoDia,
     ROLES_SIN_LIMITE,
+    getPosiblesCobradoresParaSlot,
+    construirCargaDiariaSesion,
+    construirCargaDiariaHistorica,
+    getSemanaDelAno,
   } from "../../lib/coberturaUtils";
   import { coberturaSheetsService } from "../../services/coberturaSheetsService";
   import type { SlotInfo, CoberturaSugerida, CoberturaHistorica, Ausencia, SugerenciaGrupo, HorarioDocente } from "../../lib/coberturaUtils";
@@ -161,13 +165,87 @@ function recalcularCoberturas() {
       return;
     }
 
-    coberturasSugeridas = asignarAutomaticamente(
+    const previas = coberturasSugeridas;
+    const nuevas = asignarAutomaticamente(
       libresPorAusencia,
       horariosData,
       coberturasHistoricas,
       diaSeleccionado,
       fechaSeleccionada
     );
+
+    // B1: Merge — preservar docenteCubre manual donde el slot persiste
+    const claveSlot = (c: { hora: number; docenteAusente: string; grupoAusente: string }) =>
+      `${c.hora}|${c.docenteAusente}|${c.grupoAusente}`;
+    const previasMap = new Map<string, CoberturaSugerida>();
+    for (const p of previas) {
+      if (p.docenteCubre) previasMap.set(claveSlot(p), p);
+    }
+
+    const merged: CoberturaSugerida[] = nuevas.map((n) => {
+      const prev = previasMap.get(claveSlot(n));
+      if (prev && prev.docenteCubre) {
+        return {
+          ...n,
+          docenteCubre: prev.docenteCubre,
+          aprobada: prev.aprobada,
+          violation: prev.violation,
+        };
+      }
+      return n;
+    });
+
+    // Conflict resolution: auto-pick que choque con manual preservado busca otro
+    const usadosPorManual = new Set<string>();
+    for (let i = 0; i < merged.length; i++) {
+      const prev = previasMap.get(claveSlot(merged[i]));
+      if (!prev || !prev.docenteCubre) continue;
+      const esSinLimite = ROLES_SIN_LIMITE.some((r) => prev.docenteCubre.includes(r));
+      if (esSinLimite) continue;
+      usadosPorManual.add(prev.docenteCubre);
+    }
+
+    for (let i = 0; i < merged.length; i++) {
+      const m = merged[i];
+      const prev = previasMap.get(claveSlot(m));
+      const fuePreservado = !!(prev && prev.docenteCubre);
+      if (fuePreservado) continue;
+      if (!m.docenteCubre) continue;
+      const esSinLimite = ROLES_SIN_LIMITE.some((r) => m.docenteCubre.includes(r));
+      if (esSinLimite) continue;
+
+      if (usadosPorManual.has(m.docenteCubre)) {
+        const alternativa = m.posiblesCobradores.find(
+          (d) => !usadosPorManual.has(d) && d !== m.docenteCubre
+        );
+        if (alternativa) {
+          merged[i] = { ...m, docenteCubre: alternativa, violation: "" };
+          usadosPorManual.add(alternativa);
+        } else {
+          // Sin alternativa: dejar vacío con violation
+          merged[i] = {
+            ...m,
+            docenteCubre: "",
+            violation: "⚠️ Sin docentes disponibles (conflicto con asignación previa)",
+          };
+        }
+      } else {
+        usadosPorManual.add(m.docenteCubre);
+      }
+    }
+
+    // Asegurar que docente preservado aparezca en posiblesCobradores
+    for (let i = 0; i < merged.length; i++) {
+      const m = merged[i];
+      if (m.docenteCubre && !m.posiblesCobradores.includes(m.docenteCubre)) {
+        const esSinLimite = ROLES_SIN_LIMITE.some((r) => m.docenteCubre.includes(r));
+        if (!esSinLimite) {
+          merged[i] = { ...m, posiblesCobradores: [m.docenteCubre, ...m.posiblesCobradores] };
+        }
+      }
+    }
+
+    coberturasSugeridas = merged;
     console.log("coberturasSugeridas.length =", coberturasSugeridas.length);
     gruposSugeridosAAusentar = analizarGruposAAusentar(
       libresPorAusencia,
@@ -194,6 +272,7 @@ function recalcularCoberturas() {
       }
     } else {
       gruposAusentes = gruposAusentes.filter((g) => g.grupo !== grupo);
+      gruposSugeridosAAusentar = gruposSugeridosAAusentar.filter((g) => g.grupo !== grupo);
     }
   }
 
@@ -215,6 +294,27 @@ function recalcularCoberturas() {
     console.log("liberarGrupoDesdeHora llamado:", grupo, hora, docenteAusente);
     const key = `${hora}-${docenteAusente}`;
     slotsExcluidos = new Set(slotsExcluidos).add(key);
+
+    // B2: Si la fila era grupo-driven, avanzar horaInicio o quitar chip del grupo
+    const slotRow = coberturasSugeridas.find(
+      (c) => c.hora === hora && c.grupoAusente === grupo
+    );
+    if (slotRow) {
+      const hayPosteriores = coberturasSugeridas.some(
+        (c) => c.grupoAusente === grupo && c.hora > hora
+      );
+      if (!hayPosteriores) {
+        gruposAusentes = gruposAusentes.filter((g) => g.grupo !== grupo);
+        gruposSugeridosAAusentar = gruposSugeridosAAusentar.filter((g) => g.grupo !== grupo);
+      } else {
+        // aplicarAusencias usa s.hora >= horaMin - 1 (s.hora 0-indexed, horaInicio 1-indexed)
+        // Para excluir hora (0-indexed) e incluir hora+1: horaInicio = hora + 2
+        gruposAusentes = gruposAusentes.map((g) =>
+          g.grupo === grupo ? { ...g, horaInicio: hora + 2 } : g
+        );
+      }
+    }
+
     recalcularCoberturas();
   }
 
@@ -325,39 +425,75 @@ function recalcularCoberturas() {
       }
     }
 
-    const previosMap = new Map<number, CoberturaSugerida>();
-    coberturasSugeridas.forEach((c, i) => {
-      if (c.aprobada) {
-        previosMap.set(i, { ...c });
-      }
-    });
-
     coberturasSugeridas[index].docenteCubre = docente;
+
+    const cargaHistorica = construirCargaDiariaHistorica(coberturasHistoricas, fechaSeleccionada);
+    const cargaDiariaSesion = construirCargaDiariaSesion(coberturasSugeridas, index, docente, cargaHistorica);
+
+    const hoy = new Date(fechaSeleccionada + "T00:00:00");
+    const hace14dias = new Date(hoy);
+    hace14dias.setDate(hoy.getDate() - 14);
+    const hace7dias = new Date(hoy);
+    hace7dias.setDate(hoy.getDate() - 7);
+
+    const horasCubiertasSemana = new Map<string, number>();
+    const indiceAusencias = new Map<string, number>();
+    const semanaActual = getSemanaDelAno(fechaSeleccionada);
+
+    for (const cp of coberturasHistoricas) {
+      if (cp.estado !== "aprobado") continue;
+      const cpSemana = getSemanaDelAno(cp.fecha);
+      if (cpSemana === semanaActual) {
+        horasCubiertasSemana.set(cp.docente_cubre, (horasCubiertasSemana.get(cp.docente_cubre) || 0) + 1);
+      }
+      const cpFecha = new Date(cp.fecha + "T00:00:00");
+      if (cpFecha >= hace14dias && cpFecha < hace7dias && cp.docente_ausente) {
+        indiceAusencias.set(cp.docente_ausente, (indiceAusencias.get(cp.docente_ausente) || 0) + 1);
+      }
+    }
 
     const libresFiltrado = getSlotsLibresPorAusencia(slotsConAusencia).filter((s) => {
       const key = `${s.hora}-${s.docenteAusente || s.docente}`;
       return !slotsExcluidos.has(key);
     });
 
-    const nuevas = asignarAutomaticamente(
-      libresFiltrado,
-      horariosData,
-      coberturasHistoricas,
-      diaSeleccionado,
-      fechaSeleccionada
-    );
+    for (let i = 0; i < coberturasSugeridas.length; i++) {
+      if (i === index) continue;
 
-    coberturasSugeridas = nuevas.map((c, i) => {
-      if (previosMap.has(i)) {
-        return previosMap.get(i)!;
-      }
-      if (i === index) {
-        return { ...c, docenteCubre: docente };
-      }
-      return c;
-    });
+      const cov = coberturasSugeridas[i];
+      const slotParaEsta = libresFiltrado.find(
+        (s) => s.hora === cov.hora && (s.docenteAusente === cov.docenteAusente || s.docente === cov.docenteAusente)
+      );
 
-    if (eraSpecialRole && docenteAnterior && !esSpecialRole) {
+      if (!slotParaEsta) continue;
+
+      const posibles = getPosiblesCobradoresParaSlot(
+        slotParaEsta,
+        diaSeleccionado,
+        horariosData,
+        libresFiltrado,
+        cargaDiariaSesion,
+        horasCubiertasSemana,
+        indiceAusencias,
+        coberturasSugeridas
+      ).map((c) => c.docente);
+
+      const docenteCubreActual = cov.docenteCubre;
+      if (docenteCubreActual && cov.aprobada && !posibles.includes(docenteCubreActual)) {
+        posibles.unshift(docenteCubreActual);
+      }
+
+      coberturasSugeridas[i] = { ...cov, posiblesCobradores: posibles };
+    }
+
+    if (docenteAnterior && docenteAnterior !== "") {
+      for (let i = 0; i < coberturasSugeridas.length; i++) {
+        if (i === index) continue;
+        coberturasSugeridas[i].posiblesCobradores = coberturasSugeridas[i].posiblesCobradores.filter((d: string) => d !== docenteAnterior);
+      }
+    }
+
+    if (eraSpecialRole && docenteAnterior && !esSpecialRole && docenteAnterior !== "") {
       for (let i = 0; i < coberturasSugeridas.length; i++) {
         if (i === index) continue;
         if (!coberturasSugeridas[i].posiblesCobradores.includes(docenteAnterior)) {
@@ -366,7 +502,7 @@ function recalcularCoberturas() {
       }
     }
 
-    if (eraSpecialRole && docenteAnterior && esSpecialRole) {
+    if (eraSpecialRole && docenteAnterior && esSpecialRole && docenteAnterior !== "") {
       for (let i = 0; i < coberturasSugeridas.length; i++) {
         if (i === index) continue;
         if (!coberturasSugeridas[i].posiblesCobradores.includes(docenteAnterior)) {
@@ -375,10 +511,10 @@ function recalcularCoberturas() {
       }
     }
 
-    if (!esSpecialRole && docenteAnterior) {
+    if (!esSpecialRole && docenteAnterior && docenteAnterior !== "") {
       for (let i = 0; i < coberturasSugeridas.length; i++) {
         if (i === index) continue;
-        coberturasSugeridas[i].posiblesCobradores = coberturasSugeridas[i].posiblesCobradores.filter((d: string) => d !== docente);
+        coberturasSugeridas[i].posiblesCobradores = coberturasSugeridas[i].posiblesCobradores.filter((d: string) => d !== docenteAnterior);
       }
     }
   }

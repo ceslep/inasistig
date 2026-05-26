@@ -164,6 +164,89 @@ export function encontrarCoberturasPosibles(
   return slots.filter((s) => s.docente === docenteCubre && s.tipo === "libre");
 }
 
+export function construirCargaDiariaHistorica(
+  coberturasPrevias: CoberturaHistorica[],
+  fechaActual: string
+): Map<string, number> {
+  const carga = new Map<string, number>();
+  for (const cp of coberturasPrevias) {
+    if (cp.estado !== "aprobado") continue;
+    if (cp.fecha !== fechaActual) continue;
+    const doc = cp.docente_cubre;
+    if (!doc) continue;
+    if (ROLES_SIN_LIMITE.some((r) => doc.includes(r))) continue;
+    carga.set(doc, (carga.get(doc) || 0) + 1);
+  }
+  return carga;
+}
+
+export function construirCargaDiariaSesion(
+  coberturas: CoberturaSugerida[],
+  indiceExcluir: number,
+  docenteNuevo: string,
+  cargaInicial?: Map<string, number>
+): Map<string, number> {
+  const carga = new Map<string, number>(cargaInicial ?? []);
+  for (let i = 0; i < coberturas.length; i++) {
+    const c = coberturas[i];
+    if (!c.docenteCubre) continue;
+    if (ROLES_SIN_LIMITE.some((r) => c.docenteCubre.includes(r))) continue;
+    if (i === indiceExcluir) {
+      if (docenteNuevo && !ROLES_SIN_LIMITE.some((r) => docenteNuevo.includes(r))) {
+        carga.set(docenteNuevo, (carga.get(docenteNuevo) || 0) + 1);
+      }
+      continue;
+    }
+    if (c.aprobada || c.docenteCubre) {
+      carga.set(c.docenteCubre, (carga.get(c.docenteCubre) || 0) + 1);
+    }
+  }
+  return carga;
+}
+
+export function getPosiblesCobradoresParaSlot(
+  slot: SlotInfo,
+  dia: string,
+  horarios: HorarioDocente[],
+  slotsLibresPorAusencia: SlotInfo[],
+  cargaDiariaSesion: Map<string, number>,
+  horasCubiertasSemana: Map<string, number>,
+  indiceAusencias: Map<string, number>,
+  asignacionesSesion: CoberturaSugerida[]
+): { docente: string; indice: number }[] {
+  return horarios
+    .filter((h) => {
+      if (slotsLibresPorAusencia.some((s) => s.docenteAusente === h.docente)) return false;
+
+      const jornada = h[dia as keyof HorarioDocente] as string[];
+      const slotDelDocente = jornada[slot.hora];
+
+      if (slotDelDocente !== "") return false;
+
+      if (slot.hora === 6) {
+        const allDaysLibre = DIAS.every((d) => h[d as keyof HorarioDocente][6] === "");
+        if (allDaysLibre) return false;
+      }
+
+      const esSinLimite = ROLES_SIN_LIMITE.some((r) => h.docente.includes(r));
+
+      const yaAsignadoEnSesion = asignacionesSesion.some((c) => c.docenteCubre === h.docente);
+      if (yaAsignadoEnSesion && !esSinLimite) return false;
+
+      const cargaSesion = cargaDiariaSesion.get(h.docente) || 0;
+      if (!esSinLimite && cargaSesion >= 1) return false;
+
+      const horasSemana = horasCubiertasSemana.get(h.docente) || 0;
+      if (!esSinLimite && horasSemana >= 2) return false;
+
+      return true;
+    })
+    .map((h) => ({
+      docente: h.docente,
+      indice: indiceAusencias.get(h.docente) || 0,
+    }));
+}
+
 export function asignarAutomaticamente(
   slotsLibresPorAusencia: SlotInfo[],
   horarios: HorarioDocente[],
@@ -172,7 +255,7 @@ export function asignarAutomaticamente(
   fechaActual: string
 ): CoberturaSugerida[] {
   const coberturas: CoberturaSugerida[] = [];
-  const cargaDiariaSesion = new Map<string, number>();
+  const cargaDiariaSesion = construirCargaDiariaHistorica(coberturasPrevias, fechaActual);
   const horasCubiertasSemana = new Map<string, number>();
   const semanaActual = getSemanaDelAno(fechaActual);
 
@@ -199,7 +282,15 @@ export function asignarAutomaticamente(
     }
   }
 
-  const slotsDisponibles = [...slotsLibresPorAusencia];
+  // B5: Dedup slots por (hora, docenteAusente|docente, grupoAusente)
+  const slotsVistos = new Set<string>();
+  const slotsDisponibles: SlotInfo[] = [];
+  for (const s of slotsLibresPorAusencia) {
+    const key = `${s.hora}-${s.docenteAusente || s.docente}-${s.grupoAusente || ""}`;
+    if (slotsVistos.has(key)) continue;
+    slotsVistos.add(key);
+    slotsDisponibles.push(s);
+  }
   console.log("asignarAutomaticamente: slotsDisponibles.length =", slotsDisponibles.length);
   const tipoCounts: Record<string, number> = {};
   for (const s of slotsDisponibles) {
@@ -210,37 +301,16 @@ export function asignarAutomaticamente(
   for (const slot of slotsDisponibles) {
     if (slot.tipo !== "libre_ausencia") continue;
 
-    const posiblesCobradores = horarios
-      .filter((h) => {
-        if (slotsLibresPorAusencia.some((s) => s.docenteAusente === h.docente)) return false;
-
-        const jornada = h[dia as keyof HorarioDocente] as string[];
-        const slotDelDocente = jornada[slot.hora];
-
-        if (slotDelDocente !== "") return false;
-
-        if (slot.hora === 6) {
-          const allDaysLibre = DIAS.every((d) => h[d as keyof HorarioDocente][6] === "");
-          if (allDaysLibre) return false;
-        }
-
-        const esSinLimite = ROLES_SIN_LIMITE.some(r => h.docente.includes(r));
-
-        const yaAsignadoEnSesion = coberturas.some((c) => c.docenteCubre === h.docente);
-        if (yaAsignadoEnSesion && !esSinLimite) return false;
-
-        const cargaSesion = cargaDiariaSesion.get(h.docente) || 0;
-        if (!esSinLimite && cargaSesion >= 1) return false;
-
-        const horasSemana = horasCubiertasSemana.get(h.docente) || 0;
-        if (!esSinLimite && horasSemana >= 2) return false;
-
-        return true;
-      })
-      .map((h) => ({
-        docente: h.docente,
-        indice: indiceAusencias.get(h.docente) || 0,
-      }));
+    const posiblesCobradores = getPosiblesCobradoresParaSlot(
+      slot,
+      dia,
+      horarios,
+      slotsLibresPorAusencia,
+      cargaDiariaSesion,
+      horasCubiertasSemana,
+      indiceAusencias,
+      coberturas
+    );
 
     let mejorCobrador = "";
     let violation = "";

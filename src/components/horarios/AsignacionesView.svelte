@@ -1,6 +1,8 @@
 <script lang="ts">
-  import type { CoberturaSugerida, SugerenciaGrupo } from "../../lib/coberturaUtils";
+  import type { CoberturaSugerida, SugerenciaGrupo, HorarioDocente } from "../../lib/coberturaUtils";
   import { formatoDia, formatoHora } from "../../lib/coberturaUtils";
+  import horariosData from "../../lib/horarios.json";
+  import Swal from "sweetalert2";
 
   let {
     diaSeleccionado,
@@ -35,10 +37,74 @@
   let seleccionadas = $state(0);
   let violaciones = $state(0);
 
+  const dias = ["lunes", "martes", "miercoles", "jueves", "viernes"] as const;
+  const diasAbreviado = ["LUN", "MAR", "MIE", "JUE", "VIE"];
+
   $effect(() => {
     seleccionadas = coberturasSugeridas.filter((c) => c.aprobada).length;
     violaciones = coberturasSugeridas.filter((c) => c.violation).length;
   });
+
+  function getClaseSlot(contenido: string): { bg: string; text: string; border: string } {
+    if (!contenido) return { bg: "bg-white dark:bg-zinc-800", text: "text-zinc-300 dark:text-zinc-500", border: "border-2 border-dashed border-zinc-300 dark:border-zinc-600" };
+    if (contenido === "DESC" || contenido === "PEDAG" || contenido === "DEESC") return { bg: "bg-orange-200 dark:bg-orange-800", text: "text-orange-800 dark:text-orange-200", border: "border border-orange-300 dark:border-orange-600" };
+    return { bg: "bg-emerald-200 dark:bg-emerald-800", text: "text-emerald-800 dark:text-emerald-200", border: "border border-emerald-300 dark:border-emerald-600" };
+  }
+
+  function formatearMateria(contenido: string): string {
+    if (!contenido) return "LIBRE";
+    if (contenido === "DESC" || contenido === "PEDAG" || contenido === "DEESC") return contenido;
+    return contenido.replace(/\n/g, " ");
+  }
+
+  function abrirHorarioDocente(nombre: string) {
+    const horario = (horariosData as HorarioDocente[]).find((h) => h.docente === nombre);
+    if (!horario) {
+      Swal.fire("Error", `No se encontró el horario para ${nombre}`, "error");
+      return;
+    }
+
+    let tableHtml = `
+      <table style="width:100%; font-size:12px; border-collapse: collapse;">
+        <thead>
+          <tr style="background-color: #f3f4f6;">
+            <th style="padding:8px; text-align:center; font-weight:bold; color:rgb(var(--text-secondary));">HORA</th>
+            ${diasAbreviado.map((d) => `<th style="padding:8px; text-align:center; font-weight:bold; color:rgb(var(--text-secondary));">${d}</th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${Array(7)
+            .fill(0)
+            .map(
+              (_, horaIdx) => `
+            <tr>
+              <td style="padding:6px; text-align:center; font-weight:bold; background-color:rgb(var(--bg-secondary)); color:rgb(var(--text-secondary));">${horaIdx + 1}</td>
+              ${dias
+                .map((dia) => {
+                  const slot = horario[dia][horaIdx];
+                  const estilo = getClaseSlot(slot);
+                  return `<td style="padding:4px; text-align:center;">
+                  <div class="px-2 py-2 rounded-lg text-xs font-bold min-h-[2.5rem] flex items-center justify-center ${estilo.bg} ${estilo.text} ${estilo.border}">
+                    ${formatearMateria(slot)}
+                  </div>
+                </td>`;
+                })
+                .join("")}
+            </tr>
+          `
+            )
+            .join("")}
+        </tbody>
+      </table>
+    `;
+
+    Swal.fire({
+      title: `Horario de ${nombre}`,
+      html: tableHtml,
+      confirmButtonText: "Cerrar",
+      width: "650px",
+    });
+  }
 </script>
 
 <div class="p-6 rounded-2xl border" style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--card-bg));">
@@ -132,8 +198,15 @@
               <td class="p-3 text-center font-bold border-t" style="border-color: rgb(var(--border-primary)); color: rgb(var(--text-primary));">
                 {formatoHora(cov.hora)}{console.log("RENDER ROW", i, cov.hora, cov.docenteAusente, cov.grupoAusente, cov.docenteCubre)}
               </td>
-              <td class="p-3 text-center border-t" style="border-color: rgb(var(--border-primary)); color: rgb(var(--text-secondary));">
-                {cov.docenteAusente}
+              <td class="p-3 text-center border-t" style="border-color: rgb(var(--border-primary));">
+                <button
+                  onclick={() => abrirHorarioDocente(cov.docenteAusente)}
+                  class="font-medium hover:underline cursor-pointer"
+                  style="color: rgb(var(--accent-primary));"
+                  title="Ver horario semanal"
+                >
+                  {cov.docenteAusente}
+                </button>
               </td>
               <td class="p-3 text-center border-t" style="border-color: rgb(var(--border-primary)); color: rgb(var(--text-secondary));">
                 {cov.grupoAusente || "-"}

@@ -9,7 +9,11 @@ import {
   asignarAutomaticamente,
   getSlotsLibresPorAusencia,
   getDiaFromFecha,
+  construirCargaDiariaSesion,
+  construirCargaDiariaHistorica,
+  getPosiblesCobradoresParaSlot,
 } from '../coberturaUtils';
+import type { CoberturaHistorica } from '../coberturaUtils';
 import {
   horariosTest,
   horariosTestConHora7Libre,
@@ -20,6 +24,7 @@ import {
   ausenciaGrupo101,
   ausenciaMixtha,
 } from './testData';
+import type { CoberturaSugerida, Ausencia } from '../coberturaUtils';
 
 describe('getSemanaDelAno', () => {
   it('debería calcular la semana correcta para una fecha', () => {
@@ -262,5 +267,323 @@ describe('asignarAutomaticamente', () => {
 
     expect(coberturas.every(c => Array.isArray(c.posiblesCobradores))).toBe(true);
     expect(coberturas.every(c => c.posiblesCobradores.length > 0)).toBe(true);
+  });
+});
+
+describe('construirCargaDiariaSesion', () => {
+  it('debería contar 1 hora cuando un docente cubre una cobertura aprobada', () => {
+    const coberturas = [
+      { hora: 0, docenteAusente: 'Ana', docenteCubre: 'Carlos', aprobada: true, posiblesCobradores: [] as string[], grupoAusente: '', grupoACubrir: '', violation: '', motivoAusencia: '' },
+    ];
+    const carga = construirCargaDiariaSesion(coberturas, -1, '');
+    expect(carga.get('Carlos')).toBe(1);
+  });
+
+  it('debería excluir el slot que se está cambiando y contar el docente nuevo', () => {
+    const coberturas = [
+      { hora: 0, docenteAusente: 'Ana', docenteCubre: 'Carlos', aprobada: true, posiblesCobradores: [] as string[], grupoAusente: '', grupoACubrir: '', violation: '', motivoAusencia: '' },
+    ];
+    const carga = construirCargaDiariaSesion(coberturas, 0, 'María');
+    expect(carga.get('Carlos')).toBeUndefined();
+    expect(carga.get('María')).toBe(1);
+  });
+
+  it('debería contar 0 para special roles', () => {
+    const coberturas = [
+      { hora: 0, docenteAusente: 'Ana', docenteCubre: 'ORIENTADOR', aprobada: true, posiblesCobradores: [] as string[], grupoAusente: '', grupoACubrir: '', violation: '', motivoAusencia: '' },
+    ];
+    const carga = construirCargaDiariaSesion(coberturas, -1, '');
+    expect(carga.get('ORIENTADOR')).toBeUndefined();
+  });
+});
+
+describe('getPosiblesCobradoresParaSlot', () => {
+  const fechaActual = '2026-05-25';
+
+  it('debería incluir docente disponible cuya hora está libre', () => {
+    const slots = getSlotsDelDia('lunes', horariosTest);
+    const slotsConAusencia = aplicarAusencias(slots, ausenciaDocenteAna, horariosTest);
+    const libresPorAusencia = getSlotsLibresPorAusencia(slotsConAusencia);
+
+    const slotAna = libresPorAusencia.find(s => s.docenteAusente === 'Ana')!;
+    const carga = new Map<string, number>();
+    const horasSemana = new Map<string, number>();
+    const indice = new Map<string, number>();
+
+    const posibles = getPosiblesCobradoresParaSlot(
+      slotAna, 'lunes', horariosTest, libresPorAusencia, carga, horasSemana, indice, []
+    );
+
+    expect(posibles.some(p => p.docente === 'Carlos')).toBe(true);
+  });
+
+  it('debería excluir al docente ausente de posibles cobradores', () => {
+    const slots = getSlotsDelDia('lunes', horariosTest);
+    const slotsConAusencia = aplicarAusencias(slots, ausenciaDocenteAna, horariosTest);
+    const libresPorAusencia = getSlotsLibresPorAusencia(slotsConAusencia);
+
+    const slotAna = libresPorAusencia.find(s => s.docenteAusente === 'Ana')!;
+    const carga = new Map<string, number>();
+    const horasSemana = new Map<string, number>();
+    const indice = new Map<string, number>();
+
+    const posibles = getPosiblesCobradoresParaSlot(
+      slotAna, 'lunes', horariosTest, libresPorAusencia, carga, horasSemana, indice, []
+    );
+
+    expect(posibles.some(p => p.docente === 'Ana')).toBe(false);
+  });
+
+  it('debería excluir docente cuya hora ya está ocupada', () => {
+    const slots = getSlotsDelDia('lunes', horariosTest);
+    const slotsConAusencia = aplicarAusencias(slots, ausenciaDocenteAna, horariosTest);
+    const libresPorAusencia = getSlotsLibresPorAusencia(slotsConAusencia);
+
+    const slotAna = libresPorAusencia.find(s => s.docenteAusente === 'Ana')!;
+    const carga = new Map<string, number>();
+    const horasSemana = new Map<string, number>();
+    const indice = new Map<string, number>();
+
+    const posibles = getPosiblesCobradoresParaSlot(
+      slotAna, 'lunes', horariosTest, libresPorAusencia, carga, horasSemana, indice, []
+    );
+
+    expect(posibles.some(p => p.docente === 'María')).toBe(false);
+  });
+
+  it('debería bloquear docente que ya cubrió 1 hora en la sesión', () => {
+    const slots = getSlotsDelDia('lunes', horariosTest);
+    const slotsConAusencia = aplicarAusencias(slots, ausenciaDocenteAna, horariosTest);
+    const libresPorAusencia = getSlotsLibresPorAusencia(slotsConAusencia);
+
+    const slotAna = libresPorAusencia.find(s => s.docenteAusente === 'Ana')!;
+    const carga = new Map<string, number>();
+    carga.set('Carlos', 1);
+    const horasSemana = new Map<string, number>();
+    const indice = new Map<string, number>();
+
+    const posibles = getPosiblesCobradoresParaSlot(
+      slotAna, 'lunes', horariosTest, libresPorAusencia, carga, horasSemana, indice, []
+    );
+
+    expect(posibles.some(p => p.docente === 'Carlos')).toBe(false);
+  });
+
+  it('debería mantener disponible al docente freed cuando se excluye su asignación previa', () => {
+    const slots = getSlotsDelDia('lunes', horariosTest);
+    const slotsConAusencia = aplicarAusencias(slots, ausenciaDocenteAna, horariosTest);
+    const libresPorAusencia = getSlotsLibresPorAusencia(slotsConAusencia);
+
+    const slotAna = libresPorAusencia.find(s => s.docenteAusente === 'Ana')!;
+    const carga = new Map<string, number>();
+    carga.set('Carlos', 1);
+    const horasSemana = new Map<string, number>();
+    const indice = new Map<string, number>();
+
+    const asignacionesSesion = [
+      { hora: 0, docenteAusente: 'Ana', docenteCubre: 'Carlos', aprobada: true, posiblesCobradores: [] as string[], grupoAusente: '', grupoACubrir: '', violation: '', motivoAusencia: '' },
+    ];
+
+    const posibles = getPosiblesCobradoresParaSlot(
+      slotAna, 'lunes', horariosTest, libresPorAusencia, carga, horasSemana, indice, asignacionesSesion
+    );
+
+    expect(posibles.some(p => p.docente === 'Carlos')).toBe(false);
+
+    const asignacionesSinCarlos = asignacionesSesion.filter(a => a.docenteCubre !== 'Carlos');
+    const posiblesFreed = getPosiblesCobradoresParaSlot(
+      slotAna, 'lunes', horariosTest, libresPorAusencia, new Map(), horasSemana, indice, asignacionesSinCarlos
+    );
+    expect(posiblesFreed.some(p => p.docente === 'Carlos')).toBe(true);
+  });
+});
+
+describe('escenario: dos docentes ausentes misma hora, liberar cubre al otro slot', () => {
+  const fechaActual = '2026-05-25';
+
+  it('al liberar un docente que cubrió, debe estar disponible para otro slot en la misma hora', () => {
+    const horariosDosAusentes: typeof horariosTest = [
+      {
+        docente: "Ana",
+        lunes: ["MAT-101", "QUIM-101", "FIS-201", "", "", "", ""],
+        martes: ["", "MAT-101", "", "QUIM-101", "", "", ""],
+        miercoles: ["FIS-201", "", "", "MAT-101", "", "", ""],
+        jueves: ["", "", "MAT-101", "", "QUIM-101", "", ""],
+        viernes: ["", "FIS-201", "", "", "MAT-101", "", ""],
+      },
+      {
+        docente: "Carlos",
+        lunes: ["QUIM-101", "", "FIS-201", "", "", "", ""],
+        martes: ["MAT-101", "", "", "", "FIS-201", "", ""],
+        miercoles: ["", "QUIM-101", "", "", "MAT-101", "", ""],
+        jueves: ["FIS-201", "", "", "", "", "QUIM-101", ""],
+        viernes: ["", "", "MAT-101", "", "", "", "FIS-201"],
+      },
+      {
+        docente: "María",
+        lunes: ["", "", "FIS-201", "QUIM-101", "", "", ""],
+        martes: ["", "", "QUIM-101", "", "MAT-101", "", ""],
+        miercoles: ["MAT-101", "", "FIS-201", "", "", "", ""],
+        jueves: ["", "MAT-101", "", "QUIM-101", "", "", ""],
+        viernes: ["FIS-201", "", "", "", "", "MAT-101", ""],
+      },
+    ];
+
+    const ausenciaAnaYCarlos: Ausencia[] = [
+      { tipo: "docente", nombre: "Ana", motivo: "MEDICO" },
+      { tipo: "docente", nombre: "Carlos", motivo: "FAMILIAR" },
+    ];
+
+    const slots = getSlotsDelDia('lunes', horariosDosAusentes);
+    const slotsConAusencia = aplicarAusencias(slots, ausenciaAnaYCarlos, horariosDosAusentes);
+    const libresPorAusencia = getSlotsLibresPorAusencia(slotsConAusencia);
+
+    expect(libresPorAusencia.length).toBeGreaterThanOrEqual(2);
+
+    const cargaInicial = construirCargaDiariaSesion([], -1, '');
+    const horasSemana = new Map<string, number>();
+    const indice = new Map<string, number>();
+
+    const slotAna = libresPorAusencia.find(s => s.docenteAusente === 'Ana')!;
+    const slotCarlos = libresPorAusencia.find(s => s.docenteAusente === 'Carlos')!;
+
+    expect(slotAna.hora).toBe(slotCarlos.hora);
+
+    const posiblesAna = getPosiblesCobradoresParaSlot(
+      slotAna, 'lunes', horariosDosAusentes, libresPorAusencia, cargaInicial, horasSemana, indice, []
+    );
+
+    expect(posiblesAna.some(p => p.docente === 'María')).toBe(true);
+
+    cargaInicial.set('María', 1);
+
+    const posiblesCarlos = getPosiblesCobradoresParaSlot(
+      slotCarlos, 'lunes', horariosDosAusentes, libresPorAusencia, cargaInicial, horasSemana, indice, []
+    );
+
+    expect(posiblesCarlos.some(p => p.docente === 'María')).toBe(false);
+
+    const asignacionesSinMaria: CoberturaSugerida[] = [];
+    const posiblesCarlosFreed = getPosiblesCobradoresParaSlot(
+      slotCarlos, 'lunes', horariosDosAusentes, libresPorAusencia, new Map(), horasSemana, indice, asignacionesSinMaria
+    );
+    expect(posiblesCarlosFreed.some(p => p.docente === 'María')).toBe(true);
+  });
+});
+
+describe('construirCargaDiariaHistorica', () => {
+  const fechaActual = '2026-05-25';
+
+  it('debería retornar Map vacío sin entradas para fechaActual', () => {
+    const historico: CoberturaHistorica[] = [
+      { fecha: '2026-05-20', dia_semana: 'miercoles', hora: 0, docente_ausente: 'Ana', grupo_ausente: '', docente_cubre: 'Carlos', grupo_a_cubrir: '101', estado: 'aprobado', motivo: 'MEDICO' },
+    ];
+    const carga = construirCargaDiariaHistorica(historico, fechaActual);
+    expect(carga.size).toBe(0);
+  });
+
+  it('debería contar aprobadas del mismo día', () => {
+    const historico: CoberturaHistorica[] = [
+      { fecha: fechaActual, dia_semana: 'lunes', hora: 0, docente_ausente: 'Ana', grupo_ausente: '', docente_cubre: 'Carlos', grupo_a_cubrir: '101', estado: 'aprobado', motivo: 'MEDICO' },
+      { fecha: fechaActual, dia_semana: 'lunes', hora: 2, docente_ausente: 'Pedro', grupo_ausente: '', docente_cubre: 'María', grupo_a_cubrir: '201', estado: 'aprobado', motivo: 'FAMILIAR' },
+      { fecha: '2026-05-20', dia_semana: 'miercoles', hora: 0, docente_ausente: 'X', grupo_ausente: '', docente_cubre: 'Carlos', grupo_a_cubrir: '101', estado: 'aprobado', motivo: 'MEDICO' },
+    ];
+    const carga = construirCargaDiariaHistorica(historico, fechaActual);
+    expect(carga.get('Carlos')).toBe(1);
+    expect(carga.get('María')).toBe(1);
+  });
+
+  it('debería ignorar entradas no aprobadas', () => {
+    const historico: CoberturaHistorica[] = [
+      { fecha: fechaActual, dia_semana: 'lunes', hora: 0, docente_ausente: 'Ana', grupo_ausente: '', docente_cubre: 'Carlos', grupo_a_cubrir: '101', estado: 'pendiente', motivo: 'MEDICO' },
+    ];
+    const carga = construirCargaDiariaHistorica(historico, fechaActual);
+    expect(carga.get('Carlos')).toBeUndefined();
+  });
+
+  it('debería saltar ROLES_SIN_LIMITE', () => {
+    const historico: CoberturaHistorica[] = [
+      { fecha: fechaActual, dia_semana: 'lunes', hora: 0, docente_ausente: 'Ana', grupo_ausente: '', docente_cubre: 'ORIENTADOR', grupo_a_cubrir: '101', estado: 'aprobado', motivo: 'MEDICO' },
+      { fecha: fechaActual, dia_semana: 'lunes', hora: 1, docente_ausente: 'Pedro', grupo_ausente: '', docente_cubre: 'COORDINADOR', grupo_a_cubrir: '201', estado: 'aprobado', motivo: 'MEDICO' },
+      { fecha: fechaActual, dia_semana: 'lunes', hora: 2, docente_ausente: 'Luis', grupo_ausente: '', docente_cubre: 'BIBLIOTECA', grupo_a_cubrir: '301', estado: 'aprobado', motivo: 'MEDICO' },
+    ];
+    const carga = construirCargaDiariaHistorica(historico, fechaActual);
+    expect(carga.size).toBe(0);
+  });
+});
+
+describe('construirCargaDiariaSesion con cargaInicial', () => {
+  it('debería merge la cargaInicial con asignaciones de sesión', () => {
+    const cargaInicial = new Map<string, number>([['Carlos', 1]]);
+    const coberturas: CoberturaSugerida[] = [
+      { hora: 0, docenteAusente: 'Ana', docenteCubre: 'María', aprobada: true, posiblesCobradores: [], grupoAusente: '', grupoACubrir: '', violation: '', motivoAusencia: '' },
+    ];
+    const carga = construirCargaDiariaSesion(coberturas, -1, '', cargaInicial);
+    expect(carga.get('Carlos')).toBe(1);
+    expect(carga.get('María')).toBe(1);
+  });
+
+  it('no muta cargaInicial cuando se pasa', () => {
+    const cargaInicial = new Map<string, number>([['Carlos', 1]]);
+    construirCargaDiariaSesion([], -1, '', cargaInicial);
+    expect(cargaInicial.size).toBe(1);
+    expect(cargaInicial.get('Carlos')).toBe(1);
+  });
+});
+
+describe('asignarAutomaticamente con historico mismo dia', () => {
+  const fechaActual = '2026-05-25';
+
+  it('no debería asignar docente que ya cubrió 1h aprobada el mismo día', () => {
+    const slots = getSlotsDelDia('lunes', horariosTest);
+    const slotsConAusencia = aplicarAusencias(slots, ausenciaDocenteAna, horariosTest);
+    const libresPorAusencia = getSlotsLibresPorAusencia(slotsConAusencia);
+
+    const historicoMismoDia: CoberturaHistorica[] = [
+      {
+        fecha: fechaActual,
+        dia_semana: 'lunes',
+        hora: 5,
+        docente_ausente: 'Pedro',
+        grupo_ausente: '',
+        docente_cubre: 'Carlos',
+        grupo_a_cubrir: '101',
+        estado: 'aprobado',
+        motivo: 'MEDICO',
+      },
+    ];
+
+    const coberturas = asignarAutomaticamente(
+      libresPorAusencia,
+      horariosTest,
+      historicoMismoDia,
+      'lunes',
+      fechaActual
+    );
+
+    // Carlos ya cubrió 1h ese día — no debe aparecer como docenteCubre
+    expect(coberturas.every((c) => c.docenteCubre !== 'Carlos' || c.violation !== '')).toBe(true);
+  });
+});
+
+describe('asignarAutomaticamente: dedup de slots', () => {
+  const fechaActual = '2026-05-25';
+
+  it('no debería generar filas duplicadas si slot aparece varias veces', () => {
+    const slots = getSlotsDelDia('lunes', horariosTest);
+    const slotsConAusencia = aplicarAusencias(slots, ausenciaDocenteAna, horariosTest);
+    const libresPorAusencia = getSlotsLibresPorAusencia(slotsConAusencia);
+
+    // Duplicar artificialmente
+    const conDuplicados = [...libresPorAusencia, ...libresPorAusencia];
+
+    const coberturas = asignarAutomaticamente(conDuplicados, horariosTest, [], 'lunes', fechaActual);
+
+    const claves = new Set<string>();
+    for (const c of coberturas) {
+      const key = `${c.hora}|${c.docenteAusente}|${c.grupoAusente}`;
+      expect(claves.has(key)).toBe(false);
+      claves.add(key);
+    }
   });
 });

@@ -49,7 +49,12 @@
       "Bash(wc:*)",
       "mcp__plugin_svelte_svelte__svelte-autofixer",
       "Bash(npx vite:*)",
-      "Bash(find *)"
+      "Bash(find *)",
+      "Skill(ui-ux-pro-max)",
+      "Skill(ui-styling)",
+      "Skill(svelte:svelte-core-bestpractices)",
+      "Skill(svelte:svelte-code-writer)",
+      "Skill(frontend-design:frontend-design)"
     ],
     "allowedTools": [
       "Read",
