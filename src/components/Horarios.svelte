@@ -5,7 +5,7 @@
   import type { CoberturaHistorica } from "../lib/coberturaUtils";
   import { coberturaSheetsService } from "../services/coberturaSheetsService";
   import { getSemanaDelAno } from "../lib/coberturaUtils";
-  import { User, Search, ArrowLeft, BarChart3, Calendar, X, Users } from "@lucide/svelte";
+  import { User, Search, ArrowLeft, BarChart3, Calendar, X, Users, Calculator, BookOpen, FlaskConical, Globe, Languages, Heart, Cpu, Dumbbell, Palette, Briefcase, Coffee, Book } from "@lucide/svelte";
 
   let { onBack }: { onBack: () => void } = $props();
 
@@ -175,6 +175,58 @@
     };
     return abrevias[materia] || materia;
   }
+
+  function getSubjectStyle(materia: string): { icon: string; bg: string; border: string; text: string } {
+    if (!materia || materia === "DESC" || materia === "PEDAG" || materia === "DEESC") {
+      return { icon: "coffee", bg: "bg-amber-50 dark:bg-amber-950", border: "border-amber-200 dark:border-amber-800", text: "text-amber-700 dark:text-amber-300" };
+    }
+    if (materia.startsWith("MATEMATICAS") || materia.startsWith("ESTADISTICA") || materia.startsWith("GEOMETRIA")) {
+      return { icon: "calculator", bg: "bg-sky-50 dark:bg-sky-950", border: "border-sky-200 dark:border-sky-800", text: "text-sky-600 dark:text-sky-300" };
+    }
+    if (materia.startsWith("LENGUA")) {
+      return { icon: "book-open", bg: "bg-emerald-50 dark:bg-emerald-950", border: "border-emerald-200 dark:border-emerald-800", text: "text-emerald-600 dark:text-emerald-300" };
+    }
+    if (materia.startsWith("CIENCIAS NATURALES") || materia.startsWith("QUIMICA") || materia.startsWith("FISICA")) {
+      return { icon: "flask-conical", bg: "bg-violet-50 dark:bg-violet-950", border: "border-violet-200 dark:border-violet-800", text: "text-violet-600 dark:text-violet-300" };
+    }
+    if (materia.startsWith("CIENCIAS SOCIALES") || materia.startsWith("C. PAZ")) {
+      return { icon: "globe", bg: "bg-orange-50 dark:bg-orange-950", border: "border-orange-200 dark:border-orange-800", text: "text-orange-600 dark:text-orange-300" };
+    }
+    if (materia.startsWith("INGLES")) {
+      return { icon: "languages", bg: "bg-rose-50 dark:bg-rose-950", border: "border-rose-200 dark:border-rose-800", text: "text-rose-600 dark:text-rose-300" };
+    }
+    if (materia.startsWith("ETICA") || materia.startsWith("EDUCACION RELIGIOSA")) {
+      return { icon: "heart", bg: "bg-fuchsia-50 dark:bg-fuchsia-950", border: "border-fuchsia-200 dark:border-fuchsia-800", text: "text-fuchsia-600 dark:text-fuchsia-300" };
+    }
+    if (materia.startsWith("TECNOLOGIA")) {
+      return { icon: "cpu", bg: "bg-teal-50 dark:bg-teal-950", border: "border-teal-200 dark:border-teal-800", text: "text-teal-600 dark:text-teal-300" };
+    }
+    if (materia.startsWith("EDUCACION FISICA")) {
+      return { icon: "dumbbell", bg: "bg-lime-50 dark:bg-lime-950", border: "border-lime-200 dark:border-lime-800", text: "text-lime-600 dark:text-lime-300" };
+    }
+    if (materia.startsWith("ARTISTICA") || materia.startsWith("EDUCACION ARTISTICA")) {
+      return { icon: "palette", bg: "bg-yellow-50 dark:bg-yellow-950", border: "border-yellow-200 dark:border-yellow-800", text: "text-yellow-600 dark:text-yellow-300" };
+    }
+    if (materia.startsWith("EMPRENDIMIENTO")) {
+      return { icon: "briefcase", bg: "bg-cyan-50 dark:bg-cyan-950", border: "border-cyan-200 dark:border-cyan-800", text: "text-cyan-600 dark:text-cyan-300" };
+    }
+    return { icon: "book", bg: "bg-slate-50 dark:bg-slate-950", border: "border-slate-200 dark:border-slate-800", text: "text-slate-600 dark:text-slate-300" };
+  }
+
+  const iconMap: Record<string, typeof Calculator> = {
+    calculator: Calculator,
+    "book-open": BookOpen,
+    flask: FlaskConical,
+    globe: Globe,
+    languages: Languages,
+    heart: Heart,
+    cpu: Cpu,
+    dumbbell: Dumbbell,
+    palette: Palette,
+    briefcase: Briefcase,
+    coffee: Coffee,
+    book: Book,
+  };
 
   function formatearMateria(contenido: string): string {
     if (!contenido) return "LIBRE";
@@ -514,10 +566,41 @@
                   <td class="p-3 text-center font-bold border" style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary));">{hora}</td>
                   {#each dias as dia}
                     {@const celda = celdasDia[dia]}
-                    <td class="p-2 text-center border min-w-[140px]" style="border-color: rgb(var(--border-primary)); vertical-align: top;">
+                    {@const style = getSubjectStyle(celda?.materia || "")}
+                    <td
+                      class="p-2 text-center border min-w-[160px] {style.bg} {style.border}"
+                      style="border-width: 2px; vertical-align: top;"
+                    >
                       {#if celda}
-                        <div class="font-medium text-xs" style="color: rgb(var(--accent-primary));">{formatearMateriaGrupo(celda.materia)}</div>
-                        <div class="text-xs mt-1" style="color: rgb(var(--text-secondary));">{celda.docente.split(" ").slice(-2).join(" ")}</div>
+                        <div class="flex items-center justify-center gap-1.5 {style.text}">
+                          {#if style.icon === 'calculator'}
+                            <Calculator size={14} aria-hidden="true" />
+                          {:else if style.icon === 'book-open'}
+                            <BookOpen size={14} aria-hidden="true" />
+                          {:else if style.icon === 'flask'}
+                            <FlaskConical size={14} aria-hidden="true" />
+                          {:else if style.icon === 'globe'}
+                            <Globe size={14} aria-hidden="true" />
+                          {:else if style.icon === 'languages'}
+                            <Languages size={14} aria-hidden="true" />
+                          {:else if style.icon === 'heart'}
+                            <Heart size={14} aria-hidden="true" />
+                          {:else if style.icon === 'cpu'}
+                            <Cpu size={14} aria-hidden="true" />
+                          {:else if style.icon === 'dumbbell'}
+                            <Dumbbell size={14} aria-hidden="true" />
+                          {:else if style.icon === 'palette'}
+                            <Palette size={14} aria-hidden="true" />
+                          {:else if style.icon === 'briefcase'}
+                            <Briefcase size={14} aria-hidden="true" />
+                          {:else if style.icon === 'coffee'}
+                            <Coffee size={14} aria-hidden="true" />
+                          {:else}
+                            <Book size={14} aria-hidden="true" />
+                          {/if}
+                          <span class="font-semibold text-xs">{formatearMateriaGrupo(celda.materia)}</span>
+                        </div>
+                        <div class="text-xs mt-1.5 font-medium text-slate-600 dark:text-slate-300">{celda.docente}</div>
                       {:else}
                         <span class="text-zinc-300 dark:text-zinc-600">-</span>
                       {/if}
