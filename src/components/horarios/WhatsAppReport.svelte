@@ -1,10 +1,12 @@
 <script lang="ts">
-  import type { CoberturaSugerida } from "../../lib/coberturaUtils";
+  import type { CoberturaSugerida, CoberturaLiberado } from "../../lib/coberturaUtils";
   import { formatoHora, formatoDia } from "../../lib/coberturaUtils";
+  import infoHoras from "../../lib/info_horas.json";
   import html2canvas from "html2canvas";
   import Swal from "sweetalert2";
 
   type DocenteAusente = { nombre: string; tipo: string };
+  type GrupoAusenteLocal = { grupo: string; horaInicio: number };
 
   let {
     diaSeleccionado,
@@ -14,31 +16,27 @@
     docentesAusentes = [],
     modoPDF = false,
     onClose,
+    liberadosData = [],
   }: {
     diaSeleccionado: string;
     fechaSeleccionada: string;
     coberturas: CoberturaSugerida[];
-    gruposAusentes?: Array<{ grupo: string; horaInicio: number }>;
+    gruposAusentes?: GrupoAusenteLocal[];
     docentesAusentes?: DocenteAusente[];
     modoPDF?: boolean;
     onClose: () => void;
+    liberadosData?: CoberturaLiberado[];
   } = $props();
 
-  // Filtros para reportes:
-  // - Grupos que NO ASISTEN (gruposAusentes con horaInicio === 1)
-  // - Grupos que se LIBERAN desde hora N (>= 2), ya sea por horaInicio>=2 en gruposAusentes
-  //   o porque la cobertura quedó sin docente que cubra (grupoLiberado por ausencia docente).
   const gruposNoAsisten = $derived(
     gruposAusentes.filter((g) => g.horaInicio === 1)
   );
 
-  // Liberados intra-día: combinación de gruposAusentes con horaInicio>=2 + coberturas sin docenteCubre
   type Liberado = { grupo: string; hora: number; docenteAusente?: string; motivo: string };
   const gruposLiberadosIntraDia = $derived.by<Liberado[]>(() => {
     const lista: Liberado[] = [];
     const vistos = new Set<string>();
 
-    // Coberturas sin docente que cubra -> grupo liberado en esa hora
     for (const c of coberturas) {
       if (c.docenteCubre) continue;
       if (!c.grupoAusente && !c.grupoACubrir) continue;
@@ -54,7 +52,6 @@
       });
     }
 
-    // Grupos liberados desde horaInicio>=2 declarados manualmente
     for (const g of gruposAusentes) {
       if (g.horaInicio <= 1) continue;
       const key = `${g.grupo}-${g.horaInicio - 1}`;
@@ -70,6 +67,14 @@
     return lista.sort((a, b) => a.hora - b.hora || a.grupo.localeCompare(b.grupo));
   });
 
+  const gruposNoAsistenDesdeLiberados = $derived(
+    liberadosData.filter((l) => l.hora_liberada === 1)
+  );
+
+  const gruposLiberadosDesdeLiberados = $derived(
+    liberadosData.filter((l) => l.hora_liberada > 1)
+  );
+
   let generando = $state(false);
 
   function formatearFecha(fecha: string): string {
@@ -79,97 +84,18 @@
     return `${parseInt(d)} ${meses[parseInt(m) - 1]} ${y}`;
   }
 
-  // Horarios reales del IE de Occidente — hora 1-indexed
-  const HORAS_INICIO_REAL: Record<number, string> = {
-    1: "6:45 a.m.",
-    2: "7:35 a.m.",
-    3: "8:25 a.m.",
-    4: "9:30 a.m.",
-    5: "10:20 a.m.",
-    6: "11:10 a.m.",
-    7: "12:00 m.",
-  };
-
   function horaReal(h: number): string {
-    return HORAS_INICIO_REAL[h] || `Hora ${h}`;
-  }
-
-  async function generarImagen() {
-    generando = true;
-    try {
-      const elemento = document.getElementById("report-card");
-      if (!elemento) return;
-
-      const modalContent = elemento.closest('[style*="max-h"]') as HTMLElement;
-      const scrollContainer = modalContent?.querySelector('[class*="overflow-y-auto"]') as HTMLElement;
-
-      if (scrollContainer) {
-        const maxScroll = scrollContainer.scrollHeight;
-        scrollContainer.style.overflow = "visible";
-        scrollContainer.style.maxHeight = "none";
-        scrollContainer.scrollTop = maxScroll + 500;
-        await new Promise((r) => setTimeout(r, 300));
-      }
-
-      elemento.style.height = "auto";
-      elemento.style.maxHeight = "none";
-      elemento.style.overflow = "visible";
-
-      await new Promise((r) => setTimeout(r, 200));
-
-      const altoCompleto = elemento.scrollHeight;
-      const anchoCompleto = elemento.scrollWidth;
-
-      elemento.style.height = `${altoCompleto + 50}px`;
-
-      await new Promise((r) => setTimeout(r, 100));
-
-      const canvas = await html2canvas(elemento, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        useCORS: true,
-        logging: false,
-        imageTimeout: 0,
-        width: Math.max(anchoCompleto, 400),
-        height: altoCompleto + 50,
-        windowWidth: Math.max(anchoCompleto + 50, 450),
-        windowHeight: altoCompleto + 100,
-      });
-
-      elemento.style.height = "";
-      elemento.style.maxHeight = "";
-      elemento.style.overflow = "";
-
-      if (scrollContainer) {
-        scrollContainer.style.overflow = "";
-        scrollContainer.style.maxHeight = "";
-        scrollContainer.scrollTop = 0;
-      }
-
-      const link = document.createElement("a");
-      link.download = `Coberturas_${fechaSeleccionada}.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-
-      Swal.fire({
-        icon: "success",
-        title: "Imagen generada",
-        text: "La imagen se descargó correctamente",
-        confirmButtonText: "Cerrar",
-      });
-    } catch (e) {
-      console.error(e);
-      Swal.fire("Error", "No se pudo generar la imagen", "error");
-    } finally {
-      generando = false;
-    }
+    const schedule = (infoHoras.horario_escolar as Record<string, {inicio: string; fin: string; bloque: string}[]>)[diaSeleccionado];
+    if (!schedule) return `Hora ${h}`;
+    const slot = schedule[h - 1];
+    return slot ? slot.inicio : `Hora ${h}`;
   }
 </script>
 
 <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background-color: rgba(0,0,0,0.5);">
   <div class="rounded-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col" style="background-color: rgb(var(--bg-primary)); border: 1px solid rgb(var(--border-primary));">
     <div class="flex justify-between items-center p-4 border-b shrink-0" style="border-color: rgb(var(--border-primary));">
-      <h3 class="text-lg font-bold" style="color: rgb(var(--text-primary));">Reporte para WhatsApp</h3>
+      <h3 class="text-lg font-bold" style="color: rgb(var(--text-primary));">{modoPDF ? "Reporte PDF" : "Reporte para WhatsApp"}</h3>
       <button
         onclick={onClose}
         class="w-8 h-8 flex items-center justify-center rounded-full"
@@ -189,18 +115,21 @@
             <p class="text-sm" style="color: #333; margin: 4px 0 0 0;">{formatearFecha(fechaSeleccionada)}</p>
           </div>
 
-          {#if gruposNoAsisten.length > 0}
+          {#if gruposNoAsisten.length > 0 || gruposNoAsistenDesdeLiberados.length > 0}
             <div style="margin: 16px 0;">
               <p class="font-bold" style="margin: 0 0 8px 0; text-decoration: underline;">GRUPOS QUE NO ASISTEN:</p>
               <ul style="list-style: disc; padding-left: 24px; margin: 0;">
                 {#each gruposNoAsisten as g}
                   <li>Grupo {g.grupo} (no asisten desde hora 1 — {horaReal(1)})</li>
                 {/each}
+                {#each gruposNoAsistenDesdeLiberados as l}
+                  <li>Grupo {l.grupo} — {l.motivo}</li>
+                {/each}
               </ul>
             </div>
           {/if}
 
-          {#if gruposLiberadosIntraDia.length > 0}
+          {#if gruposLiberadosIntraDia.length > 0 || gruposLiberadosDesdeLiberados.length > 0}
             <div style="margin: 16px 0;">
               <p class="font-bold" style="margin: 0 0 8px 0; text-decoration: underline;">GRUPOS LIBERADOS DURANTE LA JORNADA:</p>
               <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
@@ -216,6 +145,13 @@
                     <tr>
                       <td style="padding: 6px; border: 1px solid #000;">{l.grupo}</td>
                       <td style="padding: 6px; border: 1px solid #000;">Hora {l.hora} ({horaReal(l.hora)})</td>
+                      <td style="padding: 6px; border: 1px solid #000;">{l.motivo}</td>
+                    </tr>
+                  {/each}
+                  {#each gruposLiberadosDesdeLiberados as l}
+                    <tr>
+                      <td style="padding: 6px; border: 1px solid #000;">{l.grupo}</td>
+                      <td style="padding: 6px; border: 1px solid #000;">Hora {l.hora_liberada} ({horaReal(l.hora_liberada)})</td>
                       <td style="padding: 6px; border: 1px solid #000;">{l.motivo}</td>
                     </tr>
                   {/each}
@@ -273,7 +209,7 @@
             <p class="text-sm" style="color: #9ca3af;">{formatearFecha(fechaSeleccionada)}</p>
           </div>
 
-          {#if gruposNoAsisten.length > 0}
+          {#if gruposNoAsisten.length > 0 || gruposNoAsistenDesdeLiberados.length > 0}
             <div style="margin-bottom: 20px; padding: 16px; background-color: #fef3c7; border: 3px solid #f59e0b; border-radius: 12px;">
               <p style="font-size: 16px; font-weight: bold; color: #92400e; margin: 0 0 8px 0;">
                 ⚠️ AVISO A PADRES Y ACUDIENTES
@@ -295,6 +231,12 @@
                       <td style="padding: 8px; color: #78350f; border: 1px solid #fde68a; background-color: #fffbeb; font-weight: bold;">Hora 1 ({horaReal(1)})</td>
                     </tr>
                   {/each}
+                  {#each gruposNoAsistenDesdeLiberados as l}
+                    <tr>
+                      <td style="padding: 8px; font-weight: bold; color: #b45309; border: 1px solid #fde68a; background-color: #fffbeb;">{l.grupo}</td>
+                      <td style="padding: 8px; color: #78350f; border: 1px solid #fde68a; background-color: #fffbeb; font-weight: bold;">Hora 1 ({horaReal(1)}) — {l.motivo}</td>
+                    </tr>
+                  {/each}
                 </tbody>
               </table>
               <p style="font-size: 11px; color: #92400e; margin: 10px 0 0 0; font-style: italic;">
@@ -303,7 +245,7 @@
             </div>
           {/if}
 
-          {#if gruposLiberadosIntraDia.length > 0}
+          {#if gruposLiberadosIntraDia.length > 0 || gruposLiberadosDesdeLiberados.length > 0}
             <div style="margin-bottom: 20px; padding: 16px; background-color: #fef3c7; border: 3px solid #f97316; border-radius: 12px;">
               <p style="font-size: 16px; font-weight: bold; color: #9a3412; margin: 0 0 8px 0;">
                 🔔 GRUPOS LIBERADOS DURANTE LA JORNADA
@@ -324,6 +266,13 @@
                     <tr>
                       <td style="padding: 8px; font-weight: bold; color: #9a3412; border: 1px solid #fed7aa; background-color: #fff7ed;">{l.grupo}</td>
                       <td style="padding: 8px; color: #7c2d12; border: 1px solid #fed7aa; background-color: #fff7ed;">Hora {l.hora} ({horaReal(l.hora)})</td>
+                      <td style="padding: 8px; color: #7c2d12; border: 1px solid #fed7aa; background-color: #fff7ed; font-style: italic;">{l.motivo}</td>
+                    </tr>
+                  {/each}
+                  {#each gruposLiberadosDesdeLiberados as l}
+                    <tr>
+                      <td style="padding: 8px; font-weight: bold; color: #9a3412; border: 1px solid #fed7aa; background-color: #fff7ed;">{l.grupo}</td>
+                      <td style="padding: 8px; color: #7c2d12; border: 1px solid #fed7aa; background-color: #fff7ed;">Hora {l.hora_liberada} ({horaReal(l.hora_liberada)})</td>
                       <td style="padding: 8px; color: #7c2d12; border: 1px solid #fed7aa; background-color: #fff7ed; font-style: italic;">{l.motivo}</td>
                     </tr>
                   {/each}
@@ -393,7 +342,7 @@
           style="background-color: rgb(var(--accent-primary)); color: white;"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-          Imprimir / Guardar PDF
+          Imprimir
         </button>
         <button
           onclick={onClose}
@@ -425,5 +374,25 @@
         </button>
       {/if}
     </div>
+
+    <style>
+      @media print {
+        #report-card {
+          padding: 20px !important;
+          max-width: 100% !important;
+          font-size: 11px !important;
+        }
+        #report-card table {
+          font-size: 10px !important;
+        }
+        #report-card th, #report-card td {
+          padding: 4px !important;
+        }
+        #report-card h1 { font-size: 16px !important; }
+        #report-card h2 { font-size: 14px !important; }
+        #report-card p { margin: 4px 0 !important; }
+        #report-card .text-sm { font-size: 10px !important; }
+      }
+    </style>
   </div>
 </div>

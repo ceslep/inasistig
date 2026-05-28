@@ -81,6 +81,7 @@
   let fechaReportePDF = $state("");
   let permitirRepetir = $state(false);
   let ignorarHorasPropietarias = $state(false);
+  let liberadosReportePDF = $state<import("../../lib/coberturaUtils").CoberturaLiberado[]>([]);
 
   const isDev = import.meta.env.DEV;
 
@@ -365,14 +366,15 @@ function recalcularCoberturas() {
 
   async function guardarCoberturas() {
     const aprobadas = coberturasSugeridas.filter((c) => c.aprobada);
-    if (aprobadas.length === 0) {
-      Swal.fire("Atención", "No hay coberturas seleccionadas para guardar", "warning");
+    if (aprobadas.length === 0 && gruposAusentes.length === 0) {
+      Swal.fire("Atención", "No hay coberturas ni grupos ausentes para guardar", "warning");
       return;
     }
 
     loading = true;
     try {
       await coberturaSheetsService.deleteCoberturasPorFecha(fechaSeleccionada);
+      await coberturaSheetsService.deleteLiberadosPorFecha(fechaSeleccionada);
 
       for (const c of aprobadas) {
         await coberturaSheetsService.saveCobertura({
@@ -388,10 +390,34 @@ function recalcularCoberturas() {
         });
       }
 
+      for (const g of gruposAusentes) {
+        const horaLib = g.horaInicio;
+        const motivo = horaLib === 1 ? "NO ASISTE" : "Grupo liberado";
+        await coberturaSheetsService.saveLiberado({
+          fecha: fechaSeleccionada,
+          dia_semana: diaSeleccionado,
+          grupo: g.grupo,
+          hora_liberada: horaLib,
+          motivo,
+        });
+      }
+
+      const sinCubridor = coberturasSugeridas.filter((c) => c.aprobada && !c.docenteCubre);
+      for (const c of sinCubridor) {
+        const grupo = c.grupoAusente || c.grupoACubrir;
+        await coberturaSheetsService.saveLiberado({
+          fecha: fechaSeleccionada,
+          dia_semana: diaSeleccionado,
+          grupo,
+          hora_liberada: c.hora + 1,
+          motivo: `Sin cubridor — ${c.docenteAusente} ausente`,
+        });
+      }
+
       await Swal.fire({
         icon: "success",
         title: "Coberturas guardadas",
-        html: `Se guardaron ${aprobadas.length} cobertura(s) en el historial.`,
+        html: `Se guardaron ${aprobadas.length} cobertura(s) y ${gruposAusentes.length} grupo(s) liberado(s).`,
         showCancelButton: true,
         confirmButtonText: "Compartir WhatsApp",
         cancelButtonText: "Nueva sesión",
@@ -420,6 +446,12 @@ function recalcularCoberturas() {
     gruposSugeridosAAusentar = [];
     diaSeleccionado = "";
     fechaSeleccionada = "";
+    mostrarReporteWhatsApp = false;
+    mostrarReportePDF = false;
+    vistaPreviaReporte = false;
+    coberturasGuardadas = [];
+    coberturasReportePDF = [];
+    gruposReportePDF = [];
   }
 
   function toggleCobertura(index: number) {
@@ -572,7 +604,7 @@ function recalcularCoberturas() {
     step = s;
   }
 
-  function generarReporteDelDia(fecha: string) {
+  async function generarReporteDelDia(fecha: string) {
     const delDia = coberturasHistoricas.filter((c) => c.fecha === fecha);
     if (delDia.length === 0) {
       Swal.fire("Sin datos", "No hay coberturas para esa fecha", "info");
@@ -596,7 +628,49 @@ function recalcularCoberturas() {
       motivoAusencia: c.motivo,
     }));
 
+    try {
+      const todosLiberados = await coberturaSheetsService.getLiberados();
+      liberadosReportePDF = todosLiberados.filter((l) => l.fecha === fecha);
+    } catch {
+      liberadosReportePDF = [];
+    }
+
     mostrarReportePDF = true;
+  }
+
+  async function generarWhatsAppDelDia(fecha: string) {
+    const delDia = coberturasHistoricas.filter((c) => c.fecha === fecha);
+    if (delDia.length === 0) {
+      Swal.fire("Sin datos", "No hay coberturas para esa fecha", "info");
+      return;
+    }
+
+    diaReportePDF = delDia[0].dia_semana;
+    fechaReportePDF = fecha;
+
+    const gruposUnicos = [...new Set(delDia.filter((c) => c.grupo_ausente && c.grupo_ausente !== "").map((c) => c.grupo_ausente))];
+    gruposReportePDF = gruposUnicos.map((g) => ({ grupo: g, horaInicio: 1 }));
+
+    coberturasReportePDF = delDia.map((c): CoberturaSugerida => ({
+      hora: c.hora,
+      docenteAusente: c.docente_ausente,
+      grupoAusente: c.grupo_ausente,
+      docenteCubre: c.docente_cubre,
+      grupoACubrir: c.grupo_a_cubrir,
+      aprobada: c.estado === "aprobado",
+      posiblesCobradores: [],
+      motivoAusencia: c.motivo,
+    }));
+
+    try {
+      const todosLiberados = await coberturaSheetsService.getLiberados();
+      liberadosReportePDF = todosLiberados.filter((l) => l.fecha === fecha);
+    } catch {
+      liberadosReportePDF = [];
+    }
+
+    coberturasGuardadas = [...coberturasReportePDF];
+    mostrarReporteWhatsApp = true;
   }
 
   onMount(() => {
@@ -629,7 +703,7 @@ function recalcularCoberturas() {
   </div>
 
   {#if subView === "historial"}
-    <HistorialCoberturas {coberturasHistoricas} {loading} onReload={loadHistorico} onGenerarReporte={generarReporteDelDia} />
+    <HistorialCoberturas {coberturasHistoricas} {loading} onReload={loadHistorico} onGenerarReporte={generarReporteDelDia} onGenerarWhatsApp={generarWhatsAppDelDia} />
   {:else}
     {#if step >= 1}
       <div class="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
@@ -938,38 +1012,40 @@ function recalcularCoberturas() {
         </div>
       </div>
     {/if}
+  {/if}
 
-    {#if mostrarReporteWhatsApp}
-      <WhatsAppReport
-        {diaSeleccionado}
-        {fechaSeleccionada}
-        coberturas={coberturasGuardadas}
-        {gruposAusentes}
-        {docentesAusentes}
-        onClose={() => mostrarReporteWhatsApp = false}
-      />
-    {/if}
+  {#if mostrarReporteWhatsApp}
+    <WhatsAppReport
+      {diaSeleccionado}
+      {fechaSeleccionada}
+      coberturas={coberturasGuardadas}
+      gruposAusentes={gruposReportePDF}
+      {docentesAusentes}
+      liberadosData={liberadosReportePDF}
+      onClose={() => mostrarReporteWhatsApp = false}
+    />
+  {/if}
 
-    {#if mostrarReportePDF}
-      <WhatsAppReport
-        diaSeleccionado={diaReportePDF}
-        fechaSeleccionada={fechaReportePDF}
-        coberturas={coberturasReportePDF}
-        gruposAusentes={gruposReportePDF}
-        modoPDF={true}
-        onClose={() => mostrarReportePDF = false}
-      />
-    {/if}
+  {#if mostrarReportePDF}
+    <WhatsAppReport
+      diaSeleccionado={diaReportePDF}
+      fechaSeleccionada={fechaReportePDF}
+      coberturas={coberturasReportePDF}
+      gruposAusentes={gruposReportePDF}
+      modoPDF={true}
+      liberadosData={liberadosReportePDF}
+      onClose={() => mostrarReportePDF = false}
+    />
+  {/if}
 
-    {#if vistaPreviaReporte}
-      <WhatsAppReport
-        {diaSeleccionado}
-        {fechaSeleccionada}
-        coberturas={coberturasSugeridas}
-        {gruposAusentes}
-        {docentesAusentes}
-        onClose={() => vistaPreviaReporte = false}
-      />
-    {/if}
+  {#if vistaPreviaReporte}
+    <WhatsAppReport
+      {diaSeleccionado}
+      {fechaSeleccionada}
+      coberturas={coberturasSugeridas}
+      {gruposAusentes}
+      {docentesAusentes}
+      onClose={() => vistaPreviaReporte = false}
+    />
   {/if}
 </div>

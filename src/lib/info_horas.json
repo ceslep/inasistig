@@ -1,0 +1,59 @@
+{
+  "horario_escolar": {
+    "lunes": [
+      { "bloque": "Hora 1", "inicio": "7:30 AM", "fin": "8:15 AM" },
+      { "bloque": "Hora 2", "inicio": "8:15 AM", "fin": "9:00 AM" },
+      { "bloque": "Hora 3", "inicio": "9:00 AM", "fin": "9:45 AM" },
+      { "bloque": "Descanso", "inicio": "9:45 AM", "fin": "10:00 AM" },
+      { "bloque": "Hora 4", "inicio": "10:00 AM", "fin": "10:45 AM" },
+      { "bloque": "Hora 5", "inicio": "10:45 AM", "fin": "11:30 AM" },
+      { "bloque": "Almuerzo", "inicio": "11:30 AM", "fin": "12:00 PM" },
+      { "bloque": "Hora 6", "inicio": "12:00 PM", "fin": "12:45 PM" },
+      { "bloque": "Hora 7", "inicio": "12:45 PM", "fin": "1:30 PM" }
+    ],
+    "martes": [
+      { "bloque": "Hora 1", "inicio": "7:30 AM", "fin": "8:25 AM" },
+      { "bloque": "Hora 2", "inicio": "8:25 AM", "fin": "9:20 AM" },
+      { "bloque": "Descanso", "inicio": "9:20 AM", "fin": "9:35 AM" },
+      { "bloque": "Hora 3", "inicio": "9:35 AM", "fin": "10:25 AM" },
+      { "bloque": "Hora 4", "inicio": "10:25 AM", "fin": "11:20 AM" },
+      { "bloque": "Hora 5", "inicio": "11:20 AM", "fin": "12:10 PM" },
+      { "bloque": "Almuerzo", "inicio": "12:10 PM", "fin": "12:40 PM" },
+      { "bloque": "Hora 6", "inicio": "12:40 PM", "fin": "1:30 PM" },
+      { "bloque": "Hora 7", "inicio": "1:30 PM", "fin": "2:25 PM" }
+    ],
+    "miercoles": [
+      { "bloque": "Hora 1", "inicio": "7:30 AM", "fin": "8:25 AM" },
+      { "bloque": "Hora 2", "inicio": "8:25 AM", "fin": "9:20 AM" },
+      { "bloque": "Descanso", "inicio": "9:20 AM", "fin": "9:35 AM" },
+      { "bloque": "Hora 3", "inicio": "9:35 AM", "fin": "10:25 AM" },
+      { "bloque": "Hora 4", "inicio": "10:25 AM", "fin": "11:20 AM" },
+      { "bloque": "Hora 5", "inicio": "11:20 AM", "fin": "12:10 PM" },
+      { "bloque": "Almuerzo", "inicio": "12:10 PM", "fin": "12:40 PM" },
+      { "bloque": "Hora 6", "inicio": "12:40 PM", "fin": "1:30 PM" },
+      { "bloque": "Hora 7", "inicio": "1:30 PM", "fin": "2:25 PM" }
+    ],
+    "jueves": [
+      { "bloque": "Hora 1", "inicio": "7:30 AM", "fin": "8:25 AM" },
+      { "bloque": "Hora 2", "inicio": "8:25 AM", "fin": "9:20 AM" },
+      { "bloque": "Descanso", "inicio": "9:20 AM", "fin": "9:35 AM" },
+      { "bloque": "Hora 3", "inicio": "9:35 AM", "fin": "10:25 AM" },
+      { "bloque": "Hora 4", "inicio": "10:25 AM", "fin": "11:20 AM" },
+      { "bloque": "Hora 5", "inicio": "11:20 AM", "fin": "12:10 PM" },
+      { "bloque": "Almuerzo", "inicio": "12:10 PM", "fin": "12:40 PM" },
+      { "bloque": "Hora 6", "inicio": "12:40 PM", "fin": "1:30 PM" },
+      { "bloque": "Hora 7", "inicio": "1:30 PM", "fin": "2:25 PM" }
+    ],
+    "viernes": [
+      { "bloque": "Hora 1", "inicio": "7:30 AM", "fin": "8:25 AM" },
+      { "bloque": "Hora 2", "inicio": "8:25 AM", "fin": "9:20 AM" },
+      { "bloque": "Descanso", "inicio": "9:20 AM", "fin": "9:35 AM" },
+      { "bloque": "Hora 3", "inicio": "9:35 AM", "fin": "10:25 AM" },
+      { "bloque": "Hora 4", "inicio": "10:25 AM", "fin": "11:20 AM" },
+      { "bloque": "Hora 5", "inicio": "11:20 AM", "fin": "12:10 PM" },
+      { "bloque": "Almuerzo", "inicio": "12:10 PM", "fin": "12:40 PM" },
+      { "bloque": "Hora 6", "inicio": "12:40 PM", "fin": "1:30 PM" },
+      { "bloque": "Hora 7", "inicio": "1:30 PM", "fin": "2:25 PM" }
+    ]
+  }
+}

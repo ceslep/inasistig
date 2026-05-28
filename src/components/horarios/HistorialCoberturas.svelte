@@ -9,11 +9,13 @@
     loading,
     onReload,
     onGenerarReporte,
+    onGenerarWhatsApp,
   }: {
     coberturasHistoricas: CoberturaHistorica[];
     loading: boolean;
     onReload: () => void;
     onGenerarReporte?: (fecha: string) => void;
+    onGenerarWhatsApp?: (fecha: string) => void;
   } = $props();
 
   let filterFechaDesde = $state("");
@@ -81,7 +83,16 @@
             style="background-color: rgb(var(--accent-primary)); color: white;"
             title="Generar reporte PDF del día"
           >
-            📄 Generar PDF
+            📄 PDF
+          </button>
+          <button
+            onclick={() => fechaSeleccionadaReporte && onGenerarWhatsApp && onGenerarWhatsApp(fechaSeleccionadaReporte)}
+            disabled={!fechaSeleccionadaReporte}
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+            style="background-color: #25D366; color: white;"
+            title="Generar imagen para WhatsApp"
+          >
+            📱 WhatsApp
           </button>
         </div>
       {/if}

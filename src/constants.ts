@@ -102,6 +102,7 @@ export const URL_DBA_EBC =
 export const SPREADSHEET_ID_COBERTURA = "1N-94FYW5kvGmOcJ4CCqQRWC71guFLxlXltlM7GvDQDw";
 export const WORKSHEET_TITLE_COBERTURA = "historial";
 export const WORKSHEET_TITLE_COBERTURA_PRUEBAS = "pruebas";
+export const WORKSHEET_TITLE_LIBERADOS = "liberados";
 export const SAVE_COBERTURA_URL = `${API_URL_GS}/save_cobertura.php`;
 export const GET_COBERTURA_URL = `${API_URL_GS}/get_coberturas.php`;
 

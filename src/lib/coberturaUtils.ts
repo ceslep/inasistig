@@ -54,6 +54,14 @@ export type CoberturaHistorica = {
   motivo: string;
 };
 
+export type CoberturaLiberado = {
+  fecha: string;
+  dia_semana: string;
+  grupo: string;
+  hora_liberada: number;
+  motivo: string;
+};
+
 export const DIAS = ["lunes", "martes", "miercoles", "jueves", "viernes"] as const;
 export const DIAS_ABREV = ["LUN", "MAR", "MIE", "JUE", "VIE"];
 export const ROLES_SIN_LIMITE = ["ORIENTACION", "ORIENTADOR", "COORDINADOR", "BIBLIOTECA","AUDITORIO"];

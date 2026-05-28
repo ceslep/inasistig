@@ -1,9 +1,9 @@
 <?php
 /**
- * save_cobertura.php - Guardado de coberturas en Google Sheets
+ * save_cobertura.php - Guardado de coberturas y liberados en Google Sheets
  *
- * Recibe datos de cobertura y los guarda en Google Sheets.
- * Estructura: [fecha, dia_semana, hora, docente_ausente, grupo_ausente, docente_cubre, grupo_a_cubrir, estado, motivo]
+ * Historial: [fecha, dia_semana, hora, docente_ausente, grupo_ausente, docente_cubre, grupo_a_cubrir, estado, motivo]
+ * Liberados: [fecha, dia_semana, grupo, hora_liberada, motivo]
  */
 
 require __DIR__ . '/vendor/autoload.php';
@@ -69,7 +69,9 @@ try {
     $nextRow = count($allValues) + 1;
     if ($nextRow < 2) $nextRow = 2;
 
-    $insertRange = $worksheetTitle . '!A' . $nextRow . ':I' . ($nextRow + count($values) - 1);
+    $numCols = count($values[0]);
+    $lastCol = chr(64 + $numCols);
+    $insertRange = $worksheetTitle . '!A' . $nextRow . ':' . $lastCol . ($nextRow + count($values) - 1);
     $body = new ValueRange(['values' => $values]);
     $params = ['valueInputOption' => 'RAW'];
 
@@ -77,9 +79,10 @@ try {
 
     echo json_encode([
         'success' => true,
-        'message' => 'Cobertura guardada exitosamente.',
+        'message' => 'Registro guardado exitosamente.',
         'spreadsheetId' => $spreadsheetId,
-        'worksheetTitle' => $worksheetTitle
+        'worksheetTitle' => $worksheetTitle,
+        'rowsInserted' => count($values)
     ]);
 
 } catch (Exception $e) {
