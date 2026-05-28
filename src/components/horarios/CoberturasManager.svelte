@@ -1016,8 +1016,8 @@ function recalcularCoberturas() {
 
   {#if mostrarReporteWhatsApp}
     <WhatsAppReport
-      {diaSeleccionado}
-      {fechaSeleccionada}
+      diaSeleccionado={diaReportePDF}
+      fechaSeleccionada={fechaReportePDF}
       coberturas={coberturasGuardadas}
       gruposAusentes={gruposReportePDF}
       {docentesAusentes}

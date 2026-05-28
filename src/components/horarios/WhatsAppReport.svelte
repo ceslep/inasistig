@@ -90,6 +90,81 @@
     const slot = schedule[h - 1];
     return slot ? slot.inicio : `Hora ${h}`;
   }
+
+  async function generarImagen() {
+    if (generando) return;
+    generando = true;
+    try {
+      const elemento = document.getElementById("report-card");
+      if (!elemento) {
+        generando = false;
+        return;
+      }
+
+      const modalContent = elemento.closest('[style*="max-h"]') as HTMLElement;
+      const scrollContainer = modalContent?.querySelector('[class*="overflow-y-auto"]') as HTMLElement;
+
+      if (scrollContainer) {
+        const maxScroll = scrollContainer.scrollHeight;
+        scrollContainer.style.overflow = "visible";
+        scrollContainer.style.maxHeight = "none";
+        scrollContainer.scrollTop = maxScroll + 500;
+        await new Promise((r) => setTimeout(r, 300));
+      }
+
+      elemento.style.height = "auto";
+      elemento.style.maxHeight = "none";
+      elemento.style.overflow = "visible";
+
+      await new Promise((r) => setTimeout(r, 200));
+
+      const altoCompleto = elemento.scrollHeight;
+      const anchoCompleto = elemento.scrollWidth;
+
+      elemento.style.height = `${altoCompleto + 50}px`;
+
+      await new Promise((r) => setTimeout(r, 100));
+
+      const canvas = await html2canvas(elemento, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        logging: false,
+        imageTimeout: 0,
+        width: Math.max(anchoCompleto, 400),
+        height: altoCompleto + 50,
+        windowWidth: Math.max(anchoCompleto + 50, 450),
+        windowHeight: altoCompleto + 100,
+      });
+
+      elemento.style.height = "";
+      elemento.style.maxHeight = "";
+      elemento.style.overflow = "";
+
+      if (scrollContainer) {
+        scrollContainer.style.overflow = "";
+        scrollContainer.style.maxHeight = "";
+        scrollContainer.scrollTop = 0;
+      }
+
+      const link = document.createElement("a");
+      link.download = `Coberturas_${fechaSeleccionada}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+
+      Swal.fire({
+        icon: "success",
+        title: "Imagen generada",
+        text: "La imagen se descargó correctamente",
+        confirmButtonText: "Cerrar",
+      });
+    } catch (e) {
+      console.error(e);
+      Swal.fire("Error", "No se pudo generar la imagen", "error");
+    } finally {
+      generando = false;
+    }
+  }
 </script>
 
 <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background-color: rgba(0,0,0,0.5);">
