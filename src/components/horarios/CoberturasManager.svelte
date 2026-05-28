@@ -37,6 +37,7 @@
     "FUERZA MAYOR": { icono: Shield, color: "#6366f1" },
     "INCAPACIDAD": { icono: Stethoscope, color: "#ef4444" },
     "INTERCOLEGIADOS": { icono: SportShoe, color: "#ef4466" },
+    "JURADO": { icono: Scale, color: "#a16207" },
     "LICENCIA": { icono: Award, color: "#eab308" },
     "LUTO": { icono: Skull, color: "#1f2937" },
     "MEDICO": { icono: Stethoscope, color: "#10b981" },
@@ -98,6 +99,10 @@
     const diaSemana = hoy.getDay();
     const lunes = new Date(hoy);
     lunes.setDate(hoy.getDate() - (diaSemana === 0 ? 6 : diaSemana - 1));
+    const hoySinHora = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    if (lunes < hoySinHora) {
+      lunes.setDate(lunes.getDate() + 7);
+    }
     const dias: string[] = [];
     for (let i = 0; i < 5; i++) {
       const d = new Date(lunes);
@@ -365,7 +370,7 @@ function recalcularCoberturas() {
   }
 
   async function guardarCoberturas() {
-    const aprobadas = coberturasSugeridas.filter((c) => c.aprobada);
+    const aprobadas = coberturasSugeridas.filter((c) => c.aprobada && c.docenteCubre !== "IGNORAR");
     if (aprobadas.length === 0 && gruposAusentes.length === 0) {
       Swal.fire("Atención", "No hay coberturas ni grupos ausentes para guardar", "warning");
       return;
@@ -466,6 +471,12 @@ function recalcularCoberturas() {
   }
 
   function cambiarDocenteCubre(index: number, docente: string) {
+    if (docente === "IGNORAR") {
+      coberturasSugeridas[index].docenteCubre = "IGNORAR";
+      coberturasSugeridas = [...coberturasSugeridas];
+      return;
+    }
+
     const docenteAnterior = coberturasSugeridas[index].docenteCubre;
     const esSpecialRole = ROLES_SIN_LIMITE.some((r) => docente.includes(r));
     const eraSpecialRole = ROLES_SIN_LIMITE.some((r) => docenteAnterior?.includes(r));
@@ -614,8 +625,15 @@ function recalcularCoberturas() {
     diaReportePDF = delDia[0].dia_semana;
     fechaReportePDF = fecha;
 
-    const gruposUnicos = [...new Set(delDia.filter((c) => c.grupo_ausente && c.grupo_ausente !== "").map((c) => c.grupo_ausente))];
-    gruposReportePDF = gruposUnicos.map((g) => ({ grupo: g, horaInicio: 1 }));
+    let todosLiberados: import("../../lib/coberturaUtils").CoberturaLiberado[] = [];
+    try {
+      todosLiberados = await coberturaSheetsService.getLiberados();
+      liberadosReportePDF = todosLiberados.filter((l) => l.fecha === fecha);
+    } catch {
+      liberadosReportePDF = [];
+    }
+
+    gruposReportePDF = liberadosReportePDF.map((l) => ({ grupo: l.grupo, horaInicio: l.hora_liberada }));
 
     coberturasReportePDF = delDia.map((c): CoberturaSugerida => ({
       hora: c.hora,
@@ -627,13 +645,6 @@ function recalcularCoberturas() {
       posiblesCobradores: [],
       motivoAusencia: c.motivo,
     }));
-
-    try {
-      const todosLiberados = await coberturaSheetsService.getLiberados();
-      liberadosReportePDF = todosLiberados.filter((l) => l.fecha === fecha);
-    } catch {
-      liberadosReportePDF = [];
-    }
 
     mostrarReportePDF = true;
   }
@@ -648,8 +659,15 @@ function recalcularCoberturas() {
     diaReportePDF = delDia[0].dia_semana;
     fechaReportePDF = fecha;
 
-    const gruposUnicos = [...new Set(delDia.filter((c) => c.grupo_ausente && c.grupo_ausente !== "").map((c) => c.grupo_ausente))];
-    gruposReportePDF = gruposUnicos.map((g) => ({ grupo: g, horaInicio: 1 }));
+    let todosLiberados: import("../../lib/coberturaUtils").CoberturaLiberado[] = [];
+    try {
+      todosLiberados = await coberturaSheetsService.getLiberados();
+      liberadosReportePDF = todosLiberados.filter((l) => l.fecha === fecha);
+    } catch {
+      liberadosReportePDF = [];
+    }
+
+    gruposReportePDF = liberadosReportePDF.map((l) => ({ grupo: l.grupo, horaInicio: l.hora_liberada }));
 
     coberturasReportePDF = delDia.map((c): CoberturaSugerida => ({
       hora: c.hora,
@@ -661,13 +679,6 @@ function recalcularCoberturas() {
       posiblesCobradores: [],
       motivoAusencia: c.motivo,
     }));
-
-    try {
-      const todosLiberados = await coberturaSheetsService.getLiberados();
-      liberadosReportePDF = todosLiberados.filter((l) => l.fecha === fecha);
-    } catch {
-      liberadosReportePDF = [];
-    }
 
     coberturasGuardadas = [...coberturasReportePDF];
     mostrarReporteWhatsApp = true;
@@ -978,6 +989,7 @@ function recalcularCoberturas() {
               { tipo: "FUERZA MAYOR", icono: Shield, color: "#6366f1" },
               { tipo: "INCAPACIDAD", icono: Stethoscope, color: "#ef4444" },
               { tipo: "INTERCOLEGIADOS", icono: SportShoe, color: "#aa4466" },
+              { tipo: "JURADO", icono: Scale, color: "#a16207" },
               { tipo: "LICENCIA", icono: Award, color: "#eab308" },
               { tipo: "LUTO", icono: Skull, color: "#1f2937" },
               { tipo: "MEDICO", icono: Stethoscope, color: "#10b981" },

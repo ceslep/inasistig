@@ -21,6 +21,22 @@
   let filterFechaDesde = $state("");
   let filterFechaHasta = $state("");
 
+  $effect(() => {
+    if (coberturasHistoricas.length > 0) {
+      const todasFechas = [...new Set(coberturasHistoricas.map((c) => c.fecha))].sort().reverse();
+      if (todasFechas.length > 0) {
+        const maxFecha = todasFechas[0];
+        filterFechaHasta = maxFecha;
+        const d = new Date(maxFecha + "T00:00:00");
+        d.setDate(d.getDate() - 5);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        filterFechaDesde = `${y}-${m}-${day}`;
+      }
+    }
+  });
+
   const filtradas = $derived(
     coberturasHistoricas.filter((c) => {
       if (filterFechaDesde && c.fecha < filterFechaDesde) return false;
@@ -30,8 +46,8 @@
   );
 
   const fechasDisponibles = $derived.by(() => {
-    const fechas = [...new Set(filtradas.map((c) => c.fecha))].sort().reverse();
-    return fechas;
+    const fechas = [...new Set(coberturasHistoricas.map((c) => c.fecha))].sort().reverse();
+    return fechas.slice(0, 5);
   });
 
   let fechaSeleccionadaReporte = $state("");
@@ -72,7 +88,7 @@
           >
             <option value="">Seleccionar fecha...</option>
             {#each fechasDisponibles as fecha}
-              {@const dia = filtradas.find(c => c.fecha === fecha)?.dia_semana}
+              {@const dia = coberturasHistoricas.find(c => c.fecha === fecha)?.dia_semana}
               <option value={fecha}>{formatoDia(dia || "")} {fecha}</option>
             {/each}
           </select>

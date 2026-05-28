@@ -336,11 +336,14 @@
                       {/each}
                     </optgroup>
                   {/if}
-                  <optgroup label="Opciones adicionales">
+                  <optgroup label="Roles institucionales">
                     <option value="ORIENTACION">ORIENTACION</option>
                     <option value="COORDINADOR">COORDINADOR</option>
                     <option value="BIBLIOTECA">BIBLIOTECA</option>
                     <option value="AUDITORIO">AUDITORIO</option>
+                  </optgroup>
+                  <optgroup label="Otros">
+                    <option value="IGNORAR">IGNORAR</option>
                   </optgroup>
                 </select>
                 {#if dupInfo.dup}
