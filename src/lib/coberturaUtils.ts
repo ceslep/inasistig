@@ -261,7 +261,8 @@ export function getPosiblesCobradoresParaSlot(
   indiceAusencias: Map<string, number>,
   asignacionesSesion: CoberturaSugerida[],
   ausenciasGrupo: { grupo: string; horaInicio: number }[] = [],
-  permitirRepetir = false
+  permitirRepetir = false,
+  ignorarHorasPropietarias = false
 ): { docente: string; indice: number }[] {
   return horarios
     .filter((h) => {
@@ -270,7 +271,6 @@ export function getPosiblesCobradoresParaSlot(
       const jornada = h[dia as keyof HorarioDocente] as string[];
       const slotDelDocente = jornada[slot.hora];
 
-      // Si slot pertenece a grupo ausente desde horaInicio cumplida, equivale a libre.
       const grupoDelSlot = getGrupoFromSlot(slotDelDocente);
       const slotLiberadoPorGrupo =
         !!grupoDelSlot &&
@@ -278,7 +278,7 @@ export function getPosiblesCobradoresParaSlot(
           (g) => g.grupo === grupoDelSlot && slot.hora >= (g.horaInicio ?? 1) - 1
         );
 
-      if (slotDelDocente !== "" && !slotLiberadoPorGrupo) return false;
+      if (slotDelDocente !== "" && !slotLiberadoPorGrupo && !ignorarHorasPropietarias) return false;
 
       if (slot.hora === 6) {
         const allDaysLibre = DIAS.every((d) => h[d as keyof HorarioDocente][6] === "");
@@ -286,13 +286,10 @@ export function getPosiblesCobradoresParaSlot(
       }
 
       const esSinLimite = ROLES_SIN_LIMITE.some((r) => h.docente.includes(r));
-
-      // Martes scenario: si el slot del candidato a esta hora era una clase con grupo
-      // ausente, su hora ya es libre — puede cubrir aunque ya tenga otro cubrimiento.
       const slotLibrePorGrupo = slotLiberadoPorGrupo;
 
       const yaAsignadoEnSesion = asignacionesSesion.some((c) => c.docenteCubre === h.docente);
-      if (yaAsignadoEnSesion && !esSinLimite && !slotLibrePorGrupo) return false;
+      if (!permitirRepetir && yaAsignadoEnSesion && !esSinLimite && !slotLibrePorGrupo) return false;
 
       const cargaSesion = cargaDiariaSesion.get(h.docente) || 0;
       if (!permitirRepetir && !esSinLimite && !slotLibrePorGrupo && cargaSesion >= 1) return false;
@@ -315,7 +312,8 @@ export function asignarAutomaticamente(
   dia: string,
   fechaActual: string,
   ausenciasGrupo: { grupo: string; horaInicio: number }[] = [],
-  permitirRepetir = false
+  permitirRepetir = false,
+  ignorarHorasPropietarias = false
 ): CoberturaSugerida[] {
   const coberturas: CoberturaSugerida[] = [];
   const cargaDiariaSesion = construirCargaDiariaHistorica(coberturasPrevias, fechaActual);
@@ -373,7 +371,24 @@ export function asignarAutomaticamente(
       horasCubiertasSemana,
       indiceAusencias,
       coberturas,
-      ausenciasGrupo
+      ausenciasGrupo,
+      permitirRepetir,
+      ignorarHorasPropietarias
+    );
+
+    // Lista AMPLIADA para el SELECT (incluye docentes con carga/semana — solo avisar).
+    const posiblesCobradoresAmpliados = getPosiblesCobradoresParaSlot(
+      slot,
+      dia,
+      horarios,
+      slotsLibresPorAusencia,
+      cargaDiariaSesion,
+      horasCubiertasSemana,
+      indiceAusencias,
+      coberturas,
+      ausenciasGrupo,
+      true, // permitirRepetir = true (solo avisar)
+      ignorarHorasPropietarias
     );
 
     let mejorCobrador = "";
@@ -394,7 +409,7 @@ export function asignarAutomaticamente(
             ausenciasGrupo.some(
               (g) => g.grupo === grupoDelSlot && slot.hora >= (g.horaInicio ?? 1) - 1
             );
-          if (slotRaw !== "" && !slotLiberadoPorGrupo) return false;
+          if (slotRaw !== "" && !slotLiberadoPorGrupo && !ignorarHorasPropietarias) return false;
           if (slot.hora === 6) {
             const allDaysLibre = DIAS.every((d) => h[d as keyof HorarioDocente][6] === "");
             if (allDaysLibre) return false;
@@ -437,7 +452,7 @@ export function asignarAutomaticamente(
       grupoACubrir: slot.grupoAusente || (slot.slot ? getGrupoFromSlot(slot.slot) : slot.docente.split(" ").pop() || ""),
       aprobada: true,
       violation,
-      posiblesCobradores: posiblesCobradores.map((c) => c.docente),
+      posiblesCobradores: posiblesCobradoresAmpliados.map((c) => c.docente),
       motivoAusencia: slot.motivoAusencia || "",
       porGrupoAusente: slotLibre,
     });

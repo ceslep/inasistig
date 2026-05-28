@@ -13,6 +13,7 @@
     slots,
     loading = false,
     permitirRepetir = $bindable(false),
+    ignorarHorasPropietarias = $bindable(false),
     onGenerar,
     onBack,
     onOpenGruposModal,
@@ -24,6 +25,7 @@
     slots: SlotInfo[];
     loading?: boolean;
     permitirRepetir?: boolean;
+    ignorarHorasPropietarias?: boolean;
     onGenerar: () => void;
     onBack: () => void;
     onOpenGruposModal?: () => void;
@@ -83,13 +85,31 @@
 </script>
 
 <div class="p-6 rounded-2xl border" style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--card-bg));">
-  <div class="flex items-center justify-between mb-4">
+  <div class="flex items-center justify-between mb-4 gap-3 flex-wrap">
     <h2 class="text-lg font-bold" style="color: rgb(var(--text-primary));">
       Step 2 — Análisis de Horas Libres
     </h2>
-    <button onclick={onBack} class="text-sm px-3 py-1 rounded-lg" style="color: rgb(var(--text-secondary));">
-      ← Atrás
-    </button>
+    <div class="flex items-center gap-2">
+      <button onclick={onBack} class="text-sm px-3 py-1 rounded-lg" style="color: rgb(var(--text-secondary));">
+        ← Atrás
+      </button>
+      <button
+        onclick={onGenerar}
+        disabled={loading}
+        class="py-2 px-4 rounded-xl font-bold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+        style="background-color: rgb(var(--accent-primary)); opacity: {loading ? 0.7 : 1};"
+      >
+        {#if loading}
+          <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Generando...
+        {:else}
+          Generar asignaciones →
+        {/if}
+      </button>
+    </div>
   </div>
 
   <div class="mb-4 p-4 rounded-xl grid grid-cols-1 sm:grid-cols-3 gap-4 text-center" style="background-color: rgb(var(--bg-secondary));">
@@ -198,6 +218,11 @@
   <label class="flex items-center gap-2 mt-4 cursor-pointer">
     <input type="checkbox" bind:checked={permitirRepetir} class="w-4 h-4" style="accent-color: rgb(var(--accent-primary));" />
     <span style="color: rgb(var(--text-primary));">Permitir repetir (mismo docente varias horas)</span>
+  </label>
+
+  <label class="flex items-center gap-2 mt-2 cursor-pointer">
+    <input type="checkbox" bind:checked={ignorarHorasPropietarias} class="w-4 h-4" style="accent-color: rgb(var(--accent-primary));" />
+    <span style="color: rgb(var(--text-primary));">Ignorar restricción de horas libres propietarias (horarios.json)</span>
   </label>
 
   <button

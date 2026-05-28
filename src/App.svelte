@@ -84,6 +84,7 @@
   let ActaPadres: ModuleComponent | null = $state(null);
   let ComisionEvaluacion: ModuleComponent | null = $state(null);
   let Horarios: ModuleComponent | null = $state(null);
+  let PlanAula: ModuleComponent | null = $state(null);
 
   const handleSelect = async (view: string) => {
     if (view === "dashboard") {
@@ -121,6 +122,9 @@
       } else if (view === "diario" && !Diario) {
         const module = await import("./components/Diario.svelte");
         Diario = module.default;
+      } else if (view === "plan_de_aula" && !PlanAula) {
+        const module = await import("./components/PlanAula/PlanAulaForm.svelte");
+        PlanAula = module.default;
       } else if (view === "planeador" && !ClassPlannerForm) {
         const module = await import("./components/ClassPlannerForm.svelte");
         ClassPlannerForm = module.default;
@@ -188,6 +192,8 @@
     <Anotador onBack={handleBack} />
   {:else if activeView === "diario" && Diario}
     <Diario onBack={handleBack} />
+  {:else if activeView === "plan_de_aula" && PlanAula}
+    <PlanAula onBack={handleBack} />
   {:else if activeView === "planeador" && ClassPlannerForm}
     <div in:fade={{ duration: 300 }}>
       <ClassPlannerForm onBack={handleBack} />

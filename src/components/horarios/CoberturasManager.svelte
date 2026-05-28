@@ -80,6 +80,7 @@
   let diaReportePDF = $state("");
   let fechaReportePDF = $state("");
   let permitirRepetir = $state(false);
+  let ignorarHorasPropietarias = $state(false);
 
   const isDev = import.meta.env.DEV;
 
@@ -198,7 +199,8 @@ function recalcularCoberturas() {
       diaSeleccionado,
       fechaSeleccionada,
       gruposAusentes,
-      permitirRepetir
+      permitirRepetir,
+      ignorarHorasPropietarias
     );
 
     // B1: Merge — preservar docenteCubre manual donde el slot persiste
@@ -455,12 +457,12 @@ function recalcularCoberturas() {
 
     coberturasSugeridas[index].docenteCubre = docente;
 
+    // Para recálculo correcto: construir contexto sin asumir el docente anterior consume hora.
+    // El docente anterior queda LIBRE si: rol especial, o si fue movido a otra cobertura, o
+    // simplemente porque ahora otro toma su lugar — por eso recalculamos posibles de cada
+    // fila con asignacionesSesion = coberturasSugeridas actuales (donde el anterior ya no
+    // figura como docenteCubre).
     const cargaHistorica = construirCargaDiariaHistorica(coberturasHistoricas, fechaSeleccionada);
-    const cargaDiariaSesion = construirCargaDiariaSesion(coberturasSugeridas, index, docente, cargaHistorica, {
-      dia: diaSeleccionado,
-      horarios: horariosData,
-      ausenciasGrupo: gruposAusentes,
-    });
 
     const hoy = new Date(fechaSeleccionada + "T00:00:00");
     const hace14dias = new Date(hoy);
@@ -489,6 +491,12 @@ function recalcularCoberturas() {
       return !slotsExcluidos.has(key);
     });
 
+    const DEBUG_RECALC = false; // set true para diagnosticar problemas de recálculo
+    if (DEBUG_RECALC) {
+      console.log("[cambiarDocenteCubre] index=", index, "docente=", docente);
+      console.log("  coberturasSugeridas snapshot=", coberturasSugeridas.map((c, j) => ({ j, hora: c.hora, docenteAusente: c.docenteAusente, docenteCubre: c.docenteCubre })));
+    }
+
     for (let i = 0; i < coberturasSugeridas.length; i++) {
       if (i === index) continue;
 
@@ -499,6 +507,23 @@ function recalcularCoberturas() {
 
       if (!slotParaEsta) continue;
 
+      // sesionFiltrada: vaciar docenteCubre de filas i e index para que getPosiblesCobradoresParaSlot
+      // no autobloquee al docente actual de la fila i ni cuente al docente anterior de la fila index.
+      const sesionFiltrada = coberturasSugeridas.map((c, j) =>
+        j === i || j === index ? { ...c, docenteCubre: "" } : c
+      );
+
+      // Reconstruir cargaDiariaSesion POR FILA: excluir las filas i e index para que el
+      // docente actual de la fila i no se cuente a sí mismo (autobloqueo) y para que el
+      // docente anterior de la fila index (ahora reemplazado) tampoco aparezca con carga.
+      const cargaDiariaSesion = construirCargaDiariaSesion(sesionFiltrada, -1, "", cargaHistorica, {
+        dia: diaSeleccionado,
+        horarios: horariosData,
+        ausenciasGrupo: gruposAusentes,
+      });
+
+      // Para SELECT: permitir docentes con carga/semana previas (solo avisar visualmente,
+      // no bloquear). Usuario decide. Por eso forzamos permitirRepetir=true aquí.
       const posibles = getPosiblesCobradoresParaSlot(
         slotParaEsta,
         diaSeleccionado,
@@ -507,24 +532,33 @@ function recalcularCoberturas() {
         cargaDiariaSesion,
         horasCubiertasSemana,
         indiceAusencias,
-        coberturasSugeridas,
+        sesionFiltrada,
         gruposAusentes,
-        permitirRepetir
+        true, // permitirRepetir = true (solo avisar)
+        ignorarHorasPropietarias
       ).map((c) => c.docente);
+
+      if (DEBUG_RECALC) {
+        const cargaObj = Object.fromEntries(cargaDiariaSesion);
+        console.log(`  fila i=${i} (hora=${cov.hora}, ausente=${cov.docenteAusente}) ANA SOFIA carga=`, cargaObj["ANA SOFIA CARDENAS PETUMA"] ?? "(no en mapa)");
+        const ana = horariosData.find(h => h.docente === "ANA SOFIA CARDENAS PETUMA");
+        if (ana) {
+          const slotAna = (ana.miercoles as string[])[cov.hora];
+          console.log(`    ANA SOFIA jornada[${cov.hora}]="${slotAna}"`);
+        }
+      }
 
       const docenteCubreActual = cov.docenteCubre;
       if (docenteCubreActual && cov.aprobada && !posibles.includes(docenteCubreActual)) {
         posibles.unshift(docenteCubreActual);
       }
 
+      if (DEBUG_RECALC) {
+        console.log(`  fila i=${i} (hora=${cov.hora}, ausente=${cov.docenteAusente}) posibles=`, posibles, "ANA incluida?", posibles.includes("ANA SOFIA CARDENAS PETUMA"));
+      }
+
       coberturasSugeridas[i] = { ...cov, posiblesCobradores: posibles };
     }
-
-    // El recálculo arriba (getPosiblesCobradoresParaSlot con cargaDiariaSesion actualizada) ya:
-    // - excluye al docente nuevo (cargaSesion >= 1) de otras filas si es regular
-    // - libera al docente anterior (cargaSesion bajó a 0) para aparecer en otras filas
-    // - incluye siempre roles especiales via optgroup hardcoded del select
-    // Eliminados bloques de filtrado/restore manual que sobrescribían este resultado.
 
     // Forzar reasignación referencial para refrescar Svelte
     coberturasSugeridas = [...coberturasSugeridas];
@@ -738,6 +772,7 @@ function recalcularCoberturas() {
         slots={slotsConAusencia}
         {loading}
         bind:permitirRepetir
+        bind:ignorarHorasPropietarias
         onGenerar={generarAsignaciones}
         onBack={() => step = 1}
         onOpenGruposModal={() => mostrarModalGrupos = true}

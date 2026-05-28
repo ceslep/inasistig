@@ -5,12 +5,15 @@
   import type { CoberturaHistorica } from "../lib/coberturaUtils";
   import { coberturaSheetsService } from "../services/coberturaSheetsService";
   import { getSemanaDelAno } from "../lib/coberturaUtils";
-  import { User, Search, ArrowLeft, BarChart3, Calendar, X } from "@lucide/svelte";
+  import { User, Search, ArrowLeft, BarChart3, Calendar, X, Users } from "@lucide/svelte";
 
   let { onBack }: { onBack: () => void } = $props();
 
-  type ViewMode = "horario" | "coberturas";
+  type ViewMode = "horario" | "coberturas" | "crear";
   let viewMode = $state<ViewMode>("horario");
+
+  type HorarioViewMode = "docente" | "grupos";
+  let horarioViewMode = $state<HorarioViewMode>("docente");
 
   type HorarioDocente = {
     docente: string;
@@ -21,12 +24,25 @@
     viernes: string[];
   };
 
+  type CeldaMateria = { materia: string; docente: string; hora: number; dia: string };
+  type HorarioGrupo = {
+    grupo: string;
+    lunes: CeldaMateria[];
+    martes: CeldaMateria[];
+    miercoles: CeldaMateria[];
+    jueves: CeldaMateria[];
+    viernes: CeldaMateria[];
+  };
+
   const dias = ["lunes", "martes", "miercoles", "jueves", "viernes"] as const;
+  type Dia = typeof dias[number];
   const diasAbreviado = ["LUN", "MAR", "MIE", "JUE", "VIE"];
 
   let docenteSeleccionado = $state<string | null>(null);
+  let grupoSeleccionado = $state<string | null>(null);
   let coberturasHistoricas = $state<CoberturaHistorica[]>([]);
   let filtroDocente = $state("");
+  let filtroGrupo = $state("");
   let cargandoCarga = $state(false);
 
   const docenteActual = $derived(
@@ -34,6 +50,32 @@
       ? horariosData.find((h: HorarioDocente) => h.docente === docenteSeleccionado)
       : null
   );
+
+  const gruposDisponibles = $derived.by(() => {
+    const gruposSet = new Set<string>();
+    for (const docente of horariosData as HorarioDocente[]) {
+      for (const dia of dias) {
+        for (const slot of docente[dia]) {
+          if (slot && slot !== "DESC" && slot !== "PEDAG" && slot !== "DEESC") {
+            const match = slot.match(/ (.+)$/);
+            if (match) gruposSet.add(match[1]);
+          }
+        }
+      }
+    }
+    return [...gruposSet]
+      .filter(g => {
+        const h = getTotalHorasGrupo(g);
+        return h > 0;
+      })
+      .sort((a, b) => parseInt(a) - parseInt(b));
+  });
+
+  const gruposFiltrados = $derived.by(() => {
+    const q = filtroGrupo.trim();
+    if (!q) return gruposDisponibles;
+    return gruposDisponibles.filter(g => g.includes(q));
+  });
 
   const docentesFiltrados = $derived.by(() => {
     const q = filtroDocente.trim().toLocaleLowerCase("es");
@@ -47,16 +89,107 @@
     docenteSeleccionado = docenteSeleccionado === nombre ? null : nombre;
   }
 
-  function getClaseSlot(contenido: string): { bg: string; text: string; border: string } {
+  function seleccionarGrupo(nombre: string) {
+    grupoSeleccionado = grupoSeleccionado === nombre ? null : nombre;
+  }
+
+  function getHorarioGrupo(grupo: string): HorarioGrupo {
+    const vacio: CeldaMateria[] = Array(7).fill({ materia: "", docente: "", hora: 0, dia: "" });
+    const horario: HorarioGrupo = {
+      grupo,
+      lunes: [...vacio],
+      martes: [...vacio],
+      miercoles: [...vacio],
+      jueves: [...vacio],
+      viernes: [...vacio],
+    };
+
+    for (const docente of horariosData as HorarioDocente[]) {
+      for (const dia of dias) {
+        docente[dia].forEach((slot, horaIdx) => {
+          if (slot && slot !== "DESC" && slot !== "PEDAG" && slot !== "DEESC") {
+            const lastSpaceIdx = slot.lastIndexOf(" ");
+            if (lastSpaceIdx > 0) {
+              const grupoDelSlot = slot.substring(lastSpaceIdx + 1);
+              if (grupoDelSlot === grupo) {
+                const materia = slot.substring(0, lastSpaceIdx);
+                horario[dia][horaIdx] = { materia, docente: docente.docente, hora: horaIdx, dia };
+              }
+            }
+          }
+        });
+      }
+    }
+    return horario;
+  }
+
+  function getHorasGrupo(grupo: string): { hora: number; dia: string; diaIdx: number; materia: string; docente: string }[] {
+    const horario = getHorarioGrupo(grupo);
+    const horas: { hora: number; dia: string; diaIdx: number; materia: string; docente: string }[] = [];
+
+    dias.forEach((dia, diaIdx) => {
+      for (let h = 0; h < 7; h++) {
+        const celda = horario[dia][h];
+        if (celda.materia) {
+          horas.push({ hora: h + 1, dia, diaIdx, materia: celda.materia, docente: celda.docente });
+        }
+      }
+    });
+
+    return horas;
+  }
+
+  function getTotalHorasGrupo(grupo: string): number {
+    return getHorasGrupo(grupo).length;
+  }
+
+  function getClaseSlotDocente(contenido: string): { bg: string; text: string; border: string } {
     if (!contenido) return { bg: "bg-white dark:bg-zinc-800", text: "text-zinc-300 dark:text-zinc-500", border: "border-2 border-dashed border-zinc-300 dark:border-zinc-600" };
     if (contenido === "DESC" || contenido === "PEDAG" || contenido === "DEESC") return { bg: "bg-orange-200 dark:bg-orange-800", text: "text-orange-800 dark:text-orange-200", border: "border border-orange-300 dark:border-orange-600" };
     return { bg: "bg-emerald-200 dark:bg-emerald-800", text: "text-emerald-800 dark:text-emerald-200", border: "border border-emerald-300 dark:border-emerald-600" };
+  }
+
+  function getClaseSlotGrupo(celda: CeldaMateria): { bg: string; text: string; border: string } {
+    if (!celda.materia) return { bg: "bg-white dark:bg-zinc-800", text: "text-zinc-300 dark:text-zinc-500", border: "border-2 border-dashed border-zinc-300 dark:border-zinc-600" };
+    if (celda.materia === "DESC" || celda.materia === "PEDAG") return { bg: "bg-orange-200 dark:bg-orange-800", text: "text-orange-800 dark:text-orange-200", border: "border border-orange-300 dark:border-orange-600" };
+    return { bg: "bg-blue-100 dark:bg-blue-900", text: "text-blue-800 dark:text-blue-200", border: "border border-blue-300 dark:border-blue-600" };
+  }
+
+  function formatearMateriaGrupo(materia: string): string {
+    if (!materia) return "";
+    const abrevias: Record<string, string> = {
+      "CIENCIAS NATURALES": "CIENCIAS NAT",
+      "EDUCACION FISICA": "EDU. FISICA",
+      "EDUCACION ARTISTICA": "EDU. ARTISTICA",
+      "INGLES": "INGLES",
+      "MATEMATICAS": "MATEMATICAS",
+      "LENGUA CASTELLANA": "LENGUAJE",
+      "CIENCIAS SOCIALES": "C. SOCIALES",
+      "TECNOLOGIA E INFORMATICA": "TECNOLOGIA",
+      "ETICA Y VALORES": "ETICA",
+      "EDUCACION RELIGIOSA": "EDU. RELIG",
+      "FORMACION ETICA": "FORM. ETICA",
+      "EMPRENDIMIENTO": "EMPREND.",
+      "PROYECTO DE VIDA": "PROY. VIDA",
+      "ARTISTICA Y DISEÑO": "ARTISTICA",
+    };
+    return abrevias[materia] || materia;
   }
 
   function formatearMateria(contenido: string): string {
     if (!contenido) return "LIBRE";
     if (contenido === "DESC" || contenido === "PEDAG" || contenido === "DEESC") return contenido;
     return contenido.replace(/\n/g, " ");
+  }
+
+  function formatearDocenteCorto(nombre: string): string {
+    if (!nombre) return "";
+    if (nombre.length <= 18) return nombre;
+    const parts = nombre.split(" ");
+    if (parts.length >= 2) {
+      return parts[0] + " " + parts[parts.length - 1].substring(0, 8);
+    }
+    return nombre.substring(0, 18) + "...";
   }
 
   function calcularCargaLaboral(docente: HorarioDocente) {
@@ -138,7 +271,6 @@
     const carga = calcularCargaLaboral(docente);
     const puedeCubrir = carga.horasDisponiblesCobertura;
 
-    // Tokens semánticos con buen contraste light + dark
     const stat = (val: number | string, label: string, hueLight: string, hueDark: string) => `
       <div class="cl-stat" style="--bg-l:${hueLight}; --bg-d:${hueDark};">
         <div class="cl-stat-val">${val}</div>
@@ -214,26 +346,45 @@
 <ModuleHeader title="Horario General" {onBack} />
 
 <div class="p-4 max-w-7xl mx-auto">
-  <div role="tablist" aria-label="Vista de horarios" class="flex gap-2 mb-4">
+  <div class="flex flex-wrap items-center gap-4 mb-4">
+    <div role="tablist" aria-label="Modo de vista" class="flex gap-2">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={horarioViewMode === "docente"}
+        aria-controls="panel-horario"
+        onclick={() => { horarioViewMode = "docente"; grupoSeleccionado = null; }}
+        class="px-4 py-2 rounded-lg font-medium text-sm transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        style="background-color: {horarioViewMode === 'docente' ? 'rgb(var(--accent-primary))' : 'rgb(var(--card-bg))'}; color: {horarioViewMode === 'docente' ? 'white' : 'rgb(var(--text-primary))'}; border: 1px solid {horarioViewMode === 'docente' ? 'rgb(var(--accent-primary))' : 'rgb(var(--border-primary))'}; --tw-ring-color: rgb(var(--accent-primary));"
+      >
+        <span class="flex items-center gap-2">
+          <User size={16} aria-hidden="true" />
+          Por Docente
+        </span>
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={horarioViewMode === "grupos"}
+        aria-controls="panel-grupos"
+        onclick={() => { horarioViewMode = "grupos"; docenteSeleccionado = null; }}
+        class="px-4 py-2 rounded-lg font-medium text-sm transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+        style="background-color: {horarioViewMode === 'grupos' ? 'rgb(var(--accent-primary))' : 'rgb(var(--card-bg))'}; color: {horarioViewMode === 'grupos' ? 'white' : 'rgb(var(--text-primary))'}; border: 1px solid {horarioViewMode === 'grupos' ? 'rgb(var(--accent-primary))' : 'rgb(var(--border-primary))'}; --tw-ring-color: rgb(var(--accent-primary));"
+      >
+        <span class="flex items-center gap-2">
+          <Users size={16} aria-hidden="true" />
+          Por Grupo
+        </span>
+      </button>
+    </div>
+
+    <div class="flex-1"></div>
+
     <button
       type="button"
-      role="tab"
-      aria-selected={viewMode === "horario"}
-      aria-controls="panel-horario"
-      onclick={() => viewMode = "horario"}
-      class="px-4 py-2 rounded-lg font-medium text-sm transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-      style="background-color: {viewMode === 'horario' ? 'rgb(var(--accent-primary))' : 'rgb(var(--card-bg))'}; color: {viewMode === 'horario' ? 'white' : 'rgb(var(--text-primary))'}; border: 1px solid {viewMode === 'horario' ? 'rgb(var(--accent-primary))' : 'rgb(var(--border-primary))'}; --tw-ring-color: rgb(var(--accent-primary));"
-    >
-      Ver Horario
-    </button>
-    <button
-      type="button"
-      role="tab"
-      aria-selected={viewMode === "coberturas"}
-      aria-controls="panel-coberturas"
       onclick={() => viewMode = "coberturas"}
-      class="px-4 py-2 rounded-lg font-medium text-sm transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-      style="background-color: {viewMode === 'coberturas' ? 'rgb(var(--accent-primary))' : 'rgb(var(--card-bg))'}; color: {viewMode === 'coberturas' ? 'white' : 'rgb(var(--text-primary))'}; border: 1px solid {viewMode === 'coberturas' ? 'rgb(var(--accent-primary))' : 'rgb(var(--border-primary))'}; --tw-ring-color: rgb(var(--accent-primary));"
+      class="px-4 py-2 rounded-lg text-sm transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+      style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border: 1px solid rgb(var(--border-primary)); --tw-ring-color: rgb(var(--accent-primary));"
     >
       Gestionar Coberturas
     </button>
@@ -243,6 +394,148 @@
     <div id="panel-coberturas" role="tabpanel">
       <CoberturasManager onBack={() => viewMode = "horario"} />
     </div>
+  {:else if horarioViewMode === "grupos"}
+    {#if !grupoSeleccionado}
+      <div id="panel-grupos" role="tabpanel" class="mb-4">
+        <p id="filtro-grupo-hint" class="text-sm text-zinc-500 dark:text-zinc-400 mb-3">
+          Selecciona un grupo para ver su horario semanal
+        </p>
+        <div class="relative mb-4 max-w-md">
+          <label for="filtro-grupo" class="sr-only">Filtrar grupos por número</label>
+          <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none" style="color: rgb(var(--text-secondary));">
+            <Search size={18} aria-hidden="true" />
+          </div>
+          <input
+            id="filtro-grupo"
+            type="search"
+            bind:value={filtroGrupo}
+            placeholder="Buscar grupo (ej: 601, 702)..."
+            aria-describedby="filtro-grupo-hint filtro-resultados"
+            autocomplete="off"
+            class="w-full pl-10 pr-10 py-3 rounded-xl text-sm border focus-visible:outline-none focus-visible:ring-2"
+            style="background-color: rgb(var(--card-bg)); color: rgb(var(--text-primary)); border-color: rgb(var(--border-primary)); --tw-ring-color: rgb(var(--accent-primary));"
+          />
+          {#if filtroGrupo}
+            <button
+              type="button"
+              onclick={() => (filtroGrupo = "")}
+              aria-label="Limpiar filtro"
+              class="absolute inset-y-0 right-0 flex items-center pr-3 hover:opacity-70 transition-opacity"
+              style="color: rgb(var(--text-secondary));"
+            >
+              <X size={18} aria-hidden="true" />
+            </button>
+          {/if}
+        </div>
+        <p id="filtro-resultados" class="sr-only" aria-live="polite">
+          {gruposFiltrados.length} grupo{gruposFiltrados.length === 1 ? "" : "s"} encontrado{gruposFiltrados.length === 1 ? "" : "s"}
+        </p>
+      </div>
+
+      {#if gruposFiltrados.length === 0}
+        <div class="text-center py-12 rounded-xl border-2 border-dashed" style="border-color: rgb(var(--border-primary)); color: rgb(var(--text-secondary));">
+          <p class="text-sm">No se encontraron grupos con "{filtroGrupo}"</p>
+        </div>
+      {:else}
+        <ul role="list" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3">
+          {#each gruposFiltrados as grupo (grupo)}
+            {@const horasGrupo = getTotalHorasGrupo(grupo)}
+            <li>
+              <button
+                type="button"
+                onclick={() => seleccionarGrupo(grupo)}
+                aria-label={`Ver horario del grupo ${grupo} - ${horasGrupo} horas`}
+                class="w-full p-4 rounded-xl text-center transition-transform duration-200 flex flex-col items-center gap-2
+                       bg-[rgb(var(--card-bg))] border-2 border-[rgb(var(--border-primary))]
+                       hover:border-[rgb(var(--accent-primary))] hover:shadow-lg motion-safe:hover:scale-[1.03]
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                style="color: rgb(var(--text-primary)); --tw-ring-color: rgb(var(--accent-primary));"
+              >
+                <div class="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold" style="background-color: rgb(var(--accent-primary)); color: white;">
+                  {grupo.substring(0, 2)}
+                </div>
+                <span class="text-sm font-bold">{grupo}</span>
+                <span class="text-xs opacity-70">{horasGrupo}h</span>
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    {:else}
+      {@const horasGrupo = getHorasGrupo(grupoSeleccionado)}
+      {@const totalHoras = horasGrupo.length}
+      <div id="panel-grupos" role="tabpanel" class="flex items-center gap-3 mb-4 flex-wrap">
+        <button
+          type="button"
+          onclick={() => grupoSeleccionado = null}
+          class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          style="background-color: rgb(var(--accent-primary)); color: white; --tw-ring-color: rgb(var(--accent-primary));"
+        >
+          <ArrowLeft size={16} aria-hidden="true" />
+          <span>Volver</span>
+        </button>
+        <span class="text-sm font-medium" style="color: rgb(var(--text-secondary));">
+          {totalHoras} horas semanales
+        </span>
+      </div>
+
+      <div class="rounded-2xl overflow-hidden border" style="border-color: rgb(var(--border-primary));">
+        <div
+          class="p-4 text-center font-bold text-lg flex items-center justify-center gap-2"
+          style="background-color: rgb(var(--accent-primary)); color: white;"
+        >
+          <Users size={20} aria-hidden="true" />
+          <span>Horario Grupo {grupoSeleccionado}</span>
+        </div>
+
+        <div class="overflow-x-auto p-4">
+          <table class="w-full text-sm border-collapse">
+            <caption class="sr-only">Horario semanal del grupo {grupoSeleccionado} - {totalHoras} horas</caption>
+            <thead>
+              <tr style="background-color: rgb(var(--accent-primary)); color: white;">
+                <th scope="col" class="p-3 text-center font-bold w-16">HORA</th>
+                <th scope="col" class="p-3 text-center font-bold">LUN</th>
+                <th scope="col" class="p-3 text-center font-bold">MAR</th>
+                <th scope="col" class="p-3 text-center font-bold">MIE</th>
+                <th scope="col" class="p-3 text-center font-bold">JUE</th>
+                <th scope="col" class="p-3 text-center font-bold">VIE</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each [1, 2, 3, 4, 5, 6, 7] as hora}
+                {@const celdasDia: Record<Dia, typeof horasGrupo[0] | undefined> = {
+                  lunes: horasGrupo.find(h => h.dia === "lunes" && h.hora === hora),
+                  martes: horasGrupo.find(h => h.dia === "martes" && h.hora === hora),
+                  miercoles: horasGrupo.find(h => h.dia === "miercoles" && h.hora === hora),
+                  jueves: horasGrupo.find(h => h.dia === "jueves" && h.hora === hora),
+                  viernes: horasGrupo.find(h => h.dia === "viernes" && h.hora === hora)
+                }}
+                <tr class="{hora % 2 === 0 ? 'bg-[rgb(var(--bg-secondary))]/50' : ''}">
+                  <td class="p-3 text-center font-bold border" style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary));">{hora}</td>
+                  {#each dias as dia}
+                    {@const celda = celdasDia[dia]}
+                    <td class="p-2 text-center border min-w-[140px]" style="border-color: rgb(var(--border-primary)); vertical-align: top;">
+                      {#if celda}
+                        <div class="font-medium text-xs" style="color: rgb(var(--accent-primary));">{formatearMateriaGrupo(celda.materia)}</div>
+                        <div class="text-xs mt-1" style="color: rgb(var(--text-secondary));">{celda.docente.split(" ").slice(-2).join(" ")}</div>
+                      {:else}
+                        <span class="text-zinc-300 dark:text-zinc-600">-</span>
+                      {/if}
+                    </td>
+                  {/each}
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="p-4 text-xs" style="background-color: rgb(var(--bg-secondary));">
+          <span class="font-medium" style="color: rgb(var(--text-muted));">
+            Total: {totalHoras} horas semanales
+          </span>
+        </div>
+      </div>
+    {/if}
   {:else if !docenteActual}
     <div id="panel-horario" role="tabpanel" class="mb-4">
       <p id="filtro-docente-hint" class="text-sm text-zinc-500 dark:text-zinc-400 mb-3">
@@ -383,7 +676,7 @@
                 </th>
                 {#each dias as dia}
                   {@const slot = docenteActual[dia][horaIdx]}
-                  {@const estilo = getClaseSlot(slot)}
+                  {@const estilo = getClaseSlotDocente(slot)}
                   <td
                     class="p-1 text-center border-t border-r"
                     style="border-color: rgb(var(--border-primary));"

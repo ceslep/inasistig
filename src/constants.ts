@@ -105,6 +105,12 @@ export const WORKSHEET_TITLE_COBERTURA_PRUEBAS = "pruebas";
 export const SAVE_COBERTURA_URL = `${API_URL_GS}/save_cobertura.php`;
 export const GET_COBERTURA_URL = `${API_URL_GS}/get_coberturas.php`;
 
+// Plan de Aula
+export const SPREADSHEET_ID_PLAN_AULA = "1pkFF954kWh1aCAlyMlIjk7eQL1Povn3vO_5aJFxkM4c";
+export const WORKSHEET_TITLE_PLAN_AULA = "plan";
+export const SAVE_PLAN_AULA_URL = `${API_URL_GS}/savePlanAula.php`;
+export const GET_PLAN_AULA_URL = `${API_URL_GS}/getPlanAula.php`;
+
 // Periodos
 
 interface Periodo {

@@ -54,7 +54,10 @@
       "Skill(ui-styling)",
       "Skill(svelte:svelte-core-bestpractices)",
       "Skill(svelte:svelte-code-writer)",
-      "Skill(frontend-design:frontend-design)"
+      "Skill(frontend-design:frontend-design)",
+      "Bash(npx @sveltejs/mcp svelte-autofixer ./src/components/horarios/WhatsAppReport.svelte --svelte-version 5)",
+      "Bash(npx @sveltejs/mcp svelte-autofixer ./src/components/horarios/AsignacionesView.svelte --svelte-version 5)",
+      "Bash(npx @sveltejs/mcp svelte-autofixer ./src/components/horarios/AnalisisView.svelte --svelte-version 5)"
     ],
     "allowedTools": [
       "Read",

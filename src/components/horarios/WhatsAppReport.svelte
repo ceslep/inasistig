@@ -24,6 +24,52 @@
     onClose: () => void;
   } = $props();
 
+  // Filtros para reportes:
+  // - Grupos que NO ASISTEN (gruposAusentes con horaInicio === 1)
+  // - Grupos que se LIBERAN desde hora N (>= 2), ya sea por horaInicio>=2 en gruposAusentes
+  //   o porque la cobertura quedó sin docente que cubra (grupoLiberado por ausencia docente).
+  const gruposNoAsisten = $derived(
+    gruposAusentes.filter((g) => g.horaInicio === 1)
+  );
+
+  // Liberados intra-día: combinación de gruposAusentes con horaInicio>=2 + coberturas sin docenteCubre
+  type Liberado = { grupo: string; hora: number; docenteAusente?: string; motivo: string };
+  const gruposLiberadosIntraDia = $derived.by<Liberado[]>(() => {
+    const lista: Liberado[] = [];
+    const vistos = new Set<string>();
+
+    // Coberturas sin docente que cubra -> grupo liberado en esa hora
+    for (const c of coberturas) {
+      if (c.docenteCubre) continue;
+      if (!c.grupoAusente && !c.grupoACubrir) continue;
+      const g = c.grupoAusente || c.grupoACubrir;
+      const key = `${g}-${c.hora}`;
+      if (vistos.has(key)) continue;
+      vistos.add(key);
+      lista.push({
+        grupo: g,
+        hora: c.hora + 1,
+        docenteAusente: c.docenteAusente,
+        motivo: c.docenteAusente ? `Sin cubridor — ${c.docenteAusente} ausente` : "Sin cubridor",
+      });
+    }
+
+    // Grupos liberados desde horaInicio>=2 declarados manualmente
+    for (const g of gruposAusentes) {
+      if (g.horaInicio <= 1) continue;
+      const key = `${g.grupo}-${g.horaInicio - 1}`;
+      if (vistos.has(key)) continue;
+      vistos.add(key);
+      lista.push({
+        grupo: g.grupo,
+        hora: g.horaInicio,
+        motivo: "Grupo liberado",
+      });
+    }
+
+    return lista.sort((a, b) => a.hora - b.hora || a.grupo.localeCompare(b.grupo));
+  });
+
   let generando = $state(false);
 
   function formatearFecha(fecha: string): string {
@@ -143,14 +189,38 @@
             <p class="text-sm" style="color: #333; margin: 4px 0 0 0;">{formatearFecha(fechaSeleccionada)}</p>
           </div>
 
-          {#if gruposAusentes.filter(g => g.horaInicio === 1).length > 0}
+          {#if gruposNoAsisten.length > 0}
             <div style="margin: 16px 0;">
               <p class="font-bold" style="margin: 0 0 8px 0; text-decoration: underline;">GRUPOS QUE NO ASISTEN:</p>
               <ul style="list-style: disc; padding-left: 24px; margin: 0;">
-                {#each gruposAusentes.filter(g => g.horaInicio === 1) as g}
-                  <li>Grupo {g.grupo} (desde hora {g.horaInicio})</li>
+                {#each gruposNoAsisten as g}
+                  <li>Grupo {g.grupo} (no asisten desde hora 1 — {horaReal(1)})</li>
                 {/each}
               </ul>
+            </div>
+          {/if}
+
+          {#if gruposLiberadosIntraDia.length > 0}
+            <div style="margin: 16px 0;">
+              <p class="font-bold" style="margin: 0 0 8px 0; text-decoration: underline;">GRUPOS LIBERADOS DURANTE LA JORNADA:</p>
+              <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+                <thead>
+                  <tr style="background-color: #f3f4f6;">
+                    <th style="padding: 6px; text-align: left; font-weight: bold; border: 1px solid #000;">Grupo</th>
+                    <th style="padding: 6px; text-align: left; font-weight: bold; border: 1px solid #000;">Se libera desde</th>
+                    <th style="padding: 6px; text-align: left; font-weight: bold; border: 1px solid #000;">Motivo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each gruposLiberadosIntraDia as l}
+                    <tr>
+                      <td style="padding: 6px; border: 1px solid #000;">{l.grupo}</td>
+                      <td style="padding: 6px; border: 1px solid #000;">Hora {l.hora} ({horaReal(l.hora)})</td>
+                      <td style="padding: 6px; border: 1px solid #000;">{l.motivo}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
             </div>
           {/if}
 
@@ -203,7 +273,7 @@
             <p class="text-sm" style="color: #9ca3af;">{formatearFecha(fechaSeleccionada)}</p>
           </div>
 
-          {#if gruposAusentes.filter(g => g.horaInicio === 1).length > 0}
+          {#if gruposNoAsisten.length > 0}
             <div style="margin-bottom: 20px; padding: 16px; background-color: #fef3c7; border: 3px solid #f59e0b; border-radius: 12px;">
               <p style="font-size: 16px; font-weight: bold; color: #92400e; margin: 0 0 8px 0;">
                 ⚠️ AVISO A PADRES Y ACUDIENTES
@@ -216,15 +286,13 @@
                   <tr style="background-color: #fde68a;">
                     <th style="padding: 8px; text-align: left; font-weight: bold; color: #92400e; border: 1px solid #f59e0b;">Grupo</th>
                     <th style="padding: 8px; text-align: left; font-weight: bold; color: #92400e; border: 1px solid #f59e0b;">No asisten desde</th>
-                    <th style="padding: 8px; text-align: left; font-weight: bold; color: #92400e; border: 1px solid #f59e0b;">Hora de salida</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {#each gruposAusentes.filter(g => g.horaInicio === 1) as g}
+                  {#each gruposNoAsisten as g}
                     <tr>
                       <td style="padding: 8px; font-weight: bold; color: #b45309; border: 1px solid #fde68a; background-color: #fffbeb;">{g.grupo}</td>
-                      <td style="padding: 8px; color: #78350f; border: 1px solid #fde68a; background-color: #fffbeb;">Hora {g.horaInicio}</td>
-                      <td style="padding: 8px; color: #78350f; border: 1px solid #fde68a; background-color: #fffbeb; font-weight: bold;">{horaReal(g.horaInicio)}</td>
+                      <td style="padding: 8px; color: #78350f; border: 1px solid #fde68a; background-color: #fffbeb; font-weight: bold;">Hora 1 ({horaReal(1)})</td>
                     </tr>
                   {/each}
                 </tbody>
@@ -232,6 +300,35 @@
               <p style="font-size: 11px; color: #92400e; margin: 10px 0 0 0; font-style: italic;">
                 Compartir esta información con los acudientes vía WhatsApp.
               </p>
+            </div>
+          {/if}
+
+          {#if gruposLiberadosIntraDia.length > 0}
+            <div style="margin-bottom: 20px; padding: 16px; background-color: #fef3c7; border: 3px solid #f97316; border-radius: 12px;">
+              <p style="font-size: 16px; font-weight: bold; color: #9a3412; margin: 0 0 8px 0;">
+                🔔 GRUPOS LIBERADOS DURANTE LA JORNADA
+              </p>
+              <p style="font-size: 13px; color: #7c2d12; margin: 0 0 12px 0; line-height: 1.5;">
+                Estos grupos quedan <strong>sin clase</strong> desde la hora indicada:
+              </p>
+              <table style="width: 100%; font-size: 13px; line-height: 1.6; border-collapse: collapse;">
+                <thead>
+                  <tr style="background-color: #fed7aa;">
+                    <th style="padding: 8px; text-align: left; font-weight: bold; color: #9a3412; border: 1px solid #f97316;">Grupo</th>
+                    <th style="padding: 8px; text-align: left; font-weight: bold; color: #9a3412; border: 1px solid #f97316;">Libre desde</th>
+                    <th style="padding: 8px; text-align: left; font-weight: bold; color: #9a3412; border: 1px solid #f97316;">Motivo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each gruposLiberadosIntraDia as l}
+                    <tr>
+                      <td style="padding: 8px; font-weight: bold; color: #9a3412; border: 1px solid #fed7aa; background-color: #fff7ed;">{l.grupo}</td>
+                      <td style="padding: 8px; color: #7c2d12; border: 1px solid #fed7aa; background-color: #fff7ed;">Hora {l.hora} ({horaReal(l.hora)})</td>
+                      <td style="padding: 8px; color: #7c2d12; border: 1px solid #fed7aa; background-color: #fff7ed; font-style: italic;">{l.motivo}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
             </div>
           {/if}
 

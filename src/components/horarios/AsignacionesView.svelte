@@ -69,6 +69,29 @@
     return m;
   });
 
+  // Estilo para options con histórico/sesión previa (no asignados automáticamente).
+  // Retorna inline-style para <option>. Roles sin límite se ignoran.
+  function estiloOptionDocente(docente: string, autoAsignado: string): string {
+    if (!docente) return "";
+    if (ROLES_SIN_LIMITE.some((r) => docente.includes(r))) return "";
+    if (docente === autoAsignado) return ""; // el auto-asignado se respeta
+    const s = conteoSesion.get(docente) || 0;
+    const h = conteoHistorico.get(docente) || 0;
+    if (s >= 1 && h >= 1) {
+      // Ya en sesión + histórico — más fuerte
+      return "background-color: #fee2e2; color: #991b1b; font-weight: 600;";
+    }
+    if (h >= 1) {
+      // Solo histórico hoy
+      return "background-color: #fef3c7; color: #92400e; font-weight: 600;";
+    }
+    if (s >= 1) {
+      // Solo sesión (ya cubre otra hora hoy)
+      return "background-color: #dbeafe; color: #1e40af; font-weight: 600;";
+    }
+    return "";
+  }
+
   function esDuplicado(docente: string, hora: number): { dup: boolean; sesion: number; historico: number; porGrupoLiberado: boolean } {
     if (!docente) return { dup: false, sesion: 0, historico: 0, porGrupoLiberado: false };
     if (ROLES_SIN_LIMITE.some((r) => docente.includes(r))) return { dup: false, sesion: 0, historico: 0, porGrupoLiberado: false };
@@ -86,6 +109,33 @@
 
   let seleccionadas = $state(0);
   let violaciones = $state(0);
+
+  // Paleta contrastada por docente ausente — bg suave + borde fuerte
+  const PALETA_AUSENTE: { bg: string; border: string; text: string }[] = [
+    { bg: "rgba(59, 130, 246, 0.10)", border: "#3b82f6", text: "#1e40af" },   // azul
+    { bg: "rgba(16, 185, 129, 0.10)", border: "#10b981", text: "#065f46" },   // verde
+    { bg: "rgba(168, 85, 247, 0.10)", border: "#a855f7", text: "#6b21a8" },   // morado
+    { bg: "rgba(249, 115, 22, 0.10)", border: "#f97316", text: "#9a3412" },   // naranja
+    { bg: "rgba(236, 72, 153, 0.10)", border: "#ec4899", text: "#9d174d" },   // rosa
+    { bg: "rgba(14, 165, 233, 0.10)", border: "#0ea5e9", text: "#075985" },   // cian
+    { bg: "rgba(234, 179, 8, 0.10)",  border: "#eab308", text: "#854d0e" },   // amarillo
+    { bg: "rgba(20, 184, 166, 0.10)", border: "#14b8a6", text: "#115e59" },   // teal
+    { bg: "rgba(244, 63, 94, 0.10)",  border: "#f43f5e", text: "#9f1239" },   // rojo
+    { bg: "rgba(132, 204, 22, 0.10)", border: "#84cc16", text: "#3f6212" },   // lima
+  ];
+
+  const colorPorAusente = $derived.by(() => {
+    const m = new Map<string, { bg: string; border: string; text: string }>();
+    const unicos: string[] = [];
+    for (const c of coberturasSugeridas) {
+      if (!c.docenteAusente) continue;
+      if (!unicos.includes(c.docenteAusente)) unicos.push(c.docenteAusente);
+    }
+    unicos.forEach((doc, idx) => {
+      m.set(doc, PALETA_AUSENTE[idx % PALETA_AUSENTE.length]);
+    });
+    return m;
+  });
 
   const dias = ["lunes", "martes", "miercoles", "jueves", "viernes"] as const;
   const diasAbreviado = ["LUN", "MAR", "MIE", "JUE", "VIE"];
@@ -251,9 +301,10 @@
             {@const esViolacion = !!cov.violation}
             {@const checked = cov.aprobada && !esViolacion}
             {@const dupInfo = esDuplicado(cov.docenteCubre, cov.hora)}
+            {@const color = colorPorAusente.get(cov.docenteAusente) ?? { bg: "transparent", border: "transparent", text: "rgb(var(--accent-primary))" }}
             <tr
               class="transition-colors"
-              style="border-color: rgb(var(--border-primary)); background-color: {esViolacion ? 'rgba(239,68,68,0.05)' : 'transparent'};"
+              style="border-color: rgb(var(--border-primary)); background-color: {esViolacion ? 'rgba(239,68,68,0.05)' : color.bg}; border-left: 4px solid {color.border};"
             >
               <td class="p-3 text-center font-bold border-t" style="border-color: rgb(var(--border-primary)); color: rgb(var(--text-primary));">
                 {formatoHora(cov.hora)}{console.log("RENDER ROW", i, cov.hora, cov.docenteAusente, cov.grupoAusente, cov.docenteCubre)}
@@ -261,8 +312,8 @@
               <td class="p-3 text-center border-t" style="border-color: rgb(var(--border-primary));">
                 <button
                   onclick={() => abrirHorarioDocente(cov.docenteAusente)}
-                  class="font-medium hover:underline cursor-pointer"
-                  style="color: rgb(var(--accent-primary));"
+                  class="font-bold hover:underline cursor-pointer px-2 py-1 rounded"
+                  style="color: {color.text}; background-color: {color.bg}; border: 1.5px solid {color.border};"
                   title="Ver horario semanal"
                 >
                   {cov.docenteAusente}
@@ -281,7 +332,7 @@
                   {#if cov.posiblesCobradores.length > 0}
                     <optgroup label="Docentes disponibles">
                       {#each cov.posiblesCobradores as docente}
-                        <option value={docente}>{docente}</option>
+                        <option value={docente} style={estiloOptionDocente(docente, cov.docenteCubre)}>{docente}{(conteoSesion.get(docente) ?? 0) >= 1 || (conteoHistorico.get(docente) ?? 0) >= 1 ? " ⚠" : ""}</option>
                       {/each}
                     </optgroup>
                   {/if}
@@ -289,11 +340,12 @@
                     <option value="ORIENTACION">ORIENTACION</option>
                     <option value="COORDINADOR">COORDINADOR</option>
                     <option value="BIBLIOTECA">BIBLIOTECA</option>
+                    <option value="AUDITORIO">AUDITORIO</option>
                   </optgroup>
                 </select>
                 {#if dupInfo.dup}
                   <div class="text-xs mt-1 font-semibold" style="color: #ef4444;">
-                    ⚠️ {dupInfo.sesion > 1 ? `Repetido (${dupInfo.sesion}× hoy)` : ""}{dupInfo.sesion > 1 && dupInfo.historico > 0 ? " · " : ""}{dupInfo.historico > 0 ? `Ya cubrió ${dupInfo.historico}h en historial` : ""}
+                    ⚠️ REPITE {dupInfo.sesion > 1 ? `(${dupInfo.sesion}× hoy)` : ""}{dupInfo.sesion > 1 && dupInfo.historico > 0 ? " · " : ""}{dupInfo.historico > 0 ? `Ya cubrió ${dupInfo.historico}h en historial` : ""}
                   </div>
                 {:else if dupInfo.porGrupoLiberado}
                   <div class="text-xs mt-1 font-medium" style="color: #b45309;">
@@ -359,6 +411,13 @@
           {/each}
         </tbody>
       </table>
+    </div>
+
+    <div class="mt-3 mb-4 flex flex-wrap gap-3 text-xs">
+      <span class="font-medium" style="color: rgb(var(--text-secondary));">Leyenda select:</span>
+      <span class="px-2 py-0.5 rounded font-semibold" style="background-color: #dbeafe; color: #1e40af;">⚠ Ya cubre hora en sesión</span>
+      <span class="px-2 py-0.5 rounded font-semibold" style="background-color: #fef3c7; color: #92400e;">⚠ Tiene cobertura histórica hoy</span>
+      <span class="px-2 py-0.5 rounded font-semibold" style="background-color: #fee2e2; color: #991b1b;">⚠ Sesión + histórico</span>
     </div>
   {/if}
 

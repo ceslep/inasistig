@@ -6,7 +6,7 @@
     Sun, Moon, CloudMoon,
     ClipboardCheck, BookOpen, Notebook, CalendarDays,
     Eye, Heart, Clock, RotateCcw, FileSignature, Flag,
-    Users, ClipboardList, CalendarClock,
+    Users, ClipboardList, CalendarClock, FileText,
   } from '@lucide/svelte'
 
   import { theme, type Theme } from '../lib/themeStore'
@@ -122,6 +122,15 @@
       icon: Notebook,
       color: 'teal',
       tag: 'Estratégico',
+    },
+    {
+      id: 'plan_de_aula',
+      title: 'Plan de Aula',
+      subtitle: 'Planeación Detallada',
+      description: 'Diseña planes de aula completos con estándares, DBA e indicadores.',
+      icon: FileText,
+      color: 'indigo',
+      tag: 'Planeación',
     },
     {
       id: 'planeador',

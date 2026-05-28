@@ -24,6 +24,8 @@ import {
   URL_EBCS,
   UPLOAD_TEMAS_URL,
   GET_TEMAS_BASE_URL,
+  SAVE_PLAN_AULA_URL,
+  GET_PLAN_AULA_URL,
 } from "../src/constants";
 import { enqueue } from "../src/lib/offlineQueue";
 import { refreshPendingCount } from "../src/lib/networkStore";
@@ -1020,6 +1022,106 @@ export const loadInasistenciaStats = async (payload: InasistenciaStatsPayload): 
     studentRanking,
     topStudents,
   };
+};
+
+// ==================== PLAN DE AULA ====================
+
+export interface PlanAulaRow {
+  area: string;
+  docente: string;
+  grado: string;
+  intensidad: string;
+  periodo: string;
+  contenidos: string;
+  indicadores: string;
+  dba: string;
+  criterios: string;
+  actividades: string;
+}
+
+export interface PlanAulaFiltros {
+  docente?: string;
+  grado?: string;
+  area?: string;
+  periodo?: string;
+}
+
+export const savePlanAula = async (data: PlanAulaRow): Promise<{ success: boolean; message: string }> => {
+  if (!navigator.onLine) {
+    return offlineFallback(SAVE_PLAN_AULA_URL, data, "savePlanAula") as Promise<{ success: boolean; message: string }>;
+  }
+  try {
+    const response = await fetch(SAVE_PLAN_AULA_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    if (isNetworkError(error)) {
+      return offlineFallback(SAVE_PLAN_AULA_URL, data, "savePlanAula") as Promise<{ success: boolean; message: string }>;
+    }
+    console.error("Error saving plan de aula:", error);
+    throw error;
+  }
+};
+
+export const getPlanAula = async (filtros: PlanAulaFiltros = {}): Promise<PlanAulaRow[]> => {
+  try {
+    const response = await fetch(GET_PLAN_AULA_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(filtros),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (data.success && data.values) {
+      return data.values.slice(1).map((row: any[]) => ({
+        area: row[0] || "",
+        docente: row[1] || "",
+        grado: row[2] || "",
+        intensidad: row[3] || "",
+        periodo: row[4] || "",
+        contenidos: row[5] || "",
+        indicadores: row[6] || "",
+        dba: row[7] || "",
+        criterios: row[8] || "",
+        actividades: row[9] || "",
+      }));
+    }
+    return [];
+  } catch (error) {
+    console.error("Error fetching plan de aula:", error);
+    return [];
+  }
+};
+
+export const getAllPlanAula = async (): Promise<any[]> => {
+  try {
+    const response = await fetch(GET_PLAN_AULA_URL);
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data.values || [];
+  } catch (error) {
+    console.error("Error fetching all plan de aula:", error);
+    throw error;
+  }
 };
 
 
