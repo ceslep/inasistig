@@ -447,6 +447,9 @@
                     {/each}
                   </tbody>
                 </table>
+                <p style="font-size: 10px; color: #666; margin: 8px 0 0 0; font-style: italic; text-decoration: underline;">
+                  📌 Nota Importante: Directores de grupo avisar a padres y acudientes.
+                </p>
               </div>
             {/if}
 
@@ -556,6 +559,9 @@
                   {/each}
                 </tbody>
               </table>
+              <p style="font-size: 11px; color: #9a3412; margin: 10px 0 0 0; font-style: italic;">
+                📌 Nota Importante: Directores de grupo avisar a padres y acudientes.
+              </p>
             </div>
           {/if}
 
