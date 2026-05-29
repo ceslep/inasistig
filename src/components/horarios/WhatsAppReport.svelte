@@ -91,7 +91,9 @@
   function horaReal(h: number): string {
     const schedule = (infoHoras.horario_escolar as Record<string, {inicio: string; fin: string; bloque: string}[]>)[diaSeleccionado];
     if (!schedule) return `Hora ${h}`;
-    const slot = schedule[h];
+    // El array incluye bloques de Descanso/Almuerzo intercalados, por eso se busca
+    // el bloque por su nombre ("Hora N") en vez de indexar por posición.
+    const slot = schedule.find((s) => s.bloque === `Hora ${h}`);
     return slot ? slot.inicio : `Hora ${h}`;
   }
 

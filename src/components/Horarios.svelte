@@ -187,7 +187,7 @@
       return { icon: "book-open", bg: "bg-emerald-50 dark:bg-emerald-950", border: "border-emerald-200 dark:border-emerald-800", text: "text-emerald-600 dark:text-emerald-300" };
     }
     if (materia.startsWith("CIENCIAS NATURALES") || materia.startsWith("QUIMICA") || materia.startsWith("FISICA")) {
-      return { icon: "flask-conical", bg: "bg-violet-50 dark:bg-violet-950", border: "border-violet-200 dark:border-violet-800", text: "text-violet-600 dark:text-violet-300" };
+      return { icon: "flask", bg: "bg-violet-50 dark:bg-violet-950", border: "border-violet-200 dark:border-violet-800", text: "text-violet-600 dark:text-violet-300" };
     }
     if (materia.startsWith("CIENCIAS SOCIALES") || materia.startsWith("C. PAZ")) {
       return { icon: "globe", bg: "bg-orange-50 dark:bg-orange-950", border: "border-orange-200 dark:border-orange-800", text: "text-orange-600 dark:text-orange-300" };
@@ -232,6 +232,44 @@
     if (!contenido) return "LIBRE";
     if (contenido === "DESC" || contenido === "PEDAG" || contenido === "DEESC") return contenido;
     return contenido.replace(/\n/g, " ");
+  }
+
+  function parsearSlotDocente(slot: string): { materia: string; grupo: string; tipo: "clase" | "descanso" | "libre" } {
+    if (!slot) return { materia: "LIBRE", grupo: "", tipo: "libre" };
+    if (slot === "DESC" || slot === "PEDAG" || slot === "DEESC") {
+      return { materia: slot === "DESC" ? "Descanso" : "Pedagógico", grupo: "", tipo: "descanso" };
+    }
+    const limpio = slot.replace(/\n/g, " ").trim();
+    const idx = limpio.lastIndexOf(" ");
+    if (idx > 0) {
+      const grupo = limpio.substring(idx + 1);
+      if (/^\d/.test(grupo)) return { materia: limpio.substring(0, idx), grupo, tipo: "clase" };
+    }
+    return { materia: limpio, grupo: "", tipo: "clase" };
+  }
+
+  function getIniciales(nombre: string): string {
+    const parts = nombre.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "?";
+    if (parts.length === 1) return parts[0].substring(0, 2).toLocaleUpperCase("es");
+    return (parts[0][0] + parts[parts.length - 1][0]).toLocaleUpperCase("es");
+  }
+
+  const avatarHues = [200, 260, 330, 20, 150, 280, 45, 175, 310, 95] as const;
+  function getAvatarColor(nombre: string): string {
+    let hash = 0;
+    for (let i = 0; i < nombre.length; i++) hash = (hash * 31 + nombre.charCodeAt(i)) >>> 0;
+    return `hsl(${avatarHues[hash % avatarHues.length]} 60% 48%)`;
+  }
+
+  function getTotalHorasClaseDocente(docente: HorarioDocente): number {
+    let total = 0;
+    for (const dia of dias) {
+      for (const slot of docente[dia]) {
+        if (slot && slot !== "DESC" && slot !== "PEDAG" && slot !== "DEESC") total++;
+      }
+    }
+    return total;
   }
 
   function formatearDocenteCorto(nombre: string): string {
@@ -397,22 +435,31 @@
 
 <ModuleHeader title="Horario General" {onBack} />
 
-<div class="p-4 max-w-7xl mx-auto">
-  <div class="flex flex-wrap items-center gap-4 mb-4">
-    <div role="tablist" aria-label="Modo de vista" class="flex gap-2">
+{#snippet materiaIcono(iconKey: string, size: number)}
+  {@const Icon = iconMap[iconKey] ?? Book}
+  <Icon {size} aria-hidden="true" />
+{/snippet}
+
+<div class="p-3 sm:p-4 max-w-7xl mx-auto">
+  <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+    <!-- Segmented control: modo de vista -->
+    <div
+      role="tablist"
+      aria-label="Modo de vista"
+      class="inline-flex p-1 rounded-xl w-full sm:w-auto"
+      style="background-color: rgb(var(--bg-secondary)); border: 1px solid rgb(var(--border-primary));"
+    >
       <button
         type="button"
         role="tab"
         aria-selected={horarioViewMode === "docente"}
         aria-controls="panel-horario"
         onclick={() => { horarioViewMode = "docente"; grupoSeleccionado = null; }}
-        class="px-4 py-2 rounded-lg font-medium text-sm transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-        style="background-color: {horarioViewMode === 'docente' ? 'rgb(var(--accent-primary))' : 'rgb(var(--card-bg))'}; color: {horarioViewMode === 'docente' ? 'white' : 'rgb(var(--text-primary))'}; border: 1px solid {horarioViewMode === 'docente' ? 'rgb(var(--accent-primary))' : 'rgb(var(--border-primary))'}; --tw-ring-color: rgb(var(--accent-primary));"
+        class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 min-h-[40px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+        style="background-color: {horarioViewMode === 'docente' ? 'rgb(var(--accent-primary))' : 'transparent'}; color: {horarioViewMode === 'docente' ? 'white' : 'rgb(var(--text-secondary))'}; box-shadow: {horarioViewMode === 'docente' ? '0 1px 3px rgba(0,0,0,0.18)' : 'none'}; --tw-ring-color: rgb(var(--accent-primary));"
       >
-        <span class="flex items-center gap-2">
-          <User size={16} aria-hidden="true" />
-          Por Docente
-        </span>
+        <User size={16} aria-hidden="true" />
+        Por Docente
       </button>
       <button
         type="button"
@@ -420,24 +467,23 @@
         aria-selected={horarioViewMode === "grupos"}
         aria-controls="panel-grupos"
         onclick={() => { horarioViewMode = "grupos"; docenteSeleccionado = null; }}
-        class="px-4 py-2 rounded-lg font-medium text-sm transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-        style="background-color: {horarioViewMode === 'grupos' ? 'rgb(var(--accent-primary))' : 'rgb(var(--card-bg))'}; color: {horarioViewMode === 'grupos' ? 'white' : 'rgb(var(--text-primary))'}; border: 1px solid {horarioViewMode === 'grupos' ? 'rgb(var(--accent-primary))' : 'rgb(var(--border-primary))'}; --tw-ring-color: rgb(var(--accent-primary));"
+        class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 min-h-[40px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+        style="background-color: {horarioViewMode === 'grupos' ? 'rgb(var(--accent-primary))' : 'transparent'}; color: {horarioViewMode === 'grupos' ? 'white' : 'rgb(var(--text-secondary))'}; box-shadow: {horarioViewMode === 'grupos' ? '0 1px 3px rgba(0,0,0,0.18)' : 'none'}; --tw-ring-color: rgb(var(--accent-primary));"
       >
-        <span class="flex items-center gap-2">
-          <Users size={16} aria-hidden="true" />
-          Por Grupo
-        </span>
+        <Users size={16} aria-hidden="true" />
+        Por Grupo
       </button>
     </div>
 
-    <div class="flex-1"></div>
+    <div class="hidden sm:block flex-1"></div>
 
     <button
       type="button"
       onclick={() => viewMode = "coberturas"}
-      class="px-4 py-2 rounded-lg text-sm transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-      style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border: 1px solid rgb(var(--border-primary)); --tw-ring-color: rgb(var(--accent-primary));"
+      class="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+      style="background-color: rgb(var(--card-bg)); color: rgb(var(--text-primary)); border: 1px solid rgb(var(--border-primary)); --tw-ring-color: rgb(var(--accent-primary));"
     >
+      <Calendar size={16} aria-hidden="true" />
       Gestionar Coberturas
     </button>
   </div>
@@ -489,7 +535,7 @@
           <p class="text-sm">No se encontraron grupos con "{filtroGrupo}"</p>
         </div>
       {:else}
-        <ul role="list" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3">
+        <ul role="list" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2.5 sm:gap-3">
           {#each gruposFiltrados as grupo (grupo)}
             {@const horasGrupo = getTotalHorasGrupo(grupo)}
             <li>
@@ -497,17 +543,26 @@
                 type="button"
                 onclick={() => seleccionarGrupo(grupo)}
                 aria-label={`Ver horario del grupo ${grupo} - ${horasGrupo} horas`}
-                class="w-full p-4 rounded-xl text-center transition-transform duration-200 flex flex-col items-center gap-2
-                       bg-[rgb(var(--card-bg))] border-2 border-[rgb(var(--border-primary))]
-                       hover:border-[rgb(var(--accent-primary))] hover:shadow-lg motion-safe:hover:scale-[1.03]
+                class="group w-full p-3 sm:p-4 rounded-2xl text-center transition-all duration-200 flex flex-col items-center gap-2
+                       bg-[rgb(var(--card-bg))] border border-[rgb(var(--border-primary))]
+                       hover:border-[rgb(var(--accent-primary))] hover:shadow-lg motion-safe:hover:-translate-y-0.5
                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
                 style="color: rgb(var(--text-primary)); --tw-ring-color: rgb(var(--accent-primary));"
               >
-                <div class="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold" style="background-color: rgb(var(--accent-primary)); color: white;">
+                <div
+                  class="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold text-white shadow-sm ring-2 ring-white/30 transition-transform duration-200 motion-safe:group-hover:scale-105"
+                  style="background-color: {getAvatarColor(grupo)};"
+                >
                   {grupo.substring(0, 2)}
                 </div>
                 <span class="text-sm font-bold">{grupo}</span>
-                <span class="text-xs opacity-70">{horasGrupo}h</span>
+                <span
+                  class="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full"
+                  style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-secondary));"
+                >
+                  <Calendar size={10} aria-hidden="true" />
+                  {horasGrupo}h
+                </span>
               </button>
             </li>
           {/each}
@@ -540,17 +595,16 @@
           <span>Horario Grupo {grupoSeleccionado}</span>
         </div>
 
-        <div class="overflow-x-auto p-4">
+        <!-- Tabla (desktop / tablet) -->
+        <div class="hidden md:block overflow-x-auto p-4">
           <table class="w-full text-sm border-collapse">
             <caption class="sr-only">Horario semanal del grupo {grupoSeleccionado} - {totalHoras} horas</caption>
             <thead>
               <tr style="background-color: rgb(var(--accent-primary)); color: white;">
                 <th scope="col" class="p-3 text-center font-bold w-16">HORA</th>
-                <th scope="col" class="p-3 text-center font-bold">LUN</th>
-                <th scope="col" class="p-3 text-center font-bold">MAR</th>
-                <th scope="col" class="p-3 text-center font-bold">MIE</th>
-                <th scope="col" class="p-3 text-center font-bold">JUE</th>
-                <th scope="col" class="p-3 text-center font-bold">VIE</th>
+                {#each diasAbreviado as dia}
+                  <th scope="col" class="p-3 text-center font-bold">{dia}</th>
+                {/each}
               </tr>
             </thead>
             <tbody>
@@ -562,47 +616,23 @@
                   jueves: horasGrupo.find(h => h.dia === "jueves" && h.hora === hora),
                   viernes: horasGrupo.find(h => h.dia === "viernes" && h.hora === hora)
                 }}
-                <tr class="{hora % 2 === 0 ? 'bg-[rgb(var(--bg-secondary))]/50' : ''}">
+                <tr>
                   <td class="p-3 text-center font-bold border" style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary));">{hora}</td>
                   {#each dias as dia}
                     {@const celda = celdasDia[dia]}
                     {@const style = getSubjectStyle(celda?.materia || "")}
                     <td
-                      class="p-2 text-center border min-w-[160px] {style.bg} {style.border}"
+                      class="p-2 text-center border min-w-[150px] {style.bg} {style.border}"
                       style="border-width: 2px; vertical-align: top;"
                     >
                       {#if celda}
                         <div class="flex items-center justify-center gap-1.5 {style.text}">
-                          {#if style.icon === 'calculator'}
-                            <Calculator size={14} aria-hidden="true" />
-                          {:else if style.icon === 'book-open'}
-                            <BookOpen size={14} aria-hidden="true" />
-                          {:else if style.icon === 'flask'}
-                            <FlaskConical size={14} aria-hidden="true" />
-                          {:else if style.icon === 'globe'}
-                            <Globe size={14} aria-hidden="true" />
-                          {:else if style.icon === 'languages'}
-                            <Languages size={14} aria-hidden="true" />
-                          {:else if style.icon === 'heart'}
-                            <Heart size={14} aria-hidden="true" />
-                          {:else if style.icon === 'cpu'}
-                            <Cpu size={14} aria-hidden="true" />
-                          {:else if style.icon === 'dumbbell'}
-                            <Dumbbell size={14} aria-hidden="true" />
-                          {:else if style.icon === 'palette'}
-                            <Palette size={14} aria-hidden="true" />
-                          {:else if style.icon === 'briefcase'}
-                            <Briefcase size={14} aria-hidden="true" />
-                          {:else if style.icon === 'coffee'}
-                            <Coffee size={14} aria-hidden="true" />
-                          {:else}
-                            <Book size={14} aria-hidden="true" />
-                          {/if}
+                          {@render materiaIcono(style.icon, 14)}
                           <span class="font-semibold text-xs">{formatearMateriaGrupo(celda.materia)}</span>
                         </div>
-                        <div class="text-xs mt-1.5 font-medium text-slate-600 dark:text-slate-300">{celda.docente}</div>
+                        <div class="text-[11px] mt-1.5 font-medium" style="color: rgb(var(--text-secondary));">{celda.docente}</div>
                       {:else}
-                        <span class="text-zinc-300 dark:text-zinc-600">-</span>
+                        <span style="color: rgb(var(--text-muted));">·</span>
                       {/if}
                     </td>
                   {/each}
@@ -610,6 +640,49 @@
               {/each}
             </tbody>
           </table>
+        </div>
+
+        <!-- Tarjetas por día (móvil) -->
+        <div class="md:hidden p-3 space-y-3">
+          {#each dias as dia, diaIdx}
+            {@const clasesDia = horasGrupo.filter(h => h.dia === dia).sort((a, b) => a.hora - b.hora)}
+            <section
+              class="rounded-xl overflow-hidden border"
+              style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--card-bg));"
+            >
+              <h3
+                class="px-3 py-2 text-xs font-bold uppercase tracking-wider flex items-center justify-between"
+                style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-secondary));"
+              >
+                <span>{diasAbreviado[diaIdx]}</span>
+                <span class="font-medium opacity-70">{clasesDia.length}h</span>
+              </h3>
+              {#if clasesDia.length === 0}
+                <p class="px-3 py-3 text-xs" style="color: rgb(var(--text-muted));">Sin clases</p>
+              {:else}
+                <ul class="divide-y" style="border-color: rgb(var(--border-primary));">
+                  {#each clasesDia as celda (celda.hora)}
+                    {@const style = getSubjectStyle(celda.materia)}
+                    <li class="flex items-center gap-3 px-3 py-2.5">
+                      <span
+                        class="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold"
+                        style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-secondary));"
+                      >
+                        {celda.hora}
+                      </span>
+                      <span class="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center {style.bg} {style.text}">
+                        {@render materiaIcono(style.icon, 16)}
+                      </span>
+                      <div class="min-w-0 flex-1">
+                        <p class="text-sm font-semibold truncate" style="color: rgb(var(--text-primary));">{formatearMateriaGrupo(celda.materia)}</p>
+                        <p class="text-xs truncate" style="color: rgb(var(--text-secondary));">{celda.docente}</p>
+                      </div>
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+            </section>
+          {/each}
         </div>
 
         <div class="p-4 text-xs" style="background-color: rgb(var(--bg-secondary));">
@@ -661,23 +734,34 @@
         <p class="text-sm">No se encontraron docentes con "{filtroDocente}"</p>
       </div>
     {:else}
-      <ul role="list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+      <ul role="list" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5 sm:gap-3">
         {#each docentesFiltrados as docente (docente.docente)}
+          {@const horasClase = getTotalHorasClaseDocente(docente)}
           <li>
             <button
               type="button"
               onclick={() => seleccionarDocente(docente.docente)}
-              aria-label={`Ver horario de ${docente.docente}`}
-              class="w-full p-4 rounded-xl text-center transition-transform duration-200 flex flex-col items-center gap-2
-                     bg-[rgb(var(--card-bg))] border-2 border-[rgb(var(--border-primary))]
-                     hover:border-[rgb(var(--accent-primary))] hover:shadow-lg motion-safe:hover:scale-[1.03]
+              aria-label={`Ver horario de ${docente.docente} - ${horasClase} horas de clase`}
+              class="group w-full p-3 sm:p-4 rounded-2xl text-center transition-all duration-200 flex flex-col items-center gap-2
+                     bg-[rgb(var(--card-bg))] border border-[rgb(var(--border-primary))]
+                     hover:border-[rgb(var(--accent-primary))] hover:shadow-lg motion-safe:hover:-translate-y-0.5
                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
               style="color: rgb(var(--text-primary)); --tw-ring-color: rgb(var(--accent-primary));"
             >
-              <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background-color: rgb(var(--accent-primary));">
-                <User size={20} class="text-white" aria-hidden="true" />
+              <div
+                class="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm ring-2 ring-white/30 transition-transform duration-200 motion-safe:group-hover:scale-105"
+                style="background-color: {getAvatarColor(docente.docente)};"
+              >
+                {getIniciales(docente.docente)}
               </div>
-              <span class="text-xs font-semibold leading-tight">{docente.docente}</span>
+              <span class="text-xs font-semibold leading-tight line-clamp-2">{docente.docente}</span>
+              <span
+                class="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full"
+                style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-secondary));"
+              >
+                <Calendar size={10} aria-hidden="true" />
+                {horasClase}h
+              </span>
             </button>
           </li>
         {/each}
@@ -724,7 +808,8 @@
         <span>{docenteActual.docente}</span>
       </div>
 
-      <div class="overflow-x-auto">
+      <!-- Tabla (desktop / tablet) -->
+      <div class="hidden md:block overflow-x-auto">
         <table class="w-full text-sm">
           <caption class="sr-only">Horario semanal de {docenteActual.docente}</caption>
           <thead>
@@ -777,18 +862,64 @@
         </table>
       </div>
 
-      <div class="p-4 flex flex-wrap gap-4 text-xs" style="background-color: rgb(var(--bg-secondary));">
+      <!-- Tarjetas por día (móvil) -->
+      <div class="md:hidden p-3 space-y-3">
+        {#each dias as dia, diaIdx}
+          {@const jornada = docenteActual[dia]}
+          {@const clases = jornada.map((slot, h) => ({ ...parsearSlotDocente(slot), hora: h + 1 })).filter(c => c.tipo !== "libre")}
+          <section
+            class="rounded-xl overflow-hidden border"
+            style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--card-bg));"
+          >
+            <h3
+              class="px-3 py-2 text-xs font-bold uppercase tracking-wider flex items-center justify-between"
+              style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-secondary));"
+            >
+              <span>{diasAbreviado[diaIdx]}</span>
+              <span class="font-medium opacity-70">{clases.filter(c => c.tipo === "clase").length}h clase</span>
+            </h3>
+            {#if clases.length === 0}
+              <p class="px-3 py-3 text-xs" style="color: rgb(var(--text-muted));">Día libre</p>
+            {:else}
+              <ul class="divide-y" style="border-color: rgb(var(--border-primary));">
+                {#each clases as c (c.hora)}
+                  {@const style = getSubjectStyle(c.tipo === "descanso" ? "DESC" : c.materia)}
+                  <li class="flex items-center gap-3 px-3 py-2.5">
+                    <span
+                      class="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold"
+                      style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-secondary));"
+                    >
+                      {c.hora}
+                    </span>
+                    <span class="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center {style.bg} {style.text}">
+                      {@render materiaIcono(style.icon, 16)}
+                    </span>
+                    <div class="min-w-0 flex-1">
+                      <p class="text-sm font-semibold truncate" style="color: rgb(var(--text-primary));">{formatearMateriaGrupo(c.materia)}</p>
+                      {#if c.grupo}
+                        <p class="text-xs truncate" style="color: rgb(var(--text-secondary));">Grupo {c.grupo}</p>
+                      {/if}
+                    </div>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+          </section>
+        {/each}
+      </div>
+
+      <div class="p-4 flex flex-wrap gap-3 text-xs" style="background-color: rgb(var(--bg-secondary));">
         <div class="flex items-center gap-2">
-          <span class="px-2 py-1 rounded bg-emerald-200 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200 font-bold border border-emerald-300 dark:border-emerald-600">MATERIA</span>
-          <span class="text-zinc-500">Clase asignada</span>
+          <span class="px-2 py-1 rounded bg-emerald-200 text-emerald-800 font-bold border border-emerald-300">MATERIA</span>
+          <span style="color: rgb(var(--text-secondary));">Clase asignada</span>
         </div>
         <div class="flex items-center gap-2">
-          <span class="px-2 py-1 rounded bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200 font-bold border border-orange-300 dark:border-orange-600">DESC/PEDAG</span>
-          <span class="text-zinc-500">Descanso / Pedagógico</span>
+          <span class="px-2 py-1 rounded bg-orange-200 text-orange-800 font-bold border border-orange-300">DESC/PEDAG</span>
+          <span style="color: rgb(var(--text-secondary));">Descanso / Pedagógico</span>
         </div>
         <div class="flex items-center gap-2">
-          <span class="px-2 py-1 rounded border-2 border-dashed border-zinc-300 dark:border-zinc-600 text-zinc-400 dark:text-zinc-500 font-bold">LIBRE</span>
-          <span class="text-zinc-500">Sin clase</span>
+          <span class="px-2 py-1 rounded border-2 border-dashed font-bold" style="border-color: rgb(var(--border-primary)); color: rgb(var(--text-muted));">LIBRE</span>
+          <span style="color: rgb(var(--text-secondary));">Sin clase</span>
         </div>
       </div>
     </div>

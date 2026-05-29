@@ -6,7 +6,7 @@
     Sun, Moon, CloudMoon,
     ClipboardCheck, BookOpen, Notebook, CalendarDays,
     Eye, Heart, Clock, RotateCcw, FileSignature, Flag,
-    Users, ClipboardList, CalendarClock, FileText,
+    Users, ClipboardList, CalendarClock, FileText, GripVertical,
   } from '@lucide/svelte'
 
   import { theme, type Theme } from '../lib/themeStore'
@@ -158,6 +158,15 @@
       icon: CalendarClock,
       color: 'cyan',
       tag: 'Herramienta',
+    },
+    {
+      id: 'constructor_horarios',
+      title: 'Constructor de Horarios',
+      subtitle: 'Crear Horarios 2027',
+      description: 'Construye y exporta el archivo horarios.json con asignación manual de docentes y materias por grupo.',
+      icon: GripVertical,
+      color: 'violet',
+      tag: 'Administración',
     },
     {
       id: 'observador',

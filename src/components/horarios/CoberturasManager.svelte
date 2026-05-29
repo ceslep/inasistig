@@ -32,7 +32,7 @@
   const TIPOS_ICONOS: Record<string, { icono: any; color: string }> = {
     "CALAMIDAD": { icono: Flame, color: "#f97316" },
     "CAPACITACION": { icono: GraduationCap, color: "#8b5cf6" },
-    "DESPLAZAMIENTO": { icono: Car, color: "#06b6d4" },
+    "DESPLAZAMIENTO PEDAGOGICO": { icono: Car, color: "#06b6d4" },
     "FAMILIAR": { icono: Heart, color: "#ec4899" },
     "FUERZA MAYOR": { icono: Shield, color: "#6366f1" },
     "INCAPACIDAD": { icono: Stethoscope, color: "#ef4444" },
@@ -69,6 +69,10 @@
   let coberturasHistoricas = $state<CoberturaHistorica[]>([]);
   let gruposSugeridosAAusentar = $state<SugerenciaGrupo[]>([]);
   let slotsExcluidos = $state<Set<string>>(new Set());
+  // Grupos liberados manualmente desde el botón rojo de cada fila (Step 3).
+  // Se registran aquí porque liberarGrupoDesdeHora puede quitarlos de gruposAusentes,
+  // y deben persistirse al guardar como liberados. Clave: `${grupo}-${horaLiberada}`.
+  let gruposLiberadosManual = $state<{ grupo: string; horaLiberada: number; docenteAusente: string }[]>([]);
   let mostrarModalGrupos = $state(false);
   let mostrarReporteWhatsApp = $state(false);
   let coberturasGuardadas = $state<CoberturaSugerida[]>([]);
@@ -326,9 +330,15 @@ function recalcularCoberturas() {
   }
 
   function liberarGrupoDesdeHora(grupo: string, hora: number, docenteAusente: string) {
-    console.log("liberarGrupoDesdeHora llamado:", grupo, hora, docenteAusente);
     const key = `${hora}-${docenteAusente}`;
     slotsExcluidos = new Set(slotsExcluidos).add(key);
+
+    // Registrar la liberación para que persista al guardar, aun si abajo se quita
+    // el grupo de gruposAusentes. hora es 0-indexed → hora liberada 1-indexed = hora + 1.
+    const horaLiberada = hora + 1;
+    if (!gruposLiberadosManual.some((l) => l.grupo === grupo && l.horaLiberada === horaLiberada)) {
+      gruposLiberadosManual = [...gruposLiberadosManual, { grupo, horaLiberada, docenteAusente }];
+    }
 
     // B2: Si la fila era grupo-driven, avanzar horaInicio o quitar chip del grupo
     const slotRow = coberturasSugeridas.find(
@@ -371,8 +381,8 @@ function recalcularCoberturas() {
 
   async function guardarCoberturas() {
     const aprobadas = coberturasSugeridas.filter((c) => c.aprobada && c.docenteCubre !== "IGNORAR");
-    if (aprobadas.length === 0 && gruposAusentes.length === 0) {
-      Swal.fire("Atención", "No hay coberturas ni grupos ausentes para guardar", "warning");
+    if (aprobadas.length === 0 && gruposAusentes.length === 0 && gruposLiberadosManual.length === 0) {
+      Swal.fire("Atención", "No hay coberturas ni grupos liberados para guardar", "warning");
       return;
     }
 
@@ -395,40 +405,87 @@ function recalcularCoberturas() {
         });
       }
 
+      // Combinar grupos del modal (gruposAusentes) con los liberados manualmente
+      // desde el botón rojo de cada fila, evitando duplicados por grupo+hora.
+      const liberadosAGuardar = new Map<string, { grupo: string; hora_liberada: number; motivo: string }>();
       for (const g of gruposAusentes) {
         const horaLib = g.horaInicio;
         const motivo = horaLib === 1 ? "NO ASISTE" : "Grupo liberado";
-        await coberturaSheetsService.saveLiberado({
-          fecha: fechaSeleccionada,
-          dia_semana: diaSeleccionado,
-          grupo: g.grupo,
-          hora_liberada: horaLib,
-          motivo,
+        liberadosAGuardar.set(`${g.grupo}-${horaLib}`, { grupo: g.grupo, hora_liberada: horaLib, motivo });
+      }
+      // Liberaciones manuales (botón rojo): una entrada por grupo, hora más temprana.
+      const manualPorGrupo = new Map<string, { horaLib: number; docenteAusente: string }>();
+      for (const l of gruposLiberadosManual) {
+        const prev = manualPorGrupo.get(l.grupo);
+        if (!prev || l.horaLiberada < prev.horaLib) {
+          manualPorGrupo.set(l.grupo, { horaLib: l.horaLiberada, docenteAusente: l.docenteAusente });
+        }
+      }
+      for (const [grupo, info] of manualPorGrupo) {
+        liberadosAGuardar.set(`${grupo}-${info.horaLib}`, {
+          grupo,
+          hora_liberada: info.horaLib,
+          motivo: `Grupo liberado desde h${info.horaLib} — ${info.docenteAusente} ausente`,
+        });
+      }
+      // Coberturas aprobadas sin cubridor → el grupo queda liberado. Se colapsa
+      // a UNA entrada por grupo, usando la hora más temprana (desde la que queda libre).
+      const sinCubridor = coberturasSugeridas.filter((c) => c.aprobada && !c.docenteCubre);
+      const sinCubridorPorGrupo = new Map<string, { horaLib: number; docenteAusente: string }>();
+      for (const c of sinCubridor) {
+        const grupo = c.grupoAusente || c.grupoACubrir;
+        if (!grupo) continue;
+        const horaLib = c.hora + 1;
+        const prev = sinCubridorPorGrupo.get(grupo);
+        if (!prev || horaLib < prev.horaLib) {
+          sinCubridorPorGrupo.set(grupo, { horaLib, docenteAusente: c.docenteAusente });
+        }
+      }
+      for (const [grupo, info] of sinCubridorPorGrupo) {
+        // No sobrescribir si el grupo ya quedó registrado por el modal o liberación manual.
+        if ([...liberadosAGuardar.values()].some((l) => l.grupo === grupo)) continue;
+        liberadosAGuardar.set(`${grupo}-${info.horaLib}`, {
+          grupo,
+          hora_liberada: info.horaLib,
+          motivo: `Sin cubridor — ${info.docenteAusente} ausente`,
         });
       }
 
-      const sinCubridor = coberturasSugeridas.filter((c) => c.aprobada && !c.docenteCubre);
-      for (const c of sinCubridor) {
-        const grupo = c.grupoAusente || c.grupoACubrir;
+      for (const lib of liberadosAGuardar.values()) {
         await coberturaSheetsService.saveLiberado({
           fecha: fechaSeleccionada,
           dia_semana: diaSeleccionado,
-          grupo,
-          hora_liberada: c.hora + 1,
-          motivo: `Sin cubridor — ${c.docenteAusente} ausente`,
+          grupo: lib.grupo,
+          hora_liberada: lib.hora_liberada,
+          motivo: lib.motivo,
         });
       }
+
+      // Preparar datos para el reporte WhatsApp con lo recién guardado.
+      const liberadosGuardados: import("../../lib/coberturaUtils").CoberturaLiberado[] = [
+        ...liberadosAGuardar.values(),
+      ].map((lib) => ({
+        fecha: fechaSeleccionada,
+        dia_semana: diaSeleccionado,
+        grupo: lib.grupo,
+        hora_liberada: lib.hora_liberada,
+        motivo: lib.motivo,
+      }));
 
       await Swal.fire({
         icon: "success",
         title: "Coberturas guardadas",
-        html: `Se guardaron ${aprobadas.length} cobertura(s) y ${gruposAusentes.length} grupo(s) liberado(s).`,
+        html: `Se guardaron ${aprobadas.length} cobertura(s) y ${liberadosAGuardar.size} grupo(s) liberado(s).`,
         showCancelButton: true,
         confirmButtonText: "Compartir WhatsApp",
         cancelButtonText: "Nueva sesión",
       }).then((r) => {
         if (r.isConfirmed) {
           coberturasGuardadas = [...aprobadas];
+          diaReportePDF = diaSeleccionado;
+          fechaReportePDF = fechaSeleccionada;
+          gruposReportePDF = liberadosGuardados.map((l) => ({ grupo: l.grupo, horaInicio: l.hora_liberada }));
+          liberadosReportePDF = liberadosGuardados;
           mostrarReporteWhatsApp = true;
         } else if (r.dismiss === Swal.DismissReason.cancel) {
           resetSesion();
@@ -445,6 +502,8 @@ function recalcularCoberturas() {
     step = 1;
     docentesAusentes = [];
     gruposAusentes = [];
+    gruposLiberadosManual = [];
+    slotsExcluidos = new Set();
     slotsDelDia = [];
     slotsConAusencia = [];
     coberturasSugeridas = [];
@@ -984,7 +1043,7 @@ function recalcularCoberturas() {
             {#each [
               { tipo: "CALAMIDAD", icono: Flame, color: "#f97316" },
               { tipo: "CAPACITACION", icono: GraduationCap, color: "#8b5cf6" },
-              { tipo: "DESPLAZAMIENTO", icono: Car, color: "#06b6d4" },
+              { tipo: "DESPLAZAMIENTO PEDAGOGICO", icono: Car, color: "#06b6d4" },
               { tipo: "FAMILIAR", icono: Heart, color: "#ec4899" },
               { tipo: "FUERZA MAYOR", icono: Shield, color: "#6366f1" },
               { tipo: "INCAPACIDAD", icono: Stethoscope, color: "#ef4444" },

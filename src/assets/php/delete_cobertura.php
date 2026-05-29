@@ -2,7 +2,13 @@
 /**
  * delete_cobertura.php - Eliminar una cobertura específica
  *
- * Elimina una fila de Google Sheets basándose en fecha + hora + docente_cubre
+ * Elimina UNA fila de Google Sheets basándose en fecha + hora + docente_cubre.
+ * Opcionalmente afina el match con docente_ausente, grupo_ausente y grupo_a_cubrir
+ * para desambiguar cuando un mismo docente cubre varios grupos en la misma hora/fecha.
+ *
+ * Implementación: clear de la hoja + reescritura de las filas restantes (excluyendo
+ * solo la primera coincidencia). El método update con valores vacíos NO limpia celdas
+ * en la API de Sheets, por eso se reconstruye la hoja.
  */
 
 require __DIR__ . '/vendor/autoload.php';
@@ -41,6 +47,11 @@ try {
     $hora = $data['hora'] ?? '';
     $docenteCubre = $data['docente_cubre'] ?? '';
 
+    // Campos opcionales para desambiguar (si el frontend los envía)
+    $docenteAusente = $data['docente_ausente'] ?? null;
+    $grupoAusente = $data['grupo_ausente'] ?? null;
+    $grupoACubrir = $data['grupo_a_cubrir'] ?? null;
+
     if (!$fecha || $hora === '' || !$docenteCubre) {
         throw new Exception('Se requiere fecha, hora y docente_cubre.');
     }
@@ -59,25 +70,73 @@ try {
     $response = $service->spreadsheets_values->get($spreadsheetId, $range);
     $allValues = $response->getValues() ?: [];
 
-    $rowToDelete = -1;
-    foreach ($allValues as $idx => $row) {
-        if (count($row) >= 6 &&
-            trim((string) $row[0]) === trim($fecha) &&
-            trim((string) $row[2]) === trim((string) $hora) &&
-            trim((string) $row[5]) === trim($docenteCubre)) {
-            $rowToDelete = $idx + 1;
-            break;
-        }
+    if (count($allValues) === 0) {
+        throw new Exception('Hoja vacía.');
     }
 
-    if ($rowToDelete === -1) {
+    $dataRows = array_slice($allValues, 1);
+
+    // Reconstruir manteniendo todas las filas excepto la PRIMERA coincidencia.
+    $filteredDataRows = [];
+    $eliminado = false;
+    foreach ($dataRows as $row) {
+        $coincide = !$eliminado &&
+            count($row) >= 6 &&
+            trim((string) ($row[0] ?? '')) === trim((string) $fecha) &&
+            trim((string) ($row[2] ?? '')) === trim((string) $hora) &&
+            trim((string) ($row[5] ?? '')) === trim((string) $docenteCubre);
+
+        // Afinar con campos opcionales cuando vengan en la petición
+        if ($coincide && $docenteAusente !== null) {
+            $coincide = trim((string) ($row[3] ?? '')) === trim((string) $docenteAusente);
+        }
+        if ($coincide && $grupoAusente !== null) {
+            $coincide = trim((string) ($row[4] ?? '')) === trim((string) $grupoAusente);
+        }
+        if ($coincide && $grupoACubrir !== null) {
+            $coincide = trim((string) ($row[6] ?? '')) === trim((string) $grupoACubrir);
+        }
+
+        if ($coincide) {
+            $eliminado = true; // saltar esta fila (no la conservamos)
+            continue;
+        }
+        $filteredDataRows[] = $row;
+    }
+
+    if (!$eliminado) {
         throw new Exception('Registro no encontrado.');
     }
 
-    $deleteRange = $worksheetTitle . '!A' . $rowToDelete . ':H' . $rowToDelete;
-    $body = new ValueRange(['values' => [[]]]);
-    $params = ['valueInputOption' => 'RAW'];
-    $service->spreadsheets_values->update($spreadsheetId, $deleteRange, $body, $params);
+    // Limpiar datos (desde A2) y reescribir las filas restantes.
+    $clearRange = $worksheetTitle . '!A2:Z5000';
+    $service->spreadsheets_values->clear($spreadsheetId, $clearRange, new Sheets\ClearValuesRequest());
+
+    if (count($filteredDataRows) > 0) {
+        $maxCols = 0;
+        foreach ($filteredDataRows as $row) {
+            if (count($row) > $maxCols) $maxCols = count($row);
+        }
+        if ($maxCols < 1) $maxCols = 1;
+
+        $colLetter = function ($n) {
+            $letter = '';
+            while ($n > 0) {
+                $n--;
+                $letter = chr(65 + ($n % 26)) . $letter;
+                $n = intdiv($n, 26);
+            }
+            return $letter;
+        };
+
+        $lastCol = $colLetter($maxCols);
+        $lastRow = count($filteredDataRows) + 1;
+        $writeRange = $worksheetTitle . '!A2:' . $lastCol . $lastRow;
+
+        $body = new ValueRange(['values' => $filteredDataRows]);
+        $params = ['valueInputOption' => 'RAW'];
+        $service->spreadsheets_values->update($spreadsheetId, $writeRange, $body, $params);
+    }
 
     echo json_encode([
         'success' => true,

@@ -84,6 +84,7 @@
   let ActaPadres: ModuleComponent | null = $state(null);
   let ComisionEvaluacion: ModuleComponent | null = $state(null);
   let Horarios: ModuleComponent | null = $state(null);
+  let ConstructorHorarios: ModuleComponent | null = $state(null);
   let PlanAula: ModuleComponent | null = $state(null);
 
   const handleSelect = async (view: string) => {
@@ -155,6 +156,9 @@
       } else if (view === "horarios" && !Horarios) {
         const module = await import("./components/Horarios.svelte");
         Horarios = module.default;
+      } else if (view === "constructor_horarios" && !ConstructorHorarios) {
+        const module = await import("./components/horarios/ConstructorHorarios.svelte");
+        ConstructorHorarios = module.default;
       }
     } finally {
       isLoadingModule = false;
@@ -216,6 +220,8 @@
     <ComisionEvaluacion onBack={handleBack} />
   {:else if activeView === "horarios" && Horarios}
     <Horarios onBack={handleBack} />
+  {:else if activeView === "constructor_horarios" && ConstructorHorarios}
+    <ConstructorHorarios onBack={handleBack} />
   {:else if externalModuleUrl}
     <div class="w-full h-screen flex flex-col bg-[rgb(var(--bg-primary))]">
       <div
