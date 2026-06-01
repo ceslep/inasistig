@@ -1,8 +1,11 @@
 <script lang="ts">
+  import { onMount } from "svelte";
+  import Chart from "chart.js/auto";
   import type { CoberturaHistorica } from "../../lib/coberturaUtils";
   import { formatoDia, formatoHora } from "../../lib/coberturaUtils";
   import { coberturaSheetsService } from "../../services/coberturaSheetsService";
   import Swal from "sweetalert2";
+  import { BarChart3, PieChart as PieChartIcon, Filter, X, TrendingUp, Users, Clock } from "@lucide/svelte";
 
   let {
     coberturasHistoricas,
@@ -20,6 +23,14 @@
 
   let filterFechaDesde = $state("");
   let filterFechaHasta = $state("");
+  let filterDocenteAusente = $state("");
+  let filterDocenteCubre = $state("");
+  let filterEstado = $state("");
+  let showStats = $state(false);
+  let barChartCanvas = $state.raw<HTMLCanvasElement | undefined>(undefined);
+  let doughnutChartCanvas = $state.raw<HTMLCanvasElement | undefined>(undefined);
+  let barChartInstance: Chart | null = null;
+  let doughnutChartInstance: Chart | null = null;
 
   $effect(() => {
     if (coberturasHistoricas.length > 0) {
@@ -41,9 +52,44 @@
     coberturasHistoricas.filter((c) => {
       if (filterFechaDesde && c.fecha < filterFechaDesde) return false;
       if (filterFechaHasta && c.fecha > filterFechaHasta) return false;
+      if (filterDocenteAusente && !c.docente_ausente.toLowerCase().includes(filterDocenteAusente.toLowerCase())) return false;
+      if (filterDocenteCubre && !c.docente_cubre.toLowerCase().includes(filterDocenteCubre.toLowerCase())) return false;
+      if (filterEstado && c.estado !== filterEstado) return false;
       return true;
     })
   );
+
+  const docentesAusentesList = $derived.by(() => {
+    const set = new Set<string>();
+    for (const c of coberturasHistoricas) if (c.docente_ausente) set.add(c.docente_ausente);
+    return [...set].sort();
+  });
+
+  const docentesCubreList = $derived.by(() => {
+    const set = new Set<string>();
+    for (const c of coberturasHistoricas) if (c.docente_cubre) set.add(c.docente_cubre);
+    return [...set].sort();
+  });
+
+  const estadosList = $derived(["aprobado", "rechazado", "pendiente"]);
+
+  const statsData = $derived.by(() => {
+    const total = filtradas.length;
+    const aprobadas = filtradas.filter(c => c.estado === "aprobado").length;
+    const rechazadas = filtradas.filter(c => c.estado === "rechazado").length;
+    const pendientes = filtradas.filter(c => c.estado === "pendiente").length;
+    const docentesCubren = new Set(filtradas.map(c => c.docente_cubre)).size;
+    const gruposUnicos = new Set(filtradas.map(c => c.grupo_a_cubrir)).size;
+    const porDia: Record<string, number> = {};
+    for (const c of filtradas) {
+      porDia[c.dia_semana] = (porDia[c.dia_semana] || 0) + 1;
+    }
+    const porHora: Record<number, number> = {};
+    for (const c of filtradas) {
+      porHora[c.hora] = (porHora[c.hora] || 0) + 1;
+    }
+    return { total, aprobadas, rechazadas, pendientes, docentesCubren, gruposUnicos, porDia, porHora };
+  });
 
   const fechasDisponibles = $derived.by(() => {
     const fechas = [...new Set(coberturasHistoricas.map((c) => c.fecha))].sort().reverse();
@@ -88,6 +134,108 @@
       seleccionadas = new Set();
     } else {
       seleccionadas = new Set(filtradas.map(claveCobertura));
+    }
+  }
+
+  function destroyCharts() {
+    if (barChartInstance) {
+      barChartInstance.destroy();
+      barChartInstance = null;
+    }
+    if (doughnutChartInstance) {
+      doughnutChartInstance.destroy();
+      doughnutChartInstance = null;
+    }
+  }
+
+  function renderCharts() {
+    if (!barChartCanvas || !doughnutChartCanvas) return;
+    if (filtradas.length === 0) return;
+
+    const stats = statsData;
+
+    if (barChartInstance) barChartInstance.destroy();
+    if (doughnutChartInstance) doughnutChartInstance.destroy();
+
+    const diaLabels = ["lunes", "martes", "miercoles", "jueves", "viernes"];
+    const diaData = diaLabels.map(d => stats.porDia[d] || 0);
+    const diaColors = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ec4899"];
+
+    barChartInstance = new Chart(barChartCanvas, {
+      type: "bar",
+      data: {
+        labels: diaLabels.map(d => d.charAt(0).toUpperCase() + d.slice(1)),
+        datasets: [{
+          label: "Coberturas por día",
+          data: diaData,
+          backgroundColor: diaColors,
+          borderRadius: 8,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.parsed.y} cobertura(s)`,
+            },
+          },
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { stepSize: 1 },
+          },
+        },
+      },
+    });
+
+    const estadoLabels = ["Aprobadas", "Rechazadas", "Pendientes"];
+    const estadoData = [stats.aprobadas, stats.rechazadas, stats.pendientes];
+    const estadoColors = ["#22c55e", "#ef4444", "#eab308"];
+
+    doughnutChartInstance = new Chart(doughnutChartCanvas, {
+      type: "doughnut",
+      data: {
+        labels: estadoLabels,
+        datasets: [{
+          data: estadoData,
+          backgroundColor: estadoColors,
+          borderWidth: 2,
+          borderColor: "rgb(var(--card-bg))",
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: { padding: 12, font: { size: 12 } },
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const total = stats.total;
+                const val = ctx.parsed as number;
+                const pct = total > 0 ? ((val / total) * 100).toFixed(1) : "0";
+                return `${ctx.label}: ${val} (${pct}%)`;
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  function toggleStats() {
+    showStats = !showStats;
+    if (showStats) {
+      setTimeout(renderCharts, 50);
+    } else {
+      destroyCharts();
     }
   }
 
@@ -264,13 +412,73 @@
         style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border-color: rgb(var(--border-primary));"
       />
     </div>
-    <div class="flex items-end">
+    <div>
+      <label class="text-xs block mb-1" for="filter-ausente" style="color: rgb(var(--text-secondary));">Ausente</label>
+      <select
+        id="filter-ausente"
+        bind:value={filterDocenteAusente}
+        class="px-3 py-1.5 rounded-lg text-sm border"
+        style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border-color: rgb(var(--border-primary));"
+      >
+        <option value="">Todos</option>
+        {#each docentesAusentesList as d}
+          <option value={d}>{d}</option>
+        {/each}
+      </select>
+    </div>
+    <div>
+      <label class="text-xs block mb-1" for="filter-cubre" style="color: rgb(var(--text-secondary));">Cubre</label>
+      <select
+        id="filter-cubre"
+        bind:value={filterDocenteCubre}
+        class="px-3 py-1.5 rounded-lg text-sm border"
+        style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border-color: rgb(var(--border-primary));"
+      >
+        <option value="">Todos</option>
+        {#each docentesCubreList as d}
+          <option value={d}>{d}</option>
+        {/each}
+      </select>
+    </div>
+    <div>
+      <label class="text-xs block mb-1" for="filter-estado" style="color: rgb(var(--text-secondary));">Estado</label>
+      <select
+        id="filter-estado"
+        bind:value={filterEstado}
+        class="px-3 py-1.5 rounded-lg text-sm border"
+        style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border-color: rgb(var(--border-primary));"
+      >
+        <option value="">Todos</option>
+        {#each estadosList as e}
+          <option value={e}>{e}</option>
+        {/each}
+      </select>
+    </div>
+    <div class="flex items-end gap-2">
+      {#if filterDocenteAusente || filterDocenteCubre || filterEstado}
+        <button
+          onclick={() => { filterDocenteAusente = ""; filterDocenteCubre = ""; filterEstado = ""; }}
+          class="px-3 py-2 rounded-lg text-xs font-medium transition-all"
+          style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-secondary)); border: 1px solid rgb(var(--border-primary));"
+          title="Limpiar filtros"
+        >
+          <X size={14} />
+        </button>
+      {/if}
       <button
         onclick={onReload}
         class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
         style="background-color: rgb(var(--accent-primary)); color: white;"
       >
         🔄 Recargar
+      </button>
+      <button
+        onclick={toggleStats}
+        class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+        style="background-color: {showStats ? 'rgb(var(--accent-primary))' : 'rgb(var(--bg-secondary))'}; color: {showStats ? 'white' : 'rgb(var(--text-primary))'}; border: 1px solid rgb(var(--border-primary));"
+        title="Ver estadísticas"
+      >
+        <BarChart3 size={16} />
       </button>
     </div>
   </div>
@@ -284,6 +492,58 @@
       No hay coberturas registradas.
     </div>
   {:else}
+    {#if showStats}
+      <div class="p-4 border-b" style="border-color: rgb(var(--border-primary));">
+        <div class="flex items-center gap-2 mb-4">
+          <TrendingUp size={20} style="color: rgb(var(--accent-primary));" />
+          <h3 class="text-base font-bold" style="color: rgb(var(--text-primary));">Estadísticas del Historial</h3>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <div class="p-4 rounded-xl text-center" style="background-color: rgb(var(--bg-secondary)); border: 1px solid rgb(var(--border-primary));">
+            <div class="text-2xl font-bold" style="color: rgb(var(--accent-primary));">{statsData.total}</div>
+            <div class="text-xs" style="color: rgb(var(--text-secondary));">Total coberturas</div>
+          </div>
+          <div class="p-4 rounded-xl text-center" style="background-color: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3);">
+            <div class="text-2xl font-bold" style="color: #22c55e;">{statsData.aprobadas}</div>
+            <div class="text-xs" style="color: rgb(var(--text-secondary));">Aprobadas</div>
+          </div>
+          <div class="p-4 rounded-xl text-center" style="background-color: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3);">
+            <div class="text-2xl font-bold" style="color: #ef4444;">{statsData.rechazadas}</div>
+            <div class="text-xs" style="color: rgb(var(--text-secondary));">Rechazadas</div>
+          </div>
+          <div class="p-4 rounded-xl text-center" style="background-color: rgba(234,179,8,0.12); border: 1px solid rgba(234,179,8,0.3);">
+            <div class="text-2xl font-bold" style="color: #eab308;">{statsData.pendientes}</div>
+            <div class="text-xs" style="color: rgb(var(--text-secondary));">Pendientes</div>
+          </div>
+          <div class="p-4 rounded-xl text-center" style="background-color: rgb(var(--bg-secondary)); border: 1px solid rgb(var(--border-primary));">
+            <div class="text-2xl font-bold" style="color: rgb(var(--text-primary));">{statsData.docentesCubren}</div>
+            <div class="text-xs flex items-center justify-center gap-1" style="color: rgb(var(--text-secondary));">
+              <Users size={12} /> Docentes cubriendo
+            </div>
+          </div>
+          <div class="p-4 rounded-xl text-center" style="background-color: rgb(var(--bg-secondary)); border: 1px solid rgb(var(--border-primary));">
+            <div class="text-2xl font-bold" style="color: rgb(var(--text-primary));">{statsData.gruposUnicos}</div>
+            <div class="text-xs flex items-center justify-center gap-1" style="color: rgb(var(--text-secondary));">
+              <Clock size={12} /> Grupos cubiertos
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="rounded-xl p-4" style="background-color: rgb(var(--bg-secondary)); border: 1px solid rgb(var(--border-primary));">
+            <h4 class="text-sm font-semibold mb-3" style="color: rgb(var(--text-primary));">Coberturas por día</h4>
+            <div class="relative" style="height: 200px;">
+              <canvas bind:this={barChartCanvas}></canvas>
+            </div>
+          </div>
+          <div class="rounded-xl p-4" style="background-color: rgb(var(--bg-secondary)); border: 1px solid rgb(var(--border-primary));">
+            <h4 class="text-sm font-semibold mb-3" style="color: rgb(var(--text-primary));">Distribución por estado</h4>
+            <div class="relative" style="height: 200px;">
+              <canvas bind:this={doughnutChartCanvas}></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    {/if}
     <div class="overflow-x-auto">
       <table class="w-full text-sm" style="border-collapse: collapse;">
         <thead>
