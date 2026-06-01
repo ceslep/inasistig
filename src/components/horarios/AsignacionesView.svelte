@@ -157,6 +157,61 @@
     return contenido.replace(/\n/g, " ");
   }
 
+  function abrirHistorialDocente(nombre: string) {
+    if (!nombre) return;
+    const escapar = (t: string) =>
+      String(t ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    const delDocente = coberturasHistoricas
+      .filter((c) => c.docente_cubre === nombre)
+      .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.hora - a.hora);
+
+    if (delDocente.length === 0) {
+      Swal.fire({
+        icon: "info",
+        title: nombre,
+        text: "Sin coberturas en el historial.",
+        confirmButtonText: "Cerrar",
+      });
+      return;
+    }
+
+    const filas = delDocente
+      .map(
+        (c) => `
+        <tr>
+          <td style="padding:6px; border-bottom:1px solid rgb(var(--border-primary)); white-space:nowrap;">${escapar(c.fecha)}</td>
+          <td style="padding:6px; border-bottom:1px solid rgb(var(--border-primary)); text-align:center; font-weight:bold; color:rgb(var(--accent-primary));">${formatoHora(c.hora)}</td>
+          <td style="padding:6px; border-bottom:1px solid rgb(var(--border-primary));">${escapar(c.docente_ausente)}</td>
+          <td style="padding:6px; border-bottom:1px solid rgb(var(--border-primary)); text-align:center;">${escapar(c.grupo_a_cubrir || c.grupo_ausente || "-")}</td>
+          <td style="padding:6px; border-bottom:1px solid rgb(var(--border-primary)); font-style:italic; color:rgb(var(--text-secondary));">${escapar(c.motivo || "-")}</td>
+        </tr>`
+      )
+      .join("");
+
+    const tableHtml = `
+      <p style="font-size:13px; color:rgb(var(--text-secondary)); margin:0 0 8px 0;">${delDocente.length} cobertura(s) — ordenadas de la más reciente a la más antigua.</p>
+      <table style="width:100%; font-size:12px; border-collapse:collapse;">
+        <thead>
+          <tr style="background-color:rgb(var(--bg-secondary));">
+            <th style="padding:6px; text-align:left; font-weight:bold; color:rgb(var(--text-secondary));">Fecha</th>
+            <th style="padding:6px; text-align:center; font-weight:bold; color:rgb(var(--text-secondary));">Hora</th>
+            <th style="padding:6px; text-align:left; font-weight:bold; color:rgb(var(--text-secondary));">Ausente</th>
+            <th style="padding:6px; text-align:center; font-weight:bold; color:rgb(var(--text-secondary));">Grupo</th>
+            <th style="padding:6px; text-align:left; font-weight:bold; color:rgb(var(--text-secondary));">Motivo</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>`;
+
+    Swal.fire({
+      title: `Historial de ${nombre}`,
+      html: tableHtml,
+      confirmButtonText: "Cerrar",
+      width: "650px",
+    });
+  }
+
   function abrirHorarioDocente(nombre: string) {
     if (ROLES_SIN_LIMITE.some((r) => nombre.includes(r))) {
       Swal.fire({
@@ -323,29 +378,43 @@
                 {cov.grupoAusente || "-"}
               </td>
               <td class="p-3 text-center border-t" style="border-color: rgb(var(--border-primary));">
-                <select
-                  value={cov.docenteCubre || ""}
-                  onchange={(e) => onCambiarDocenteCubre(i, e.currentTarget.value)}
-                  class="w-full max-w-[180px] px-2 py-1.5 rounded-lg text-sm font-medium border transition-all {dupInfo.dup ? 'cobertura-blink-dup' : ''}"
-                  style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--accent-primary)); border-color: {dupInfo.dup ? '#ef4444' : dupInfo.porGrupoLiberado ? '#eab308' : 'rgb(var(--border-primary))'}; border-width: {dupInfo.dup || dupInfo.porGrupoLiberado ? '2px' : '1px'};"
-                >
-                  {#if cov.posiblesCobradores.length > 0}
-                    <optgroup label="Docentes disponibles">
-                      {#each cov.posiblesCobradores as docente}
-                        <option value={docente} style={estiloOptionDocente(docente, cov.docenteCubre)}>{docente}{(conteoSesion.get(docente) ?? 0) >= 1 || (conteoHistorico.get(docente) ?? 0) >= 1 ? " ⚠" : ""}</option>
-                      {/each}
+                <div class="flex items-center gap-1 justify-center">
+                  <select
+                    value={cov.docenteCubre || ""}
+                    onchange={(e) => onCambiarDocenteCubre(i, e.currentTarget.value)}
+                    class="w-full max-w-[180px] px-2 py-1.5 rounded-lg text-sm font-medium border transition-all {dupInfo.dup ? 'cobertura-blink-dup' : ''}"
+                    style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--accent-primary)); border-color: {dupInfo.dup ? '#ef4444' : dupInfo.porGrupoLiberado ? '#eab308' : 'rgb(var(--border-primary))'}; border-width: {dupInfo.dup || dupInfo.porGrupoLiberado ? '2px' : '1px'};"
+                  >
+                    {#if cov.posiblesCobradores.length > 0}
+                      <optgroup label="Docentes disponibles">
+                        {#each cov.posiblesCobradores as docente}
+                          <option value={docente} style={estiloOptionDocente(docente, cov.docenteCubre)}>{docente}{(conteoSesion.get(docente) ?? 0) >= 1 || (conteoHistorico.get(docente) ?? 0) >= 1 ? " ⚠" : ""}</option>
+                        {/each}
+                      </optgroup>
+                    {/if}
+                    <optgroup label="Roles institucionales">
+                      <option value="ORIENTACION">ORIENTACION</option>
+                      <option value="COORDINADOR">COORDINADOR</option>
+                      <option value="BIBLIOTECA">BIBLIOTECA</option>
+                      <option value="AUDITORIO">AUDITORIO</option>
                     </optgroup>
+                    <optgroup label="Otros">
+                      <option value="IGNORAR">IGNORAR</option>
+                    </optgroup>
+                  </select>
+                  {#if cov.docenteCubre && cov.docenteCubre !== "IGNORAR"}
+                    <button
+                      type="button"
+                      onclick={() => abrirHistorialDocente(cov.docenteCubre)}
+                      class="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:opacity-80"
+                      style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--accent-primary)); border: 1px solid rgb(var(--border-primary));"
+                      title="Ver historial de coberturas de {cov.docenteCubre}"
+                      aria-label="Ver historial de {cov.docenteCubre}"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+                    </button>
                   {/if}
-                  <optgroup label="Roles institucionales">
-                    <option value="ORIENTACION">ORIENTACION</option>
-                    <option value="COORDINADOR">COORDINADOR</option>
-                    <option value="BIBLIOTECA">BIBLIOTECA</option>
-                    <option value="AUDITORIO">AUDITORIO</option>
-                  </optgroup>
-                  <optgroup label="Otros">
-                    <option value="IGNORAR">IGNORAR</option>
-                  </optgroup>
-                </select>
+                </div>
                 {#if dupInfo.dup}
                   <div class="text-xs mt-1 font-semibold" style="color: #ef4444;">
                     ⚠️ REPITE {dupInfo.sesion > 1 ? `(${dupInfo.sesion}× hoy)` : ""}{dupInfo.sesion > 1 && dupInfo.historico > 0 ? " · " : ""}{dupInfo.historico > 0 ? `Ya cubrió ${dupInfo.historico}h en historial` : ""}

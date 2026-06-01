@@ -313,6 +313,79 @@
     }
   }
 
+  function resumenWhatsAppTexto(): string {
+    const lineas: string[] = [];
+    lineas.push(`*INSTITUTO GUATICA*`);
+    lineas.push(`Reporte de Coberturas — ${formatoDia(diaSeleccionado)} ${formatearFecha(fechaSeleccionada)}`);
+
+    if (gruposNoAsistenUnicos.length > 0) {
+      lineas.push("");
+      lineas.push("⚠️ *GRUPOS QUE NO ASISTEN:*");
+      for (const g of gruposNoAsistenUnicos) {
+        lineas.push(`• ${g.grupo}${g.motivos.length > 0 ? ` — ${g.motivos.join(", ")}` : ""}`);
+      }
+    }
+
+    if (gruposLiberadosUnicos.length > 0) {
+      lineas.push("");
+      lineas.push("🔔 *GRUPOS LIBERADOS DURANTE LA JORNADA:*");
+      for (const l of gruposLiberadosUnicos) {
+        lineas.push(`• ${l.grupo} — Hora ${l.hora} (${horaReal(l.hora)})${l.motivos.length > 0 ? ` — ${l.motivos.join(", ")}` : ""}`);
+      }
+    }
+
+    if (coberturas.length > 0) {
+      lineas.push("");
+      lineas.push(`📋 *COBERTURAS (${coberturas.length}):*`);
+      for (const cov of coberturas) {
+        lineas.push(`• ${formatoHora(cov.hora)} — ${cov.docenteAusente} → ${cov.docenteCubre || "Por asignar"} (${cov.grupoAusente || cov.grupoACubrir || "-"})`);
+      }
+    }
+
+    return lineas.join("\n");
+  }
+
+  async function compartirWhatsApp(blob: Blob) {
+    const archivo = new File([blob], `Coberturas_${fechaSeleccionada}.png`, { type: "image/png" });
+    const texto = resumenWhatsAppTexto();
+
+    // Web Share API con archivos: única vía que adjunta la imagen real a WhatsApp (móvil).
+    const navAny = navigator as Navigator & {
+      canShare?: (data?: ShareData) => boolean;
+      share?: (data: ShareData) => Promise<void>;
+    };
+    const puedeCompartirArchivo =
+      typeof navAny.canShare === "function" &&
+      typeof navAny.share === "function" &&
+      navAny.canShare({ files: [archivo] });
+
+    if (puedeCompartirArchivo) {
+      try {
+        await navAny.share!({
+          files: [archivo],
+          title: "Reporte de Coberturas",
+          text: texto,
+        });
+      } catch (e) {
+        // AbortError = usuario canceló el diálogo de compartir; no es un fallo.
+        if ((e as DOMException)?.name !== "AbortError") {
+          console.error(e);
+        }
+      }
+      return;
+    }
+
+    // Fallback (escritorio sin Web Share): abrir WhatsApp con el texto. La imagen ya se
+    // descargó, debe adjuntarse manualmente.
+    await Swal.fire({
+      icon: "info",
+      title: "Compartir por WhatsApp",
+      html: "Este dispositivo no permite adjuntar la imagen automáticamente. Se abrirá WhatsApp con el texto del reporte; adjunta manualmente la imagen descargada.",
+      confirmButtonText: "Abrir WhatsApp",
+    });
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
+  }
+
   async function generarImagen() {
     if (generando) return;
     generando = true;
@@ -369,17 +442,31 @@
         scrollContainer.scrollTop = 0;
       }
 
+      const blob: Blob | null = await new Promise((resolve) =>
+        canvas.toBlob((b) => resolve(b), "image/png")
+      );
+
       const link = document.createElement("a");
       link.download = `Coberturas_${fechaSeleccionada}.png`;
-      link.href = canvas.toDataURL("image/png");
+      link.href = blob ? URL.createObjectURL(blob) : canvas.toDataURL("image/png");
       link.click();
+      if (blob && link.href.startsWith("blob:")) {
+        setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+      }
 
-      Swal.fire({
+      const res = await Swal.fire({
         icon: "success",
         title: "Imagen generada",
-        text: "La imagen se descargó correctamente",
-        confirmButtonText: "Cerrar",
+        text: "La imagen se descargó correctamente. ¿Compartir ahora por WhatsApp?",
+        showCancelButton: true,
+        confirmButtonText: "Compartir por WhatsApp",
+        confirmButtonColor: "#25D366",
+        cancelButtonText: "Cerrar",
       });
+
+      if (res.isConfirmed && blob) {
+        await compartirWhatsApp(blob);
+      }
     } catch (e) {
       console.error(e);
       Swal.fire("Error", "No se pudo generar la imagen", "error");

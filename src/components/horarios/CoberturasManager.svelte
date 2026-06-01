@@ -391,8 +391,8 @@ function recalcularCoberturas() {
       await coberturaSheetsService.deleteCoberturasPorFecha(fechaSeleccionada);
       await coberturaSheetsService.deleteLiberadosPorFecha(fechaSeleccionada);
 
-      for (const c of aprobadas) {
-        await coberturaSheetsService.saveCobertura({
+      await coberturaSheetsService.saveCoberturasBatch(
+        aprobadas.map((c) => ({
           fecha: fechaSeleccionada,
           dia_semana: diaSeleccionado,
           hora: c.hora,
@@ -402,8 +402,8 @@ function recalcularCoberturas() {
           grupo_a_cubrir: c.grupoACubrir,
           estado: "aprobado",
           motivo: c.motivoAusencia,
-        });
-      }
+        }))
+      );
 
       // Combinar grupos del modal (gruposAusentes) con los liberados manualmente
       // desde el botón rojo de cada fila, evitando duplicados por grupo+hora.
@@ -451,15 +451,15 @@ function recalcularCoberturas() {
         });
       }
 
-      for (const lib of liberadosAGuardar.values()) {
-        await coberturaSheetsService.saveLiberado({
+      await coberturaSheetsService.saveLiberadosBatch(
+        [...liberadosAGuardar.values()].map((lib) => ({
           fecha: fechaSeleccionada,
           dia_semana: diaSeleccionado,
           grupo: lib.grupo,
           hora_liberada: lib.hora_liberada,
           motivo: lib.motivo,
-        });
-      }
+        }))
+      );
 
       // Preparar datos para el reporte WhatsApp con lo recién guardado.
       const liberadosGuardados: import("../../lib/coberturaUtils").CoberturaLiberado[] = [

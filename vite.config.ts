@@ -21,6 +21,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2,webmanifest}"],
+        globIgnores: ["**/node_modules/**/*", "dev-dist/**/*"],
         navigateFallback: "index.html",
         navigateFallbackAllowlist: [/^\/inasistig\//],
         runtimeCaching: [

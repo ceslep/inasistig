@@ -47,6 +47,47 @@ export class CoberturaSheetsService {
     }
   }
 
+  async saveCoberturasBatch(rows: Array<{
+    fecha: string;
+    dia_semana: string;
+    hora: number;
+    docente_ausente: string;
+    grupo_ausente: string;
+    docente_cubre: string;
+    grupo_a_cubrir: string;
+    estado: string;
+    motivo: string;
+  }>): Promise<void> {
+    if (rows.length === 0) return;
+
+    const values = rows.map((row) => [
+      row.fecha,
+      row.dia_semana,
+      String(row.hora),
+      row.docente_ausente,
+      row.grupo_ausente,
+      row.docente_cubre,
+      row.grupo_a_cubrir,
+      row.estado,
+      row.motivo,
+    ]);
+
+    const response = await fetch(`${API_URL_GS}/save_cobertura.php`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        spreadsheetId: this.spreadsheetId,
+        worksheetTitle: this.worksheetTitle,
+        values,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: "Error desconocido" }));
+      throw new Error(err.error || "Error al guardar coberturas");
+    }
+  }
+
   async getCoberturas(): Promise<CoberturaHistorica[]> {
     const url = new URL(`${API_URL_GS}/get_coberturas.php`);
     url.searchParams.append("spreadsheetId", this.spreadsheetId);
@@ -166,6 +207,68 @@ export class CoberturaSheetsService {
       const err = await response.json().catch(() => ({ error: "Error desconocido" }));
       throw new Error(err.error || "Error al guardar liberado");
     }
+  }
+
+  async saveLiberadosBatch(rows: Array<{
+    fecha: string;
+    dia_semana: string;
+    grupo: string;
+    hora_liberada: number;
+    motivo: string;
+  }>): Promise<void> {
+    if (rows.length === 0) return;
+
+    const values = rows.map((row) => [
+      row.fecha,
+      row.dia_semana,
+      row.grupo,
+      String(row.hora_liberada),
+      row.motivo,
+    ]);
+
+    const response = await fetch(`${API_URL_GS}/save_cobertura.php`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        spreadsheetId: this.spreadsheetId,
+        worksheetTitle: WORKSHEET_TITLE_LIBERADOS,
+        values,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: "Error desconocido" }));
+      throw new Error(err.error || "Error al guardar liberados");
+    }
+  }
+
+  async deleteCoberturasBatch(keys: Array<{
+    fecha: string;
+    hora: number;
+    docente_cubre: string;
+    docente_ausente?: string;
+    grupo_ausente?: string;
+    grupo_a_cubrir?: string;
+  }>): Promise<{ deleted: number; notFound: unknown[] }> {
+    if (keys.length === 0) return { deleted: 0, notFound: [] };
+
+    const response = await fetch(`${API_URL_GS}/delete_coberturas_batch.php`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        spreadsheetId: this.spreadsheetId,
+        worksheetTitle: this.worksheetTitle,
+        keys,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: "Error desconocido" }));
+      throw new Error(err.error || "Error al eliminar coberturas");
+    }
+
+    const data = await response.json().catch(() => ({ deleted: 0, notFound: [] }));
+    return { deleted: data.deleted ?? 0, notFound: data.notFound ?? [] };
   }
 
   async deleteLiberadosPorFecha(fecha: string): Promise<void> {

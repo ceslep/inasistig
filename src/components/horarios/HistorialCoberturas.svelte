@@ -135,14 +135,23 @@
     if (!result.isConfirmed) return;
 
     eliminando = true;
-    const fallidas: string[] = [];
+    let fallidas: string[] = [];
     try {
-      for (const c of aEliminar) {
-        try {
-          await coberturaSheetsService.deleteCobertura(c.fecha, c.hora, c.docente_cubre);
-        } catch {
-          fallidas.push(`${c.docente_cubre} (${c.fecha} h${c.hora})`);
-        }
+      const keys = aEliminar.map((c) => ({
+        fecha: c.fecha,
+        hora: c.hora,
+        docente_cubre: c.docente_cubre,
+        docente_ausente: c.docente_ausente,
+      }));
+      try {
+        const res = await coberturaSheetsService.deleteCoberturasBatch(keys);
+        // notFound trae las keys que no se encontraron en la hoja.
+        fallidas = (res.notFound as Array<{ fecha?: string; hora?: number; docente_cubre?: string }>).map(
+          (k) => `${k.docente_cubre ?? "?"} (${k.fecha ?? "?"} h${k.hora ?? "?"})`
+        );
+      } catch {
+        // Error de transporte → reportar todas como fallidas.
+        fallidas = aEliminar.map((c) => `${c.docente_cubre} (${c.fecha} h${c.hora})`);
       }
       // Borrar los grupos liberados de cada fecha afectada.
       const fechasAfectadas = [...new Set(aEliminar.map((c) => c.fecha))];
