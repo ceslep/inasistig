@@ -5,13 +5,44 @@ export async function fetchAsignaturas() {
 }
 
 // --- Configuración del período académico ---
+export const peridosRange = [{nombre:'PRIMERO',fechas:{inicio:'2026-01-26',fin:'2026-04-01'}}, {nombre:'SEGUNDO',fechas:{inicio:'2026-04-02',fin:'2026-06-12'}}, {nombre:'TERCERO',fechas:{inicio:'2026-07-07',fin:'2026-09-12'}}, {nombre:'CUARTO',fechas:{inicio:'2026-09-13',fin:'2026-11-20'}}]
+
+export function getPeriodoLabel(periodo) {
+  const labels = { PRIMERO: 'Primer', SEGUNDO: 'Segundo', TERCERO: 'Tercer', CUARTO: 'Cuarto' }
+  return `${labels[periodo] || periodo} Período Académico`
+}
+
+export function getPeriodoName(periodo) {
+  const labels = { PRIMERO: 'Primer', SEGUNDO: 'Segundo', TERCERO: 'Tercer', CUARTO: 'Cuarto' }
+  return labels[periodo] || periodo
+}
+
+export function isPeriodoActivo(periodo) {
+  const hoy = new Date()
+  const p = peridosRange.find(r => r.nombre === periodo)
+  if (!p) return false
+  return hoy >= new Date(p.fechas.inicio) && hoy <= new Date(p.fechas.fin)
+}
+
+export function getCurrentPeriodo() {
+  const hoy = new Date()
+  for (const p of peridosRange) {
+    if (hoy >= new Date(p.fechas.inicio) && hoy <= new Date(p.fechas.fin)) {
+      return p.nombre
+    }
+  }
+  return peridosRange[peridosRange.length - 1].nombre
+}
+
+const currentPeriodoNumero = getPeriodoName(getCurrentPeriodo())
+
 export const periodoConfig = {
-  numero: 'Primer',       // Primer | Segundo | Tercer | Cuarto
+  numero: currentPeriodoNumero,
   anioLectivo: 2026,
   nivel: 'Básica Secundaria y Media'
 }
 
-export const periodoLabel = `${periodoConfig.numero} Período Académico`
+export const periodoLabel = `${currentPeriodoNumero} Período Académico`
 export const anioLectivoLabel = `Año Lectivo ${periodoConfig.anioLectivo}`
 
 export const institutionHeader = `INSTITUCION EDUCATIVA OFICIAL INSTITUTO GUATICA

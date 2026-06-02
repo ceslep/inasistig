@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte'
-  import { fetchAsignaturas, fetchEstudiantes, fetchDocentes } from '../lib/data.js'
+  import { fetchAsignaturas, fetchEstudiantes, fetchDocentes, peridosRange, getCurrentPeriodo, getPeriodoLabel, isPeriodoActivo } from '../lib/data.js'
   import SkeletonLoader from './SkeletonLoader.svelte'
   import Icon from '@iconify/svelte'
   import Swal from 'sweetalert2'
@@ -22,6 +22,8 @@
   let planMejoramiento = $state('')
   let planesIndividuales = $state({})
   let loading = $state(false)
+
+  let selectedPeriodo = $state(getCurrentPeriodo())
 
   // Shake animation state
   let shakeFields = $state({})
@@ -60,9 +62,12 @@
   )
 
   let isFormValid = $derived.by(() => {
-    if (!grupo || !asignatura || !docenteSeleccionado || !fechaLimite) return false
-    if (estudiantesSeleccionados.length === 0) return false
+    if (!selectedPeriodo || !grupo || !asignatura || !docenteSeleccionado || !fechaLimite) return false
+    const periodoObj = peridosRange.find(p => p.nombre === selectedPeriodo)
+    const fechaInPeriodo = periodoObj && new Date(fechaLimite) >= new Date(periodoObj.fechas.inicio) && new Date(fechaLimite) <= new Date(periodoObj.fechas.fin)
+    if (!fechaInPeriodo) return false
     if (new Date(fechaLimite) <= new Date(new Date().setHours(0, 0, 0, 0))) return false
+    if (estudiantesSeleccionados.length === 0) return false
 
     const allHaveIndividualPlan = estudiantesSeleccionados.every(name => studentsWithIndividualPlan.includes(name))
 
@@ -101,12 +106,14 @@
     })
 
     const isValidDate = new Date(fechaLimite) > new Date(new Date().setHours(0, 0, 0, 0))
+    const periodoObj = peridosRange.find(p => p.nombre === selectedPeriodo)
+    const fechaInPeriodo = periodoObj && new Date(fechaLimite) >= new Date(periodoObj.fechas.inicio) && new Date(fechaLimite) <= new Date(periodoObj.fechas.fin)
     items.push({
       id: 'fecha',
       label: 'Fecha límite',
       value: fechaLimite,
-      completed: isValidDate,
-      detail: isValidDate ? formatDate(fechaLimite) : 'Debe ser posterior a hoy'
+      completed: isValidDate && fechaInPeriodo,
+      detail: isValidDate ? (fechaInPeriodo ? formatDate(fechaLimite) : 'Fecha fuera del período') : 'Debe ser posterior a hoy'
     })
 
     items.push({
@@ -263,7 +270,8 @@
             estudiantesSeleccionados.map(n => [n, planesIndividuales[n] || ''])
           ),
           docenteSeleccionado,
-          fechaLimite
+          fechaLimite,
+          periodo: selectedPeriodo
         })
       })
 
@@ -282,6 +290,7 @@
         grupo = ''
         asignatura = ''
         docenteSeleccionado = ''
+        selectedPeriodo = getCurrentPeriodo()
         fechaLimite = today
         planMejoramiento = ''
         planesIndividuales = {}
@@ -356,6 +365,21 @@
           <Icon icon="mdi:information-outline" class="text-primary-600 dark:text-primary-400 text-lg" />
         </div>
         <h2 class="text-base font-bold text-slate-800 dark:text-slate-100">Informacion general</h2>
+      </div>
+
+      <div class="mb-5">
+        <label for="periodo" class="field-label">
+          <Icon icon="mdi:calendar" class="text-sm text-slate-400" />
+          Período académico
+        </label>
+        <select id="periodo" bind:value={selectedPeriodo} class="field-input">
+          {#each peridosRange as p}
+            {@const activo = isPeriodoActivo(p.nombre)}
+            <option value={p.nombre} disabled={!activo}>
+              {getPeriodoLabel(p.nombre)} {!activo ? '(Fuera de rango)' : ''}
+            </option>
+          {/each}
+        </select>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">

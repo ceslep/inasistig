@@ -1,6 +1,7 @@
 <script>
   import { onMount } from "svelte";
   import { generatePDF } from "../lib/pdf.js";
+  import { peridosRange, getCurrentPeriodo, getPeriodoLabel, isPeriodoActivo } from "../lib/data.js";
   import escudo from "../../../assets/eie.png";
   import SkeletonLoader from "./SkeletonLoader.svelte";
   import Icon from "@iconify/svelte";
@@ -11,6 +12,7 @@
   let searchText = $state("");
   let filterGrupo = $state("");
   let filterDocente = $state("");
+  let filterPeriodo = $state(getCurrentPeriodo());
   let expandedStudent = $state(null);
   let selectedStudent = $state(null);
 
@@ -23,6 +25,8 @@
     [...new Set(data.map((d) => d.docente))].sort(),
   );
 
+  let filteredPeriodoLabel = $derived(getPeriodoLabel(filterPeriodo));
+
   let filteredData = $derived(
     data.filter((item) => {
       const matchesSearch =
@@ -32,7 +36,8 @@
         );
       const matchesGrupo = !filterGrupo || item.grupo === filterGrupo;
       const matchesDocente = !filterDocente || item.docente === filterDocente;
-      return matchesSearch && matchesGrupo && matchesDocente;
+      const matchesPeriodo = !filterPeriodo || item.periodo === filterPeriodo;
+      return matchesSearch && matchesGrupo && matchesDocente && matchesPeriodo;
     }),
   );
 
@@ -116,9 +121,10 @@
     searchText = "";
     filterGrupo = "";
     filterDocente = "";
+    filterPeriodo = getCurrentPeriodo();
   }
 
-  let hasActiveFilters = $derived(searchText || filterGrupo || filterDocente);
+  let hasActiveFilters = $derived(searchText || filterGrupo || filterDocente || filterPeriodo !== getCurrentPeriodo());
 
   // Active filter chips for sticky bar
   let activeFilterChips = $derived(() => {
@@ -143,6 +149,13 @@
         label: filterDocente,
         icon: "mdi:account-tie",
         clear: () => (filterDocente = ""),
+      });
+    if (filterPeriodo !== getCurrentPeriodo())
+      chips.push({
+        key: "periodo",
+        label: getPeriodoLabel(filterPeriodo),
+        icon: "mdi:calendar",
+        clear: () => (filterPeriodo = getCurrentPeriodo()),
       });
     return chips;
   });
@@ -302,14 +315,14 @@
     const studentRecords = filteredData.filter(
       (d) => d.estudiante === item.estudiante,
     );
-    generatePDF(studentRecords, escudoBase64);
+    generatePDF(studentRecords, escudoBase64, filteredPeriodoLabel);
   }
 
   function handleGenerateGroupPDF() {
     const sorted = [...filteredData].sort((a, b) =>
       a.estudiante.localeCompare(b.estudiante),
     );
-    generatePDF(sorted, escudoBase64);
+    generatePDF(sorted, escudoBase64, filteredPeriodoLabel);
   }
 
   const colors = [
@@ -364,7 +377,7 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       <div class="relative">
         <Icon
           icon="mdi:magnify"
@@ -377,6 +390,14 @@
           class="field-input pl-10"
         />
       </div>
+      <select bind:value={filterPeriodo} class="field-input">
+        {#each peridosRange as p}
+          {@const activo = isPeriodoActivo(p.nombre)}
+          <option value={p.nombre} disabled={!activo}>
+            {getPeriodoLabel(p.nombre)} {!activo ? '(Fuera de rango)' : ''}
+          </option>
+        {/each}
+      </select>
       <select bind:value={filterGrupo} class="field-input">
         <option value="">Todos los grupos</option>
         {#each uniqueGrupos as g}

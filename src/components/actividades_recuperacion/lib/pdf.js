@@ -1,4 +1,4 @@
-import { periodoLabel, anioLectivoLabel } from './data.js'
+import { anioLectivoLabel } from './data.js'
 
 function formatDate(dateStr) {
   try {
@@ -10,7 +10,7 @@ function formatDate(dateStr) {
   }
 }
 
-function generateHeaderHTML(escudoBase64) {
+function generateHeaderHTML(escudoBase64, periodoLabel) {
   return `
   <div class="header">
     <div class="header-left">
@@ -28,54 +28,121 @@ function generateHeaderHTML(escudoBase64) {
   `
 }
 
-function generateItemHTML(item, escudoBase64, includeHeader, isLast) {
+function generateInfoTable(item, todayFormatted) {
   const fechaFormatted = formatDate(item.fecha_limite)
-  const todayFormatted = formatDate(new Date().toISOString().split('T')[0])
-
   return `
-  <div class="page-item">
-    ${includeHeader ? generateHeaderHTML(escudoBase64) : ''}
-
-    <table class="info-table">
-      <tr>
-        <td class="info-cell"><span class="lbl">Estudiante</span><span class="val bold">${item.estudiante || ''}</span></td>
-        <td class="info-cell"><span class="lbl">Grupo</span><span class="val">${item.grupo || ''}</span></td>
-        <td class="info-cell"><span class="lbl">Asignatura</span><span class="val">${item.asignatura || ''}</span></td>
-      </tr>
-      <tr>
-        <td class="info-cell"><span class="lbl">Docente</span><span class="val">${item.docente || ''}</span></td>
-        <td class="info-cell"><span class="lbl">Fecha de Entrega</span><span class="val">${todayFormatted}</span></td>
-        <td class="info-cell"><span class="lbl">Fecha Límite</span><span class="val bold">${fechaFormatted}</span></td>
-      </tr>
-    </table>
-
-    <div class="plan-section">
-      <p class="plan-title">Plan de Mejoramiento / Refuerzo Académico</p>
-      <div class="plan-content">${item.plan || ''}</div>
-    </div>
-
-    <div class="footer-zone">
-      <p class="notice"><strong>Nota:</strong> Este plan debe ser desarrollado por el estudiante en el período indicado con acompañamiento de los padres. Entregar en la fecha límite.</p>
-      <div class="firmas">
-        <div class="firma"><div class="firma-line"></div><p class="firma-label">Firma del Docente</p></div>
-        <div class="firma"><div class="firma-line"></div><p class="firma-label">Firma del Coordinador</p></div>
-        <div class="firma"><div class="firma-line"></div><p class="firma-label">Firma del Acudiente</p></div>
-      </div>
-    </div>
-  </div>
-  ${!isLast ? '<div class="page-break"></div>' : ''}
+  <table class="info-table">
+    <tr>
+      <td class="info-cell"><span class="lbl">Estudiante</span><span class="val bold">${item.estudiante || ''}</span></td>
+      <td class="info-cell"><span class="lbl">Grupo</span><span class="val">${item.grupo || ''}</span></td>
+      <td class="info-cell"><span class="lbl">Asignatura</span><span class="val">${item.asignatura || ''}</span></td>
+    </tr>
+    <tr>
+      <td class="info-cell"><span class="lbl">Docente</span><span class="val">${item.docente || ''}</span></td>
+      <td class="info-cell"><span class="lbl">Fecha de Entrega</span><span class="val">${todayFormatted}</span></td>
+      <td class="info-cell"><span class="lbl">Fecha Límite</span><span class="val bold">${fechaFormatted}</span></td>
+    </tr>
+  </table>
   `
 }
 
-export function generatePDF(items, escudoBase64) {
+function generatePlanBlockWithTitle(item) {
+  return `
+  <div class="plan-section">
+    <p class="plan-title">Plan de Mejoramiento / Refuerzo Académico — ${item.asignatura || ''}</p>
+    <div class="plan-content">${item.plan || ''}</div>
+  </div>
+  `
+}
+
+function generateFooterWithFirmas() {
+  return `
+  <div class="footer-zone">
+    <p class="notice"><strong>Nota:</strong> Este plan debe ser desarrollado por el estudiante en el período indicado con acompañamiento de los padres. Entregar en la fecha límite.</p>
+    <div class="firmas">
+      <div class="firma"><div class="firma-line"></div><p class="firma-label">Firma del Docente</p></div>
+      <div class="firma"><div class="firma-line"></div><p class="firma-label">Firma del Coordinador</p></div>
+      <div class="firma"><div class="firma-line"></div><p class="firma-label">Firma del Acudiente</p></div>
+    </div>
+  </div>
+  `
+}
+
+function generateSingleRecordHTML(item, escudoBase64, periodoLabel) {
+  const todayFormatted = formatDate(new Date().toISOString().split('T')[0])
+  return `
+  <div class="page-item">
+    ${generateHeaderHTML(escudoBase64, periodoLabel)}
+    ${generateInfoTable(item, todayFormatted)}
+    ${generatePlanBlockWithTitle(item)}
+    ${generateFooterWithFirmas()}
+  </div>
+  `
+}
+
+function generateMultiRecordStudentHTML(studentName, records, escudoBase64, periodoLabel) {
+  const todayFormatted = formatDate(new Date().toISOString().split('T')[0])
+
+  const recordBlocks = records.map((item, i) => {
+    const isFirst = i === 0
+    const isLast = i === records.length - 1
+    return `
+    <div class="student-record ${isFirst ? 'first' : ''} ${isLast ? 'last' : ''}">
+      ${isFirst ? generateHeaderHTML(escudoBase64, periodoLabel) : ''}
+      <div class="record-header">
+        <span class="record-asignatura">${item.asignatura || ''}</span>
+        <span class="record-meta">${item.docente || ''} · Límite: ${formatDate(item.fecha_limite)}</span>
+      </div>
+      <div class="record-info-row">
+        <span><span class="lbl-inline">Estudiante:</span> <strong>${item.estudiante || ''}</strong></span>
+        <span><span class="lbl-inline">Grupo:</span> ${item.grupo || ''}</span>
+      </div>
+      <div class="plan-section">
+        <div class="plan-content">${item.plan || ''}</div>
+      </div>
+      ${isLast ? generateFooterWithFirmas() : ''}
+    </div>
+    `
+  }).join('')
+
+  return `
+  <div class="page-item multi">
+    ${recordBlocks}
+  </div>
+  `
+}
+
+export function generatePDF(items, escudoBase64, periodoLabel) {
   if (!Array.isArray(items)) {
     items = [items]
   }
 
   const studentName = items[0]?.estudiante || ''
-  const itemsHTML = items.map((item, index) =>
-    generateItemHTML(item, escudoBase64, true, index === items.length - 1)
-  ).join('')
+
+  const groupedByStudent = items.reduce((acc, item) => {
+    const key = item.estudiante || '__unknown__'
+    if (!acc[key]) acc[key] = []
+    acc[key].push(item)
+    return acc
+  }, {})
+
+  const studentGroups = Object.values(groupedByStudent)
+
+  let pagesHTML = ''
+
+  studentGroups.forEach((group, studentIndex) => {
+    const isLastStudent = studentIndex === studentGroups.length - 1
+
+    if (group.length === 1) {
+      pagesHTML += generateSingleRecordHTML(group[0], escudoBase64, periodoLabel)
+    } else {
+      pagesHTML += generateMultiRecordStudentHTML(studentName, group, escudoBase64, periodoLabel)
+    }
+
+    if (!isLastStudent) {
+      pagesHTML += '<div class="page-break"></div>'
+    }
+  })
 
   const html = `<!DOCTYPE html>
 <html>
@@ -100,6 +167,12 @@ export function generatePDF(items, escudoBase64) {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+  }
+
+  .page-item.multi {
+    height: auto;
+    min-height: 100vh;
+    display: block;
   }
 
   /* ---- Encabezado ---- */
@@ -177,6 +250,13 @@ export function generatePDF(items, escudoBase64) {
     margin-bottom: 1px;
   }
 
+  .lbl-inline {
+    font-size: 7.5px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
   .val {
     display: block;
     font-size: 10px;
@@ -185,14 +265,18 @@ export function generatePDF(items, escudoBase64) {
 
   .val.bold { font-weight: 700; }
 
-  /* ---- Plan: crece para llenar todo el espacio disponible ---- */
+  /* ---- Plan ---- */
   .plan-section {
     border: 1px solid #aaa;
-    flex: 1;
     display: flex;
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
+    margin-bottom: 8px;
+  }
+
+  .plan-section:last-child {
+    margin-bottom: 0;
   }
 
   .plan-title {
@@ -204,6 +288,7 @@ export function generatePDF(items, escudoBase64) {
     border-bottom: 1px solid #aaa;
     color: #222;
     flex-shrink: 0;
+    background: #f9f9f9;
   }
 
   .plan-content {
@@ -260,6 +345,51 @@ export function generatePDF(items, escudoBase64) {
     height: 0;
   }
 
+  /* ---- Multi-record student layout ---- */
+  .student-record {
+    display: flex;
+    flex-direction: column;
+    padding-top: 0;
+  }
+
+  .student-record.last {
+    flex: 1;
+  }
+
+  .record-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: #f0f0f0;
+    border: 1px solid #aaa;
+    border-bottom: none;
+  }
+
+  .record-asignatura {
+    font-size: 10px;
+    font-weight: 700;
+    color: #111;
+  }
+
+  .record-meta {
+    font-size: 8px;
+    color: #666;
+    text-align: right;
+  }
+
+  .record-info-row {
+    display: flex;
+    gap: 20px;
+    padding: 4px 10px;
+    background: #fafafa;
+    border: 1px solid #aaa;
+    border-top: none;
+    border-bottom: none;
+    font-size: 9px;
+    color: #333;
+  }
+
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .page-item {
@@ -267,15 +397,15 @@ export function generatePDF(items, escudoBase64) {
       min-height: 100vh;
       page-break-inside: avoid;
     }
+    .page-break { page-break-after: always; }
     .plan-section {
       flex: 1;
     }
-    .page-break { page-break-after: always; }
   }
 </style>
 </head>
 <body>
-  ${itemsHTML}
+  ${pagesHTML}
 
   <script>
     window.onload = function() {
