@@ -12,8 +12,10 @@ import {
   construirCargaDiariaSesion,
   construirCargaDiariaHistorica,
   getPosiblesCobradoresParaSlot,
+  calcularAdelantos,
+  aplicarAdelantosAHorarios,
 } from '../coberturaUtils';
-import type { CoberturaHistorica } from '../coberturaUtils';
+import type { CoberturaHistorica, HorarioDocente } from '../coberturaUtils';
 import {
   horariosTest,
   horariosTestConHora7Libre,
@@ -749,5 +751,117 @@ describe('asignarAutomaticamente: dedup de slots', () => {
       ausenciasGrupo,
     });
     expect(carga.get('Carlos') || 0).toBe(1);
+  });
+});
+
+describe('calcularAdelantos', () => {
+  // Fixture real: CESAR martes idx0..6
+  const cesar: HorarioDocente = {
+    docente: 'CESAR LEANDRO PATINO VELEZ',
+    lunes: ['', '', '', '', '', '', ''],
+    martes: ['ARTISTICA Y DISEÑO 1001', '', 'TECNOLOGIA 1101', 'TECNOLOGIA 1101', 'EMPRENDIMIENTO 902', '', 'TECNOLOGIA 1001'],
+    miercoles: ['', '', '', '', '', '', ''],
+    jueves: ['', '', '', '', '', '', ''],
+    viernes: ['', '', '', '', '', '', ''],
+  };
+
+  it('adelanta la clase h7 del grado liberado a la h6 libre (caso CESAR/1001)', () => {
+    const adel = calcularAdelantos('1001', 6, 'martes', [cesar]);
+    expect(adel).toHaveLength(1);
+    expect(adel[0]).toMatchObject({
+      docente: 'CESAR LEANDRO PATINO VELEZ',
+      grupoGrado: '1001',
+      materia: 'TECNOLOGIA',
+      horaOrigen: 6,
+      horaDestino: 5,
+      aplicable: true,
+    });
+  });
+
+  it('no excluye al docente que cubre la propia clase liberada de la ventana previa (idx0 fuera de ventana)', () => {
+    // idx0 (ARTISTICA 1001) está antes de h6 → no candidato.
+    const adel = calcularAdelantos('1001', 6, 'martes', [cesar]);
+    expect(adel.every((a) => a.horaOrigen >= 5)).toBe(true);
+  });
+
+  it('marca no aplicable cuando no hay hueco libre anterior dentro de la ventana', () => {
+    // Grupo en h7, pero h6 ocupada → sin destino.
+    const docente: HorarioDocente = {
+      docente: 'X',
+      lunes: ['', '', '', '', '', '', ''],
+      martes: ['', '', '', '', '', 'MAT 902', 'MAT 1001'],
+      miercoles: ['', '', '', '', '', '', ''],
+      jueves: ['', '', '', '', '', '', ''],
+      viernes: ['', '', '', '', '', '', ''],
+    };
+    const adel = calcularAdelantos('1001', 6, 'martes', [docente]);
+    expect(adel).toHaveLength(1);
+    expect(adel[0].aplicable).toBe(false);
+    expect(adel[0].horaDestino).toBe(-1);
+  });
+
+  it('no usa DESC/PEDAG como hueco destino', () => {
+    const docente: HorarioDocente = {
+      docente: 'Y',
+      lunes: ['', '', '', '', '', '', ''],
+      martes: ['', '', '', '', '', 'DESC', 'MAT 1001'],
+      miercoles: ['', '', '', '', '', '', ''],
+      jueves: ['', '', '', '', '', '', ''],
+      viernes: ['', '', '', '', '', '', ''],
+    };
+    const adel = calcularAdelantos('1001', 6, 'martes', [docente]);
+    expect(adel[0].aplicable).toBe(false);
+  });
+
+  it('dos clases posteriores del mismo grado sin doble-reserva del destino', () => {
+    // Grupo 1001 en h6 (idx5) y h7 (idx6); huecos en h4 (idx3) y h5 (idx4). Ventana desde h4.
+    const docente: HorarioDocente = {
+      docente: 'Z',
+      lunes: ['', '', '', '', '', '', ''],
+      martes: ['', '', '', '', '', 'MAT 1001', 'MAT 1001'],
+      miercoles: ['', '', '', '', '', '', ''],
+      jueves: ['', '', '', '', '', '', ''],
+      viernes: ['', '', '', '', '', '', ''],
+    };
+    // ventana desde h4 (horaLiberada=4 → inicioIdx=3). idx3,idx4 libres.
+    const adel = calcularAdelantos('1001', 4, 'martes', [docente]);
+    const aplicables = adel.filter((a) => a.aplicable);
+    expect(aplicables).toHaveLength(2);
+    const destinos = aplicables.map((a) => a.horaDestino).sort();
+    // Sin doble reserva → destinos distintos.
+    expect(new Set(destinos).size).toBe(2);
+  });
+
+  it('omite docentes ausentes', () => {
+    const adel = calcularAdelantos('1001', 6, 'martes', [cesar], ['CESAR LEANDRO PATINO VELEZ']);
+    expect(adel).toHaveLength(0);
+  });
+});
+
+describe('aplicarAdelantosAHorarios', () => {
+  const cesar: HorarioDocente = {
+    docente: 'CESAR LEANDRO PATINO VELEZ',
+    lunes: ['', '', '', '', '', '', ''],
+    martes: ['ARTISTICA Y DISEÑO 1001', '', 'TECNOLOGIA 1101', 'TECNOLOGIA 1101', 'EMPRENDIMIENTO 902', '', 'TECNOLOGIA 1001'],
+    miercoles: ['', '', '', '', '', '', ''],
+    jueves: ['', '', '', '', '', '', ''],
+    viernes: ['', '', '', '', '', '', ''],
+  };
+
+  it('aplica el adelanto al día sin mutar el original', () => {
+    const original = [cesar];
+    const adel = calcularAdelantos('1001', 6, 'martes', original);
+    const efectivos = aplicarAdelantosAHorarios(original, 'martes', adel);
+    // Original intacto
+    expect(original[0].martes[5]).toBe('');
+    expect(original[0].martes[6]).toBe('TECNOLOGIA 1001');
+    // Copia parcheada: destino ocupado, origen libre
+    expect(efectivos[0].martes[5]).toBe('TECNOLOGIA 1001');
+    expect(efectivos[0].martes[6]).toBe('');
+  });
+
+  it('devuelve el mismo arreglo si no hay adelantos', () => {
+    const original = [cesar];
+    expect(aplicarAdelantosAHorarios(original, 'martes', [])).toBe(original);
   });
 });

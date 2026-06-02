@@ -62,6 +62,17 @@ export type CoberturaLiberado = {
   motivo: string;
 };
 
+export type Adelanto = {
+  docente: string;
+  grupoGrado: string; // grado liberado, ej "1001"
+  materia: string; // getMateriaFromSlot del slot movido
+  slotOriginal: string; // texto exacto del slot (evita reformatear acentos)
+  horaOrigen: number; // 0-indexed, hora original L de la clase
+  horaDestino: number; // 0-indexed, hueco P (< L); -1 si no aplicable
+  aplicable: boolean;
+  motivoNoAplicable?: string;
+};
+
 export const DIAS = ["lunes", "martes", "miercoles", "jueves", "viernes"] as const;
 export const DIAS_ABREV = ["LUN", "MAR", "MIE", "JUE", "VIE"];
 export const ROLES_SIN_LIMITE = ["ORIENTACION", "ORIENTADOR", "COORDINADOR", "BIBLIOTECA","AUDITORIO"];
@@ -565,4 +576,111 @@ export function resumenCoberturas(coberturas: CoberturaSugerida[]): {
     manuales: coberturas.filter((c) => !c.aprobada && !c.violation).length,
     violaciones: coberturas.filter((c) => c.violation).length,
   };
+}
+
+/**
+ * Cuando un grado queda libre desde `horaLiberada` (1-indexed), calcula los
+ * "adelantos": clases que ese mismo grado tiene en horas posteriores y que
+ * pueden moverse a un hueco libre anterior dentro de la ventana, de modo que
+ * las últimas horas del docente queden libres.
+ *
+ * Procesa de la hora más tardía hacia atrás y prefiere el hueco libre más
+ * cercano a la clase original (más tardío posible) para vaciar la cola.
+ */
+export function calcularAdelantos(
+  grupo: string,
+  horaLiberada: number,
+  dia: string,
+  horarios: HorarioDocente[],
+  docentesAusentes: string[] = []
+): Adelanto[] {
+  const inicioIdx = Math.max(0, horaLiberada - 1);
+  const result: Adelanto[] = [];
+
+  for (const h of horarios) {
+    if (docentesAusentes.includes(h.docente)) continue;
+
+    const trabajo = [...(h[dia as keyof HorarioDocente] as string[])];
+
+    const clasesDelGrupo: number[] = [];
+    for (let L = 0; L < trabajo.length; L++) {
+      if (L >= inicioIdx && getGrupoFromSlot(trabajo[L]) === grupo) {
+        clasesDelGrupo.push(L);
+      }
+    }
+
+    // Procesar descendente: la clase más tardía primero (vacía la cola).
+    clasesDelGrupo.sort((a, b) => b - a);
+
+    for (const L of clasesDelGrupo) {
+      // Hueco más cercano a L (más tardío posible) dentro de [inicioIdx, L).
+      let destino = -1;
+      for (let P = L - 1; P >= inicioIdx; P--) {
+        if (trabajo[P] === "") {
+          destino = P;
+          break;
+        }
+      }
+
+      if (destino >= 0) {
+        result.push({
+          docente: h.docente,
+          grupoGrado: grupo,
+          materia: getMateriaFromSlot(trabajo[L]),
+          slotOriginal: trabajo[L],
+          horaOrigen: L,
+          horaDestino: destino,
+          aplicable: true,
+        });
+        // Mutar copia: ocupar destino, liberar origen (evita doble-reserva).
+        trabajo[destino] = trabajo[L];
+        trabajo[L] = "";
+      } else {
+        result.push({
+          docente: h.docente,
+          grupoGrado: grupo,
+          materia: getMateriaFromSlot(trabajo[L]),
+          slotOriginal: trabajo[L],
+          horaOrigen: L,
+          horaDestino: -1,
+          aplicable: false,
+          motivoNoAplicable: "Sin hora libre anterior dentro de la ventana de liberación",
+        });
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Devuelve una copia de `horarios` con los adelantos aplicables reflejados en
+ * el `dia` indicado: el slot destino toma la clase y el origen queda libre.
+ * Solo clona los días de docentes afectados; el resto se devuelve por
+ * referencia. NUNCA muta el arreglo de entrada (típicamente el import JSON).
+ */
+export function aplicarAdelantosAHorarios(
+  horarios: HorarioDocente[],
+  dia: string,
+  adelantos: Adelanto[]
+): HorarioDocente[] {
+  const porDocente = new Map<string, Adelanto[]>();
+  for (const a of adelantos) {
+    if (!a.aplicable) continue;
+    const lista = porDocente.get(a.docente) ?? [];
+    lista.push(a);
+    porDocente.set(a.docente, lista);
+  }
+  if (porDocente.size === 0) return horarios;
+
+  return horarios.map((h) => {
+    const lista = porDocente.get(h.docente);
+    if (!lista) return h;
+    const dayArr = [...(h[dia as keyof HorarioDocente] as string[])];
+    for (const a of lista) {
+      dayArr[a.horaDestino] = a.slotOriginal;
+      dayArr[a.horaOrigen] = "";
+    }
+    return { ...h, [dia]: dayArr };
+  });
 }

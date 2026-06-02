@@ -20,6 +20,7 @@
     onOpenGruposModal,
     onLiberarGrupoDesdeHora,
     onAprobarTodo,
+    horariosEfectivos,
   }: {
     diaSeleccionado: string;
     fechaSeleccionada: string;
@@ -36,7 +37,11 @@
     onOpenGruposModal?: () => void;
     onLiberarGrupoDesdeHora?: (grupo: string, hora: number, docenteAusente: string) => void;
     onAprobarTodo: () => void;
+    horariosEfectivos?: HorarioDocente[];
   } = $props();
+
+  // Horario con adelantos aplicados (cae al import crudo si no se pasa).
+  const horariosVista = $derived((horariosEfectivos ?? (horariosData as HorarioDocente[])));
 
   // Conteo de ocurrencias por docente en sesión (excluyendo roles sin límite y
   // horas que originalmente eran del grupo liberado — esas no cuentan porque
@@ -47,7 +52,7 @@
       const d = c.docenteCubre;
       if (!d) continue;
       if (ROLES_SIN_LIMITE.some((r) => d.includes(r))) continue;
-      if (esHoraLibrePorGrupoAusente(d, c.hora, diaSeleccionado, horariosData as HorarioDocente[], gruposAusentes)) {
+      if (esHoraLibrePorGrupoAusente(d, c.hora, diaSeleccionado, horariosVista, gruposAusentes)) {
         continue;
       }
       m.set(d, (m.get(d) || 0) + 1);
@@ -95,7 +100,7 @@
   function esDuplicado(docente: string, hora: number): { dup: boolean; sesion: number; historico: number; porGrupoLiberado: boolean } {
     if (!docente) return { dup: false, sesion: 0, historico: 0, porGrupoLiberado: false };
     if (ROLES_SIN_LIMITE.some((r) => docente.includes(r))) return { dup: false, sesion: 0, historico: 0, porGrupoLiberado: false };
-    const horaEsLibrePorGrupo = esHoraLibrePorGrupoAusente(docente, hora, diaSeleccionado, horariosData as HorarioDocente[], gruposAusentes);
+    const horaEsLibrePorGrupo = esHoraLibrePorGrupoAusente(docente, hora, diaSeleccionado, horariosVista, gruposAusentes);
     const s = conteoSesion.get(docente) || 0;
     const h = conteoHistorico.get(docente) || 0;
     // Si esta hora es libre por grupo liberado, no marcamos como duplicado real.
@@ -222,7 +227,7 @@
       });
       return;
     }
-    const horario = (horariosData as HorarioDocente[]).find((h) => h.docente === nombre);
+    const horario = horariosVista.find((h) => h.docente === nombre);
     if (!horario) {
       Swal.fire("Error", `No se encontró el horario para ${nombre}`, "error");
       return;
@@ -459,7 +464,11 @@
                     Pendiente
                   </span>
                 {/if}
-                {#if cov.grupoAusente && (cov.hora === 5 || cov.hora === 6 || cov.hora === 7) && onLiberarGrupoDesdeHora}
+                {#if cov.grupoAusente
+                    && cov.hora >= 4
+                    && !cov.porGrupoAusente
+                    && (!cov.docenteCubre || cov.docenteCubre === "IGNORAR" || !!cov.violation)
+                    && onLiberarGrupoDesdeHora}
                   <span class="text-xs" style="color: rgb(var(--text-secondary));">|</span>
                   <button
                     onclick={() => { console.log("CLICK Liberar", cov.grupoAusente, cov.hora, cov.docenteAusente); onLiberarGrupoDesdeHora(cov.grupoAusente, cov.hora, cov.docenteAusente); }}

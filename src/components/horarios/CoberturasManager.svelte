@@ -16,9 +16,11 @@
     construirCargaDiariaSesion,
     construirCargaDiariaHistorica,
     getSemanaDelAno,
+    calcularAdelantos,
+    aplicarAdelantosAHorarios,
   } from "../../lib/coberturaUtils";
   import { coberturaSheetsService } from "../../services/coberturaSheetsService";
-  import type { SlotInfo, CoberturaSugerida, CoberturaHistorica, Ausencia, SugerenciaGrupo, HorarioDocente } from "../../lib/coberturaUtils";
+  import type { SlotInfo, CoberturaSugerida, CoberturaHistorica, Ausencia, SugerenciaGrupo, HorarioDocente, Adelanto } from "../../lib/coberturaUtils";
   import { analizarGruposAAusentar } from "../../lib/coberturaUtils";
   import AnalisisView from "./AnalisisView.svelte";
   import AsignacionesView from "./AsignacionesView.svelte";
@@ -73,6 +75,23 @@
   // Se registran aquí porque liberarGrupoDesdeHora puede quitarlos de gruposAusentes,
   // y deben persistirse al guardar como liberados. Clave: `${grupo}-${horaLiberada}`.
   let gruposLiberadosManual = $state<{ grupo: string; horaLiberada: number; docenteAusente: string }[]>([]);
+  // Adelantos de clase aplicados en la sesión (clase de un grado liberado movida
+  // a un hueco libre anterior). Overlay sobre horariosData, solo en memoria.
+  let adelantosAplicados = $state<Adelanto[]>([]);
+  let mostrarModalAdelantos = $state(false);
+  let adelantoModalData = $state<{
+    grupo: string;
+    horaLiberada: number;
+    docenteAusente: string;
+    adelantos: Adelanto[];
+  } | null>(null);
+  // Horario efectivo del día con adelantos aplicados. Día-específico; las
+  // funciones de cobertura deben usar este en vez del import crudo.
+  const horariosEfectivos = $derived(
+    adelantosAplicados.length && diaSeleccionado
+      ? aplicarAdelantosAHorarios(horariosData as HorarioDocente[], diaSeleccionado, adelantosAplicados)
+      : (horariosData as HorarioDocente[])
+  );
   let mostrarModalGrupos = $state(false);
   let mostrarReporteWhatsApp = $state(false);
   let coberturasGuardadas = $state<CoberturaSugerida[]>([]);
@@ -174,7 +193,8 @@
 
 function recalcularCoberturas() {
     console.log("recalcularCoberturas INI gruposAusentes:", gruposAusentes);
-    const allSlots = getSlotsDelDia(diaSeleccionado, horariosData);
+    const horarios = horariosEfectivos;
+    const allSlots = getSlotsDelDia(diaSeleccionado, horarios);
     slotsDelDia = allSlots;
 
     const ausencias: Ausencia[] = [
@@ -184,7 +204,7 @@ function recalcularCoberturas() {
     console.log("ausencias:", JSON.stringify(ausencias, null, 2));
     console.log("gruposAusentes.length:", gruposAusentes.length);
 
-    slotsConAusencia = aplicarAusencias(allSlots, ausencias, horariosData);
+    slotsConAusencia = aplicarAusencias(allSlots, ausencias, horarios);
 
     let libresPorAusencia = getSlotsLibresPorAusencia(slotsConAusencia);
     if (slotsExcluidos.size > 0) {
@@ -204,7 +224,7 @@ function recalcularCoberturas() {
     const previas = coberturasSugeridas;
     const nuevas = asignarAutomaticamente(
       libresPorAusencia,
-      horariosData,
+      horarios,
       coberturasHistoricas,
       diaSeleccionado,
       fechaSeleccionada,
@@ -290,7 +310,7 @@ function recalcularCoberturas() {
       libresPorAusencia,
       coberturasSugeridas,
       gruposAusentes.map((g) => g.grupo),
-      horariosData,
+      horarios,
       diaSeleccionado
     );
     console.log("recalcularCoberturas FIN");
@@ -361,6 +381,29 @@ function recalcularCoberturas() {
     }
 
     recalcularCoberturas();
+  }
+
+  // Botón rojo (Step 3): adelanta automáticamente las clases del grado liberado
+  // a huecos libres anteriores, luego libera la hora y abre la modal-resumen.
+  function liberarGrupoConAdelantos(grupo: string, hora: number, docenteAusente: string) {
+    const horaLiberada = hora + 1; // 1-indexed
+    const base = horariosEfectivos; // ya incluye adelantos previos
+    const nuevos = calcularAdelantos(
+      grupo,
+      horaLiberada,
+      diaSeleccionado,
+      base,
+      docentesAusentes.map((d) => d.nombre)
+    );
+    for (const a of nuevos.filter((x) => x.aplicable)) {
+      if (!adelantosAplicados.some((x) => x.docente === a.docente && x.horaOrigen === a.horaOrigen)) {
+        adelantosAplicados = [...adelantosAplicados, a];
+      }
+    }
+    // Bookkeeping de liberación + recalcularCoberturas() (usa horariosEfectivos).
+    liberarGrupoDesdeHora(grupo, hora, docenteAusente);
+    adelantoModalData = { grupo, horaLiberada, docenteAusente, adelantos: nuevos };
+    mostrarModalAdelantos = true;
   }
 
   async function generarAsignaciones() {
@@ -503,6 +546,9 @@ function recalcularCoberturas() {
     docentesAusentes = [];
     gruposAusentes = [];
     gruposLiberadosManual = [];
+    adelantosAplicados = [];
+    mostrarModalAdelantos = false;
+    adelantoModalData = null;
     slotsExcluidos = new Set();
     slotsDelDia = [];
     slotsConAusencia = [];
@@ -542,7 +588,7 @@ function recalcularCoberturas() {
 
     if (!esSpecialRole) {
       const cobertura = coberturasSugeridas[index];
-      const jornada = horariosData.find((h) => h.docente === docente)?.[diaSeleccionado as keyof HorarioDocente] as string[] || [];
+      const jornada = horariosEfectivos.find((h) => h.docente === docente)?.[diaSeleccionado as keyof HorarioDocente] as string[] || [];
       const slotOcupado = jornada[cobertura.hora];
       // si grupo del slot está liberado desde horaInicio cumplida, slot equivale a libre
       const grupoSlot = slotOcupado ? slotOcupado.match(/(\d{3,4})$/)?.[1] : "";
@@ -620,7 +666,7 @@ function recalcularCoberturas() {
       // docente anterior de la fila index (ahora reemplazado) tampoco aparezca con carga.
       const cargaDiariaSesion = construirCargaDiariaSesion(sesionFiltrada, -1, "", cargaHistorica, {
         dia: diaSeleccionado,
-        horarios: horariosData,
+        horarios: horariosEfectivos,
         ausenciasGrupo: gruposAusentes,
       });
 
@@ -629,7 +675,7 @@ function recalcularCoberturas() {
       const posibles = getPosiblesCobradoresParaSlot(
         slotParaEsta,
         diaSeleccionado,
-        horariosData,
+        horariosEfectivos,
         libresFiltrado,
         cargaDiariaSesion,
         horasCubiertasSemana,
@@ -938,8 +984,9 @@ function recalcularCoberturas() {
         onGuardar={guardarCoberturas}
         onBack={() => step = 2}
         onOpenGruposModal={() => mostrarModalGrupos = true}
-        onLiberarGrupoDesdeHora={liberarGrupoDesdeHora}
+        onLiberarGrupoDesdeHora={liberarGrupoConAdelantos}
         onAprobarTodo={aprobarTodo}
+        horariosEfectivos={horariosEfectivos}
       />
       {#if isDev}
         <div class="mt-4 p-4 rounded-xl border-2 border-dashed" style="border-color: rgb(var(--accent-primary));">
@@ -1079,6 +1126,75 @@ function recalcularCoberturas() {
             style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border: 1px solid rgb(var(--border-primary));"
           >
             Cancelar
+          </button>
+        </div>
+      </div>
+    {/if}
+
+    {#if mostrarModalAdelantos && adelantoModalData}
+      {@const dataAdel = adelantoModalData}
+      {@const aplicados = dataAdel.adelantos.filter((a) => a.aplicable)}
+      {@const noAplicables = dataAdel.adelantos.filter((a) => !a.aplicable)}
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background-color: rgba(0,0,0,0.5);" role="dialog" aria-modal="true" aria-labelledby="adelantos-title">
+        <div class="rounded-xl p-6 w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col" style="background-color: rgb(var(--bg-primary)); border: 1px solid rgb(var(--border-primary));">
+          <div class="flex justify-between items-center mb-4">
+            <h3 id="adelantos-title" class="text-lg font-bold" style="color: rgb(var(--text-primary));">
+              Adelanto de clases — Grupo {dataAdel.grupo}
+            </h3>
+            <button
+              onclick={() => { mostrarModalAdelantos = false; }}
+              class="w-8 h-8 flex items-center justify-center rounded-full"
+              style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary));"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div class="flex-1 overflow-y-auto space-y-4">
+            <div class="p-3 rounded-lg" style="background-color: rgb(var(--bg-secondary));">
+              <p class="text-sm" style="color: rgb(var(--text-primary));">
+                El grupo <strong>{dataAdel.grupo}</strong> queda libre desde la hora <strong>{dataAdel.horaLiberada}</strong>
+                porque <strong>{dataAdel.docenteAusente}</strong> está ausente y su clase de esa hora no tiene cobertura.
+              </p>
+            </div>
+
+            <div>
+              <p class="text-sm font-bold mb-2" style="color: rgb(var(--accent-primary));">Adelantos aplicados</p>
+              {#if aplicados.length === 0}
+                <p class="text-sm" style="color: rgb(var(--text-secondary));">No se aplicaron adelantos.</p>
+              {:else}
+                <ul class="space-y-1">
+                  {#each aplicados as a}
+                    <li class="text-sm flex items-start gap-2" style="color: rgb(var(--text-primary));">
+                      <span style="color: #10b981;">✓</span>
+                      <span><strong>{a.docente}</strong>: {a.materia} {a.grupoGrado} — adelantada de la hora {a.horaOrigen + 1} a la hora {a.horaDestino + 1}.</span>
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+            </div>
+
+            {#if noAplicables.length > 0}
+              <div>
+                <p class="text-sm font-bold mb-2" style="color: #ef4444;">No se pudo adelantar</p>
+                <ul class="space-y-1">
+                  {#each noAplicables as a}
+                    <li class="text-sm flex items-start gap-2" style="color: rgb(var(--text-secondary));">
+                      <span style="color: #ef4444;">✕</span>
+                      <span><strong>{a.docente}</strong>: {a.materia} {a.grupoGrado} en la hora {a.horaOrigen + 1} — {a.motivoNoAplicable}.</span>
+                    </li>
+                  {/each}
+                </ul>
+              </div>
+            {/if}
+          </div>
+
+          <button
+            onclick={() => { mostrarModalAdelantos = false; }}
+            class="mt-4 w-full py-2 rounded-lg font-bold text-white transition-all"
+            style="background-color: rgb(var(--accent-primary));"
+          >
+            Entendido
           </button>
         </div>
       </div>
