@@ -7,6 +7,7 @@
     ClipboardCheck, BookOpen, Notebook, CalendarDays,
     Eye, Heart, Clock, RotateCcw, FileSignature, Flag,
     Users, ClipboardList, CalendarClock, FileText, GripVertical,
+    DollarSign,
   } from '@lucide/svelte'
 
   import { theme, type Theme } from '../lib/themeStore'
@@ -148,6 +149,15 @@
       description: 'Calculadora especializada para el seguimiento de jornadas y horas docentes.',
       icon: Clock,
       color: 'orange',
+      tag: 'Herramienta',
+    },
+    {
+      id: 'horas_extras',
+      title: 'Horas Extras',
+      subtitle: 'Registro para Cobro',
+      description: 'Registro de actividades extraescolares realizadas para su correspondientes pago.',
+      icon: DollarSign,
+      color: 'emerald',
       tag: 'Herramienta',
     },
     {

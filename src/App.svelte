@@ -78,6 +78,7 @@
   let Observador: ModuleComponent | null = $state(null);
   let Piar: ModuleComponent | null = $state(null);
   let HorasLaborables: ModuleComponent | null = $state(null);
+  let HorasExtras: ModuleComponent | null = $state(null);
   let ActividadesRecuperacion: ModuleComponent | null = $state(null);
   let ActaArea: ModuleComponent | null = $state(null)
   let ActaIzada: ModuleComponent | null = $state(null);
@@ -138,6 +139,9 @@
       } else if (view === "horas_laborables" && !HorasLaborables) {
         const module = await import("./components/horas_laborables/HoursRegistration.svelte");
         HorasLaborables = module.default;
+      } else if (view === "horas_extras" && !HorasExtras) {
+        const module = await import("./components/horas_extras/HoursExtrasForm.svelte");
+        HorasExtras = module.default;
       } else if (view === "actividades_recuperacion" && !ActividadesRecuperacion) {
         const module = await import("./components/actividades_recuperacion/App.svelte");
         ActividadesRecuperacion = module.default;
@@ -208,6 +212,8 @@
     <Piar onBack={handleBack} />
   {:else if activeView === "horas_laborables" && HorasLaborables}
     <HorasLaborables onBack={handleBack} />
+  {:else if activeView === "horas_extras" && HorasExtras}
+    <HorasExtras onBack={handleBack} />
   {:else if activeView === "actividades_recuperacion" && ActividadesRecuperacion}
     <ActividadesRecuperacion onBack={handleBack} />
   {:else if activeView === "acta_area" && ActaArea}

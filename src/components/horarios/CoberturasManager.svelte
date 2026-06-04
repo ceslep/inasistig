@@ -31,8 +31,10 @@
   import CoberturasHelp from "./CoberturasHelp.svelte";
   import Swal from "sweetalert2";
   import ModuleHeader from "../ModuleHeader.svelte";
-  import { Flame, GraduationCap, Car, Heart, Shield, Stethoscope, Briefcase, Calendar, Users, Scale, Skull, Laptop, Award, SportShoe, HelpCircle } from "@lucide/svelte";
+  import { Flame, GraduationCap, Car, Heart, Shield, Stethoscope, Briefcase, Calendar, Users, Scale, Skull, Laptop, Award, SportShoe, HelpCircle, PlayCircle, CheckSquare, Save, Eye, UsersRound } from "@lucide/svelte";
   import DatePicker from "../anotador/DatePicker.svelte";
+  import CoberturaTour from "./CoberturaTour.svelte";
+  import type { TourPaso } from "./CoberturaTour.svelte";
 
   const TIPOS_ICONOS: Record<string, { icono: any; color: string }> = {
     "CALAMIDAD": { icono: Flame, color: "#f97316" },
@@ -62,6 +64,21 @@
 
   let docentes = $state(getDocentesList(horariosData));
   let grupos = $state(getGruposDisponibles(horariosData));
+
+  let mostrarTourCobertura = $state(false);
+  const TOUR_KEY = "cobertura_tour_done";
+
+  function shouldShowTour(): boolean {
+    try { return !localStorage.getItem(TOUR_KEY); } catch { return true; }
+  }
+
+  function marcarTourHecho() {
+    try { localStorage.setItem(TOUR_KEY, "1"); } catch {}
+  }
+
+  function mostrarTourDeNuevo() {
+    try { localStorage.removeItem(TOUR_KEY); } catch {}
+  }
 
   let fechaSeleccionada = $state("");
   let diaSeleccionado = $state("");
@@ -113,6 +130,81 @@
   let liberadosReportePDF = $state<import("../../lib/coberturaUtils").CoberturaLiberado[]>([]);
 
   const isDev = import.meta.env.DEV;
+
+  const tourPasos: TourPaso[] = [
+    {
+      selector: "#tour-step1-dia",
+      titulo: "Selecciona el día",
+      descripcion: "Elige el día de la semana y la fecha exacta para la que necesitas gestionar coberturas. Solo se permiten días hábiles (lunes a viernes) dentro de los próximos 7 días.",
+      icono: Calendar,
+      color: "#3b82f6",
+      step: 1,
+    },
+    {
+      selector: "#tour-step1-docentes",
+      titulo: "Marca docentes ausentes",
+      descripcion: "Busca y selecciona los docentes que estarán ausentes. Al marcar uno, deberás elegir el tipo de ausencia (calamidad, capacitación, enfermedad, etc.). El icono del tipo aparece junto al nombre.",
+      icono: Users,
+      color: "#ef4444",
+      step: 1,
+    },
+    {
+      selector: "#tour-step1-grupos",
+      titulo: "Libera grupos (opcional)",
+      descripcion: "Si hay grupos que no asisten, libéralos con el botón «LIBERAR GRUPOS». Indica desde qué hora quedan libres. Los grupos liberados generan horas libres que deben ser cubiertas.",
+      icono: UsersRound,
+      color: "#f59e0b",
+      step: 1,
+    },
+    {
+      selector: "#tour-step1-boton",
+      titulo: "Analizar horas libres",
+      descripcion: "Al hacer clic, el sistema calcula qué docentes tienen horas libres y qué grupos están ausentes. Este análisis alimenta el Step 2 para sugerir coberturas automáticas.",
+      icono: PlayCircle,
+      color: "#10b981",
+      step: 1,
+    },
+    {
+      selector: "#tour-step2-analisis",
+      titulo: "Revisa el análisis",
+      descripcion: "Aquí ves las horas que quedan libres por ausencia de docente o grupo. Las filas rojas son huecos que requieren cobertura. Puedes activar «Ignorar límites» para forzar asignaciones aunque exceedan el máximo semanal.",
+      icono: Eye,
+      color: "#8b5cf6",
+      step: 2,
+    },
+    {
+      selector: "#tour-step3-opciones",
+      titulo: "Revisa y ajusta coberturas",
+      descripcion: "Cada fila muestra la hora libre, el grupo ausente y el docente sugerido para cubrirla. Puedes cambiar el docente desde el selector, activar/desactivar la cobertura con el toggle, o liberar el grupo con el botón rojo. «Aprobar todo» marca todas las sugerencias.",
+      icono: CheckSquare,
+      color: "#06b6d4",
+      step: 3,
+    },
+    {
+      selector: "#tour-step3-guardar",
+      titulo: "Guardar y compartir",
+      descripcion: "Al guardar, las coberturas se envían a Google Sheets. Después puedes compartir el reporte por WhatsApp o generar un PDF. También puedes volver al Step 1 para otra sesión.",
+      icono: Save,
+      color: "#eab308",
+      step: 3,
+    },
+  ];
+
+  function irAStepTour(paso: number) {
+    if (paso >= 1 && paso <= 3) {
+      step = paso;
+    }
+  }
+
+  function iniciarTour() {
+    step = 1;
+    mostrarTourCobertura = true;
+  }
+
+  function cerrarTour() {
+    mostrarTourCobertura = false;
+    marcarTourHecho();
+  }
 
   function getFechaHoy(): string {
     const now = new Date();
@@ -894,6 +986,11 @@ function recalcularCoberturas() {
     fechaSeleccionada = fecha;
     diaSeleccionado = getDiaFromFecha(fecha);
 
+    if (shouldShowTour()) {
+      irAStepTour(1);
+      mostrarTourCobertura = true;
+    }
+
     const handleAyudaPaso = (e: CustomEvent<number>) => {
       const nuevoPaso = e.detail;
       if (nuevoPaso >= 1 && nuevoPaso <= 3) {
@@ -968,9 +1065,9 @@ function recalcularCoberturas() {
 
     {#if step === 1}
       <div class="p-6 rounded-2xl border" style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--card-bg));">
-        <h2 class="text-lg font-bold mb-4" style="color: rgb(var(--text-primary));">Step 1 — Día y Ausencias</h2>
+        <h2 id="tour-step1-header" class="text-lg font-bold mb-4" style="color: rgb(var(--text-primary));">Step 1 — Día y Ausencias</h2>
 
-        <div class="mb-4">
+        <div id="tour-step1-dia" class="mb-4">
           <p class="block text-sm font-medium mb-2" style="color: rgb(var(--text-secondary));">Día de la semana</p>
           <div class="flex gap-2 flex-wrap">
             {#each DIAS as dia, i}
@@ -999,7 +1096,7 @@ function recalcularCoberturas() {
           </div>
         </div>
 
-        <div class="mb-4">
+        <div id="tour-step1-docentes" class="mb-4">
           <p class="block text-sm font-medium mb-2" style="color: rgb(var(--text-secondary));">
             Docentes ausentes
           </p>
@@ -1013,10 +1110,8 @@ function recalcularCoberturas() {
                   onclick={(e) => {
                     const target = e.currentTarget;
                     if (ausencia) {
-                      // ya marcado → permitir desmarcar
                       docentesAusentes = docentesAusentes.filter((a) => a.nombre !== docente);
                     } else {
-                      // bloquear toggle visual; abrir modal para forzar elegir tipo
                       e.preventDefault();
                       target.checked = false;
                       docenteSeleccionado = docente;
@@ -1035,7 +1130,7 @@ function recalcularCoberturas() {
           </div>
         </div>
 
-        <div class="mb-6">
+        <div id="tour-step1-grupos" class="mb-6">
           <p class="block text-sm font-medium mb-2" style="color: rgb(var(--text-secondary));">
             Grupos ausentes
           </p>
@@ -1058,6 +1153,7 @@ function recalcularCoberturas() {
         </div>
 
         <button
+          id="tour-step1-boton"
           onclick={analizarHorasLibres}
           disabled={loading}
           class="w-full py-3 rounded-xl font-bold text-white transition-all flex items-center justify-center gap-2"
@@ -1077,23 +1173,26 @@ function recalcularCoberturas() {
     {/if}
 
     {#if step === 2}
-      <AnalisisView
-        {diaSeleccionado}
-        {fechaSeleccionada}
-        {docentesAusentes}
-        {gruposAusentes}
-        slots={slotsConAusencia}
-        {loading}
-        bind:permitirRepetir
-        bind:ignorarHorasPropietarias
-        onGenerar={generarAsignaciones}
-        onBack={() => step = 1}
-        onOpenGruposModal={() => mostrarModalGrupos = true}
-      />
+      <div id="tour-step2-analisis">
+        <AnalisisView
+          {diaSeleccionado}
+          {fechaSeleccionada}
+          {docentesAusentes}
+          {gruposAusentes}
+          slots={slotsConAusencia}
+          {loading}
+          bind:permitirRepetir
+          bind:ignorarHorasPropietarias
+          onGenerar={generarAsignaciones}
+          onBack={() => step = 1}
+          onOpenGruposModal={() => mostrarModalGrupos = true}
+        />
+      </div>
     {/if}
 
     {#if step === 3}
-      <AsignacionesView
+      <div id="tour-step3-opciones">
+        <AsignacionesView
         {diaSeleccionado}
         {fechaSeleccionada}
         {coberturasSugeridas}
@@ -1110,19 +1209,20 @@ function recalcularCoberturas() {
         onLiberarGrupoDesdeHora={liberarGrupoConAdelantos}
         onAprobarTodo={aprobarTodo}
         horariosEfectivos={horariosEfectivos}
-      />
-      {#if isDev}
-        <div class="mt-4 p-4 rounded-xl border-2 border-dashed" style="border-color: rgb(var(--accent-primary));">
-          <p class="text-xs font-medium mb-2 text-center" style="color: rgb(var(--accent-primary));">MODO DESARROLLO</p>
-          <button
-            onclick={() => vistaPreviaReporte = true}
-            class="w-full py-2 rounded-lg font-medium transition-all"
-            style="background-color: rgb(var(--accent-primary)); color: white;"
-          >
-            Vista previa imagen WhatsApp
-          </button>
-        </div>
-      {/if}
+        />
+        {#if isDev}
+          <div class="mt-4 p-4 rounded-xl border-2 border-dashed" style="border-color: rgb(var(--accent-primary));">
+            <p class="text-xs font-medium mb-2 text-center" style="color: rgb(var(--accent-primary));">MODO DESARROLLO</p>
+            <button
+              onclick={() => vistaPreviaReporte = true}
+              class="w-full py-2 rounded-lg font-medium transition-all"
+              style="background-color: rgb(var(--accent-primary)); color: white;"
+            >
+              Vista previa imagen WhatsApp
+            </button>
+          </div>
+        {/if}
+      </div>
     {/if}
 
     {#if mostrarModalGrupos}
@@ -1386,6 +1486,15 @@ function recalcularCoberturas() {
     <CoberturasHelp
       pasoActual={step}
       onClose={() => mostrarAyudaCoberturas = false}
+    />
+  {/if}
+
+  {#if mostrarTourCobertura}
+    <CoberturaTour
+      pasos={tourPasos}
+      onClose={cerrarTour}
+      onIrAStep={irAStepTour}
+      onNoMostrar={marcarTourHecho}
     />
   {/if}
 </div>

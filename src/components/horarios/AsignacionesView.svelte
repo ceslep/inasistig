@@ -511,6 +511,7 @@
       ← Volver al análisis
     </button>
     <button
+      id="tour-step3-guardar"
       onclick={onGuardar}
       disabled={loading || seleccionadas === 0}
       class="flex-1 py-3 rounded-xl font-bold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"

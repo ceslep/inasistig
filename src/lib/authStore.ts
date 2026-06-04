@@ -75,13 +75,17 @@ export function getDocenteName(): string {
   return localStorage.getItem(DOCENTE_NAME_KEY) || ''
 }
 
+export function normalizeAccents(text: string): string {
+  return text.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+}
+
 export function findMatchingDocente(docentes: string[], name: string): string | null {
   if (!name) return null
-  const normalized = name.toLowerCase().trim()
-  const exact = docentes.find(d => d.toLowerCase().trim() === normalized)
+  const normalized = normalizeAccents(name)
+  const exact = docentes.find(d => normalizeAccents(d) === normalized)
   if (exact) return exact
   const partial = docentes.find(d =>
-    d.toLowerCase().replace(/-\d+$/, '').trim() === normalized,
+    normalizeAccents(d.replace(/-\d+$/, '')) === normalized,
   )
   if (partial) return partial
   return null
