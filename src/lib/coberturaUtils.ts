@@ -684,3 +684,41 @@ export function aplicarAdelantosAHorarios(
     return { ...h, [dia]: dayArr };
   });
 }
+
+/**
+ * Dado un grupo liberado y una lista de adelantos ya aplicados, retorna los
+ * slots que quedan libres por el adelantamiento y que ahora necesitan cobertura.
+ *
+ * Por cada adelanto aplicable donde grupoGrado === grupo, el slot horaOrigen
+ * queda libre (antes tenía la clase del grupo). Se retorna como SlotInfo
+ * con tipo="libre_ausencia" para que pueda ser cubierto por un docente.
+ */
+export function getHuecosLibresPorAdelanto(
+  grupo: string,
+  dia: string,
+  adelantos: Adelanto[],
+  horariosBase: HorarioDocente[]
+): SlotInfo[] {
+  const result: SlotInfo[] = [];
+
+  for (const a of adelantos) {
+    if (!a.aplicable) continue;
+    if (a.grupoGrado !== grupo) continue;
+
+    const docente = horariosBase.find((h) =>
+      (h[dia as keyof HorarioDocente] as string[]).includes(a.slotOriginal)
+    );
+
+    result.push({
+      hora: a.horaOrigen,
+      docente: docente?.docente ?? "",
+      slot: "",
+      tipo: "libre_ausencia",
+      grupoAusente: grupo,
+      docenteAusente: docente?.docente ?? a.docente,
+      motivoAusencia: "Adelanto de hora",
+    });
+  }
+
+  return result;
+}

@@ -266,6 +266,40 @@
     }
   }
 
+  async function eliminarDia(fecha: string) {
+    if (!fecha) return;
+    const delDia = coberturasHistoricas.filter((c) => c.fecha === fecha);
+    const dia = delDia[0]?.dia_semana;
+    const result = await Swal.fire({
+      title: "¿Eliminar todo el día?",
+      html: `Se eliminarán <b>${delDia.length}</b> cobertura(s) y los grupos liberados del <b>${formatoDia(dia || "")} ${fecha}</b>. Esta acción no se puede deshacer.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar el día",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#ef4444",
+    });
+
+    if (!result.isConfirmed) return;
+
+    eliminando = true;
+    try {
+      await coberturaSheetsService.deleteCoberturasPorFecha(fecha);
+      try {
+        await coberturaSheetsService.deleteLiberadosPorFecha(fecha);
+      } catch {
+        /* no bloquear si falla el borrado de liberados */
+      }
+      fechaSeleccionadaReporte = "";
+      await Swal.fire("Eliminado", "Coberturas y grupos liberados del día eliminados", "success");
+      onReload();
+    } catch (e: any) {
+      Swal.fire("Error", e.message, "error");
+    } finally {
+      eliminando = false;
+    }
+  }
+
   async function eliminarSeleccionadas() {
     const aEliminar = filtradas.filter((c) => seleccionadas.has(claveCobertura(c)));
     if (aEliminar.length === 0) return;
@@ -330,13 +364,13 @@
 
 <div class="rounded-2xl border" style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--card-bg));">
   <div class="p-4 border-b" style="border-color: rgb(var(--border-primary));">
-    <div class="flex items-center justify-between mb-2">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2">
       <h2 class="text-lg font-bold" style="color: rgb(var(--text-primary));">Historial de Coberturas</h2>
       {#if fechasDisponibles.length > 0 && onGenerarReporte}
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <select
             bind:value={fechaSeleccionadaReporte}
-            class="px-3 py-1.5 rounded-lg text-sm border"
+            class="flex-1 min-w-[10rem] sm:flex-none px-3 py-2 rounded-lg text-sm border"
             style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border-color: rgb(var(--border-primary));"
           >
             <option value="">Seleccionar fecha...</option>
@@ -348,7 +382,7 @@
           <button
             onclick={() => fechaSeleccionadaReporte && onGenerarReporte(fechaSeleccionadaReporte)}
             disabled={!fechaSeleccionadaReporte}
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50 min-h-[40px]"
             style="background-color: rgb(var(--accent-primary)); color: white;"
             title="Generar reporte PDF del día"
           >
@@ -357,11 +391,20 @@
           <button
             onclick={() => fechaSeleccionadaReporte && onGenerarWhatsApp && onGenerarWhatsApp(fechaSeleccionadaReporte)}
             disabled={!fechaSeleccionadaReporte}
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50 min-h-[40px]"
             style="background-color: #25D366; color: white;"
             title="Generar imagen para WhatsApp"
           >
             📱 WhatsApp
+          </button>
+          <button
+            onclick={() => fechaSeleccionadaReporte && eliminarDia(fechaSeleccionadaReporte)}
+            disabled={!fechaSeleccionadaReporte || eliminando}
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50 min-h-[40px]"
+            style="background-color: #ef4444; color: white;"
+            title="Eliminar todas las coberturas del día seleccionado"
+          >
+            🗑️ Eliminar día
           </button>
         </div>
       {/if}
@@ -544,7 +587,8 @@
         </div>
       </div>
     {/if}
-    <div class="overflow-x-auto">
+    <!-- Tabla (desktop / tablet) -->
+    <div class="hidden md:block overflow-x-auto">
       <table class="w-full text-sm" style="border-collapse: collapse;">
         <thead>
           <tr style="background-color: rgb(var(--bg-secondary));">
@@ -613,5 +657,57 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Tarjetas (móvil) -->
+    <ul class="md:hidden divide-y" style="border-color: rgb(var(--border-primary));">
+      {#each filtradas as c}
+        {@const sel = seleccionadas.has(claveCobertura(c))}
+        <li class="p-3" style="background-color: {sel ? 'rgba(239,68,68,0.08)' : 'transparent'};">
+          <div class="flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={sel}
+              onchange={() => toggleSeleccion(c)}
+              aria-label="Seleccionar cobertura de {c.docente_cubre} el {c.fecha}"
+              class="mt-1 w-4 h-4 shrink-0 accent-[rgb(var(--accent-primary))] cursor-pointer"
+            />
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between gap-2 mb-1">
+                <span class="text-sm font-semibold" style="color: rgb(var(--text-primary));">
+                  {c.fecha} <span class="font-normal" style="color: rgb(var(--text-secondary));">· {formatoDia(c.dia_semana)}</span>
+                </span>
+                <span
+                  class="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold"
+                  style="
+                    background-color: {c.estado === 'aprobado' ? 'rgba(34,197,94,0.15)' : c.estado === 'rechazado' ? 'rgba(239,68,68,0.15)' : 'rgba(234,179,8,0.15)'};
+                    color: {c.estado === 'aprobado' ? '#22c55e' : c.estado === 'rechazado' ? '#ef4444' : '#eab308'};
+                  "
+                >
+                  {c.estado}
+                </span>
+              </div>
+              <p class="text-xs mb-1" style="color: rgb(var(--text-secondary));">
+                Hora <span class="font-bold" style="color: rgb(var(--accent-primary));">{formatoHora(c.hora)}</span>
+              </p>
+              <p class="text-xs" style="color: rgb(var(--text-secondary));">
+                Ausente: <span style="color: rgb(var(--text-primary));">{c.docente_ausente}</span>
+                {#if c.grupo_ausente}<span class="opacity-70"> ({c.grupo_ausente})</span>{/if}
+              </p>
+              <p class="text-xs" style="color: rgb(var(--text-secondary));">
+                Cubre: <span class="font-medium" style="color: rgb(var(--accent-primary));">{c.docente_cubre}</span>
+                {#if c.grupo_a_cubrir}<span class="opacity-70"> ({c.grupo_a_cubrir})</span>{/if}
+              </p>
+            </div>
+            <button
+              onclick={() => eliminarCobertura(c)}
+              class="shrink-0 text-red-500 hover:text-red-700 text-sm px-2 py-1 rounded min-h-[40px]"
+              title="Eliminar"
+            >
+              🗑️
+            </button>
+          </div>
+        </li>
+      {/each}
+    </ul>
   {/if}
 </div>

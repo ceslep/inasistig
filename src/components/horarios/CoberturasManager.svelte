@@ -18,7 +18,9 @@
     getSemanaDelAno,
     calcularAdelantos,
     aplicarAdelantosAHorarios,
+    getHuecosLibresPorAdelanto,
   } from "../../lib/coberturaUtils";
+  import { festivos, siguienteDiaHabil, resolverFechaDia } from "../../lib/festivos";
   import { coberturaSheetsService } from "../../services/coberturaSheetsService";
   import type { SlotInfo, CoberturaSugerida, CoberturaHistorica, Ausencia, SugerenciaGrupo, HorarioDocente, Adelanto } from "../../lib/coberturaUtils";
   import { analizarGruposAAusentar } from "../../lib/coberturaUtils";
@@ -26,9 +28,10 @@
   import AsignacionesView from "./AsignacionesView.svelte";
   import HistorialCoberturas from "./HistorialCoberturas.svelte";
   import WhatsAppReport from "./WhatsAppReport.svelte";
+  import CoberturasHelp from "./CoberturasHelp.svelte";
   import Swal from "sweetalert2";
   import ModuleHeader from "../ModuleHeader.svelte";
-  import { Flame, GraduationCap, Car, Heart, Shield, Stethoscope, Briefcase, Calendar, Users, Scale, Skull, Laptop, Award,SportShoe } from "@lucide/svelte";
+  import { Flame, GraduationCap, Car, Heart, Shield, Stethoscope, Briefcase, Calendar, Users, Scale, Skull, Laptop, Award, SportShoe, HelpCircle } from "@lucide/svelte";
   import DatePicker from "../anotador/DatePicker.svelte";
 
   const TIPOS_ICONOS: Record<string, { icono: any; color: string }> = {
@@ -84,7 +87,9 @@
     horaLiberada: number;
     docenteAusente: string;
     adelantos: Adelanto[];
+    huecosPorAdelanto: SlotInfo[];
   } | null>(null);
+  let mostrarAyudaCoberturas = $state(false);
   // Horario efectivo del día con adelantos aplicados. Día-específico; las
   // funciones de cobertura deben usar este en vez del import crudo.
   const horariosEfectivos = $derived(
@@ -117,37 +122,58 @@
     return `${y}-${m}-${d}`;
   }
 
-  function getFechaSemana(): string[] {
-    const hoy = new Date(getFechaHoy() + "T00:00:00");
-    const diaSemana = hoy.getDay();
-    const lunes = new Date(hoy);
-    lunes.setDate(hoy.getDate() - (diaSemana === 0 ? 6 : diaSemana - 1));
-    const hoySinHora = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-    if (lunes < hoySinHora) {
-      lunes.setDate(lunes.getDate() + 7);
-    }
-    const dias: string[] = [];
-    for (let i = 0; i < 5; i++) {
-      const d = new Date(lunes);
-      d.setDate(lunes.getDate() + i);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      dias.push(`${y}-${m}-${day}`);
-    }
-    return dias;
+  function isFestivo(fecha: string): boolean {
+    return festivos.some((f) => f.fecha === fecha);
   }
 
   function seleccionarDia(dia: string) {
-    diaSeleccionado = dia;
     const idx = DIAS.indexOf(dia as any);
-    const fechas = getFechaSemana();
-    if (fechas[idx]) fechaSeleccionada = fechas[idx];
+    if (idx < 0) return;
+    const r = resolverFechaDia(getFechaHoy(), idx);
+    fechaSeleccionada = r.fecha;
+    diaSeleccionado = r.dia;
+    if (r.eraFestivo) {
+      Swal.fire({
+        icon: "info",
+        title: "Día festivo",
+        text: `${formatoDia(dia)} de esta semana es festivo (${r.nombreFestivo}). Se seleccionó ${formatoDia(r.dia)} ${r.fecha}.`,
+        confirmButtonColor: "#ef4444",
+      });
+    }
   }
+
+  // Ventana permitida para coberturas: desde hoy hasta +7 días.
+  const fechaMin = $derived(getFechaHoy());
+  const fechaMax = $derived.by(() => {
+    const d = new Date(getFechaHoy() + "T00:00:00");
+    d.setDate(d.getDate() + 7);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  });
 
   function seleccionarFecha(fecha: string) {
     if (!fecha) {
       fechaSeleccionada = "";
+      return;
+    }
+    if (fecha < fechaMin) {
+      Swal.fire({ icon: "warning", title: "Fecha pasada", text: "No puedes seleccionar una fecha anterior a hoy.", confirmButtonColor: "#ef4444" });
+      fechaSeleccionada = "";
+      diaSeleccionado = "";
+      return;
+    }
+    if (fecha > fechaMax) {
+      Swal.fire({ icon: "warning", title: "Fecha muy lejana", text: `Solo puedes programar coberturas hasta el ${fechaMax} (máximo 7 días).`, confirmButtonColor: "#ef4444" });
+      fechaSeleccionada = "";
+      diaSeleccionado = "";
+      return;
+    }
+    if (isFestivo(fecha)) {
+      Swal.fire({ icon: "warning", title: "Festivo", text: `La fecha ${fecha} es festivo en Colombia. Selecciona otro día.`, confirmButtonColor: "#ef4444" });
+      fechaSeleccionada = "";
+      diaSeleccionado = "";
       return;
     }
     fechaSeleccionada = fecha;
@@ -155,7 +181,6 @@
     if (dia) {
       diaSeleccionado = dia;
     } else {
-      // fecha fin de semana — avisar
       Swal.fire({ icon: "warning", title: "Fecha no válida", text: "Selecciona un día entre lunes y viernes.", confirmButtonColor: "#ef4444" });
       fechaSeleccionada = "";
       diaSeleccionado = "";
@@ -400,9 +425,70 @@ function recalcularCoberturas() {
         adelantosAplicados = [...adelantosAplicados, a];
       }
     }
+
+    // Obtener huecos que quedan libres por el adelantamiento
+    const huecosLibres = getHuecosLibresPorAdelanto(
+      grupo,
+      diaSeleccionado,
+      nuevos,
+      horariosData as HorarioDocente[]
+    );
+
+    // Crear coberturas automáticas para los huecos libres
+    if (huecosLibres.length > 0) {
+      const cargaDiariaSesion = new Map<string, number>();
+      const horasCubSemana = new Map<string, number>();
+      const semanaActual = getSemanaDelAno(fechaSeleccionada);
+      for (const cp of coberturasHistoricas) {
+        if (cp.estado !== "aprobado") continue;
+        if (cp.fecha === fechaSeleccionada) continue;
+        const cpSemana = getSemanaDelAno(cp.fecha);
+        if (cpSemana !== semanaActual) continue;
+        const doc = cp.docente_cubre;
+        horasCubSemana.set(doc, (horasCubSemana.get(doc) || 0) + 1);
+      }
+
+      for (const hueco of huecosLibres) {
+        const posibles = getPosiblesCobradoresParaSlot(
+          hueco,
+          diaSeleccionado,
+          horariosEfectivos,
+          huecosLibres,
+          cargaDiariaSesion,
+          horasCubSemana,
+          new Map(),
+          coberturasSugeridas,
+          gruposAusentes,
+          true,
+          false
+        );
+
+        if (posibles.length > 0) {
+          const docenteAsignado = posibles[0].docente;
+          const nuevaCobertura: CoberturaSugerida = {
+            hora: hueco.hora,
+            docenteAusente: hueco.docenteAusente || "",
+            grupoAusente: grupo,
+            docenteCubre: docenteAsignado,
+            grupoACubrir: grupo,
+            aprobada: true,
+            posiblesCobradores: posibles.map((p) => p.docente),
+            motivoAusencia: "Adelanto de hora",
+            porGrupoAusente: true,
+          };
+          const existe = coberturasSugeridas.some(
+            (c) => c.hora === nuevaCobertura.hora && c.grupoAusente === nuevaCobertura.grupoAusente
+          );
+          if (!existe) {
+            coberturasSugeridas = [...coberturasSugeridas, nuevaCobertura];
+          }
+        }
+      }
+    }
+
     // Bookkeeping de liberación + recalcularCoberturas() (usa horariosEfectivos).
     liberarGrupoDesdeHora(grupo, hora, docenteAusente);
-    adelantoModalData = { grupo, horaLiberada, docenteAusente, adelantos: nuevos };
+    adelantoModalData = { grupo, horaLiberada, docenteAusente, adelantos: nuevos, huecosPorAdelanto: huecosLibres };
     mostrarModalAdelantos = true;
   }
 
@@ -789,9 +875,35 @@ function recalcularCoberturas() {
     mostrarReporteWhatsApp = true;
   }
 
+  // Fecha por defecto según reglas de negocio:
+  // - Lunes a jueves: hoy (si es hábil), si no el siguiente día hábil.
+  // - Viernes (o fin de semana): el lunes siguiente (siguiente día hábil).
+  function getFechaPorDefecto(): string {
+    const hoyStr = getFechaHoy();
+    const diaSemana = new Date(hoyStr + "T00:00:00").getDay();
+    // Viernes(5), sábado(6) o domingo(0): saltar al siguiente día hábil.
+    if (diaSemana === 5 || diaSemana === 6 || diaSemana === 0) {
+      return siguienteDiaHabil(hoyStr);
+    }
+    // Lunes a jueves: hoy si es hábil, si no el siguiente día hábil.
+    return isFestivo(hoyStr) ? siguienteDiaHabil(hoyStr) : hoyStr;
+  }
+
   onMount(() => {
-    diaSeleccionado = "";
-    fechaSeleccionada = "";
+    const fecha = getFechaPorDefecto();
+    fechaSeleccionada = fecha;
+    diaSeleccionado = getDiaFromFecha(fecha);
+
+    const handleAyudaPaso = (e: CustomEvent<number>) => {
+      const nuevoPaso = e.detail;
+      if (nuevoPaso >= 1 && nuevoPaso <= 3) {
+        step = nuevoPaso;
+      }
+    };
+    window.addEventListener("cobertura-help-paso", handleAyudaPaso as EventListener);
+    return () => {
+      window.removeEventListener("cobertura-help-paso", handleAyudaPaso as EventListener);
+    };
   });
 </script>
 
@@ -815,6 +927,15 @@ function recalcularCoberturas() {
       style="background-color: {subView === 'historial' ? 'rgb(var(--accent-primary))' : 'rgb(var(--card-bg))'}; color: {subView === 'historial' ? 'white' : 'rgb(var(--text-primary))'}; border: 1px solid {subView === 'historial' ? 'rgb(var(--accent-primary))' : 'rgb(var(--border-primary))'};"
     >
       Ver Historial
+    </button>
+    <button
+      onclick={() => mostrarAyudaCoberturas = true}
+      class="px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2"
+      style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-secondary)); border: 1px solid rgb(var(--border-primary));"
+      title="Ayuda sobre gestión de coberturas"
+    >
+      <HelpCircle size={16} />
+      Ayuda
     </button>
   </div>
 
@@ -871,6 +992,8 @@ function recalcularCoberturas() {
               id="fecha-cobertura"
               label={diaSeleccionado ? `Fecha exacta (${formatoDia(diaSeleccionado)})` : "Fecha exacta"}
               bind:value={fechaSeleccionada}
+              minDate={fechaMin}
+              maxDate={fechaMax}
               onchange={(v) => seleccionarFecha(v)}
             />
           </div>
@@ -1187,6 +1310,29 @@ function recalcularCoberturas() {
                 </ul>
               </div>
             {/if}
+
+            {#if dataAdel.huecosPorAdelanto && dataAdel.huecosPorAdelanto.length > 0}
+              <div class="p-3 rounded-lg" style="background-color: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3);">
+                <p class="text-sm font-bold mb-2" style="color: #ef4444;">
+                  ⚠️ Huecos libres por adelantamiento — requieren cobertura
+                </p>
+                <ul class="space-y-2">
+                  {#each dataAdel.huecosPorAdelanto as hueco}
+                    {@const docentesPosibles = hueco.docenteAusente || ""}
+                    <li class="text-sm" style="color: rgb(var(--text-primary));">
+                      <strong>Hora {hueco.hora + 1}</strong> — {hueco.docenteAusente}
+                      <span class="text-xs block mt-0.5" style="color: rgb(var(--text-secondary));">
+                        Posibles docentes: {
+                          hueco.docente
+                            ? (coberturasSugeridas.find(c => c.hora === hueco.hora && c.grupoAusente === hueco.grupoAusente)?.posiblesCobradores.join(", ") || "Ninguno disponible")
+                            : "Ninguno disponible"
+                        }
+                      </span>
+                    </li>
+                  {/each}
+                </ul>
+              </div>
+            {/if}
           </div>
 
           <button
@@ -1233,6 +1379,13 @@ function recalcularCoberturas() {
       {gruposAusentes}
       {docentesAusentes}
       onClose={() => vistaPreviaReporte = false}
+    />
+  {/if}
+
+  {#if mostrarAyudaCoberturas}
+    <CoberturasHelp
+      pasoActual={step}
+      onClose={() => mostrarAyudaCoberturas = false}
     />
   {/if}
 </div>

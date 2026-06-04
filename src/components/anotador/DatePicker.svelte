@@ -89,9 +89,19 @@
            currentYear === selectedDate.getFullYear();
   };
 
+  const isoForDay = (day: number) =>
+    new Date(currentYear, currentMonth, day).toLocaleDateString('en-CA');
+
+  const isOutOfRange = (day: number) => {
+    const iso = isoForDay(day);
+    if (minDate && iso < minDate) return true;
+    if (maxDate && iso > maxDate) return true;
+    return false;
+  };
+
   const selectDay = (day: number) => {
-    const date = new Date(currentYear, currentMonth, day);
-    const isoDate = date.toLocaleDateString('en-CA');
+    if (isOutOfRange(day)) return;
+    const isoDate = isoForDay(day);
     value = isoDate;
     isOpen = false;
     onchange?.(isoDate);
@@ -270,9 +280,11 @@
                 <button
                   type="button"
                   onclick={() => selectDay(day)}
+                  disabled={isOutOfRange(day)}
                   class="date-picker-popup__day"
                   class:date-picker-popup__day--today={isToday(day)}
                   class:date-picker-popup__day--selected={isSelected(day)}
+                  class:date-picker-popup__day--disabled={isOutOfRange(day)}
                 >
                   {day}
                 </button>
@@ -497,8 +509,14 @@
     transition: all 150ms;
   }
 
-  .date-picker-popup__day:hover:not(.date-picker-popup__day--empty) {
+  .date-picker-popup__day:hover:not(.date-picker-popup__day--empty):not(.date-picker-popup__day--disabled) {
     background-color: rgb(var(--accent-primary) / 0.1);
+  }
+
+  .date-picker-popup__day--disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    text-decoration: line-through;
   }
 
   .date-picker-popup__day--today {
