@@ -560,7 +560,7 @@
       const body = {
         spreadsheetId: ANOTADOR_SPREADSHEET_ID,
         worksheetTitle: "Datos",
-        filterDocente: teacherName.toLowerCase().trim(),
+        filterDocente: formData.docente.toLowerCase().trim(),
         filterGrado: formData.gradoAtendido.toLowerCase().trim(),
         filterMateria: formData.asignatura.toLowerCase().trim(),
         returnActividades: true,
@@ -705,16 +705,16 @@
               <div class="grid grid-cols-7 gap-2">
                 {#each slotsDelDia as slot}
                   {@const isSelected = selectedSlots.includes(slot.hora)}
-                  {@const isEmpty = !slot.contenido || slot.contenido === 'DESC' || slot.contenido === 'PEDAG' || slot.contenido === 'DEESC' || slot.bloque === 'Descanso' || slot.bloque === 'Almuerzo'}
+                  {@const isDisabled = slot.contenido === 'DESC' || slot.contenido === 'PEDAG' || slot.contenido === 'DEESC' || slot.bloque === 'Descanso' || slot.bloque === 'Almuerzo'}
                   <button
                     type="button"
-                    onclick={() => !isEmpty && toggleSlot(slot.hora)}
-                    disabled={isEmpty}
-                    class="p-2 rounded-xl border text-center transition-all {isSelected ? 'bg-emerald-500 border-emerald-600 text-white' : isEmpty ? 'bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed' : 'bg-[rgb(var(--bg-primary))] border-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] hover:border-[rgb(var(--accent-primary))]'}"
+                    onclick={() => !isDisabled && toggleSlot(slot.hora)}
+                    disabled={isDisabled}
+                    class="p-2 rounded-xl border text-center transition-all {isSelected ? 'bg-emerald-500 border-emerald-600 text-white' : isDisabled ? 'bg-zinc-100 border-zinc-200 text-zinc-400 cursor-not-allowed' : 'bg-[rgb(var(--bg-primary))] border-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] hover:border-[rgb(var(--accent-primary))]'}"
                   >
                     <div class="text-xs font-bold">{slot.bloque}</div>
                     <div class="text-[10px]">{slot.inicio}</div>
-                    {#if slot.materia && slot.contenido !== 'DESC' && slot.contenido !== 'PEDAG' && slot.contenido !== 'DEESC' && slot.bloque !== 'Descanso' && slot.bloque !== 'Almuerzo'}
+                    {#if slot.contenido && slot.contenido !== 'DESC' && slot.contenido !== 'PEDAG' && slot.contenido !== 'DEESC' && slot.bloque !== 'Descanso' && slot.bloque !== 'Almuerzo'}
                       <div class="text-[9px] mt-1 truncate max-w-full">{slot.grupo || slot.materia}</div>
                     {:else if slot.bloque === 'Descanso'}
                       <div class="text-[9px] mt-1">DESC</div>
@@ -725,7 +725,7 @@
                     {:else if slot.contenido === 'PEDAG'}
                       <div class="text-[9px] mt-1">PEDAG</div>
                     {:else}
-                      <div class="text-[9px] mt-1">LIBRE</div>
+                      <div class="text-[9px] mt-1">{slot.inicio}</div>
                     {/if}
                   </button>
                 {/each}

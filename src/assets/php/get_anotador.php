@@ -38,7 +38,6 @@ function normalizarTexto($texto) {
 try {
     // Leer datos del payload JSON
     $input = file_get_contents('php://input');
-    file_put_contents(__DIR__ . '/debug_log.txt', "INPUT: " . $input . "\n", FILE_APPEND);
     $data = json_decode($input, true);
 
     if (json_last_error() !== JSON_ERROR_NONE) {
