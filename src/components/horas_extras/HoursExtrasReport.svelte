@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import Swal from 'sweetalert2'
-  import { Loader2, Download, FileText, FileSpreadsheet, X, Filter, Calendar, User, BookOpen, Clock, ChevronDown, Check, Printer, Settings2 } from '@lucide/svelte'
+  import { Loader2, Download, FileText, FileSpreadsheet, X, Filter, Calendar, User, BookOpen, Clock, ChevronDown, Check, Printer, Settings2, Users } from '@lucide/svelte'
   import { horasExtrasSheetsService } from './services/google_sheets_service.svelte'
   import { getDocentes, getMaterias, getOpcionesAnotador } from '../../../api/service'
   import ModuleHeader from '../ModuleHeader.svelte'
@@ -35,7 +35,7 @@
   }
 
   type FiltroReporte = {
-    docente: string
+    docente: string[]
     fechaInicio: string
     fechaFin: string
     grado: string
@@ -65,6 +65,9 @@
   let isGeneratingPdf = $state(false)
   let isGeneratingExcel = $state(false)
   let showColumnConfig = $state(false)
+  let showDocenteSelector = $state(false)
+  let docenteSearchTerm = $state('')
+  let savedDocenteGroups = $state<{ name: string; docentes: string[] }[]>([])
 
   let allRecords = $state<RegistroHorasExtras[]>([])
 
@@ -93,7 +96,7 @@
   }
 
   let filtros = $state<FiltroReporte>({
-    docente: '',
+    docente: [],
     fechaInicio: getFirstDayOfMonth(),
     fechaFin: getInitialFechaFin(),
     grado: '',
@@ -182,7 +185,7 @@
           teacherMap.set(normalized, teacher.trim())
         }
       })
-      docentesList = ['Todos los docentes', ...Array.from(teacherMap.values()).sort((a, b) => a.localeCompare(b, 'es'))]
+      docentesList = Array.from(teacherMap.values()).sort((a, b) => a.localeCompare(b, 'es'))
 
       materiasList = materiasData || []
 
@@ -249,9 +252,9 @@
   function aplicarFiltros() {
     let filtered = [...allRecords]
 
-    if (filtros.docente && filtros.docente !== 'Todos los docentes') {
-      const docenteNorm = normalizeAccents(filtros.docente)
-      filtered = filtered.filter(r => normalizeAccents(r.docente) === docenteNorm)
+    if (filtros.docente.length > 0) {
+      const docentesNorm = filtros.docente.map(d => normalizeAccents(d))
+      filtered = filtered.filter(r => docentesNorm.includes(normalizeAccents(r.docente)))
     }
 
     if (filtros.fechaInicio) {
@@ -398,8 +401,8 @@
       const doc = new jsPDF()
 
       let titulo = 'Reporte de Horas Extras'
-      if (filtros.docente && filtros.docente !== 'Todos los docentes') {
-        titulo += ` - ${filtros.docente}`
+      if (filtros.docente.length > 0) {
+        titulo += ` - ${filtros.docente.join(', ')}`
       }
 
       doc.setFontSize(16)
@@ -409,7 +412,7 @@
       doc.setFontSize(10)
       doc.setTextColor(100, 100, 100)
       const filtrosActivos: string[] = []
-      if (filtros.docente) filtrosActivos.push(`Docente: ${filtros.docente}`)
+      if (filtros.docente.length > 0) filtrosActivos.push(`Docentes: ${filtros.docente.join(', ')}`)
       if (filtros.fechaInicio && filtros.fechaFin) {
         filtrosActivos.push(`Fecha: ${filtros.fechaInicio} - ${filtros.fechaFin}`)
       }
@@ -702,7 +705,7 @@
 
   function limpiarFiltros() {
     filtros = {
-      docente: '',
+      docente: [],
       fechaInicio: getFirstDayOfMonth(),
       fechaFin: getTodayDate(),
       grado: '',
@@ -711,8 +714,48 @@
     aplicarFiltros()
   }
 
+  function loadSavedGroups() {
+    try {
+      const saved = localStorage.getItem('docenteGroups')
+      if (saved) {
+        savedDocenteGroups = JSON.parse(saved)
+      }
+    } catch {
+      savedDocenteGroups = []
+    }
+  }
+
+  function saveGroups() {
+    localStorage.setItem('docenteGroups', JSON.stringify(savedDocenteGroups))
+  }
+
+  function saveCurrentAsGroup(name: string) {
+    if (filtros.docente.length === 0) return
+    savedDocenteGroups = [...savedDocenteGroups, { name, docentes: [...filtros.docente] }]
+    saveGroups()
+  }
+
+  function loadGroup(group: { name: string; docentes: string[] }) {
+    filtros.docente = [...group.docentes]
+    docenteSearchTerm = ''
+    showDocenteSelector = false
+    aplicarFiltros()
+  }
+
+  function deleteGroup(name: string) {
+    savedDocenteGroups = savedDocenteGroups.filter(g => g.name !== name)
+    saveGroups()
+  }
+
+  let filteredDocentes = $derived(
+    docenteSearchTerm
+      ? docentesList.filter(d => d.toLowerCase().includes(docenteSearchTerm.toLowerCase()))
+      : docentesList
+  )
+
   onMount(() => {
     loadInitialData()
+    loadSavedGroups()
   })
 
   $effect(() => {
@@ -794,16 +837,42 @@
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="space-y-1">
-          <label for="docente" class="text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">Docente</label>
-          <select
-            id="docente"
-            bind:value={filtros.docente}
-            class="w-full px-4 py-2 rounded-xl border border-[rgb(var(--border-primary))] bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent-primary))] appearance-none cursor-pointer"
+          <label class="text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">Docentes</label>
+          <button
+            type="button"
+            onclick={() => { showDocenteSelector = true; docenteSearchTerm = '' }}
+            class="w-full px-4 py-2 rounded-xl border border-[rgb(var(--border-primary))] bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent-primary))] text-left flex justify-between items-center"
           >
-            {#each docentesList as doc}
-              <option value={doc}>{doc}</option>
-            {/each}
-          </select>
+            <span class="truncate">
+              {filtros.docente.length === 0
+                ? 'Todos los docentes'
+                : filtros.docente.length === 1
+                  ? filtros.docente[0]
+                  : `${filtros.docente.length} docentes seleccionados`}
+            </span>
+            <Users size={16} class="text-[rgb(var(--text-muted))]" />
+          </button>
+          {#if filtros.docente.length > 0}
+            <div class="flex flex-wrap gap-1 mt-1">
+              {#each filtros.docente.slice(0, 3) as doc}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[rgb(var(--accent-primary))] text-white text-xs">
+                  {doc}
+                  <button
+                    type="button"
+                    onclick={() => filtros.docente = filtros.docente.filter(d => d !== doc)}
+                    class="hover:text-red-200"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              {/each}
+              {#if filtros.docente.length > 3}
+                <span class="px-2 py-0.5 rounded-full bg-[rgb(var(--bg-secondary))] text-[rgb(var(--text-muted))] text-xs">
+                  +{filtros.docente.length - 3} más
+                </span>
+              {/if}
+            </div>
+          {/if}
         </div>
 
         <div class="space-y-1">
@@ -893,6 +962,133 @@
         </button>
       </div>
     </div>
+
+    {#if showDocenteSelector}
+      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={() => showDocenteSelector = false}>
+        <div class="bg-[rgb(var(--bg-primary))] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col" onclick={(e) => e.stopPropagation()}>
+          <div class="flex items-center justify-between p-4 border-b border-[rgb(var(--border-primary))]">
+            <h3 class="text-lg font-bold text-[rgb(var(--text-primary))]">Seleccionar Docentes</h3>
+            <button onclick={() => showDocenteSelector = false} class="p-1 hover:bg-[rgb(var(--bg-secondary))] rounded-lg">
+              <X size={20} class="text-[rgb(var(--text-muted))]" />
+            </button>
+          </div>
+
+          <div class="p-4 border-b border-[rgb(var(--border-primary))]">
+            <div class="flex gap-2 mb-3">
+              <button
+                onclick={() => filtros.docente = [...docentesList]}
+                class="px-3 py-1.5 rounded-lg bg-[rgb(var(--bg-secondary))] text-sm hover:bg-[rgb(var(--accent-primary))] hover:text-white transition-colors"
+              >
+                Todos
+              </button>
+              <button
+                onclick={() => filtros.docente = []}
+                class="px-3 py-1.5 rounded-lg bg-[rgb(var(--bg-secondary))] text-sm hover:bg-[rgb(var(--accent-primary))] hover:text-white transition-colors"
+              >
+                Ninguno
+              </button>
+              <button
+                onclick={() => {
+                  const unselected = docentesList.filter(d => !filtros.docente.includes(d))
+                  filtros.docente = [...filtros.docente, ...unselected]
+                }}
+                class="px-3 py-1.5 rounded-lg bg-[rgb(var(--bg-secondary))] text-sm hover:bg-[rgb(var(--accent-primary))] hover:text-white transition-colors"
+              >
+                Invertir
+              </button>
+            </div>
+
+            <div class="flex gap-2">
+              <input
+                type="text"
+                bind:value={docenteSearchTerm}
+                placeholder="Buscar docente..."
+                class="flex-1 px-4 py-2 rounded-xl border border-[rgb(var(--border-primary))] bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent-primary))]"
+              />
+              <div class="flex items-center gap-2">
+                <input
+                  type="text"
+                  id="groupName"
+                  placeholder="Nombre del grupo"
+                  class="px-3 py-2 rounded-xl border border-[rgb(var(--border-primary))] bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))] text-sm focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent-primary))] w-40"
+                />
+                <button
+                  onclick={() => {
+                    const input = document.getElementById('groupName') as HTMLInputElement
+                    if (input?.value && filtros.docente.length > 0) {
+                      saveCurrentAsGroup(input.value)
+                      input.value = ''
+                    }
+                  }}
+                  disabled={filtros.docente.length === 0}
+                  class="px-3 py-2 rounded-xl bg-[rgb(var(--accent-primary))] text-white text-sm disabled:opacity-50 hover:opacity-90 transition-opacity"
+                >
+                  Guardar
+                </button>
+              </div>
+            </div>
+
+            {#if savedDocenteGroups.length > 0}
+              <div class="flex flex-wrap gap-2 mt-3">
+                {#each savedDocenteGroups as group}
+                  <div class="flex items-center gap-1 px-3 py-1.5 rounded-full bg-[rgb(var(--accent-primary))] text-white text-sm">
+                    <button
+                      onclick={() => loadGroup(group)}
+                      class="hover:underline"
+                    >
+                      {group.name} ({group.docentes.length})
+                    </button>
+                    <button
+                      onclick={() => deleteGroup(group.name)}
+                      class="ml-1 hover:text-red-200"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+          </div>
+
+          <div class="flex-1 overflow-auto p-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-1">
+              {#each filteredDocentes as doc}
+                <label class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[rgb(var(--bg-secondary))] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={filtros.docente.includes(doc)}
+                    onchange={() => {
+                      if (filtros.docente.includes(doc)) {
+                        filtros.docente = filtros.docente.filter(d => d !== doc)
+                      } else {
+                        filtros.docente = [...filtros.docente, doc]
+                      }
+                    }}
+                    class="w-5 h-5 rounded border-[rgb(var(--border-primary))] accent-[rgb(var(--accent-primary))]"
+                  />
+                  <span class="text-sm text-[rgb(var(--text-primary))]">{doc}</span>
+                </label>
+              {/each}
+            </div>
+            {#if filteredDocentes.length === 0 && docenteSearchTerm}
+              <p class="text-center text-[rgb(var(--text-muted))] py-8">No se encontraron docentes</p>
+            {/if}
+          </div>
+
+          <div class="p-4 border-t border-[rgb(var(--border-primary))] flex justify-between items-center">
+            <span class="text-sm text-[rgb(var(--text-muted))]">
+              {filtros.docente.length} de {docentesList.length} seleccionados
+            </span>
+            <button
+              onclick={() => { showDocenteSelector = false; aplicarFiltros() }}
+              class="px-6 py-2 rounded-xl bg-[rgb(var(--accent-primary))] text-white font-medium hover:opacity-90 transition-opacity"
+            >
+              Aplicar
+            </button>
+          </div>
+        </div>
+      </div>
+    {/if}
 
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-4">
