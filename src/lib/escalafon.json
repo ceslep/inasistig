@@ -1,0 +1,41 @@
+{
+  "escalafon_magisterio_colombia": {
+    "decreto_1278_de_2002": {
+      "titulo": "Estatuto de Profesionalización Docente",
+      "vigencia": "Aplica a docentes y directivos docentes ingresados a partir del año 2002",
+      "estructura_general": "3 Grados y 4 Niveles o Categorías (A, B, C y D) dentro de cada grado",
+      "grados": [
+        {
+          "grado": 1,
+          "requisito_academico": "Normalista superior o tecnólogo en educación.",
+          "niveles": ["1A", "1B", "1C", "1D"]
+        },
+        {
+          "grado": 2,
+          "requisito_academico": "Licenciado en educación o profesional no licenciado con título universitario.",
+          "niveles": ["2A", "2B", "2C", "2D"]
+        },
+        {
+          "grado": 3,
+          "requisito_academico": "Licenciado o profesional no licenciado con título de Maestría o Doctorado en un área afín a su desempeño.",
+          "niveles": ["3A", "3B", "3C", "3D"]
+        }
+      ],
+      "mecanismo_ascenso": "Basado en evaluación de desempeño anual, evaluación de competencias, cumplimiento de requisitos de formación y concurso público de méritos."
+    },
+    "decreto_2277_de_1979": {
+      "titulo": "Estatuto Docente",
+      "vigencia": "Aplica a docentes y directivos docentes ingresados antes del año 2002",
+      "estructura_general": "14 Categorías o Grados (del 1 al 14) y 2 Niveles salariales (A y B)",
+      "grados": [
+        {
+          "rango": "1 al 14",
+          "descripcion": "El grado se asigna en orden ascendente según el título académico inicial (desde normalistas superiores hasta especialistas) y el tiempo de experiencia.",
+          "ejemplo_ubicacion": "Históricamente, los docentes con licenciatura universitaria ingresaban a partir de la categoría 7."
+        }
+      ],
+      "niveles_salariales": ["A", "B"],
+      "mecanismo_ascenso": "Se rige por tiempo de servicio, acumulación de créditos académicos (capacitaciones, especializaciones), evaluación de desempeño y disponibilidad de vacantes presupuestales."
+    }
+  }
+}

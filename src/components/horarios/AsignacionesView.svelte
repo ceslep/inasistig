@@ -83,17 +83,28 @@
     const s = conteoSesion.get(docente) || 0;
     const h = conteoHistorico.get(docente) || 0;
     if (s >= 1 && h >= 1) {
-      // Ya en sesión + histórico — más fuerte
-      return "background-color: #fee2e2; color: #991b1b; font-weight: 600;";
+      // Ya en sesión + histórico — más fuerte (rojo oscuro)
+      return "background-color: #ef4444; color: #ffffff; font-weight: 700;";
     }
     if (h >= 1) {
-      // Solo histórico hoy
-      return "background-color: #fef3c7; color: #92400e; font-weight: 600;";
+      // Solo histórico hoy (naranja oscuro)
+      return "background-color: #f97316; color: #ffffff; font-weight: 700;";
     }
     if (s >= 1) {
-      // Solo sesión (ya cubre otra hora hoy)
-      return "background-color: #dbeafe; color: #1e40af; font-weight: 600;";
+      // Solo sesión (azul oscuro)
+      return "background-color: #3b82f6; color: #ffffff; font-weight: 700;";
     }
+    return "";
+  }
+
+  function getIndicadorWarning(docente: string): string {
+    if (!docente) return "";
+    if (ROLES_SIN_LIMITE.some((r) => docente.includes(r))) return "";
+    const s = conteoSesion.get(docente) || 0;
+    const h = conteoHistorico.get(docente) || 0;
+    if (s >= 1 && h >= 1) return "🔴";
+    if (h >= 1) return "🟠";
+    if (s >= 1) return "🔵";
     return "";
   }
 
@@ -393,7 +404,12 @@
                     {#if cov.posiblesCobradores.length > 0}
                       <optgroup label="Docentes disponibles">
                         {#each cov.posiblesCobradores as docente}
-                          <option value={docente} style={estiloOptionDocente(docente, cov.docenteCubre)}>{docente}{(conteoSesion.get(docente) ?? 0) >= 1 || (conteoHistorico.get(docente) ?? 0) >= 1 ? " ⚠" : ""}</option>
+                          {@const indic = getIndicadorWarning(docente)}
+                          {@const warningText = (() => { const s = conteoSesion.get(docente) || 0; const h = conteoHistorico.get(docente) || 0; if (s >= 1 && h >= 1) return " ¡YA USADO!";
+if (h >= 1) return " ¡HOY YA CUBRIÓ!";
+if (s >= 1) return " Cubre otra u actual";
+return ""; })()}
+                          <option value={docente} style={estiloOptionDocente(docente, cov.docenteCubre)}>{indic}{docente}{warningText}</option>
                         {/each}
                       </optgroup>
                     {/if}
@@ -421,12 +437,14 @@
                   {/if}
                 </div>
                 {#if dupInfo.dup}
-                  <div class="text-xs mt-1 font-semibold" style="color: #ef4444;">
-                    ⚠️ REPITE {dupInfo.sesion > 1 ? `(${dupInfo.sesion}× hoy)` : ""}{dupInfo.sesion > 1 && dupInfo.historico > 0 ? " · " : ""}{dupInfo.historico > 0 ? `Ya cubrió ${dupInfo.historico}h en historial` : ""}
+                  <div class="mt-2 px-2 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1" style="background-color: #fee2e2; color: #991b1b; border: 1px solid #ef4444;">
+                    <span class="text-base">🚨</span>
+                    <span>REPITE{dupInfo.sesion > 1 ? ` ${dupInfo.sesion}× HOY` : ""}{dupInfo.historico > 0 ? ` · ${dupInfo.historico}h HIST` : ""}</span>
                   </div>
                 {:else if dupInfo.porGrupoLiberado}
-                  <div class="text-xs mt-1 font-medium" style="color: #b45309;">
-                    ℹ️ Repite válido — hora libre por grupo liberado
+                  <div class="mt-2 px-2 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1" style="background-color: #dbeafe; color: #1e40af; border: 1px solid #3b82f6;">
+                    <span class="text-base">ℹ️</span>
+                    <span>Repite válido — grupo liberado</span>
                   </div>
                 {/if}
               </td>
@@ -482,7 +500,7 @@
               <td class="p-3 text-center border-t" style="border-color: rgb(var(--border-primary));">
                 <button
                   onclick={() => onToggle(i)}
-                  class="w-8 h-8 rounded-full flex items-center justify-center transition-all mx-auto"
+                  class="w-11 h-11 rounded-full flex items-center justify-center transition-all mx-auto text-lg font-bold"
                   style="background-color: {cov.aprobada ? 'rgb(var(--accent-primary))' : 'rgb(var(--bg-secondary))'}; color: {cov.aprobada ? 'white' : 'rgb(var(--text-secondary))'};"
                 >
                   {cov.aprobada ? "✓" : ""}
@@ -494,18 +512,18 @@
       </table>
     </div>
 
-    <div class="mt-3 mb-4 flex flex-wrap gap-3 text-xs">
-      <span class="font-medium" style="color: rgb(var(--text-secondary));">Leyenda select:</span>
-      <span class="px-2 py-0.5 rounded font-semibold" style="background-color: #dbeafe; color: #1e40af;">⚠ Ya cubre hora en sesión</span>
-      <span class="px-2 py-0.5 rounded font-semibold" style="background-color: #fef3c7; color: #92400e;">⚠ Tiene cobertura histórica hoy</span>
-      <span class="px-2 py-0.5 rounded font-semibold" style="background-color: #fee2e2; color: #991b1b;">⚠ Sesión + histórico</span>
+    <div class="mt-4 mb-4 p-3 rounded-xl flex flex-wrap gap-3 text-xs items-center" style="background-color: rgb(var(--bg-secondary)); border: 1px solid rgb(var(--border-primary));">
+      <span class="font-semibold mr-2" style="color: rgb(var(--text-primary));">Alertas en select:</span>
+      <span class="px-3 py-1.5 rounded-lg font-bold flex items-center gap-1" style="background-color: #3b82f6; color: white;">🔵 Cubre otra u actual</span>
+      <span class="px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 blink-warning" style="background-color: #f97316; color: white;">🟠 Ya cubrió hoy</span>
+      <span class="px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 blink-warning" style="background-color: #ef4444; color: white;">🔴 Sesión + histórico</span>
     </div>
   {/if}
 
   <div class="flex gap-3">
     <button
       onclick={onBack}
-      class="flex-1 py-3 rounded-xl font-medium transition-all"
+      class="flex-1 py-3 rounded-xl font-medium transition-all min-h-[52px]"
       style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border: 1px solid rgb(var(--border-primary));"
     >
       ← Volver al análisis
@@ -514,7 +532,7 @@
       id="tour-step3-guardar"
       onclick={onGuardar}
       disabled={loading || seleccionadas === 0}
-      class="flex-1 py-3 rounded-xl font-bold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+      class="flex-1 py-3 rounded-xl font-bold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2 min-h-[52px]"
       style="background-color: rgb(var(--accent-primary)); opacity: {loading ? 0.7 : 1};"
     >
       {#if loading}
@@ -543,5 +561,12 @@
   }
   .cobertura-blink-dup {
     animation: cobertura-blink 1s ease-in-out infinite;
+  }
+  @keyframes blink-warning {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .blink-warning {
+    animation: blink-warning 1s ease-in-out infinite;
   }
 </style>

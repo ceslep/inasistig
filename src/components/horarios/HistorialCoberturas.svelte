@@ -662,22 +662,22 @@
     <ul class="md:hidden divide-y" style="border-color: rgb(var(--border-primary));">
       {#each filtradas as c}
         {@const sel = seleccionadas.has(claveCobertura(c))}
-        <li class="p-3" style="background-color: {sel ? 'rgba(239,68,68,0.08)' : 'transparent'};">
+        <li class="p-4" style="background-color: {sel ? 'rgba(239,68,68,0.08)' : 'transparent'};">
           <div class="flex items-start gap-3">
             <input
               type="checkbox"
               checked={sel}
               onchange={() => toggleSeleccion(c)}
               aria-label="Seleccionar cobertura de {c.docente_cubre} el {c.fecha}"
-              class="mt-1 w-4 h-4 shrink-0 accent-[rgb(var(--accent-primary))] cursor-pointer"
+              class="mt-1 w-5 h-5 shrink-0 accent-[rgb(var(--accent-primary))] cursor-pointer"
             />
             <div class="min-w-0 flex-1">
-              <div class="flex items-center justify-between gap-2 mb-1">
+              <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
                 <span class="text-sm font-semibold" style="color: rgb(var(--text-primary));">
                   {c.fecha} <span class="font-normal" style="color: rgb(var(--text-secondary));">· {formatoDia(c.dia_semana)}</span>
                 </span>
                 <span
-                  class="shrink-0 px-2 py-0.5 rounded text-[10px] font-bold"
+                  class="shrink-0 px-2 py-1 rounded text-xs font-bold"
                   style="
                     background-color: {c.estado === 'aprobado' ? 'rgba(34,197,94,0.15)' : c.estado === 'rechazado' ? 'rgba(239,68,68,0.15)' : 'rgba(234,179,8,0.15)'};
                     color: {c.estado === 'aprobado' ? '#22c55e' : c.estado === 'rechazado' ? '#ef4444' : '#eab308'};
@@ -686,22 +686,24 @@
                   {c.estado}
                 </span>
               </div>
-              <p class="text-xs mb-1" style="color: rgb(var(--text-secondary));">
+              <p class="text-sm mb-2 font-medium" style="color: rgb(var(--text-secondary));">
                 Hora <span class="font-bold" style="color: rgb(var(--accent-primary));">{formatoHora(c.hora)}</span>
               </p>
-              <p class="text-xs" style="color: rgb(var(--text-secondary));">
-                Ausente: <span style="color: rgb(var(--text-primary));">{c.docente_ausente}</span>
+              <p class="text-sm mb-1" style="color: rgb(var(--text-secondary));">
+                <span class="font-medium">Ausente:</span> <span style="color: rgb(var(--text-primary));">{c.docente_ausente}</span>
                 {#if c.grupo_ausente}<span class="opacity-70"> ({c.grupo_ausente})</span>{/if}
               </p>
-              <p class="text-xs" style="color: rgb(var(--text-secondary));">
-                Cubre: <span class="font-medium" style="color: rgb(var(--accent-primary));">{c.docente_cubre}</span>
+              <p class="text-sm" style="color: rgb(var(--text-secondary));">
+                <span class="font-medium">Cubre:</span> <span style="color: rgb(var(--accent-primary));">{c.docente_cubre}</span>
                 {#if c.grupo_a_cubrir}<span class="opacity-70"> ({c.grupo_a_cubrir})</span>{/if}
               </p>
             </div>
             <button
               onclick={() => eliminarCobertura(c)}
-              class="shrink-0 text-red-500 hover:text-red-700 text-sm px-2 py-1 rounded min-h-[40px]"
+              class="shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-lg"
+              style="background-color: rgba(239,68,68,0.1); color: #ef4444;"
               title="Eliminar"
+              aria-label="Eliminar cobertura"
             >
               🗑️
             </button>

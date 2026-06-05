@@ -6,8 +6,10 @@
   import { docenteName, findMatchingDocente } from '../../lib/authStore'
   import { getDocentes, getMaterias, getOpcionesAnotador, getEstudiantes } from '../../../api/service'
   import ModuleHeader from '../ModuleHeader.svelte'
+  import HoursExtrasReport from './HoursExtrasReport.svelte'
   import horariosData from '../../lib/horarios.json'
   import infoHoras from '../../lib/info_horas.json'
+  import escalafonData from '../../lib/escalafon.json'
 
   const ANOTADOR_SPREADSHEET_ID = "1Q6EcSvccB7BoJiw9PD2s5J4PB8AJmr-6v-yKhiE4E8k";
   const ANOTADOR_API_URL = "https://app.iedeoccidente.com/gs/get_anotador.php";
@@ -37,6 +39,9 @@
     horasExtras: number
     firmaBase64: string
     observaciones: string
+    escalafon: string
+    cedula: string
+    rowIndex?: number
   }
 
   const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -54,7 +59,37 @@
     return schedule[diaSemana] || []
   }
 
-  const MAX_FIRMA_SIZE = 100 * 1024
+  const MAX_FIRMA_SIZE = 300 * 1024
+  const FIRMA_STORAGE_KEY = 'horasExtras_firma'
+  const ESCALAFON_STORAGE_KEY = 'horasExtras_escalafon'
+  const CEDULA_STORAGE_KEY = 'horasExtras_cedula'
+
+  type EscalafonOpt = { value: string; label: string }
+  type EscalafonGroup = { label: string; options: EscalafonOpt[] }
+
+  function getEscalafonOptions(): EscalafonGroup[] {
+    // 1278/2002
+    const basico = ['1A', '1B', '1C', '1D', '2A', '2B', '2C', '2D'].map(v => ({ value: v, label: v }))
+    const especializacion = ['1AE', '1BE', '1CE', '1DE', '2AE', '2BE', '2CE', '2DE'].map(v => ({ value: v, label: v }))
+    const maestria = ['2AM', '2BM', '2CM', '2DM', '3AM', '3BM', '3CM', '3DM'].map(v => ({ value: v, label: v }))
+    const doctorado = ['3AD', '3BD', '3CD', '3DD'].map(v => ({ value: v, label: v }))
+
+    // 2277/1979
+    const opciones2277 = Array.from({ length: 14 }, (_, i) => ({
+      value: String(i + 1),
+      label: String(i + 1)
+    }))
+
+    return [
+      { label: 'Decreto 1278/2002 - Básico', options: basico },
+      { label: 'Decreto 1278/2002 - Especialización', options: especializacion },
+      { label: 'Decreto 1278/2002 - Maestría', options: maestria },
+      { label: 'Decreto 1278/2002 - Doctorado', options: doctorado },
+      { label: 'Decreto 2277/1979', options: opciones2277 }
+    ]
+  }
+
+  let escalafonOptions = $state<EscalafonGroup[]>(getEscalafonOptions())
 
   let teacherName = $derived($docenteName || '')
 
@@ -79,12 +114,15 @@
     asignatura: '',
     actividad: '',
     firmaBase64: '',
-    observaciones: ''
+    observaciones: '',
+    escalafon: '',
+    cedula: ''
   })
 
   let selectedSlots = $state<number[]>([])
   let slotsDelDia = $state<{ hora: number; inicio: string; fin: string; contenido: string; materia: string; grupo: string; bloque: string }[]>([])
   let firmaPreview = $state('')
+  let firmaUrl = $state('')
 
   let registros = $state<RegistroHorasExtras[]>([])
   let isSaving = $state(false)
@@ -93,6 +131,11 @@
 
   let editingIndex = $state<number | null>(null)
   let showForm = $state(false)
+  let currentView = $state<'menu' | 'registrar' | 'reportes'>('menu')
+  let isLoadingRecords = $state(false)
+  let isLoadingFirma = $state(false)
+  let docenteHasFirma = $state(false)
+  let warningAsignatura = $state('')
 
   function normalizeAccents(text: string): string {
     return text.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -117,6 +160,35 @@
       }
     }
     return { materia: slot, grupo: '' }
+  }
+
+  function validarAsignaturaEnHorario(): boolean {
+    warningAsignatura = ''
+    if (!formData.fecha || !formData.docente || !formData.gradoAtendido || !formData.asignatura) {
+      return true
+    }
+    const date = new Date(formData.fecha + 'T00:00:00')
+    const diaSemana = DIAS_MAP[date.getDay()]
+    if (!['lunes', 'martes', 'miercoles', 'jueves', 'viernes'].includes(diaSemana)) {
+      return true
+    }
+    const horarios = getHorarioDocente(formData.docente, diaSemana) as string[]
+    const normalizedAsignatura = normalizeAccents(formData.asignatura)
+    const normalizedGrado = normalizeAccents(formData.gradoAtendido)
+    const found = horarios.some((slot: string) => {
+      if (!slot || slot === 'DESC' || slot === 'PEDAG' || slot === 'DEESC') return false
+      const { materia, grupo } = parsearSlot(slot)
+      const normalizedMateria = normalizeAccents(materia)
+      const normalizedGrupo = normalizeAccents(grupo)
+      const materiaMatch = normalizedMateria.includes(normalizedAsignatura) || normalizedAsignatura.includes(normalizedMateria)
+      const grupoMatch = !normalizedGrupo || normalizedGrupo.replace(/\D/g, '') === normalizedGrado.replace(/\D/g, '')
+      return materiaMatch && grupoMatch
+    })
+    if (!found) {
+      warningAsignatura = `ADVERTENCIA: ${formData.asignatura} ${formData.gradoAtendido} no está programado el ${diaSemana} para ${formData.docente}`
+      return false
+    }
+    return true
   }
 
   function actualizarSlotsDelDia() {
@@ -249,6 +321,7 @@
       const match = findMatchingDocente(docentesList, teacherName)
       if (match) {
         formData.docente = match
+        formData.escalafon = localStorage.getItem(ESCALAFON_STORAGE_KEY + '_' + match) || ''
         actualizarGrados()
         actualizarSlotsDelDia()
       }
@@ -257,6 +330,81 @@
     } finally {
       isLoadingData = false
     }
+  }
+
+  async function loadRecordsFromSheets() {
+    if (!formData.docente) return
+    isLoadingRecords = true
+    try {
+      const result = await horasExtrasSheetsService.getRegistros()
+      if (result.success && result.records) {
+        const teacherNormalized = normalizeAccents(formData.docente)
+        const filteredRecords = result.records.filter(r => {
+          if (r.values && r.values.length >= 5) {
+            const recordDocente = normalizeAccents(r.values[4])
+            return recordDocente === teacherNormalized
+          }
+          return false
+        }).map(r => {
+          const v = r.values
+          return {
+            fecha: v[0] || '',
+            dia: v[1] || '',
+            mes: v[2] || '',
+            año: v[3] || '',
+            docente: v[4] || '',
+            horaEntrada: v[5] || '',
+            horaSalida: v[6] || '',
+            gradoAtendido: v[7] || '',
+            asignatura: v[8] || '',
+            actividad: v[9] || '',
+            horasExtras: parseFloat(v[10]) || 0,
+            firmaBase64: v[11] || '',
+            observaciones: v[12] || '',
+            escalafon: v[14] || '',
+            cedula: v[15] || '',
+            rowIndex: r.rowIndex
+          } as RegistroHorasExtras
+        })
+        if (filteredRecords.length > 0) {
+          registros = filteredRecords
+          saveStatus = 'saved'
+        }
+      }
+      const firmaResult = await horasExtrasSheetsService.getFirma(formData.docente)
+      if (firmaResult.success && firmaResult.firmaUrl) {
+        firmaUrl = firmaResult.firmaUrl
+        firmaPreview = firmaResult.firmaUrl
+        localStorage.setItem(FIRMA_STORAGE_KEY, firmaResult.firmaUrl)
+        docenteHasFirma = true
+      } else {
+        docenteHasFirma = false
+        firmaUrl = ''
+        firmaPreview = ''
+      }
+    } catch (error) {
+      console.error('Error cargando registros:', error)
+    } finally {
+      isLoadingRecords = false
+    }
+  }
+
+  function enterRegistrarView() {
+    currentView = 'registrar'
+    resetForm()
+    if (formData.docente) {
+      loadRecordsFromSheets()
+    }
+  }
+
+  function enterReportesView() {
+    currentView = 'reportes'
+  }
+
+  function backToMenu() {
+    currentView = 'menu'
+    showForm = false
+    editingIndex = null
   }
 
   loadInitialData()
@@ -286,22 +434,43 @@
     const file = target.files?.[0]
     if (!file) return
 
+    if (!formData.docente) {
+      showNotification('Seleccione un docente primero', 'error')
+      return
+    }
+
     if (!file.type.includes('png')) {
       showNotification('Solo se permiten archivos PNG transparentes', 'error')
       return
     }
 
     if (file.size > MAX_FIRMA_SIZE) {
-      showNotification('La imagen no puede superar los 100KB', 'error')
+      showNotification('La imagen no puede superar los 300KB', 'error')
       return
     }
 
     const reader = new FileReader()
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const base64 = event.target?.result as string
-      formData.firmaBase64 = base64
       firmaPreview = base64
-      showNotification('Firma cargada exitosamente', 'success')
+      isLoadingFirma = true
+      try {
+        const uploadResult = await horasExtrasSheetsService.uploadFirma(formData.docente, base64)
+        if (!uploadResult.success || !uploadResult.url) {
+          throw new Error(uploadResult.error || 'Error al subir firma')
+        }
+        firmaUrl = uploadResult.url
+        localStorage.setItem(FIRMA_STORAGE_KEY, uploadResult.url)
+        
+        await horasExtrasSheetsService.saveFirma(formData.docente, uploadResult.url)
+        docenteHasFirma = true
+        showNotification('Firma guardada exitosamente', 'success')
+      } catch (error) {
+        console.error('Error guardando firma:', error)
+        showNotification('Error al guardar firma: ' + (error as Error).message, 'error')
+      } finally {
+        isLoadingFirma = false
+      }
     }
     reader.onerror = () => {
       showNotification('Error al cargar la firma', 'error')
@@ -312,10 +481,14 @@
   function limpiarFirma() {
     formData.firmaBase64 = ''
     firmaPreview = ''
+    firmaUrl = ''
   }
 
   function resetForm() {
     const now = new Date()
+    const savedFirmaUrl = localStorage.getItem(FIRMA_STORAGE_KEY) || ''
+    const savedEscalafon = localStorage.getItem(ESCALAFON_STORAGE_KEY + '_' + formData.docente) || ''
+    const savedCedula = localStorage.getItem(CEDULA_STORAGE_KEY + '_' + formData.docente) || ''
     formData = {
       fecha: now.toISOString().split('T')[0],
       dia: now.getDate().toString().padStart(2, '0'),
@@ -328,10 +501,13 @@
       asignatura: '',
       actividad: '',
       firmaBase64: '',
-      observaciones: ''
+      observaciones: '',
+      escalafon: savedEscalafon,
+      cedula: savedCedula
     }
     selectedSlots = []
-    firmaPreview = ''
+    firmaPreview = savedFirmaUrl
+    firmaUrl = savedFirmaUrl
     editingIndex = null
     actualizarSlotsDelDia()
   }
@@ -348,36 +524,75 @@
     const min1 = h1 * 60 + (m1 || 0)
     const min2 = h2 * 60 + (m2 || 0)
     const diff = min2 - min1
-    return diff > 0 ? Math.round((diff / 60) * 100) / 100 : 0
+    return diff > 0 ? Math.ceil(diff / 60) : 0
   }
 
   const horasExtrasCalculadas = $derived(calcularHorasExtras())
 
-  function agregarRegistro() {
+  async function agregarRegistro() {
     if (!validarFormulario()) return
 
-    const registro: RegistroHorasExtras = {
-      fecha: formData.fecha,
-      dia: formData.dia,
-      mes: formData.mes,
-      año: formData.año,
-      docente: formData.docente,
-      horaEntrada: formData.horaEntrada,
-      horaSalida: formData.horaSalida,
-      gradoAtendido: formData.gradoAtendido,
-      asignatura: formData.asignatura,
-      actividad: formData.actividad,
-      horasExtras: horasExtrasCalculadas,
-      firmaBase64: formData.firmaBase64,
-      observaciones: formData.observaciones
-    }
+    isSaving = true
+    saveStatus = 'saving'
 
-    if (editingIndex !== null) {
-      registros[editingIndex] = registro
-      showNotification('Registro actualizado', 'success')
-    } else {
-      registros = [...registros, registro]
-      showNotification('Registro agregado', 'success')
+    try {
+      const values = [
+        formData.fecha,
+        formData.dia,
+        formData.mes,
+        formData.año,
+        formData.docente,
+        formData.horaEntrada,
+        formData.horaSalida,
+        formData.gradoAtendido,
+        formData.asignatura,
+        formData.actividad,
+        horasExtrasCalculadas.toString(),
+        'FIRMA_GUARDADA',
+        formData.observaciones,
+        '',
+        formData.escalafon,
+        formData.cedula
+      ]
+
+      const result = await horasExtrasSheetsService.saveRegistro(values, null)
+      if (!result.success) {
+        throw new Error(result.error || 'Error al guardar registro')
+      }
+
+      const registro: RegistroHorasExtras = {
+        fecha: formData.fecha,
+        dia: formData.dia,
+        mes: formData.mes,
+        año: formData.año,
+        docente: formData.docente,
+        horaEntrada: formData.horaEntrada,
+        horaSalida: formData.horaSalida,
+        gradoAtendido: formData.gradoAtendido,
+        asignatura: formData.asignatura,
+        actividad: formData.actividad,
+        horasExtras: horasExtrasCalculadas,
+        firmaBase64: formData.firmaBase64,
+        observaciones: formData.observaciones,
+        escalafon: formData.escalafon,
+        cedula: formData.cedula
+      }
+
+      if (editingIndex !== null) {
+        registros[editingIndex] = registro
+        showNotification('Registro actualizado y guardado', 'success')
+      } else {
+        registros = [...registros, registro]
+        showNotification('Registro agregado y guardado', 'success')
+      }
+
+      saveStatus = 'saved'
+    } catch (error) {
+      console.error('Error al guardar:', error)
+      saveStatus = 'error'
+      showNotification('Error al guardar el registro', 'error')
+    } finally {
+      isSaving = false
     }
 
     resetForm()
@@ -405,8 +620,24 @@
       showNotification('Seleccione una asignatura', 'error')
       return false
     }
+    if (warningAsignatura) {
+      showNotification('La asignatura no corresponde al día seleccionado en el horario', 'error')
+      return false
+    }
     if (horasExtrasCalculadas <= 0) {
       showNotification('La hora de salida debe ser posterior a la de entrada', 'error')
+      return false
+    }
+    if (!docenteHasFirma && !formData.firmaBase64) {
+      showNotification('Cargue su firma (obligatorio)', 'error')
+      return false
+    }
+    if (!formData.escalafon) {
+      showNotification('Seleccione su escalafón', 'error')
+      return false
+    }
+    if (!formData.cedula) {
+      showNotification('Ingrese su número de cédula', 'error')
       return false
     }
     return true
@@ -426,7 +657,9 @@
       asignatura: reg.asignatura,
       actividad: reg.actividad,
       firmaBase64: reg.firmaBase64,
-      observaciones: reg.observaciones
+      observaciones: reg.observaciones,
+      escalafon: reg.escalafon || '',
+      cedula: reg.cedula || ''
     }
     firmaPreview = reg.firmaBase64
 
@@ -440,8 +673,19 @@
     showForm = true
   }
 
-  function eliminarRegistro(index: number) {
-    Swal.fire({
+  async function eliminarRegistro(index: number) {
+    const registro = registros[index]
+    if (!registro.rowIndex) {
+      showNotification('No se puede eliminar: falta información de fila', 'error')
+      return
+    }
+
+    if (normalizeAccents(registro.docente) !== normalizeAccents(formData.docente)) {
+      showNotification('No puede eliminar registros de otros docentes', 'error')
+      return
+    }
+
+    const result = await Swal.fire({
       title: '¿Eliminar registro?',
       text: 'Esta acción no se puede deshacer.',
       icon: 'warning',
@@ -449,57 +693,20 @@
       confirmButtonColor: '#ef4444',
       cancelButtonText: 'Cancelar',
       confirmButtonText: 'Sí, eliminar'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        registros = registros.filter((_, i) => i !== index)
-        showNotification('Registro eliminado', 'success')
-      }
     })
-  }
 
-  async function guardarEnSheets() {
-    if (registros.length === 0) {
-      showNotification('No hay registros para guardar', 'error')
-      return
-    }
-
-    isSaving = true
-    saveStatus = 'saving'
+    if (!result.isConfirmed) return
 
     try {
-      for (let i = 0; i < registros.length; i++) {
-        const reg = registros[i]
-        const values = [
-          reg.fecha,
-          reg.dia,
-          reg.mes,
-          reg.año,
-          reg.docente,
-          reg.horaEntrada,
-          reg.horaSalida,
-          reg.gradoAtendido,
-          reg.asignatura,
-          reg.actividad,
-          reg.horasExtras.toString(),
-          reg.firmaBase64,
-          reg.observaciones
-        ]
-
-        const result = await horasExtrasSheetsService.saveRegistro(values, null)
-        if (!result.success) {
-          throw new Error(result.error || 'Error al guardar registro')
-        }
+      const deleteResult = await horasExtrasSheetsService.deleteRegistro(registro.rowIndex)
+      if (!deleteResult.success) {
+        throw new Error(deleteResult.error || 'Error al eliminar')
       }
-
-      saveStatus = 'saved'
-      showNotification('¡Registros guardados exitosamente!', 'success')
-      registros = []
+      registros = registros.filter((_, i) => i !== index)
+      showNotification('Registro eliminado', 'success')
     } catch (error) {
-      console.error('Error al guardar:', error)
-      saveStatus = 'error'
-      showNotification('Error al guardar los registros', 'error')
-    } finally {
-      isSaving = false
+      console.error('Error al eliminar:', error)
+      showNotification('Error al eliminar el registro: ' + (error as Error).message, 'error')
     }
   }
 
@@ -521,6 +728,7 @@
     formData.horaEntrada = ''
     formData.horaSalida = ''
     actualizarSlotsDelDia()
+    validarAsignaturaEnHorario()
   }
 
   function onDocenteChange() {
@@ -528,8 +736,23 @@
     selectedSlots = []
     formData.horaEntrada = ''
     formData.horaSalida = ''
+    formData.escalafon = localStorage.getItem(ESCALAFON_STORAGE_KEY + '_' + formData.docente) || ''
+    formData.cedula = localStorage.getItem(CEDULA_STORAGE_KEY + '_' + formData.docente) || ''
     actualizarGrados()
     actualizarSlotsDelDia()
+    validarAsignaturaEnHorario()
+  }
+
+  function onEscalafonChange() {
+    if (formData.docente && formData.escalafon) {
+      localStorage.setItem(ESCALAFON_STORAGE_KEY + '_' + formData.docente, formData.escalafon)
+    }
+  }
+
+  function onCedulaChange() {
+    if (formData.docente && formData.cedula) {
+      localStorage.setItem(CEDULA_STORAGE_KEY + '_' + formData.docente, formData.cedula)
+    }
   }
 
   function onGradoChange() {
@@ -539,6 +762,7 @@
     if (formData.gradoAtendido && formData.asignatura) {
       loadActividadesFiltradas()
     }
+    validarAsignaturaEnHorario()
   }
 
   async function onAsignaturaChange() {
@@ -548,6 +772,7 @@
     } else {
       actividadesFiltered = []
     }
+    validarAsignaturaEnHorario()
   }
 
   async function loadActividadesFiltradas() {
@@ -587,20 +812,22 @@
 </script>
 
 <div class="min-h-screen bg-[rgb(var(--bg-primary))]">
-  <ModuleHeader title="Horas Extras" subtitle="Registro de actividades para cobro" {onBack}>
+  <ModuleHeader title="Horas Extras" subtitle="Registro de actividades para cobro" onBack={currentView === 'menu' ? onBack : backToMenu}>
     {#snippet actions()}
-      <button
-        onclick={toggleForm}
-        class="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--accent-primary))] text-white font-medium hover:opacity-90 transition-opacity"
-      >
-        {#if showForm}
-          <X class="w-4 h-4" />
-          Cancelar
-        {:else}
-          <Plus class="w-4 h-4" />
-          Nuevo Registro
-        {/if}
-      </button>
+      {#if currentView !== 'menu'}
+        <button
+          onclick={toggleForm}
+          class="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--accent-primary))] text-white font-medium hover:opacity-90 transition-opacity"
+        >
+          {#if showForm}
+            <X class="w-4 h-4" />
+            Cancelar
+          {:else}
+            <Plus class="w-4 h-4" />
+            Nuevo Registro
+          {/if}
+        </button>
+      {/if}
     {/snippet}
   </ModuleHeader>
 
@@ -610,6 +837,32 @@
         <Loader2 class="w-8 h-8 animate-spin text-[rgb(var(--accent-primary))]" />
         <span class="ml-3 text-[rgb(var(--text-muted))]">Cargando datos...</span>
       </div>
+    {:else if currentView === 'menu'}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <button
+          onclick={enterRegistrarView}
+          class="bg-[rgb(var(--card-bg))] border border-[rgb(var(--card-border))] rounded-2xl p-8 shadow-lg hover:border-[rgb(var(--accent-primary))] hover:shadow-xl transition-all text-left group"
+        >
+          <div class="w-16 h-16 rounded-2xl bg-emerald-100 flex items-center justify-center mb-4 group-hover:bg-emerald-200 transition-colors">
+            <Clock class="w-8 h-8 text-emerald-600" />
+          </div>
+          <h3 class="text-xl font-bold text-[rgb(var(--text-primary))] mb-2">Registrar Hora Extra</h3>
+          <p class="text-[rgb(var(--text-muted))]">Crear un nuevo registro de hora extra para cobro</p>
+        </button>
+
+        <button
+          onclick={enterReportesView}
+          class="bg-[rgb(var(--card-bg))] border border-[rgb(var(--card-border))] rounded-2xl p-8 shadow-lg hover:border-[rgb(var(--accent-primary))] hover:shadow-xl transition-all text-left group"
+        >
+          <div class="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
+            <FileText class="w-8 h-8 text-blue-600" />
+          </div>
+          <h3 class="text-xl font-bold text-[rgb(var(--text-primary))] mb-2">Reportes de Horas</h3>
+          <p class="text-[rgb(var(--text-muted))]">Ver historial y estadísticas de horas extras</p>
+        </button>
+      </div>
+    {:else if currentView === 'reportes'}
+      <HoursExtrasReport onBack={backToMenu} />
     {:else if showForm}
       <div in:fade class="bg-[rgb(var(--card-bg))] border border-[rgb(var(--card-border))] rounded-2xl p-6 shadow-lg">
         <h2 class="text-lg font-bold text-[rgb(var(--text-primary))] mb-4 flex items-center gap-2">
@@ -695,6 +948,12 @@
             </select>
           </div>
 
+          {#if warningAsignatura}
+            <div class="md:col-span-2 px-4 py-2 rounded-xl bg-amber-50 border border-amber-300 text-amber-700 text-sm">
+              ⚠️ {warningAsignatura}
+            </div>
+          {/if}
+
           <div class="space-y-1 md:col-span-3">
             <label class="text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">Seleccionar Horas del Día</label>
             {#if slotsDelDia.length === 0}
@@ -761,33 +1020,86 @@
           </div>
 
           <div class="space-y-1 md:col-span-3">
-            <label class="text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">Firma (PNG transparente, máx 100KB)</label>
+            <label class="text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">
+              Firma (PNG transparente, máx 300KB) {!docenteHasFirma ? '*' : ''}
+            </label>
             <div class="flex items-center gap-4">
-              <label
-                class="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--bg-secondary))] border border-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] hover:bg-[rgb(var(--bg-primary))] hover:border-[rgb(var(--accent-primary))] cursor-pointer transition-colors"
-              >
-                <Upload class="w-4 h-4" />
-                <span class="text-sm">Cargar Firma PNG</span>
-                <input
-                  type="file"
-                  accept="image/png"
-                  onchange={handleFirmaUpload}
-                  class="hidden"
-                />
-              </label>
-              {#if firmaPreview}
-                <div class="relative">
-                  <img src={firmaPreview} alt="Firma" class="h-12 w-auto border border-[rgb(var(--border-primary))] rounded-lg bg-white" />
-                  <button
-                    type="button"
-                    onclick={limpiarFirma}
-                    class="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                  >
-                    <X class="w-3 h-3" />
-                  </button>
+              {#if isLoadingFirma}
+                <div class="flex items-center gap-2 px-4 py-2">
+                  <Loader2 class="w-5 h-5 animate-spin text-[rgb(var(--text-muted))]" />
+                  <span class="text-sm text-[rgb(var(--text-muted))]">Guardando firma...</span>
                 </div>
+              {:else}
+                <label
+                  class="flex items-center gap-2 px-4 py-2 rounded-xl bg-[rgb(var(--bg-secondary))] border border-[rgb(var(--border-primary))] text-[rgb(var(--text-primary))] hover:bg-[rgb(var(--bg-primary))] hover:border-[rgb(var(--accent-primary))] cursor-pointer transition-colors"
+                >
+                  <Upload class="w-4 h-4" />
+                  <span class="text-sm">Cargar Firma PNG</span>
+                  <input
+                    type="file"
+                    accept="image/png"
+                    onchange={handleFirmaUpload}
+                    class="hidden"
+                  />
+                </label>
+              {/if}
+              {#if firmaPreview}
+                <div class="flex items-center gap-2">
+                  <span class="flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">
+                    <Check class="w-3 h-3" />
+                    Firma guardada
+                  </span>
+                  <img src={firmaPreview} alt="Firma" class="h-12 w-auto border border-[rgb(var(--border-primary))] rounded-lg bg-white" />
+                </div>
+              {:else if docenteHasFirma}
+                <span class="flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">
+                  <Check class="w-3 h-3" />
+                  Firma ya registrada
+                </span>
+              {:else if !isLoadingFirma}
+                <span class="flex items-center gap-1 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-medium">
+                  <X class="w-3 h-3" />
+                  Sin firma - Obligatoria
+                </span>
               {/if}
             </div>
+          </div>
+
+          <div class="space-y-1">
+            <label for="escalafon" class="text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">
+              Escalafón *
+            </label>
+            <select
+              id="escalafon"
+              bind:value={formData.escalafon}
+              onchange={onEscalafonChange}
+              required
+              class="w-full px-4 py-2 rounded-xl border border-[rgb(var(--border-primary))] bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent-primary))] appearance-none cursor-pointer"
+            >
+              <option value="">Seleccione escalafón...</option>
+              {#each escalafonOptions as group}
+                <optgroup label={group.label}>
+                  {#each group.options as opt}
+                    <option value={opt.value}>{opt.label}</option>
+                  {/each}
+                </optgroup>
+              {/each}
+            </select>
+          </div>
+
+          <div class="space-y-1">
+            <label for="cedula" class="text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">
+              Cédula *
+            </label>
+            <input
+              id="cedula"
+              type="text"
+              bind:value={formData.cedula}
+              onchange={onCedulaChange}
+              required
+              class="w-full px-4 py-2 rounded-xl border border-[rgb(var(--border-primary))] bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--accent-primary))]"
+              placeholder="Número de cédula"
+            />
           </div>
 
           <div class="space-y-1 md:col-span-3">
@@ -811,35 +1123,33 @@
           </button>
           <button
             onclick={agregarRegistro}
-            class="flex items-center gap-2 px-6 py-2 rounded-xl bg-[rgb(var(--accent-primary))] text-white font-medium hover:opacity-90 transition-opacity"
-          >
-            <Check class="w-4 h-4" />
-            {editingIndex !== null ? 'Actualizar' : 'Agregar'}
-          </button>
-        </div>
-      </div>
-    {/if}
-
-    {#if registros.length > 0}
-      <div class="bg-[rgb(var(--card-bg))] border border-[rgb(var(--card-border))] rounded-2xl overflow-hidden shadow-lg">
-        <div class="p-4 border-b border-[rgb(var(--border-primary))] flex items-center justify-between">
-          <h2 class="text-lg font-bold text-[rgb(var(--text-primary))] flex items-center gap-2">
-            <Clock class="w-5 h-5" />
-            Registros Pendientes ({registros.length})
-          </h2>
-          <button
-            onclick={guardarEnSheets}
             disabled={isSaving}
-            class="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-white font-medium hover:bg-emerald-600 transition-colors disabled:opacity-50"
+            class="flex items-center gap-2 px-6 py-2 rounded-xl bg-[rgb(var(--accent-primary))] text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {#if isSaving}
               <Loader2 class="w-4 h-4 animate-spin" />
               Guardando...
             {:else}
-              <Save class="w-4 h-4" />
-              Guardar en Sheets
+              <Check class="w-4 h-4" />
+              {editingIndex !== null ? 'Actualizar' : 'Agregar'}
             {/if}
           </button>
+        </div>
+      </div>
+    {/if}
+
+    {#if isLoadingRecords}
+      <div class="bg-[rgb(var(--card-bg))] border border-[rgb(var(--card-border))] rounded-2xl p-8 text-center shadow-lg">
+        <Loader2 class="w-12 h-12 mx-auto mb-4 animate-spin text-[rgb(var(--text-muted))]" />
+        <p class="text-[rgb(var(--text-muted))]">Cargando registros desde Sheets...</p>
+      </div>
+    {:else if registros.length > 0}
+      <div class="bg-[rgb(var(--card-bg))] border border-[rgb(var(--card-border))] rounded-2xl overflow-hidden shadow-lg">
+        <div class="p-4 border-b border-[rgb(var(--border-primary))]">
+          <h2 class="text-lg font-bold text-[rgb(var(--text-primary))] flex items-center gap-2">
+            <Clock class="w-5 h-5" />
+            Historial de Registros ({registros.length})
+          </h2>
         </div>
 
         <div class="overflow-x-auto">
@@ -854,6 +1164,7 @@
                 <th class="px-3 py-3 text-left text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">Grado</th>
                 <th class="px-3 py-3 text-left text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">Asignatura</th>
                 <th class="px-3 py-3 text-center text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">Firma</th>
+                <th class="px-3 py-3 text-center text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">Escalafón</th>
                 <th class="px-3 py-3 text-center text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">Acciones</th>
               </tr>
             </thead>
@@ -868,12 +1179,18 @@
                   <td class="px-3 py-3 text-sm text-[rgb(var(--text-primary))]">{reg.gradoAtendido}</td>
                   <td class="px-3 py-3 text-sm text-[rgb(var(--text-primary))]">{reg.asignatura}</td>
                   <td class="px-3 py-3 text-center">
-                    {#if reg.firmaBase64}
+                    {#if firmaUrl}
+                      <img src={firmaUrl} alt="Firma" class="h-8 w-auto inline-block" />
+                    {:else if reg.firmaBase64 && reg.firmaBase64 !== 'FIRMA_GUARDADA'}
                       <img src={reg.firmaBase64} alt="Firma" class="h-8 w-auto inline-block" />
                     {:else}
-                      <span class="text-[rgb(var(--text-muted))] text-xs">Sin firma</span>
+                      <span class="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-100 text-emerald-600 text-xs">
+                        <Check class="w-3 h-3" />
+                        Firmado
+                      </span>
                     {/if}
                   </td>
+                  <td class="px-3 py-3 text-center text-sm font-medium text-[rgb(var(--text-primary))]">{reg.escalafon}</td>
                   <td class="px-3 py-3 text-center">
                     <div class="flex items-center justify-center gap-1">
                       <button
@@ -919,7 +1236,7 @@
       </div>
     {/if}
 
-    {#if registros.length === 0 && !showForm}
+    {#if currentView === 'registrar' && registros.length === 0 && !showForm && !isLoadingRecords}
       <div in:fade class="bg-[rgb(var(--card-bg))] border border-[rgb(var(--card-border))] rounded-2xl p-12 text-center shadow-lg">
         <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-[rgb(var(--bg-secondary))] flex items-center justify-center">
           <Clock class="w-8 h-8 text-[rgb(var(--text-muted))]" />

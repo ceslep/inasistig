@@ -80,6 +80,13 @@
     try { localStorage.removeItem(TOUR_KEY); } catch {}
   }
 
+  function handleCerrarAyuda() {
+    mostrarAyudaCoberturas = false;
+    mostrarTourDeNuevo();
+    step = 1;
+    mostrarTourCobertura = true;
+  }
+
   let fechaSeleccionada = $state("");
   let diaSeleccionado = $state("");
   let docentesAusentes = $state<{ nombre: string; tipo: string }[]>([]);
@@ -1073,7 +1080,7 @@ function recalcularCoberturas() {
             {#each DIAS as dia, i}
               <button
                 onclick={() => seleccionarDia(dia)}
-                class="px-4 py-2 rounded-lg font-medium text-sm transition-all"
+                class="px-4 py-2 rounded-lg font-medium text-sm transition-all min-h-[48px] sm:min-h-[auto]"
                 style="
                   background-color: {diaSeleccionado === dia ? 'rgb(var(--accent-primary))' : 'rgb(var(--bg-secondary))'};
                   color: {diaSeleccionado === dia ? 'white' : 'rgb(var(--text-primary))'};
@@ -1103,7 +1110,7 @@ function recalcularCoberturas() {
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-2 rounded-lg border" style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--bg-secondary));">
             {#each docentes as docente}
               {@const ausencia = docentesAusentes.find((a) => a.nombre === docente)}
-              <label class="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-[rgb(var(--card-bg))]">
+              <label class="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-[rgb(var(--card-bg))] min-h-[44px]">
                 <input
                   type="checkbox"
                   checked={!!ausencia}
@@ -1118,7 +1125,7 @@ function recalcularCoberturas() {
                       mostrarModalTipoAusencia = true;
                     }
                   }}
-                  class="w-4 h-4 accent-[rgb(var(--accent-primary))]"
+                  class="w-5 h-5 accent-[rgb(var(--accent-primary))] shrink-0"
                 />
                 <span class="text-xs truncate" style="color: rgb(var(--text-primary));">{docente}</span>
                 {#if ausencia && TIPOS_ICONOS[ausencia.tipo]}
@@ -1136,7 +1143,7 @@ function recalcularCoberturas() {
           </p>
           <button
             onclick={() => mostrarModalGrupos = true}
-            class="w-full py-3 rounded-xl font-bold transition-all border-2"
+            class="w-full py-3 rounded-xl font-bold transition-all border-2 min-h-[52px]"
             style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--accent-primary)); border-color: rgb(var(--accent-primary));"
           >
             LIBERAR GRUPOS {gruposAusentes.length > 0 ? `(${gruposAusentes.length})` : ""}
@@ -1156,7 +1163,7 @@ function recalcularCoberturas() {
           id="tour-step1-boton"
           onclick={analizarHorasLibres}
           disabled={loading}
-          class="w-full py-3 rounded-xl font-bold text-white transition-all flex items-center justify-center gap-2"
+          class="w-full py-3 rounded-xl font-bold text-white transition-all flex items-center justify-center gap-2 min-h-[52px]"
           style="background-color: rgb(var(--accent-primary)); opacity: {loading ? 0.7 : 1};"
         >
           {#if loading}
@@ -1242,12 +1249,12 @@ function recalcularCoberturas() {
           <div class="flex-1 overflow-y-auto mb-4">
             <div class="flex gap-2 flex-wrap p-2 rounded-lg border" style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--bg-secondary));">
               {#each grupos as grupo}
-                <div class="flex items-center gap-1 px-2 py-1 rounded hover:bg-[rgb(var(--card-bg))]">
+                <div class="flex items-center gap-2 px-3 py-2 rounded hover:bg-[rgb(var(--card-bg))] min-w-[80px]">
                   <input
                     type="checkbox"
                     checked={isGrupoAusente(grupo)}
                     onchange={(e) => toggleGrupoAusente(grupo, e.currentTarget.checked, 5)}
-                    class="w-4 h-4 accent-[rgb(var(--accent-primary))]"
+                    class="w-5 h-5 accent-[rgb(var(--accent-primary))] shrink-0"
                   />
                   <span class="text-xs font-medium" style="color: rgb(var(--text-primary));">{grupo}</span>
                   {#if isGrupoAusente(grupo)}
@@ -1285,14 +1292,14 @@ function recalcularCoberturas() {
           <div class="flex gap-3">
             <button
               onclick={() => { gruposAusentes = []; }}
-              class="flex-1 py-2 rounded-lg font-medium transition-all"
+              class="flex-1 py-3 rounded-lg font-medium transition-all min-h-[48px]"
               style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border: 1px solid rgb(var(--border-primary));"
             >
               Limpiar todo
             </button>
             <button
               onclick={() => { mostrarModalGrupos = false; if (step >= 2) recalcularCoberturas(); }}
-              class="flex-1 py-2 rounded-lg font-bold text-white transition-all"
+              class="flex-1 py-3 rounded-lg font-bold text-white transition-all min-h-[48px]"
               style="background-color: rgb(var(--accent-primary));"
             >
               Listo
@@ -1335,17 +1342,18 @@ function recalcularCoberturas() {
                   mostrarModalTipoAusencia = false;
                   docenteSeleccionado = "";
                 }}
-                class="py-2 px-3 rounded-lg text-sm font-medium transition-all flex items-center gap-2"
+                class="py-3 px-3 rounded-lg text-sm font-medium transition-all flex items-center gap-2 min-h-[48px]"
                 style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border: 1px solid rgb(var(--border-primary));"
               >
                 <Icon size={16} style="color: {item.color}" />
-                {item.tipo}
+                <span class="hidden sm:inline">{item.tipo}</span>
+                <span class="sm:hidden text-xs">{item.tipo.slice(0,4)}</span>
               </button>
             {/each}
           </div>
           <button
             onclick={() => { mostrarModalTipoAusencia = false; docenteSeleccionado = ""; }}
-            class="w-full py-2 rounded-lg font-medium"
+            class="w-full py-3 rounded-lg font-medium min-h-[48px]"
             style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border: 1px solid rgb(var(--border-primary));"
           >
             Cancelar
@@ -1485,7 +1493,7 @@ function recalcularCoberturas() {
   {#if mostrarAyudaCoberturas}
     <CoberturasHelp
       pasoActual={step}
-      onClose={() => mostrarAyudaCoberturas = false}
+      onClose={handleCerrarAyuda}
     />
   {/if}
 

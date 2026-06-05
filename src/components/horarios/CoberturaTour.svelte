@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from "svelte";
   import { fade, scale } from "svelte/transition";
   import { X, ChevronLeft, ChevronRight, Check, HelpCircle } from "@lucide/svelte";
 
@@ -39,25 +40,34 @@
   const TOOLTIP_W = 320;
   const TOOLTIP_H_EST = 220;
 
-  function medirElemento() {
+  async function medirElemento() {
+    await tick();
     const el = document.querySelector(pasoActual?.selector ?? "");
     if (!el) { rect = null; return; }
     const r = el.getBoundingClientRect();
     rect = { top: r.top, left: r.left, width: r.width, height: r.height };
   }
 
-  function localizar() {
+  async function localizar() {
     const paso = pasoActual;
     if (!paso) return;
+    await tick();
     const el = document.querySelector(paso.selector);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    await tick();
     medirElemento();
   }
 
   $effect(() => {
     pasoActual;
     indice;
-    localizar();
+    setTimeout(() => localizar(), 50);
+  });
+
+  $effect(() => {
+    if (stepInicial !== indice) {
+      indice = stepInicial;
+    }
   });
 
   function siguiente() {
@@ -107,7 +117,10 @@
   }
 
   const tooltipPos = $derived.by(() => {
-    if (!rect || typeof window === "undefined") {
+    if (typeof window === "undefined") {
+      return { centrado: true, top: 0, left: 0 };
+    }
+    if (!rect) {
       return { centrado: true, top: 0, left: 0 };
     }
     const vw = window.innerWidth;

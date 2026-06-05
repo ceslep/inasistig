@@ -90,13 +90,13 @@
       Step 2 — Análisis de Horas Libres
     </h2>
     <div class="flex items-center gap-2">
-      <button onclick={onBack} class="text-sm px-3 py-1 rounded-lg" style="color: rgb(var(--text-secondary));">
+      <button onclick={onBack} class="text-sm px-4 py-2 rounded-lg min-h-[44px]" style="color: rgb(var(--text-secondary));">
         ← Atrás
       </button>
       <button
         onclick={onGenerar}
         disabled={loading}
-        class="py-2 px-4 rounded-xl font-bold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+        class="py-2 px-4 rounded-xl font-bold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2 text-sm min-h-[44px]"
         style="background-color: rgb(var(--accent-primary)); opacity: {loading ? 0.7 : 1};"
       >
         {#if loading}
@@ -215,20 +215,20 @@
     </div>
   </div>
 
-  <label class="flex items-center gap-2 mt-4 cursor-pointer">
-    <input type="checkbox" bind:checked={permitirRepetir} class="w-4 h-4" style="accent-color: rgb(var(--accent-primary));" />
-    <span style="color: rgb(var(--text-primary));">Permitir repetir (mismo docente varias horas)</span>
+  <label class="flex items-center gap-3 mt-4 cursor-pointer p-2 rounded-lg min-h-[48px]">
+    <input type="checkbox" bind:checked={permitirRepetir} class="w-5 h-5 shrink-0" style="accent-color: rgb(var(--accent-primary));" />
+    <span class="text-sm" style="color: rgb(var(--text-primary));">Permitir repetir (mismo docente varias horas)</span>
   </label>
 
-  <label class="flex items-center gap-2 mt-2 cursor-pointer">
-    <input type="checkbox" bind:checked={ignorarHorasPropietarias} class="w-4 h-4" style="accent-color: rgb(var(--accent-primary));" />
-    <span style="color: rgb(var(--text-primary));">Ignorar restricción de horas libres propietarias (horarios.json)</span>
+  <label class="flex items-center gap-3 mt-2 cursor-pointer p-2 rounded-lg min-h-[48px]">
+    <input type="checkbox" bind:checked={ignorarHorasPropietarias} class="w-5 h-5 shrink-0" style="accent-color: rgb(var(--accent-primary));" />
+    <span class="text-sm" style="color: rgb(var(--text-primary));">Ignorar restricción de horas libres propietarias (horarios.json)</span>
   </label>
 
   <button
     onclick={onGenerar}
     disabled={loading}
-    class="w-full mt-6 py-3 rounded-xl font-bold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+    class="w-full mt-6 py-4 rounded-xl font-bold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2 min-h-[52px]"
     style="background-color: rgb(var(--accent-primary)); opacity: {loading ? 0.7 : 1};"
   >
     {#if loading}

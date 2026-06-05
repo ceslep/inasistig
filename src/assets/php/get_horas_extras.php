@@ -1,6 +1,9 @@
 <?php
 /**
- * get_horas_extras.php - Obtener registros de horas extras desde Google Sheets
+ * get_horas_extras.php - Obtener registros de horas extras y firmas desde Google Sheets
+ *
+ * Para hoja "extras": filtros por grado, materia
+ * Para hoja "firmas": filtro por docente
  */
 
 require __DIR__ . '/vendor/autoload.php';
@@ -40,7 +43,14 @@ try {
     $worksheetTitle = $data['worksheetTitle'] ?? 'extras';
     $filterGrado = isset($data['filterGrado']) ? strtolower(trim($data['filterGrado'])) : null;
     $filterMateria = isset($data['filterMateria']) ? strtolower(trim($data['filterMateria'])) : null;
-    $range = $worksheetTitle . '!A1:M5000';
+    $filterDocente = isset($data['filterDocente']) ? strtolower(trim($data['filterDocente'])) : null;
+    
+    // Determinar el rango basado en la hoja
+    if ($worksheetTitle === 'firmas') {
+        $range = 'firmas!A1:B5000';
+    } else {
+        $range = $worksheetTitle . '!A1:P5000';
+    }
 
     $client = new Client();
     $client->setApplicationName('Horas Extras');
@@ -56,22 +66,41 @@ try {
     $allValues = $response->getValues() ?: [];
 
     $records = [];
-    for ($i = 1; $i < count($allValues); $i++) {
-        $row = $allValues[$i];
-        $rowGrado = isset($row[7]) ? strtolower(trim($row[7])) : '';
-        $rowMateria = isset($row[8]) ? strtolower(trim($row[8])) : '';
-
-        if ($filterGrado !== null && $rowGrado !== $filterGrado) {
-            continue;
+    
+    // Manejar hoja "firmas" con filtro por docente
+    if ($worksheetTitle === 'firmas') {
+        for ($i = 1; $i < count($allValues); $i++) {
+            $row = $allValues[$i];
+            $rowDocente = isset($row[0]) ? strtolower(trim($row[0])) : '';
+            
+            if ($filterDocente !== null && $rowDocente !== $filterDocente) {
+                continue;
+            }
+            
+            $records[] = [
+                'rowIndex' => $i + 1,
+                'values' => $row
+            ];
         }
-        if ($filterMateria !== null && $rowMateria !== $filterMateria) {
-            continue;
-        }
+    } else {
+        // Hoja "extras" con filtros por grado y materia
+        for ($i = 1; $i < count($allValues); $i++) {
+            $row = $allValues[$i];
+            $rowGrado = isset($row[7]) ? strtolower(trim($row[7])) : '';
+            $rowMateria = isset($row[8]) ? strtolower(trim($row[8])) : '';
 
-        $records[] = [
-            'rowIndex' => $i + 1,
-            'values' => $row
-        ];
+            if ($filterGrado !== null && $rowGrado !== $filterGrado) {
+                continue;
+            }
+            if ($filterMateria !== null && $rowMateria !== $filterMateria) {
+                continue;
+            }
+
+            $records[] = [
+                'rowIndex' => $i + 1,
+                'values' => $row
+            ];
+        }
     }
 
     echo json_encode([
