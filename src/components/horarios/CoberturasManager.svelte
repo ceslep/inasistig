@@ -33,7 +33,7 @@
   import CoberturasHelp from "./CoberturasHelp.svelte";
   import Swal from "sweetalert2";
   import ModuleHeader from "../ModuleHeader.svelte";
-  import { Flame, GraduationCap, Car, Heart, Shield, Stethoscope, Briefcase, Calendar, Users, Scale, Skull, Laptop, Award, SportShoe, HelpCircle, PlayCircle, CheckSquare, Save, Eye, UsersRound } from "@lucide/svelte";
+  import { Flame, GraduationCap, Car, Heart, Shield, Stethoscope, Briefcase, Calendar, Users, Scale, Skull, Laptop, Award, SportShoe, HelpCircle, PlayCircle, CheckSquare, Save, Eye, UsersRound, X } from "@lucide/svelte";
   import DatePicker from "../anotador/DatePicker.svelte";
   import CoberturaTour from "./CoberturaTour.svelte";
   import type { TourPaso } from "./CoberturaTour.svelte";
@@ -459,10 +459,10 @@ function recalcularCoberturas() {
   }
 
   function getHoraInicio(grupo: string): number {
-    return gruposAusentes.find((g) => g.grupo === grupo)?.horaInicio ?? 5;
+    return gruposAusentes.find((g) => g.grupo === grupo)?.horaInicio ?? 6;
   }
 
-  function toggleGrupoAusente(grupo: string, checked: boolean, horaInicio: number = 5) {
+  function toggleGrupoAusente(grupo: string, checked: boolean, horaInicio: number = 6) {
     if (checked) {
       if (!gruposAusentes.some((g) => g.grupo === grupo)) {
         gruposAusentes = [...gruposAusentes, { grupo, horaInicio }];
@@ -479,7 +479,7 @@ function recalcularCoberturas() {
     );
   }
 
-  function agregarGrupoAusente(grupo: string, horaInicio: number = 5) {
+  function agregarGrupoAusente(grupo: string, horaInicio: number = 6) {
     if (!gruposAusentes.some((g) => g.grupo === grupo)) {
       gruposAusentes = [...gruposAusentes, { grupo, horaInicio }];
       gruposSugeridosAAusentar = gruposSugeridosAAusentar.filter((g) => g.grupo !== grupo);
@@ -1279,7 +1279,7 @@ function recalcularCoberturas() {
                   <input
                     type="checkbox"
                     checked={isGrupoAusente(grupo)}
-                    onchange={(e) => toggleGrupoAusente(grupo, e.currentTarget.checked, 5)}
+                    onchange={(e) => toggleGrupoAusente(grupo, e.currentTarget.checked, 6)}
                     class="w-5 h-5 accent-[rgb(var(--accent-primary))] shrink-0"
                   />
                   <span class="text-xs font-medium" style="color: rgb(var(--text-primary));">{grupo}</span>
@@ -1336,13 +1336,22 @@ function recalcularCoberturas() {
     {/if}
 
     {#if mostrarModalTipoAusencia}
-      <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background-color: rgba(0,0,0,0.5);" role="dialog" aria-modal="true" aria-labelledby="tipo-ausencia-title">
-        <div class="rounded-xl p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" style="background-color: rgb(var(--bg-primary)); border: 1px solid rgb(var(--border-primary));">
-          <h3 id="tipo-ausencia-title" class="text-lg font-bold mb-2" style="color: rgb(var(--text-primary));">Tipo de ausencia <span style="color: #ef4444;">*</span></h3>
-          <p class="text-sm mb-4" style="color: rgb(var(--text-secondary));">
-            Selecciona obligatoriamente el tipo de ausencia para <strong>{docenteSeleccionado}</strong>. Si cancelas, el docente no quedará marcado como ausente.
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-8" style="background-color: rgba(0,0,0,0.5);" role="dialog" aria-modal="true" aria-labelledby="tipo-ausencia-title">
+        <div class="rounded-2xl p-4 sm:p-6 md:p-8 w-full max-w-xs sm:max-w-2xl md:max-w-4xl lg:max-w-5xl max-h-[90vh] overflow-y-auto" style="background-color: rgb(var(--bg-primary)); border: 1px solid rgb(var(--border-primary));">
+          <div class="flex items-center justify-between mb-4 md:mb-6">
+            <h3 id="tipo-ausencia-title" class="text-lg sm:text-xl md:text-2xl font-bold" style="color: rgb(var(--text-primary));">Tipo de ausencia <span style="color: #ef4444;">*</span></h3>
+            <button
+              onclick={() => { mostrarModalTipoAusencia = false; docenteSeleccionado = ""; }}
+              class="p-2 rounded-lg hover:bg-[rgb(var(--bg-secondary))] transition-colors"
+              aria-label="Cerrar"
+            >
+              <X size={20} style="color: rgb(var(--text-muted));" />
+            </button>
+          </div>
+          <p class="text-sm sm:text-base mb-4 md:mb-6" style="color: rgb(var(--text-secondary));">
+            Selecciona obligatoriamente el tipo de ausencia para <strong class="text-[rgb(var(--text-primary))]">{docenteSeleccionado}</strong>. Si cancelas, el docente no quedará marcado como ausente.
           </p>
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mb-4 md:mb-6">
             {#each [
               { tipo: "CALAMIDAD", icono: Flame, color: "#f97316" },
               { tipo: "CAPACITACION", icono: GraduationCap, color: "#8b5cf6" },
@@ -1368,17 +1377,17 @@ function recalcularCoberturas() {
                   mostrarModalTipoAusencia = false;
                   docenteSeleccionado = "";
                 }}
-                class="w-full min-w-0 py-2.5 px-2.5 rounded-lg text-[11px] sm:text-xs font-medium transition-all flex items-center gap-1.5 min-h-[48px] text-left"
+                class="w-full min-w-0 py-3 sm:py-4 px-3 sm:px-4 rounded-xl text-xs sm:text-sm md:text-base font-medium transition-all flex items-center gap-2 sm:gap-3 min-h-[56px] sm:min-h-[64px] text-left hover:scale-[1.02] active:scale-[0.98]"
                 style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border: 1px solid rgb(var(--border-primary));"
               >
-                <Icon size={15} class="shrink-0" style="color: {item.color}" />
+                <Icon size={18} class="shrink-0" style="color: {item.color}" />
                 <span class="min-w-0 leading-tight" style="overflow-wrap: anywhere; word-break: break-word;">{item.tipo}</span>
               </button>
             {/each}
           </div>
           <button
             onclick={() => { mostrarModalTipoAusencia = false; docenteSeleccionado = ""; }}
-            class="w-full py-3 rounded-lg font-medium min-h-[48px]"
+            class="w-full py-3 sm:py-4 rounded-xl font-medium min-h-[52px] sm:min-h-[56px] text-sm sm:text-base transition-all hover:opacity-80"
             style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border: 1px solid rgb(var(--border-primary));"
           >
             Cancelar

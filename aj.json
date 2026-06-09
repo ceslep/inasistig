@@ -1,0 +1,109 @@
+{
+  "fecha": "2026-06-09",
+  "dia": "miercoles",
+  "exportado": "2026-06-09T14:22:00.298Z",
+  "origen": "google_sheets",
+  "totalCoberturas": 10,
+  "coberturas": [
+    {
+      "hora": 0,
+      "ausente": "CARLOS ALBERTO AGUIRRE GONZALEZ",
+      "grupoAusente": "1101",
+      "cubre": "ORIENTACION",
+      "grupoACubrir": "1101",
+      "aprobado": true,
+      "motivo": "JURADO",
+      "estado": "aprobado"
+    },
+    {
+      "hora": 1,
+      "ausente": "CARLOS ALBERTO AGUIRRE GONZALEZ",
+      "grupoAusente": "1101",
+      "cubre": "ORIENTACION",
+      "grupoACubrir": "1101",
+      "aprobado": true,
+      "motivo": "JURADO",
+      "estado": "aprobado"
+    },
+    {
+      "hora": 2,
+      "ausente": "CARLOS ALBERTO AGUIRRE GONZALEZ",
+      "grupoAusente": "1001",
+      "cubre": "JOHN EDWIN ARBOLEDA ACEVEDO",
+      "grupoACubrir": "1001",
+      "aprobado": true,
+      "motivo": "JURADO",
+      "estado": "aprobado"
+    },
+    {
+      "hora": 3,
+      "ausente": "CARLOS ALBERTO AGUIRRE GONZALEZ",
+      "grupoAusente": "1001",
+      "cubre": "JHON JAIRO VELEZ TEJADA",
+      "grupoACubrir": "1001",
+      "aprobado": true,
+      "motivo": "JURADO",
+      "estado": "aprobado"
+    },
+    {
+      "hora": 4,
+      "ausente": "CARLOS ALBERTO AGUIRRE GONZALEZ",
+      "grupoAusente": "701",
+      "cubre": "ANDRES MAYORGA BOTERO",
+      "grupoACubrir": "701",
+      "aprobado": true,
+      "motivo": "JURADO",
+      "estado": "aprobado"
+    },
+    {
+      "hora": 2,
+      "ausente": "DANIEL QUICENO RIVERA",
+      "grupoAusente": "601",
+      "cubre": "ANA SOFIA CARDENAS PETUMA",
+      "grupoACubrir": "601",
+      "aprobado": true,
+      "motivo": "JURADO",
+      "estado": "aprobado"
+    },
+    {
+      "hora": 3,
+      "ausente": "DANIEL QUICENO RIVERA",
+      "grupoAusente": "601",
+      "cubre": "JAVIER DE JESUS AGUDELO CARVAJAL",
+      "grupoACubrir": "601",
+      "aprobado": true,
+      "motivo": "JURADO",
+      "estado": "aprobado"
+    },
+    {
+      "hora": 1,
+      "ausente": "DELCID DE JESUS BUENO ARANDIA",
+      "grupoAusente": "902",
+      "cubre": "CESAR LEANDRO PATINO VELEZ",
+      "grupoACubrir": "902",
+      "aprobado": true,
+      "motivo": "JURADO",
+      "estado": "aprobado"
+    },
+    {
+      "hora": 0,
+      "ausente": "JOSE DARIO OREJUELA SANCHEZ",
+      "grupoAusente": "602",
+      "cubre": "BLANCA NELLY MARIN GIRALDO",
+      "grupoACubrir": "602",
+      "aprobado": true,
+      "motivo": "INCAPACIDAD",
+      "estado": "aprobado"
+    },
+    {
+      "hora": 1,
+      "ausente": "JOSE DARIO OREJUELA SANCHEZ",
+      "grupoAusente": "602",
+      "cubre": "CARLOS ARMANDO RIOS ALVAREZ",
+      "grupoACubrir": "602",
+      "aprobado": true,
+      "motivo": "INCAPACIDAD",
+      "estado": "aprobado"
+    }
+  ]
+}

@@ -233,14 +233,13 @@
   // Horario con adelantos aplicados (cae al import crudo si no se pasa).
   const horariosVista = $derived((horariosEfectivos ?? (horariosData as HorarioDocente[])));
 
-  // Conteo de ocurrencias por docente en sesión (excluyendo roles sin límite y
-  // horas que originalmente eran del grupo liberado — esas no cuentan porque
-  // el docente ya las tenía libres por ausencia de grupo).
+  // Conteo de ocurrencias por docente en sesión (excluyendo roles sin límite,
+  // horas que originalmente eran del grupo liberado, e "IGNORAR").
   const conteoSesion = $derived.by(() => {
     const m = new Map<string, number>();
     for (const c of coberturasSugeridas) {
       const d = normalizarDocente(c.docenteCubre);
-      if (!d) continue;
+      if (!d || d === "IGNORAR") continue;
       if (ROLES_SIN_LIMITE.some((r) => d.includes(r))) continue;
       if (esHoraLibrePorGrupoAusente(d, c.hora, diaSeleccionado, horariosVista, gruposAusentes)) {
         continue;
@@ -250,14 +249,14 @@
     return m;
   });
 
-  // Conteo histórico mismo día
+  // Conteo histórico mismo día (excluye roles sin límite e "IGNORAR")
   const conteoHistorico = $derived.by(() => {
     const m = new Map<string, number>();
     for (const cp of coberturasHistoricas) {
       if (cp.estado !== "aprobado") continue;
       if (cp.fecha !== fechaSeleccionada) continue;
       const d = normalizarDocente(cp.docente_cubre);
-      if (!d) continue;
+      if (!d || d === "IGNORAR") continue;
       if (ROLES_SIN_LIMITE.some((r) => d.includes(r))) continue;
       m.set(d, (m.get(d) || 0) + 1);
     }
@@ -265,12 +264,12 @@
   });
 
   // Estilo para options con histórico/sesión previa (no asignados automáticamente).
-  // Retorna inline-style para <option>. Roles sin límite se ignoran.
+  // Retorna inline-style para <option>. Roles sin límite e "IGNORAR" se ignoran.
   // Tope semanal: máx 2 (histórico + sesión). El aviso aparece solo al SUPERAR 2
   // (3er cubrimiento). 1 histórico + 1 sesión = 2 → válido, sin alerta.
   function estiloOptionDocente(docente: string, autoAsignado: string): string {
     const d = normalizarDocente(docente);
-    if (!d) return "";
+    if (!d || d === "IGNORAR") return "";
     if (ROLES_SIN_LIMITE.some((r) => d.includes(r))) return "";
     if (d === normalizarDocente(autoAsignado)) return ""; // el auto-asignado se respeta
     const s = conteoSesion.get(d) || 0;
@@ -292,7 +291,7 @@
 
   function getIndicadorWarning(docente: string): string {
     const d = normalizarDocente(docente);
-    if (!d) return "";
+    if (!d || d === "IGNORAR") return "";
     if (ROLES_SIN_LIMITE.some((r) => d.includes(r))) return "";
     const s = conteoSesion.get(d) || 0;
     const h = conteoHistorico.get(d) || 0;
@@ -304,7 +303,7 @@
 
   function esDuplicado(docente: string, hora: number): { dup: boolean; sesion: number; historico: number; porGrupoLiberado: boolean } {
     const d = normalizarDocente(docente);
-    if (!d) return { dup: false, sesion: 0, historico: 0, porGrupoLiberado: false };
+    if (!d || d === "IGNORAR") return { dup: false, sesion: 0, historico: 0, porGrupoLiberado: false };
     if (ROLES_SIN_LIMITE.some((r) => d.includes(r))) return { dup: false, sesion: 0, historico: 0, porGrupoLiberado: false };
     const horaEsLibrePorGrupo = esHoraLibrePorGrupoAusente(d, hora, diaSeleccionado, horariosVista, gruposAusentes);
     const s = conteoSesion.get(d) || 0;
@@ -658,7 +657,7 @@
           <tr style="background-color: rgb(var(--bg-secondary));">
             <th class="p-3 text-center font-bold uppercase tracking-wider" style="color: rgb(var(--text-primary));">Hora</th>
             <th class="p-3 text-center font-bold uppercase tracking-wider" style="color: rgb(var(--text-primary));">Ausente</th>
-            <th class="p-3 text-center font-bold uppercase tracking-wider" style="color: rgb(var(--text-primary));">Cubre</th>
+            <th class="p-3 text-center font-bold uppercase tracking-wider w-[40%] min-w-[320px]" style="color: rgb(var(--text-primary));">Cubre</th>
             <th class="p-3 text-center font-bold uppercase tracking-wider" style="color: rgb(var(--text-primary));">Grupo a cubrir</th>
             <th class="p-3 text-center font-bold uppercase tracking-wider" style="color: rgb(var(--text-primary));">Estado</th>
             <th class="p-3 text-center font-bold uppercase tracking-wider" style="color: rgb(var(--text-primary));">Aprobar</th>
@@ -688,11 +687,11 @@
                 </button>
               </td>
               <td class="p-3 text-center border-t" style="border-color: rgb(var(--border-primary));">
-                <div class="flex items-center gap-1 justify-center">
+                <div class="flex items-center gap-2 w-full">
                   <select
                     value={cov.docenteCubre || ""}
                     onchange={(e) => confirmarCambioDocente(i, e.currentTarget.value, cov.hora, e.currentTarget, cov.docenteCubre || "")}
-                    class="w-full max-w-[180px] px-2 py-1.5 rounded-lg text-sm font-medium border transition-all {dupInfo.dup ? 'cobertura-blink-dup' : ''}"
+                    class="flex-1 min-w-0 px-3 py-2 rounded-lg text-base font-semibold border transition-all {dupInfo.dup ? 'cobertura-blink-dup' : ''}"
                     style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--accent-primary)); border-color: {dupInfo.dup ? '#ef4444' : dupInfo.porGrupoLiberado ? '#eab308' : 'rgb(var(--border-primary))'}; border-width: {dupInfo.dup || dupInfo.porGrupoLiberado ? '2px' : '1px'};"
                   >
                     {#if cov.posiblesCobradores.length > 0}
@@ -701,7 +700,7 @@
                           {@const indic = getIndicadorWarning(docente)}
                           {@const warningText = (() => { const s = conteoSesion.get(docente) || 0; const h = conteoHistorico.get(docente) || 0; if (s >= 1 && h >= 1) return " ¡YA USADO!";
 if (h >= 1) return " ¡HOY YA CUBRIÓ!";
-if (s >= 1) return " Cubre otra u actual";
+if (s >= 1) return " Cubre otra o actual";
 return ""; })()}
                           <option value={docente} style={estiloOptionDocente(docente, cov.docenteCubre)}>{indic}{docente}{warningText}</option>
                         {/each}
@@ -730,7 +729,7 @@ return ""; })()}
                     </button>
                   {/if}
                   {#if esCoberturaEnHoraLibre(cov.docenteCubre, cov.hora)}
-                    <span class="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded" style="background-color: rgb(var(--accent-primary)); color: white;" title="Cubre en su hora libre ({normalizarDocente(cov.docenteCubre)}{MARCADOR_LIBRE})">@</span>
+                    <span class="shrink-0 text-xs font-bold px-2 py-1 rounded" style="background-color: rgb(var(--accent-primary)); color: white;" title="Cubre en su hora libre ({normalizarDocente(cov.docenteCubre)}{MARCADOR_LIBRE})">@</span>
                   {/if}
                 </div>
                 {#if dupInfo.dup}
@@ -880,7 +879,7 @@ return ""; })()}
                       {@const indic = getIndicadorWarning(docente)}
                       {@const warningText = (() => { const s = conteoSesion.get(docente) || 0; const h = conteoHistorico.get(docente) || 0; if (s >= 1 && h >= 1) return " ¡YA USADO!";
 if (h >= 1) return " ¡HOY YA CUBRIÓ!";
-if (s >= 1) return " Cubre otra u actual";
+if (s >= 1) return " Cubre otra o actual";
 return ""; })()}
                       <option value={docente} style={estiloOptionDocente(docente, cov.docenteCubre)}>{indic}{docente}{warningText}</option>
                     {/each}
@@ -977,7 +976,7 @@ return ""; })()}
 
     <div class="mt-4 mb-4 p-3 rounded-xl flex flex-wrap gap-3 text-xs items-center" style="background-color: rgb(var(--bg-secondary)); border: 1px solid rgb(var(--border-primary));">
       <span class="font-semibold mr-2" style="color: rgb(var(--text-primary));">Alertas en select:</span>
-      <span class="px-3 py-1.5 rounded-lg font-bold flex items-center gap-1" style="background-color: #3b82f6; color: white;">🔵 Cubre otra u actual</span>
+      <span class="px-3 py-1.5 rounded-lg font-bold flex items-center gap-1" style="background-color: #3b82f6; color: white;">🔵 Cubre otra o actual</span>
       <span class="px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 blink-warning" style="background-color: #f97316; color: white;">🟠 Ya cubrió hoy</span>
       <span class="px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 blink-warning" style="background-color: #ef4444; color: white;">🔴 Sesión + histórico</span>
     </div>

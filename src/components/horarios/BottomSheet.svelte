@@ -64,9 +64,11 @@
   <div
     class="bs-backdrop"
     onclick={handleBackdropClick}
+    onkeydown={handleBackdropClick}
     role="dialog"
     aria-modal="true"
     aria-labelledby={title ? "bs-title" : undefined}
+    tabindex="0"
     style="--ty: {translateY}px;"
   >
     <div
@@ -75,6 +77,8 @@
       ontouchstart={handleTouchStart}
       ontouchmove={handleTouchMove}
       ontouchend={handleTouchEnd}
+      role="document"
+      tabindex="0"
     >
       {#if showHandle}
         <div class="bs-handle">

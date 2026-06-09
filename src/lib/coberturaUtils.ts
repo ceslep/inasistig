@@ -469,7 +469,23 @@ export function asignarAutomaticamente(
         .map((h) => h.docente);
 
       if (sinLimite.length > 0) {
-        violation = "⚠️ Límite diario/semanal alcanzado";
+        let violacionDiaria = false;
+        let violacionSemanal = false;
+        for (const nombreDoc of sinLimite) {
+          const cargaSes = cargaDiariaSesion.get(nombreDoc) || 0;
+          const horasSem = horasCubiertasSemana.get(nombreDoc) || 0;
+          if (cargaSes >= 1) violacionDiaria = true;
+          if (horasSem > 2) violacionSemanal = true;
+        }
+        if (violacionDiaria && violacionSemanal) {
+          violation = "⚠️ Límite diario y semanal alcanzados";
+        } else if (violacionDiaria) {
+          violation = "⚠️ Límite diario alcanzado";
+        } else if (violacionSemanal) {
+          violation = "⚠️ Límite semanal alcanzado";
+        } else {
+          violation = "⚠️ Límite diario/semanal alcanzado";
+        }
         mejorCobrador = sinLimite[0];
       } else {
         const sinLimiteTotal = ROLES_SIN_LIMITE.filter(r =>

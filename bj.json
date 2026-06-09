@@ -1,0 +1,109 @@
+{
+  "fecha": "2026-06-10",
+  "dia": "miercoles",
+  "exportado": "2026-06-09T14:22:31.027Z",
+  "origen": "sugerido",
+  "totalCoberturas": 10,
+  "coberturas": [
+    {
+      "hora": 3,
+      "ausente": "CESAR LEANDRO PATIÑO VELEZ",
+      "grupoAusente": "1102",
+      "cubre": "DANIEL QUICENO RIVERA",
+      "grupoACubrir": "1102",
+      "aprobado": true,
+      "motivo": "MEDICO",
+      "violacion": null
+    },
+    {
+      "hora": 4,
+      "ausente": "CESAR LEANDRO PATIÑO VELEZ",
+      "grupoAusente": "1102",
+      "cubre": "CARLOS ALBERTO AGUIRRE GONZALEZ",
+      "grupoACubrir": "1102",
+      "aprobado": true,
+      "motivo": "MEDICO",
+      "violacion": null
+    },
+    {
+      "hora": 5,
+      "ausente": "CESAR LEANDRO PATIÑO VELEZ",
+      "grupoAusente": "601",
+      "cubre": "ANDRES MAYORGA BOTERO",
+      "grupoACubrir": "601",
+      "aprobado": true,
+      "motivo": "MEDICO",
+      "violacion": "⚠️ Límite diario/semanal alcanzado"
+    },
+    {
+      "hora": 6,
+      "ausente": "CESAR LEANDRO PATIÑO VELEZ",
+      "grupoAusente": "1101",
+      "cubre": "ORIENTACION",
+      "grupoACubrir": "1101",
+      "aprobado": true,
+      "motivo": "MEDICO",
+      "violacion": null
+    },
+    {
+      "hora": 0,
+      "ausente": "JOSE DARIO OREJUELA SANCHEZ",
+      "grupoAusente": "602",
+      "cubre": "CARLOS ARMANDO RIOS ALVAREZ",
+      "grupoACubrir": "602",
+      "aprobado": true,
+      "motivo": "INCAPACIDAD",
+      "violacion": "⚠️ Límite diario/semanal alcanzado"
+    },
+    {
+      "hora": 1,
+      "ausente": "JOSE DARIO OREJUELA SANCHEZ",
+      "grupoAusente": "602",
+      "cubre": "BLANCA NELLY MARIN GIRALDO",
+      "grupoACubrir": "602",
+      "aprobado": true,
+      "motivo": "INCAPACIDAD",
+      "violacion": "⚠️ Límite diario/semanal alcanzado"
+    },
+    {
+      "hora": 3,
+      "ausente": "JOSE DARIO OREJUELA SANCHEZ",
+      "grupoAusente": "601",
+      "cubre": "ANA SOFIA CARDENAS PETUMA",
+      "grupoACubrir": "601",
+      "aprobado": true,
+      "motivo": "INCAPACIDAD",
+      "violacion": "⚠️ Límite diario/semanal alcanzado"
+    },
+    {
+      "hora": 4,
+      "ausente": "JOSE DARIO OREJUELA SANCHEZ",
+      "grupoAusente": "601",
+      "cubre": "ILDORY JARAMILLO",
+      "grupoACubrir": "601",
+      "aprobado": true,
+      "motivo": "INCAPACIDAD",
+      "violacion": null
+    },
+    {
+      "hora": 5,
+      "ausente": "JOSE DARIO OREJUELA SANCHEZ",
+      "grupoAusente": "801",
+      "cubre": "JOHN EDWIN ARBOLEDA ACEVEDO",
+      "grupoACubrir": "801",
+      "aprobado": true,
+      "motivo": "INCAPACIDAD",
+      "violacion": "⚠️ Límite diario/semanal alcanzado"
+    },
+    {
+      "hora": 6,
+      "ausente": "JOSE DARIO OREJUELA SANCHEZ",
+      "grupoAusente": "801",
+      "cubre": "ORIENTACION",
+      "grupoACubrir": "801",
+      "aprobado": true,
+      "motivo": "INCAPACIDAD",
+      "violacion": null
+    }
+  ]
+}

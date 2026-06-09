@@ -955,7 +955,7 @@
           {/if}
 
           <div class="space-y-1 md:col-span-3">
-            <label class="text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">Seleccionar Horas del Día</label>
+            <span class="text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">Seleccionar Horas del Día</span>
             {#if slotsDelDia.length === 0}
               <div class="p-4 rounded-xl border border-[rgb(var(--border-primary))] bg-[rgb(var(--bg-secondary))] text-center text-sm text-[rgb(var(--text-muted))]">
                 Seleccione fecha y docente para ver las horas disponibles
@@ -1013,16 +1013,16 @@
           </div>
 
           <div class="space-y-1">
-            <label class="text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">Horas Calculadas</label>
+            <span class="text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">Horas Calculadas</span>
             <div class="w-full px-4 py-2 rounded-xl border border-[rgb(var(--border-primary))] bg-[rgb(var(--bg-secondary))] text-[rgb(var(--text-primary))] font-mono font-bold text-center text-lg">
               {horasExtrasCalculadas.toFixed(2)}
             </div>
           </div>
 
           <div class="space-y-1 md:col-span-3">
-            <label class="text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">
+            <span class="text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">
               Firma (PNG transparente, máx 300KB) {!docenteHasFirma ? '*' : ''}
-            </label>
+            </span>
             <div class="flex items-center gap-4">
               {#if isLoadingFirma}
                 <div class="flex items-center gap-2 px-4 py-2">

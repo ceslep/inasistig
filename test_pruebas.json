@@ -1,0 +1,11 @@
+{
+  "spreadsheetId": "1N-94FYW5kvGmOcJ4CCqQRWC71guFLxlXltlM7GvDQDw",
+  "worksheetTitle": "pruebas",
+  "values": [
+    ["2026-05-28", "lunes", "1", "ANA SOFIA CARDENAS PETUMA", "601", "ANDRES MAYORGA BOTERO", "601", "aprobado", "Enfermedad"],
+    ["2026-05-28", "martes", "2", "BLANCA NELLY MARIN GIRALDO", "602", "CARLOS ARMANDO RIOS ALVAREZ", "602", "aprobado", "Cita medica"],
+    ["2026-05-29", "miercoles", "3", "DANIEL QUICENO RIVERA", "701", "CESAR LEANDRO PATINO VELEZ", "701", "aprobado", "Curso"],
+    ["2026-05-29", "jueves", "4", "JON JAMES VASCO RODRIGUEZ", "901", "JAVIER DE JESUS AGUDELO CARVAJAL", "901", "pendiente", "Emergencia familiar"],
+    ["2026-05-30", "viernes", "5", "JHON JAIRO VELEZ TEJADA", "801", "JOHN EDWIN ARBOLEDA ACEVEDO", "801", "aprobado", "Comite"]
+  ]
+}

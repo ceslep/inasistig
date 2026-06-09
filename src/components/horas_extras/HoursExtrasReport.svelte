@@ -837,7 +837,7 @@
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="space-y-1">
-          <label class="text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">Docentes</label>
+          <span class="text-xs font-bold text-[rgb(var(--text-muted))] uppercase tracking-wide">Docentes</span>
           <button
             type="button"
             onclick={() => { showDocenteSelector = true; docenteSearchTerm = '' }}
@@ -964,8 +964,15 @@
     </div>
 
     {#if showDocenteSelector}
-      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={() => showDocenteSelector = false}>
-        <div class="bg-[rgb(var(--bg-primary))] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col" onclick={(e) => e.stopPropagation()}>
+      <div
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+        onclick={() => showDocenteSelector = false}
+        onkeydown={(e) => { if (e.key === 'Escape') showDocenteSelector = false; }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Selector de docentes"
+      >
+        <div class="bg-[rgb(var(--bg-primary))] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
           <div class="flex items-center justify-between p-4 border-b border-[rgb(var(--border-primary))]">
             <h3 class="text-lg font-bold text-[rgb(var(--text-primary))]">Seleccionar Docentes</h3>
             <button onclick={() => showDocenteSelector = false} class="p-1 hover:bg-[rgb(var(--bg-secondary))] rounded-lg">

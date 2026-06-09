@@ -26,7 +26,7 @@
     onNoMostrar?: () => void;
   } = $props();
 
-  let indice = $state(stepInicial);
+  let indice = $state(stepInicial ?? 0);
   let noMostrarMas = $state(false);
   const pasoActual = $derived(pasos[indice]);
   const esPrimero = $derived(indice === 0);

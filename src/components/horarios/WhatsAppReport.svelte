@@ -80,6 +80,7 @@
   let pdfUrl = $state<string | null>(null);
   let mostrandoPreview = $state(false);
   let generandoPDF = $state(false);
+  let infoAdicional = $state("");
 
   function formatearFecha(fecha: string): string {
     if (!fecha) return "";
@@ -266,6 +267,27 @@
       alternateRowStyles: { fillColor: [249, 250, 251] }
     });
     yPos = (doc as any).lastAutoTable.finalY + 8;
+
+    if (infoAdicional.trim()) {
+      checkPageBreak(30);
+      doc.setFillColor(240, 249, 255);
+      doc.rect(margin, yPos, pageWidth - margin * 2, 6, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      doc.text('INFORMACIÓN ADICIONAL:', margin + 2, yPos + 4);
+      yPos += 8;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(12, 74, 110);
+      const lineasInfo = doc.splitTextToSize(cleanText(infoAdicional), pageWidth - margin * 2);
+      for (const linea of lineasInfo) {
+        checkPageBreak(5);
+        doc.text(linea, margin + 2, yPos);
+        yPos += 5;
+      }
+      yPos += 6;
+    }
 
     const totalPages = (doc as any).internal.pages.length - 1;
     for (let i = 1; i <= totalPages; i++) {
@@ -494,6 +516,20 @@
     </div>
 
     <div class="flex-1 overflow-y-auto p-4 min-h-0">
+      <div class="mb-4">
+        <label for="info-adicional" class="block text-sm font-medium mb-1" style="color: rgb(var(--text-secondary));">
+          Información adicional (opcional)
+        </label>
+        <textarea
+          id="info-adicional"
+          bind:value={infoAdicional}
+          placeholder="Agrega información adicional que aparecerá en el reporte..."
+          rows={3}
+          class="w-full px-3 py-2 rounded-lg text-sm border resize-none focus-visible:outline-none focus-visible:ring-2"
+          style="background-color: rgb(var(--card-bg)); color: rgb(var(--text-primary)); border-color: rgb(var(--border-primary)); --tw-ring-color: rgb(var(--accent-primary)); resize: vertical;"
+        ></textarea>
+      </div>
+
       {#if modoPDF}
         {#if mostrandoPreview && pdfUrl}
           <iframe src={pdfUrl} title="Vista previa del reporte PDF" class="w-full flex-1 min-h-[600px] border rounded"></iframe>
@@ -567,6 +603,13 @@
                 </tbody>
               </table>
             </div>
+
+            {#if infoAdicional.trim()}
+              <div style="margin: 16px 0; padding: 12px; background-color: #f0f9ff; border: 2px solid #0ea5e9; border-radius: 8px;">
+                <p style="font-size: 12px; font-weight: bold; margin: 0 0 6px 0; color: #0369a1; text-decoration: underline;">INFORMACIÓN ADICIONAL:</p>
+                <p style="font-size: 11px; color: #0c4a6e; margin: 0; white-space: pre-wrap; line-height: 1.5;">{infoAdicional}</p>
+              </div>
+            {/if}
 
             <div style="margin-top: 40px; padding-top: 16px; border-top: 1px solid #000;">
               <div style="display: flex; justify-content: space-between; margin-top: 40px;">
@@ -699,6 +742,13 @@
                   <p style="margin: 0;">No hay ausencias registradas.</p>
                 {/if}
               </div>
+            </div>
+          {/if}
+
+          {#if infoAdicional.trim()}
+            <div style="margin-top: 16px; padding: 16px; background-color: #f0f9ff; border: 2px solid #0ea5e9; border-radius: 12px;">
+              <p style="font-size: 14px; font-weight: bold; margin: 0 0 8px 0; color: #0369a1;">INFORMACIÓN ADICIONAL:</p>
+              <p style="font-size: 13px; color: #0c4a6e; margin: 0; white-space: pre-wrap; line-height: 1.6;">{infoAdicional}</p>
             </div>
           {/if}
 
