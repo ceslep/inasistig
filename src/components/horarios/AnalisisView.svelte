@@ -84,7 +84,7 @@
   }
 </script>
 
-<div class="p-6 rounded-2xl border" style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--card-bg));">
+<div class="p-4 sm:p-6 rounded-2xl border" style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--card-bg));">
   <div class="flex items-center justify-between mb-4 gap-3 flex-wrap">
     <h2 class="text-lg font-bold" style="color: rgb(var(--text-primary));">
       Step 2 — Análisis de Horas Libres
@@ -152,7 +152,8 @@
     </div>
   {/if}
 
-  <div class="overflow-x-auto">
+  <!-- Tabla (escritorio ≥1024px) -->
+  <div class="hidden lg:block overflow-x-auto">
     <table class="w-full text-sm" style="border-collapse: collapse;">
       <thead>
         <tr style="background-color: rgb(var(--bg-secondary));">
@@ -194,6 +195,47 @@
         {/each}
       </tbody>
     </table>
+  </div>
+
+  <!-- Tarjetas por hora (móvil / tablet <1024px) -->
+  <div class="lg:hidden space-y-2">
+    {#each horas as _, horaIdx}
+      {@const slotsHora = getSlotsPorHora(horaIdx)}
+      {@const hayAusencia = slotsHora.some((s) => s.tipo === "libre_ausencia")}
+      <div
+        class="rounded-xl border p-2.5 shadow-sm"
+        style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--card-bg)); border-left: 4px solid {hayAusencia ? '#ef4444' : 'rgb(var(--border-primary))'};"
+      >
+        <div class="flex items-start gap-2.5">
+          <div class="shrink-0 flex flex-col items-center">
+            <span
+              class="w-9 h-9 rounded-xl flex items-center justify-center text-base font-extrabold tabular-nums"
+              style="background-color: {hayAusencia ? '#ef4444' : 'rgb(var(--bg-secondary))'}; color: {hayAusencia ? 'white' : 'rgb(var(--text-secondary))'};"
+            >
+              {horaIdx + 1}
+            </span>
+            <span class="text-[8px] font-bold uppercase tracking-wider mt-0.5" style="color: rgb(var(--text-muted));">Hora</span>
+          </div>
+          <div class="flex flex-wrap gap-1.5 flex-1 min-w-0 pt-0.5">
+            {#if slotsHora.length === 0}
+              <span class="text-xs italic" style="color: rgb(var(--text-muted));">Sin datos</span>
+            {/if}
+            {#each slotsHora as slot}
+              {@const estilo = getSlotStyle(slot.tipo)}
+              {@const badge = getBadge(slot.tipo, slot)}
+              <div class="relative">
+                <div class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-center leading-tight {estilo.bg} {estilo.text} {estilo.border}">
+                  {getLabelSlot(slot.tipo, slot)}
+                </div>
+                {#if badge}
+                  <span class="absolute -top-1 -right-1 w-3 h-3 rounded-full ring-2 ring-white dark:ring-zinc-900 {badge.tipo === 'docente' ? 'bg-red-500' : 'bg-amber-500'}"></span>
+                {/if}
+              </div>
+            {/each}
+          </div>
+        </div>
+      </div>
+    {/each}
   </div>
 
   <div class="mt-4 flex flex-wrap gap-4 text-xs" style="background-color: rgb(var(--bg-secondary));">

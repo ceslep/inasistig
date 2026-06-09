@@ -77,6 +77,27 @@ export const DIAS = ["lunes", "martes", "miercoles", "jueves", "viernes"] as con
 export const DIAS_ABREV = ["LUN", "MAR", "MIE", "JUE", "VIE"];
 export const ROLES_SIN_LIMITE = ["ORIENTACION", "ORIENTADOR", "COORDINADOR", "BIBLIOTECA","AUDITORIO"];
 
+// Marcador que se añade al final del nombre del docente que cubre cuando la
+// cobertura proviene de una de sus horas libres (según horarios.json). Permite
+// distinguir esas coberturas a simple vista y en los reportes.
+export const MARCADOR_LIBRE = "@";
+
+// Quita el marcador (y espacios) del final del nombre. SIEMPRE usar esta función
+// antes de comparar/contar/buscar por nombre — el nombre persistido puede traer "@".
+export function normalizarDocente(nombre: string): string {
+  if (!nombre) return nombre;
+  return nombre.replace(/\s*@+\s*$/, "").trim();
+}
+
+// Añade el marcador "@" si aún no lo tiene. Roles institucionales (sin límite)
+// nunca se marcan. No muta cadenas vacías.
+export function marcarHoraLibre(nombre: string): string {
+  const base = normalizarDocente(nombre);
+  if (!base) return nombre;
+  if (ROLES_SIN_LIMITE.some((r) => base.includes(r))) return base;
+  return base + MARCADOR_LIBRE;
+}
+
 export function getGruposDisponibles(horarios: HorarioDocente[]): string[] {
   const grupos = new Set<string>();
   for (const h of horarios) {
@@ -225,7 +246,7 @@ export function construirCargaDiariaHistorica(
   for (const cp of coberturasPrevias) {
     if (cp.estado !== "aprobado") continue;
     if (cp.fecha !== fechaActual) continue;
-    const doc = cp.docente_cubre;
+    const doc = normalizarDocente(cp.docente_cubre);
     if (!doc) continue;
     if (ROLES_SIN_LIMITE.some((r) => doc.includes(r))) continue;
     carga.set(doc, (carga.get(doc) || 0) + 1);
@@ -249,21 +270,23 @@ export function construirCargaDiariaSesion(
     if (!ctx) return false;
     return esHoraLibrePorGrupoAusente(docente, hora, ctx.dia, ctx.horarios, ctx.ausenciasGrupo);
   };
+  const docNuevo = normalizarDocente(docenteNuevo);
   for (let i = 0; i < coberturas.length; i++) {
     const c = coberturas[i];
-    if (!c.docenteCubre) continue;
-    if (ROLES_SIN_LIMITE.some((r) => c.docenteCubre.includes(r))) continue;
+    const docCubre = normalizarDocente(c.docenteCubre);
+    if (!docCubre) continue;
+    if (ROLES_SIN_LIMITE.some((r) => docCubre.includes(r))) continue;
     if (i === indiceExcluir) {
-      if (docenteNuevo && !ROLES_SIN_LIMITE.some((r) => docenteNuevo.includes(r))) {
-        if (!esLibre(docenteNuevo, c.hora)) {
-          carga.set(docenteNuevo, (carga.get(docenteNuevo) || 0) + 1);
+      if (docNuevo && !ROLES_SIN_LIMITE.some((r) => docNuevo.includes(r))) {
+        if (!esLibre(docNuevo, c.hora)) {
+          carga.set(docNuevo, (carga.get(docNuevo) || 0) + 1);
         }
       }
       continue;
     }
-    if (c.aprobada || c.docenteCubre) {
-      if (!esLibre(c.docenteCubre, c.hora)) {
-        carga.set(c.docenteCubre, (carga.get(c.docenteCubre) || 0) + 1);
+    if (c.aprobada || docCubre) {
+      if (!esLibre(docCubre, c.hora)) {
+        carga.set(docCubre, (carga.get(docCubre) || 0) + 1);
       }
     }
   }
@@ -307,14 +330,16 @@ export function getPosiblesCobradoresParaSlot(
       const esSinLimite = ROLES_SIN_LIMITE.some((r) => h.docente.includes(r));
       const slotLibrePorGrupo = slotLiberadoPorGrupo;
 
-      const yaAsignadoEnSesion = asignacionesSesion.some((c) => c.docenteCubre === h.docente);
+      const yaAsignadoEnSesion = asignacionesSesion.some((c) => normalizarDocente(c.docenteCubre) === h.docente);
       if (!permitirRepetir && yaAsignadoEnSesion && !esSinLimite && !slotLibrePorGrupo) return false;
 
       const cargaSesion = cargaDiariaSesion.get(h.docente) || 0;
       if (!permitirRepetir && !esSinLimite && !slotLibrePorGrupo && cargaSesion >= 1) return false;
 
+      // Tope semanal: máx 2 coberturas/semana (histórico + sesión). Se permite
+      // llegar a 2; solo se bloquea al pretender la 3a (> 2).
       const horasSemana = horasCubiertasSemana.get(h.docente) || 0;
-      if (!permitirRepetir && !esSinLimite && !slotLibrePorGrupo && horasSemana >= 2) return false;
+      if (!permitirRepetir && !esSinLimite && !slotLibrePorGrupo && horasSemana > 2) return false;
 
       return true;
     })
@@ -337,7 +362,7 @@ export function asignarAutomaticamente(
   const coberturas: CoberturaSugerida[] = [];
   const cargaDiariaSesion = construirCargaDiariaHistorica(coberturasPrevias, fechaActual);
   const horasCubiertasSemana = new Map<string, number>();
-  const semanaActual = getSemanaDelAno(fechaActual);
+  const semanaActual = getClaveSemana(fechaActual);
 
   const hoy = new Date(fechaActual + "T00:00:00");
   const hace14dias = new Date(hoy);
@@ -347,9 +372,9 @@ export function asignarAutomaticamente(
 
   for (const cp of coberturasPrevias) {
     if (cp.estado !== "aprobado") continue;
-    const cpSemana = getSemanaDelAno(cp.fecha);
+    const cpSemana = getClaveSemana(cp.fecha);
     if (cpSemana !== semanaActual) continue;
-    const doc = cp.docente_cubre;
+    const doc = normalizarDocente(cp.docente_cubre);
     horasCubiertasSemana.set(doc, (horasCubiertasSemana.get(doc) || 0) + 1);
   }
 
@@ -358,7 +383,8 @@ export function asignarAutomaticamente(
     const cpFecha = new Date(cp.fecha + "T00:00:00");
     if (cpFecha < hace14dias || cpFecha >= hace7dias) continue;
     if (cp.docente_ausente) {
-      indiceAusencias.set(cp.docente_ausente, (indiceAusencias.get(cp.docente_ausente) || 0) + 1);
+      const aus = normalizarDocente(cp.docente_ausente);
+      indiceAusencias.set(aus, (indiceAusencias.get(aus) || 0) + 1);
     }
   }
 
@@ -491,6 +517,13 @@ export function getSemanaDelAno(fecha: string): number {
   const diff = date.getTime() - start.getTime();
   const oneWeek = 604800000;
   return Math.floor(diff / oneWeek);
+}
+
+// Clave única de semana incluyendo el año, para que el reseteo semanal del
+// límite de coberturas no confunda la misma "semana N" entre años distintos.
+export function getClaveSemana(fecha: string): string {
+  const date = new Date(fecha + "T00:00:00");
+  return `${date.getFullYear()}-${getSemanaDelAno(fecha)}`;
 }
 
 export function getHorasLibresDelDia(slots: SlotInfo[]): SlotInfo[] {

@@ -340,6 +340,10 @@
       for (const cov of coberturas) {
         lineas.push(`• ${formatoHora(cov.hora)} — ${cov.docenteAusente} → ${cov.docenteCubre || "Por asignar"} (${cov.grupoAusente || cov.grupoACubrir || "-"})`);
       }
+      if (coberturas.some((c) => (c.docenteCubre || "").trimEnd().endsWith("@"))) {
+        lineas.push("");
+        lineas.push("_@ = cubre en su hora libre_");
+      }
     }
 
     return lineas.join("\n");

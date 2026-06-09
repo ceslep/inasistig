@@ -4,7 +4,7 @@
   import CoberturasManager from "./horarios/CoberturasManager.svelte";
   import type { CoberturaHistorica } from "../lib/coberturaUtils";
   import { coberturaSheetsService } from "../services/coberturaSheetsService";
-  import { getSemanaDelAno } from "../lib/coberturaUtils";
+  import { getClaveSemana } from "../lib/coberturaUtils";
   import { User, Search, ArrowLeft, BarChart3, Calendar, X, Users, Calculator, BookOpen, FlaskConical, Globe, Languages, Heart, Cpu, Dumbbell, Palette, Briefcase, Coffee, Book } from "@lucide/svelte";
 
   let { onBack }: { onBack: () => void } = $props();
@@ -310,12 +310,12 @@
     hace14dias.setDate(hoy.getDate() - 14);
     const hace7dias = new Date(hoy);
     hace7dias.setDate(hoy.getDate() - 7);
-    const semanaActual = getSemanaDelAno(hoy.toISOString().split("T")[0]);
+    const semanaActual = getClaveSemana(hoy.toISOString().split("T")[0]);
 
     const coberturasSemana = coberturasHistoricas.filter((c) => {
       if (c.docente_cubre !== docente.docente) return false;
       if (c.estado !== "aprobado") return false;
-      const cpSemana = getSemanaDelAno(c.fecha);
+      const cpSemana = getClaveSemana(c.fecha);
       return cpSemana === semanaActual;
     });
 

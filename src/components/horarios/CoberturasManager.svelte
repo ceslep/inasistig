@@ -15,10 +15,12 @@
     getPosiblesCobradoresParaSlot,
     construirCargaDiariaSesion,
     construirCargaDiariaHistorica,
-    getSemanaDelAno,
+    getClaveSemana,
     calcularAdelantos,
     aplicarAdelantosAHorarios,
     getHuecosLibresPorAdelanto,
+    marcarHoraLibre,
+    normalizarDocente,
   } from "../../lib/coberturaUtils";
   import { festivos, siguienteDiaHabil, resolverFechaDia } from "../../lib/festivos";
   import { coberturaSheetsService } from "../../services/coberturaSheetsService";
@@ -121,6 +123,18 @@
       ? aplicarAdelantosAHorarios(horariosData as HorarioDocente[], diaSeleccionado, adelantosAplicados)
       : (horariosData as HorarioDocente[])
   );
+  // ¿La cobertura sale de una hora libre propietaria del docente que cubre?
+  // (su slot en el horario efectivo a esa hora es "" y no es rol sin límite).
+  function coberturaEnHoraLibre(docenteCubre: string, hora: number): boolean {
+    const d = normalizarDocente(docenteCubre);
+    if (!d || d === "IGNORAR") return false;
+    if (ROLES_SIN_LIMITE.some((r) => d.includes(r))) return false;
+    const horario = horariosEfectivos.find((h) => h.docente === d);
+    if (!horario) return false;
+    const slot = (horario[diaSeleccionado as keyof HorarioDocente] as string[])?.[hora];
+    return slot === "" || slot === undefined;
+  }
+
   let mostrarModalGrupos = $state(false);
   let mostrarReporteWhatsApp = $state(false);
   let coberturasGuardadas = $state<CoberturaSugerida[]>([]);
@@ -537,11 +551,11 @@ function recalcularCoberturas() {
     if (huecosLibres.length > 0) {
       const cargaDiariaSesion = new Map<string, number>();
       const horasCubSemana = new Map<string, number>();
-      const semanaActual = getSemanaDelAno(fechaSeleccionada);
+      const semanaActual = getClaveSemana(fechaSeleccionada);
       for (const cp of coberturasHistoricas) {
         if (cp.estado !== "aprobado") continue;
         if (cp.fecha === fechaSeleccionada) continue;
-        const cpSemana = getSemanaDelAno(cp.fecha);
+        const cpSemana = getClaveSemana(cp.fecha);
         if (cpSemana !== semanaActual) continue;
         const doc = cp.docente_cubre;
         horasCubSemana.set(doc, (horasCubSemana.get(doc) || 0) + 1);
@@ -626,7 +640,10 @@ function recalcularCoberturas() {
           hora: c.hora,
           docente_ausente: c.docenteAusente,
           grupo_ausente: c.grupoAusente,
-          docente_cubre: c.docenteCubre,
+          // Marcar con "@" si la cobertura sale de la hora libre del docente.
+          docente_cubre: coberturaEnHoraLibre(c.docenteCubre, c.hora)
+            ? marcarHoraLibre(c.docenteCubre)
+            : normalizarDocente(c.docenteCubre),
           grupo_a_cubrir: c.grupoACubrir,
           estado: "aprobado",
           motivo: c.motivoAusencia,
@@ -709,7 +726,13 @@ function recalcularCoberturas() {
         cancelButtonText: "Nueva sesión",
       }).then((r) => {
         if (r.isConfirmed) {
-          coberturasGuardadas = [...aprobadas];
+          // Reflejar el marcador "@" (hora libre) en el reporte WhatsApp/PDF.
+          coberturasGuardadas = aprobadas.map((c) => ({
+            ...c,
+            docenteCubre: coberturaEnHoraLibre(c.docenteCubre, c.hora)
+              ? marcarHoraLibre(c.docenteCubre)
+              : normalizarDocente(c.docenteCubre),
+          }));
           diaReportePDF = diaSeleccionado;
           fechaReportePDF = fechaSeleccionada;
           gruposReportePDF = liberadosGuardados.map((l) => ({ grupo: l.grupo, horaInicio: l.hora_liberada }));
@@ -805,11 +828,11 @@ function recalcularCoberturas() {
 
     const horasCubiertasSemana = new Map<string, number>();
     const indiceAusencias = new Map<string, number>();
-    const semanaActual = getSemanaDelAno(fechaSeleccionada);
+    const semanaActual = getClaveSemana(fechaSeleccionada);
 
     for (const cp of coberturasHistoricas) {
       if (cp.estado !== "aprobado") continue;
-      const cpSemana = getSemanaDelAno(cp.fecha);
+      const cpSemana = getClaveSemana(cp.fecha);
       if (cpSemana === semanaActual) {
         horasCubiertasSemana.set(cp.docente_cubre, (horasCubiertasSemana.get(cp.docente_cubre) || 0) + 1);
       }
@@ -1017,7 +1040,7 @@ function recalcularCoberturas() {
 />
 
 <div class="p-4 max-w-7xl mx-auto">
-  <div class="flex gap-2 mb-6">
+  <div class="flex flex-wrap gap-2 mb-6">
     <button
       onclick={() => { subView = "cobertura"; resetSesion(); }}
       class="px-4 py-2 rounded-lg font-medium text-sm transition-all"
@@ -1071,7 +1094,7 @@ function recalcularCoberturas() {
     {/if}
 
     {#if step === 1}
-      <div class="p-6 rounded-2xl border" style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--card-bg));">
+      <div class="p-4 sm:p-6 rounded-2xl border" style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--card-bg));">
         <h2 id="tour-step1-header" class="text-lg font-bold mb-4" style="color: rgb(var(--text-primary));">Step 1 — Día y Ausencias</h2>
 
         <div id="tour-step1-dia" class="mb-4">
@@ -1107,10 +1130,13 @@ function recalcularCoberturas() {
           <p class="block text-sm font-medium mb-2" style="color: rgb(var(--text-secondary));">
             Docentes ausentes
           </p>
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-2 rounded-lg border" style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--bg-secondary));">
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1 p-2 rounded-lg border" style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--bg-secondary));">
             {#each docentes as docente}
               {@const ausencia = docentesAusentes.find((a) => a.nombre === docente)}
-              <label class="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-[rgb(var(--card-bg))] min-h-[44px]">
+              <label
+                class="flex items-center gap-1.5 cursor-pointer px-1.5 py-1 rounded hover:bg-[rgb(var(--card-bg))]"
+                style={ausencia ? "background-color: rgba(239,68,68,0.10);" : ""}
+              >
                 <input
                   type="checkbox"
                   checked={!!ausencia}
@@ -1125,12 +1151,12 @@ function recalcularCoberturas() {
                       mostrarModalTipoAusencia = true;
                     }
                   }}
-                  class="w-5 h-5 accent-[rgb(var(--accent-primary))] shrink-0"
+                  class="w-4 h-4 accent-[rgb(var(--accent-primary))] shrink-0"
                 />
-                <span class="text-xs truncate" style="color: rgb(var(--text-primary));">{docente}</span>
+                <span class="flex-1 min-w-0 text-[11px] break-words leading-tight" style="color: rgb(var(--text-primary));">{docente}</span>
                 {#if ausencia && TIPOS_ICONOS[ausencia.tipo]}
                   {@const Icon = TIPOS_ICONOS[ausencia.tipo].icono}
-                  <Icon size={14} style="color: {TIPOS_ICONOS[ausencia.tipo].color}" />
+                  <Icon size={12} class="shrink-0" style="color: {TIPOS_ICONOS[ausencia.tipo].color}" />
                 {/if}
               </label>
             {/each}
@@ -1234,7 +1260,7 @@ function recalcularCoberturas() {
 
     {#if mostrarModalGrupos}
       <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background-color: rgba(0,0,0,0.5);">
-        <div class="rounded-xl p-6 w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col" style="background-color: rgb(var(--bg-primary)); border: 1px solid rgb(var(--border-primary));">
+        <div class="rounded-xl p-4 sm:p-6 w-full max-w-2xl max-h-[85vh] sm:max-h-[80vh] overflow-hidden flex flex-col" style="background-color: rgb(var(--bg-primary)); border: 1px solid rgb(var(--border-primary));">
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-bold" style="color: rgb(var(--text-primary));">Liberar Grupos</h3>
             <button
@@ -1249,7 +1275,7 @@ function recalcularCoberturas() {
           <div class="flex-1 overflow-y-auto mb-4">
             <div class="flex gap-2 flex-wrap p-2 rounded-lg border" style="border-color: rgb(var(--border-primary)); background-color: rgb(var(--bg-secondary));">
               {#each grupos as grupo}
-                <div class="flex items-center gap-2 px-3 py-2 rounded hover:bg-[rgb(var(--card-bg))] min-w-[80px]">
+                <div class="flex items-center gap-2 px-3 py-2 rounded hover:bg-[rgb(var(--card-bg))] min-w-0">
                   <input
                     type="checkbox"
                     checked={isGrupoAusente(grupo)}
@@ -1311,12 +1337,12 @@ function recalcularCoberturas() {
 
     {#if mostrarModalTipoAusencia}
       <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background-color: rgba(0,0,0,0.5);" role="dialog" aria-modal="true" aria-labelledby="tipo-ausencia-title">
-        <div class="rounded-xl p-6 w-full max-w-md" style="background-color: rgb(var(--bg-primary)); border: 1px solid rgb(var(--border-primary));">
+        <div class="rounded-xl p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" style="background-color: rgb(var(--bg-primary)); border: 1px solid rgb(var(--border-primary));">
           <h3 id="tipo-ausencia-title" class="text-lg font-bold mb-2" style="color: rgb(var(--text-primary));">Tipo de ausencia <span style="color: #ef4444;">*</span></h3>
           <p class="text-sm mb-4" style="color: rgb(var(--text-secondary));">
             Selecciona obligatoriamente el tipo de ausencia para <strong>{docenteSeleccionado}</strong>. Si cancelas, el docente no quedará marcado como ausente.
           </p>
-          <div class="grid grid-cols-2 gap-2 mb-4">
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
             {#each [
               { tipo: "CALAMIDAD", icono: Flame, color: "#f97316" },
               { tipo: "CAPACITACION", icono: GraduationCap, color: "#8b5cf6" },
@@ -1342,12 +1368,11 @@ function recalcularCoberturas() {
                   mostrarModalTipoAusencia = false;
                   docenteSeleccionado = "";
                 }}
-                class="py-3 px-3 rounded-lg text-sm font-medium transition-all flex items-center gap-2 min-h-[48px]"
+                class="w-full min-w-0 py-2.5 px-2.5 rounded-lg text-[11px] sm:text-xs font-medium transition-all flex items-center gap-1.5 min-h-[48px] text-left"
                 style="background-color: rgb(var(--bg-secondary)); color: rgb(var(--text-primary)); border: 1px solid rgb(var(--border-primary));"
               >
-                <Icon size={16} style="color: {item.color}" />
-                <span class="hidden sm:inline">{item.tipo}</span>
-                <span class="sm:hidden text-xs">{item.tipo.slice(0,4)}</span>
+                <Icon size={15} class="shrink-0" style="color: {item.color}" />
+                <span class="min-w-0 leading-tight" style="overflow-wrap: anywhere; word-break: break-word;">{item.tipo}</span>
               </button>
             {/each}
           </div>
@@ -1367,7 +1392,7 @@ function recalcularCoberturas() {
       {@const aplicados = dataAdel.adelantos.filter((a) => a.aplicable)}
       {@const noAplicables = dataAdel.adelantos.filter((a) => !a.aplicable)}
       <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background-color: rgba(0,0,0,0.5);" role="dialog" aria-modal="true" aria-labelledby="adelantos-title">
-        <div class="rounded-xl p-6 w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col" style="background-color: rgb(var(--bg-primary)); border: 1px solid rgb(var(--border-primary));">
+        <div class="rounded-xl p-4 sm:p-6 w-full max-w-lg max-h-[85vh] sm:max-h-[80vh] overflow-hidden flex flex-col" style="background-color: rgb(var(--bg-primary)); border: 1px solid rgb(var(--border-primary));">
           <div class="flex justify-between items-center mb-4">
             <h3 id="adelantos-title" class="text-lg font-bold" style="color: rgb(var(--text-primary));">
               Adelanto de clases — Grupo {dataAdel.grupo}
