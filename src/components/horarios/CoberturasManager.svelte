@@ -137,6 +137,7 @@
 
   let mostrarModalGrupos = $state(false);
   let mostrarReporteWhatsApp = $state(false);
+  let loadingReporte = $state(false);
   let coberturasGuardadas = $state<CoberturaSugerida[]>([]);
   let vistaPreviaReporte = $state(false);
   let mostrarModalTipoAusencia = $state(false);

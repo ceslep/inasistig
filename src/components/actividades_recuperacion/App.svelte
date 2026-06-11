@@ -2,35 +2,24 @@
   import Swal from 'sweetalert2'
   import { ArrowLeft, Sun, Moon, Info, FileText, List } from '@lucide/svelte'
   import { documentTitle, institutionHeader } from './lib/data.js'
+  import { theme, type Theme } from '../../lib/themeStore'
   import Toast from './components/Toast.svelte'
   import eieLogo from '../../assets/eie.png'
 
-  // Props para integración con inasistig
   let { onBack } = $props()
 
   let currentView = $state('form')
   let FormComponent = $state<any>(null)
   let DataList = $state<any>(null)
   let viewKey = $state(0)
-  let darkMode = $state(false)
   let toastRef = $state<any>(null)
 
-  // Persist dark mode preference
-  if (typeof window !== 'undefined') {
-    darkMode = localStorage.getItem('actirec-dark') === 'true' ||
-      (!localStorage.getItem('actirec-dark') && window.matchMedia('(prefers-color-scheme: dark)').matches)
-  }
-
-  $effect(() => {
-    if (typeof document !== 'undefined') {
-      document.documentElement.classList.toggle('dark', darkMode)
-      document.body.classList.toggle('dark', darkMode)
-      localStorage.setItem('actirec-dark', String(darkMode))
-    }
-  })
-
   function toggleDark() {
-    darkMode = !darkMode
+    theme.update((t: Theme) => {
+      if (t === 'light') return 'dim'
+      if (t === 'dim') return 'dark'
+      return 'light'
+    })
   }
 
   async function loadView(view: string) {
@@ -60,8 +49,8 @@
       icon: 'info',
       confirmButtonText: 'Cerrar',
       confirmButtonColor: '#2563eb',
-      background: darkMode ? '#1e293b' : '#fff',
-      color: darkMode ? '#e2e8f0' : '#1e293b',
+      background: $theme === 'dark' ? '#1e293b' : '#fff',
+      color: $theme === 'dark' ? '#e2e8f0' : '#1e293b',
       customClass: { popup: 'rounded-2xl' }
     })
   }
@@ -87,6 +76,15 @@
           class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all duration-200 text-white/80 hover:text-white"
           title="Acerca de">
           <Info class="text-lg" />
+        </button>
+        <button onclick={toggleDark}
+          class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all duration-200 text-white/80 hover:text-white"
+          title={$theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
+          {#if $theme === 'dark'}
+            <Sun class="text-lg" />
+          {:else}
+            <Moon class="text-lg" />
+          {/if}
         </button>
         <button onclick={onBack}
           class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all duration-200 text-white/80 hover:text-white"

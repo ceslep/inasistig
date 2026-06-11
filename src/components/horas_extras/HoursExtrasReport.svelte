@@ -964,6 +964,7 @@
     </div>
 
     {#if showDocenteSelector}
+      <!-- svelte-ignore a11y_interactive_supports_focus -->
       <div
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
         onclick={() => showDocenteSelector = false}
@@ -971,8 +972,10 @@
         role="dialog"
         aria-modal="true"
         aria-label="Selector de docentes"
+        tabindex="0"
       >
-        <div class="bg-[rgb(var(--bg-primary))] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
+        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+        <div class="bg-[rgb(var(--bg-primary))] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="document">
           <div class="flex items-center justify-between p-4 border-b border-[rgb(var(--border-primary))]">
             <h3 class="text-lg font-bold text-[rgb(var(--text-primary))]">Seleccionar Docentes</h3>
             <button onclick={() => showDocenteSelector = false} class="p-1 hover:bg-[rgb(var(--bg-secondary))] rounded-lg">

@@ -17,8 +17,8 @@
     coberturasHistoricas: CoberturaHistorica[];
     loading: boolean;
     onReload: () => void;
-    onGenerarReporte?: (fecha: string) => void;
-    onGenerarWhatsApp?: (fecha: string) => void;
+    onGenerarReporte?: (fecha: string) => Promise<void>;
+    onGenerarWhatsApp?: (fecha: string) => Promise<void>;
   } = $props();
 
   let filterFechaDesde = $state("");
@@ -104,6 +104,8 @@
 
   let seleccionadas = $state<Set<string>>(new Set());
   let eliminando = $state(false);
+  let generandoPDF = $state(false);
+  let generandoWhatsApp = $state(false);
 
   const todasSeleccionadas = $derived(
     filtradas.length > 0 && filtradas.every((c) => seleccionadas.has(claveCobertura(c)))
@@ -134,6 +136,26 @@
       seleccionadas = new Set();
     } else {
       seleccionadas = new Set(filtradas.map(claveCobertura));
+    }
+  }
+
+  async function handleGenerarReporte(fecha: string) {
+    if (!onGenerarReporte) return;
+    generandoPDF = true;
+    try {
+      await onGenerarReporte(fecha);
+    } finally {
+      generandoPDF = false;
+    }
+  }
+
+  async function handleGenerarWhatsApp(fecha: string) {
+    if (!onGenerarWhatsApp) return;
+    generandoWhatsApp = true;
+    try {
+      await onGenerarWhatsApp(fecha);
+    } finally {
+      generandoWhatsApp = false;
     }
   }
 
@@ -380,22 +402,38 @@
             {/each}
           </select>
           <button
-            onclick={() => fechaSeleccionadaReporte && onGenerarReporte(fechaSeleccionadaReporte)}
-            disabled={!fechaSeleccionadaReporte}
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50 min-h-[40px]"
+            onclick={() => fechaSeleccionadaReporte && handleGenerarReporte(fechaSeleccionadaReporte)}
+            disabled={!fechaSeleccionadaReporte || generandoPDF}
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50 min-h-[40px] flex items-center gap-2"
             style="background-color: rgb(var(--accent-primary)); color: white;"
             title="Generar reporte PDF del día"
           >
-            📄 PDF
+            {#if generandoPDF}
+              <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              <span>Generando...</span>
+            {:else}
+              📄 PDF
+            {/if}
           </button>
           <button
-            onclick={() => fechaSeleccionadaReporte && onGenerarWhatsApp && onGenerarWhatsApp(fechaSeleccionadaReporte)}
-            disabled={!fechaSeleccionadaReporte}
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50 min-h-[40px]"
+            onclick={() => fechaSeleccionadaReporte && handleGenerarWhatsApp(fechaSeleccionadaReporte)}
+            disabled={!fechaSeleccionadaReporte || generandoWhatsApp}
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50 min-h-[40px] flex items-center gap-2"
             style="background-color: #25D366; color: white;"
             title="Generar imagen para WhatsApp"
           >
-            📱 WhatsApp
+            {#if generandoWhatsApp}
+              <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              <span>Generando...</span>
+            {:else}
+              📱 WhatsApp
+            {/if}
           </button>
           <button
             onclick={() => fechaSeleccionadaReporte && eliminarDia(fechaSeleccionadaReporte)}

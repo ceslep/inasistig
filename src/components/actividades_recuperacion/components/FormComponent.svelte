@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte'
   import { fetchAsignaturas, fetchEstudiantes, fetchDocentes, peridosRange, getCurrentPeriodo, getPeriodoLabel, isPeriodoActivo } from '../lib/data.js'
+  import { theme } from '../../../lib/themeStore'
   import SkeletonLoader from './SkeletonLoader.svelte'
   import Icon from '@iconify/svelte'
   import Swal from 'sweetalert2'
@@ -61,10 +62,20 @@
       .map(([name]) => name)
   )
 
+  let maxFechaLimite = $derived.by(() => {
+    const periodoObj = peridosRange.find(p => p.nombre === selectedPeriodo)
+    if (!periodoObj) return null
+    const finPeriodo = new Date(periodoObj.fechas.fin)
+    finPeriodo.setMonth(finPeriodo.getMonth() + 1)
+    return finPeriodo.toISOString().split('T')[0]
+  })
+
   let isFormValid = $derived.by(() => {
     if (!selectedPeriodo || !grupo || !asignatura || !docenteSeleccionado || !fechaLimite) return false
     const periodoObj = peridosRange.find(p => p.nombre === selectedPeriodo)
-    const fechaInPeriodo = periodoObj && new Date(fechaLimite) >= new Date(periodoObj.fechas.inicio) && new Date(fechaLimite) <= new Date(periodoObj.fechas.fin)
+    const fechaMin = periodoObj ? new Date(periodoObj.fechas.inicio) : null
+    const fechaMax = maxFechaLimite ? new Date(maxFechaLimite) : null
+    const fechaInPeriodo = periodoObj && new Date(fechaLimite) >= fechaMin && fechaMax && new Date(fechaLimite) <= fechaMax
     if (!fechaInPeriodo) return false
     if (new Date(fechaLimite) <= new Date(new Date().setHours(0, 0, 0, 0))) return false
     if (estudiantesSeleccionados.length === 0) return false
@@ -107,7 +118,9 @@
 
     const isValidDate = new Date(fechaLimite) > new Date(new Date().setHours(0, 0, 0, 0))
     const periodoObj = peridosRange.find(p => p.nombre === selectedPeriodo)
-    const fechaInPeriodo = periodoObj && new Date(fechaLimite) >= new Date(periodoObj.fechas.inicio) && new Date(fechaLimite) <= new Date(periodoObj.fechas.fin)
+    const fechaMin = periodoObj ? new Date(periodoObj.fechas.inicio) : null
+    const fechaMax = maxFechaLimite ? new Date(maxFechaLimite) : null
+    const fechaInPeriodo = periodoObj && isValidDate && fechaMin && fechaMax && new Date(fechaLimite) >= fechaMin && new Date(fechaLimite) <= fechaMax
     items.push({
       id: 'fecha',
       label: 'Fecha límite',
@@ -250,6 +263,16 @@
       Swal.fire({
         title: 'Fecha invalida',
         text: 'La fecha limite debe ser posterior a hoy.',
+        icon: 'warning',
+        confirmButtonColor: '#2563eb'
+      })
+      return
+    }
+    if (maxFechaLimite && new Date(fechaLimite) > new Date(maxFechaLimite)) {
+      triggerShake('fecha')
+      Swal.fire({
+        title: 'Fecha fuera de rango',
+        text: 'La fecha límite no puede ser más de un mes después del fin del período.',
         icon: 'warning',
         confirmButtonColor: '#2563eb'
       })
@@ -427,7 +450,7 @@
             <Icon icon="mdi:calendar-clock" class="text-sm text-slate-400" />
             Fecha limite
           </label>
-          <input type="date" id="fechaLimite" bind:value={fechaLimite} min={today} class="field-input" />
+          <input type="date" id="fechaLimite" bind:value={fechaLimite} min={today} max={maxFechaLimite} class="field-input" />
         </div>
       </div>
     </div>

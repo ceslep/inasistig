@@ -61,10 +61,11 @@
 <svelte:window onkeydown={handleKeydown} />
 
 {#if open}
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <div
     class="bs-backdrop"
     onclick={handleBackdropClick}
-    onkeydown={handleBackdropClick}
+    onkeydown={handleKeydown}
     role="dialog"
     aria-modal="true"
     aria-labelledby={title ? "bs-title" : undefined}
@@ -77,8 +78,8 @@
       ontouchstart={handleTouchStart}
       ontouchmove={handleTouchMove}
       ontouchend={handleTouchEnd}
-      role="document"
-      tabindex="0"
+      role="region"
+      aria-label="Contenido del panel"
     >
       {#if showHandle}
         <div class="bs-handle">

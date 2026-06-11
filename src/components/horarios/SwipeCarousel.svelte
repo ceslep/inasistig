@@ -63,6 +63,8 @@
     ontouchstart={handleTouchStart}
     ontouchmove={handleTouchMove}
     ontouchend={handleTouchEnd}
+    role="region"
+    aria-label="Carrusel de pasos"
   >
     {#if children}
       {#each children as child}

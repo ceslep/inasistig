@@ -67,7 +67,7 @@ try {
 
     } elseif ($_SERVER['REQUEST_METHOD'] === 'GET') {
         // Obtener datos
-        $response = $service->spreadsheets_values->get(SPREADSHEET_ID, 'Datos!A:G');
+        $response = $service->spreadsheets_values->get(SPREADSHEET_ID, 'Datos!A:H');
         $values = $response->getValues();
 
         $formattedData = [];

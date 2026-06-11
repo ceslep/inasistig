@@ -36,7 +36,7 @@
         );
       const matchesGrupo = !filterGrupo || item.grupo === filterGrupo;
       const matchesDocente = !filterDocente || item.docente === filterDocente;
-      const matchesPeriodo = !filterPeriodo || item.periodo === filterPeriodo;
+      const matchesPeriodo = !filterPeriodo || item.periodo === filterPeriodo || item.periodo === '';
       return matchesSearch && matchesGrupo && matchesDocente && matchesPeriodo;
     }),
   );
@@ -379,10 +379,10 @@
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       <div class="relative">
-        <Icon
-          icon="mdi:magnify"
-          class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base"
-        />
+<Icon
+            icon="mdi:magnify"
+            class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-base"
+          />
         <input
           type="text"
           placeholder="Buscar en todos los campos..."
@@ -422,7 +422,7 @@
           class="text-primary-500 dark:text-primary-400 text-sm shrink-0"
         />
         <span
-          class="text-xs font-medium text-slate-500 dark:text-slate-400 shrink-0"
+          class="text-xs font-medium text-slate-600 dark:text-slate-400 shrink-0"
           >Filtros activos:</span
         >
         {#each activeFilterChips() as chip (chip.key)}
@@ -438,7 +438,7 @@
           </span>
         {/each}
         <span
-          class="text-xs text-slate-400 dark:text-slate-500 ml-auto shrink-0"
+          class="text-xs text-slate-500 dark:text-slate-500 ml-auto shrink-0"
         >
           {filteredData.length} resultado{filteredData.length !== 1 ? "s" : ""}
         </span>
@@ -474,7 +474,7 @@
         >
           {stats.totalEstudiantes}
         </p>
-        <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+        <p class="text-xs text-slate-500 dark:text-slate-500 mt-0.5">
           Estudiantes
         </p>
       </div>
@@ -491,7 +491,7 @@
             />
           </div>
           <span
-            class="text-[10px] font-medium text-slate-400 dark:text-slate-500"
+            class="text-[10px] font-medium text-slate-500 dark:text-slate-500"
             >{stats.promedioPlanesPorEstudiante}/est.</span
           >
         </div>
@@ -500,7 +500,7 @@
         >
           {stats.totalPlanes}
         </p>
-        <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+        <p class="text-xs text-slate-500 dark:text-slate-500 mt-0.5">
           Planes de mejoramiento
         </p>
       </div>
@@ -530,7 +530,7 @@
         >
           {stats.totalAsignaturas}
         </p>
-        <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+        <p class="text-xs text-slate-500 dark:text-slate-500 mt-0.5">
           Asignaturas
         </p>
       </div>
@@ -547,7 +547,7 @@
             />
           </div>
           <span
-            class="text-[10px] font-medium text-slate-400 dark:text-slate-500"
+            class="text-[10px] font-medium text-slate-500 dark:text-slate-500"
             >{stats.totalGrupos} grupos</span
           >
         </div>
@@ -556,7 +556,7 @@
         >
           {stats.totalDocentes}
         </p>
-        <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+        <p class="text-xs text-slate-500 dark:text-slate-500 mt-0.5">
           Docentes
         </p>
       </div>
@@ -572,7 +572,7 @@
           >
             Distribución por asignatura
           </h3>
-          <span class="text-[10px] text-slate-400 dark:text-slate-500 ml-auto"
+          <span class="text-[10px] text-slate-500 dark:text-slate-500 ml-auto"
             >Top 5</span
           >
         </div>
@@ -596,13 +596,13 @@
                   class="absolute inset-0 flex items-center justify-end pr-2 text-[10px] font-bold {item.porcentaje >
                   50
                     ? 'text-white'
-                    : 'text-slate-500 dark:text-slate-300'}"
+                    : 'text-slate-600 dark:text-slate-300'}"
                 >
                   {item.cantidad}
                 </span>
               </div>
               <span
-                class="text-[10px] text-slate-400 dark:text-slate-500 w-8 text-right font-medium"
+                class="text-[10px] text-slate-500 dark:text-slate-500 w-8 text-right font-medium"
                 >{item.porcentaje}%</span
               >
             </div>
@@ -726,7 +726,7 @@
       <p class="text-slate-600 dark:text-slate-300 font-semibold text-lg mb-1">
         No se encontraron registros
       </p>
-      <p class="text-sm text-slate-400 dark:text-slate-500 max-w-sm mx-auto">
+      <p class="text-sm text-slate-500 dark:text-slate-500 max-w-sm mx-auto">
         {#if hasActiveFilters}
           No hay resultados para los filtros actuales. Intenta ajustar los
           criterios de busqueda.
@@ -748,7 +748,7 @@
   {:else if !loading}
     <!-- Resumen de resultados -->
     <div class="flex items-center justify-between px-1">
-      <p class="text-xs text-slate-400 dark:text-slate-500">
+      <p class="text-xs text-slate-500 dark:text-slate-500">
         Mostrando <span class="font-semibold text-slate-600 dark:text-slate-300"
           >{uniqueStudents.length}</span
         >
@@ -780,7 +780,7 @@
 
         <button
           onclick={() => openStudentDetail(student)}
-          class="student-card card border-t-4 {statusBorderClass} text-left cursor-pointer group stagger-item"
+          class="student-card card border-t-4 {statusBorderClass} text-left cursor-pointer group stagger-item !bg-white dark:!bg-slate-800"
           style="animation-delay: {Math.min(idx * 60, 600)}ms"
         >
           <!-- Alerta blink si tiene más de 2 registros -->
@@ -809,12 +809,12 @@
             </div>
             <div class="flex-1 min-w-0">
               <h3
-                class="text-[13px] font-bold text-slate-800 dark:text-slate-100 leading-tight line-clamp-2"
+                class="text-[13px] font-bold text-slate-900 dark:text-slate-100 leading-tight line-clamp-2"
               >
                 {student.estudiante}
               </h3>
               <p
-                class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 flex items-center gap-1"
+                class="text-[11px] text-slate-500 dark:text-slate-500 mt-0.5 flex items-center gap-1"
               >
                 <Icon icon="mdi:google-classroom" class="text-xs" />
                 Grupo {student.grupo}
@@ -843,7 +843,7 @@
             <div class="flex items-center gap-1.5">
               <Icon
                 icon="mdi:text-box-multiple"
-                class="text-xs text-slate-400 dark:text-slate-500"
+class="text-xs text-slate-600 dark:text-slate-500"
               />
               <span
                 class="text-[11px] font-semibold text-slate-500 dark:text-slate-400"
@@ -853,7 +853,7 @@
               </span>
             </div>
             <span
-              class="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1"
+              class="text-[10px] text-slate-500 dark:text-slate-500 flex items-center gap-1"
             >
               <Icon icon="mdi:calendar-clock" class="text-[11px]" />
               {formatDateShort(student.records[0].fecha_limite)}
@@ -915,11 +915,11 @@
                 {selectedStudent.estudiante}
               </h3>
               <p
-                class="text-xs text-slate-400 dark:text-slate-500 flex items-center gap-1.5"
+                class="text-xs text-slate-500 dark:text-slate-500 flex items-center gap-1.5"
               >
                 <Icon icon="mdi:google-classroom" class="text-sm" />
                 Grupo {selectedStudent.grupo}
-                <span class="text-slate-200 dark:text-slate-600">|</span>
+                <span class="text-slate-400 dark:text-slate-600">|</span>
                 {selectedStudent.records.length}
                 {selectedStudent.records.length === 1 ? "plan" : "planes"}
               </p>
@@ -927,7 +927,7 @@
           </div>
           <button
             onclick={closeStudentDetail}
-            class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            class="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center transition-colors text-slate-500 hover:text-slate-700 dark:hover:text-slate-200"
             aria-label="Cerrar"
           >
             <Icon icon="mdi:close" class="text-lg" />
@@ -975,7 +975,7 @@
 
               <!-- Fechas -->
               <div
-                class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400 dark:text-slate-500"
+                class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-slate-500"
               >
                 <span class="flex items-center gap-1">
                   <Icon icon="mdi:calendar-clock" class="text-xs" />

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { CoberturaSugerida, SugerenciaGrupo, HorarioDocente, CoberturaHistorica } from "../../lib/coberturaUtils";
-  import { formatoDia, formatoHora, ROLES_SIN_LIMITE, esHoraLibrePorGrupoAusente, normalizarDocente, MARCADOR_LIBRE } from "../../lib/coberturaUtils";
+  import { formatoDia, formatoHora, ROLES_SIN_LIMITE, esHoraLibrePorGrupoAusente, normalizarDocente, MARCADOR_LIBRE, getClaveSemana } from "../../lib/coberturaUtils";
   import horariosData from "../../lib/horarios.json";
   import Swal from "sweetalert2";
   import { coberturaSheetsService } from "../../services/coberturaSheetsService";
@@ -249,12 +249,14 @@
     return m;
   });
 
-  // Conteo histórico mismo día (excluye roles sin límite e "IGNORAR")
+  // Conteo histórico semana completa (excluye roles sin límite e "IGNORAR")
   const conteoHistorico = $derived.by(() => {
     const m = new Map<string, number>();
+    const semanaActual = getClaveSemana(fechaSeleccionada);
     for (const cp of coberturasHistoricas) {
       if (cp.estado !== "aprobado") continue;
-      if (cp.fecha !== fechaSeleccionada) continue;
+      const cpSemana = getClaveSemana(cp.fecha);
+      if (cpSemana !== semanaActual) continue;
       const d = normalizarDocente(cp.docente_cubre);
       if (!d || d === "IGNORAR") continue;
       if (ROLES_SIN_LIMITE.some((r) => d.includes(r))) continue;
@@ -314,7 +316,7 @@
       const repiteReal = s >= 1 || h >= 1;
       return { dup: false, sesion: s, historico: h, porGrupoLiberado: repiteReal };
     }
-    // Violación solo al SUPERAR el tope semanal de 2 (histórico + sesión).
+    // Modal de confirmación solo al SUPERAR el límite (3+ horas en la semana).
     return { dup: s + h > 2, sesion: s, historico: h, porGrupoLiberado: false };
   }
 
