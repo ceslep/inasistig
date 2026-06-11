@@ -150,6 +150,7 @@
   let permitirRepetir = $state(false);
   let ignorarHorasPropietarias = $state(false);
   let liberadosReportePDF = $state<import("../../lib/coberturaUtils").CoberturaLiberado[]>([]);
+  let docentesReportePDF = $state<{ nombre: string; tipo: string }[]>([]);
 
   const isDev = import.meta.env.DEV;
 
@@ -738,6 +739,7 @@ function recalcularCoberturas() {
           fechaReportePDF = fechaSeleccionada;
           gruposReportePDF = liberadosGuardados.map((l) => ({ grupo: l.grupo, horaInicio: l.hora_liberada }));
           liberadosReportePDF = liberadosGuardados;
+          docentesReportePDF = [...docentesAusentes];
           mostrarReporteWhatsApp = true;
         } else if (r.dismiss === Swal.DismissReason.cancel) {
           resetSesion();
@@ -993,6 +995,16 @@ function recalcularCoberturas() {
       posiblesCobradores: [],
       motivoAusencia: c.motivo,
     }));
+
+    const docentesUnicos = new Map<string, string>();
+    for (const c of delDia) {
+      if (c.docente_ausente && c.docente_ausente !== "GRUPO AUSENTE") {
+        if (!docentesUnicos.has(c.docente_ausente)) {
+          docentesUnicos.set(c.docente_ausente, c.motivo || "No especificado");
+        }
+      }
+    }
+    docentesReportePDF = Array.from(docentesUnicos).map(([nombre, tipo]) => ({ nombre, tipo }));
 
     coberturasGuardadas = [...coberturasReportePDF];
     mostrarReporteWhatsApp = true;
@@ -1292,7 +1304,9 @@ function recalcularCoberturas() {
                       style="background-color: rgb(var(--bg-primary)); color: rgb(var(--accent-primary)); border-color: rgb(var(--border-primary));"
                     >
                       <option value={1}>desde h1</option>
+                      <option value={2}>desde h2</option>
                       <option value={3}>desde h3</option>
+                      <option value={4}>desde h4</option>
                       <option value={5}>desde h5</option>
                       <option value={6}>desde h6</option>
                       <option value={7}>desde h7</option>
@@ -1496,7 +1510,7 @@ function recalcularCoberturas() {
       fechaSeleccionada={fechaReportePDF}
       coberturas={coberturasGuardadas}
       gruposAusentes={gruposReportePDF}
-      {docentesAusentes}
+      docentesAusentes={docentesReportePDF}
       liberadosData={liberadosReportePDF}
       onClose={() => mostrarReporteWhatsApp = false}
     />
@@ -1508,6 +1522,7 @@ function recalcularCoberturas() {
       fechaSeleccionada={fechaReportePDF}
       coberturas={coberturasReportePDF}
       gruposAusentes={gruposReportePDF}
+      docentesAusentes={docentesReportePDF}
       modoPDF={true}
       liberadosData={liberadosReportePDF}
       onClose={() => mostrarReportePDF = false}

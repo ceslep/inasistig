@@ -55,6 +55,46 @@ function generatePlanBlockWithTitle(item) {
   `
 }
 
+function generateStudentInfoTable(studentName, records, todayFormatted) {
+  const grupo = records[0]?.grupo || ''
+  const asignaturas = [...new Set(records.map(r => r.asignatura))].join(', ')
+  const docentes = [...new Set(records.map(r => r.docente))].join(', ')
+  const primeraFechaLimite = records[0]?.fecha_limite || ''
+
+  return `
+  <table class="info-table">
+    <tr>
+      <td class="info-cell">
+        <span class="lbl">Estudiante</span>
+        <span class="val bold">${studentName}</span>
+      </td>
+      <td class="info-cell">
+        <span class="lbl">Grupo</span>
+        <span class="val">${grupo}</span>
+      </td>
+      <td class="info-cell">
+        <span class="lbl">Asignatura(s)</span>
+        <span class="val">${asignaturas}</span>
+      </td>
+    </tr>
+    <tr>
+      <td class="info-cell">
+        <span class="lbl">Docente(s)</span>
+        <span class="val">${docentes}</span>
+      </td>
+      <td class="info-cell">
+        <span class="lbl">Fecha de Entrega</span>
+        <span class="val">${todayFormatted}</span>
+      </td>
+      <td class="info-cell">
+        <span class="lbl">Fecha Límite</span>
+        <span class="val bold">${formatDate(primeraFechaLimite)}</span>
+      </td>
+    </tr>
+  </table>
+  `
+}
+
 function generateFooterWithFirmas() {
   return `
   <div class="footer-zone">
@@ -80,34 +120,30 @@ function generateSingleRecordHTML(item, escudoBase64, periodoLabel) {
   `
 }
 
-function generateMultiRecordStudentHTML(studentName, records, escudoBase64, periodoLabel) {
+function generateStudentPageHTML(studentName, records, escudoBase64, periodoLabel) {
   const todayFormatted = formatDate(new Date().toISOString().split('T')[0])
 
   const recordBlocks = records.map((item, i) => {
-    const isFirst = i === 0
     const isLast = i === records.length - 1
     return `
-    <div class="student-record ${isFirst ? 'first' : ''} ${isLast ? 'last' : ''}">
-      ${isFirst ? generateHeaderHTML(escudoBase64, periodoLabel) : ''}
+    <div class="student-record${isLast ? ' last' : ''}">
       <div class="record-header">
         <span class="record-asignatura">${item.asignatura || ''}</span>
         <span class="record-meta">${item.docente || ''} · Límite: ${formatDate(item.fecha_limite)}</span>
       </div>
-      <div class="record-info-row">
-        <span><span class="lbl-inline">Estudiante:</span> <strong>${item.estudiante || ''}</strong></span>
-        <span><span class="lbl-inline">Grupo:</span> ${item.grupo || ''}</span>
-      </div>
       <div class="plan-section">
         <div class="plan-content">${item.plan || ''}</div>
       </div>
-      ${isLast ? generateFooterWithFirmas() : ''}
     </div>
     `
   }).join('')
 
   return `
-  <div class="page-item multi">
+  <div class="page-item">
+    ${generateHeaderHTML(escudoBase64, periodoLabel)}
+    ${generateStudentInfoTable(studentName, records, todayFormatted)}
     ${recordBlocks}
+    ${generateFooterWithFirmas()}
   </div>
   `
 }
@@ -132,13 +168,8 @@ export function generatePDF(items, escudoBase64, periodoLabel) {
 
   studentGroups.forEach((group, studentIndex) => {
     const isLastStudent = studentIndex === studentGroups.length - 1
-
-    if (group.length === 1) {
-      pagesHTML += generateSingleRecordHTML(group[0], escudoBase64, periodoLabel)
-    } else {
-      pagesHTML += generateMultiRecordStudentHTML(studentName, group, escudoBase64, periodoLabel)
-    }
-
+    const studentName = group[0]?.estudiante || ''
+    pagesHTML += generateStudentPageHTML(studentName, group, escudoBase64, periodoLabel)
     if (!isLastStudent) {
       pagesHTML += '<div class="page-break"></div>'
     }
@@ -156,17 +187,18 @@ export function generatePDF(items, escudoBase64, periodoLabel) {
   html, body {
     font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
     color: #222;
-    font-size: 10px;
+    font-size: 13px;
     line-height: 1.4;
     height: 100%;
   }
 
   /* Cada acta ocupa exactamente una página */
   .page-item {
-    height: 100vh;
+    min-height: 100vh;
+    height: auto;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .page-item.multi {
@@ -199,12 +231,12 @@ export function generatePDF(items, escudoBase64, periodoLabel) {
   }
 
   .inst-name {
-    font-size: 9px;
+    font-size: 12px;
     color: #222;
   }
 
   .inst-detail {
-    font-size: 7px;
+    font-size: 10px;
     color: #666;
     margin-top: 1px;
   }
@@ -214,14 +246,14 @@ export function generatePDF(items, escudoBase64, periodoLabel) {
   }
 
   .title-text {
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 700;
     color: #111;
     letter-spacing: 1px;
   }
 
   .title-sub {
-    font-size: 8px;
+    font-size: 11px;
     color: #555;
     margin-top: 2px;
   }
@@ -237,13 +269,13 @@ export function generatePDF(items, escudoBase64, periodoLabel) {
 
   .info-cell {
     border: 1px solid #ccc;
-    padding: 5px 8px;
+    padding: 7px 11px;
     width: 33.33%;
   }
 
   .lbl {
     display: block;
-    font-size: 7.5px;
+    font-size: 10.5px;
     color: #666;
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -251,7 +283,7 @@ export function generatePDF(items, escudoBase64, periodoLabel) {
   }
 
   .lbl-inline {
-    font-size: 7.5px;
+    font-size: 10.5px;
     color: #666;
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -259,7 +291,7 @@ export function generatePDF(items, escudoBase64, periodoLabel) {
 
   .val {
     display: block;
-    font-size: 10px;
+    font-size: 13px;
     color: #222;
   }
 
@@ -280,11 +312,11 @@ export function generatePDF(items, escudoBase64, periodoLabel) {
   }
 
   .plan-title {
-    font-size: 9px;
+    font-size: 12px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.3px;
-    padding: 5px 8px;
+    padding: 7px 11px;
     border-bottom: 1px solid #aaa;
     color: #222;
     flex-shrink: 0;
@@ -292,8 +324,8 @@ export function generatePDF(items, escudoBase64, periodoLabel) {
   }
 
   .plan-content {
-    padding: 8px 10px;
-    font-size: 10px;
+    padding: 11px 13px;
+    font-size: 13px;
     line-height: 1.5;
     color: #222;
     white-space: pre-wrap;
@@ -304,11 +336,12 @@ export function generatePDF(items, escudoBase64, periodoLabel) {
   /* ---- Zona inferior fija: nota + firmas ---- */
   .footer-zone {
     flex-shrink: 0;
-    margin-top: 10px;
+    margin-top: auto;
+    margin-bottom: 0;
   }
 
   .notice {
-    font-size: 8px;
+    font-size: 11px;
     color: #555;
     line-height: 1.4;
     margin-bottom: 10px;
@@ -334,7 +367,7 @@ export function generatePDF(items, escudoBase64, periodoLabel) {
   }
 
   .firma-label {
-    font-size: 8px;
+    font-size: 11px;
     color: #444;
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -350,30 +383,32 @@ export function generatePDF(items, escudoBase64, periodoLabel) {
     display: flex;
     flex-direction: column;
     padding-top: 0;
+    flex-shrink: 0;
   }
 
   .student-record.last {
     flex: 1;
+    flex-shrink: 0;
   }
 
   .record-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 6px 10px;
+    padding: 9px 13px;
     background: #f0f0f0;
     border: 1px solid #aaa;
     border-bottom: none;
   }
 
   .record-asignatura {
-    font-size: 10px;
+    font-size: 13px;
     font-weight: 700;
     color: #111;
   }
 
   .record-meta {
-    font-size: 8px;
+    font-size: 11px;
     color: #666;
     text-align: right;
   }
@@ -395,11 +430,13 @@ export function generatePDF(items, escudoBase64, periodoLabel) {
     .page-item {
       height: auto;
       min-height: 100vh;
+      page-break-after: auto;
       page-break-inside: avoid;
     }
     .page-break { page-break-after: always; }
+    .student-record { page-break-inside: avoid; }
     .plan-section {
-      flex: 1;
+      flex-shrink: 0;
     }
   }
 </style>

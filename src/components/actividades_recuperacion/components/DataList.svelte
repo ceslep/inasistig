@@ -568,7 +568,7 @@
         <div class="flex items-center gap-2 mb-3">
           <Icon icon="mdi:chart-bar" class="text-slate-400 text-base" />
           <h3
-            class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+            class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider"
           >
             Distribución por asignatura
           </h3>
@@ -846,7 +846,7 @@
 class="text-xs text-slate-600 dark:text-slate-500"
               />
               <span
-                class="text-[11px] font-semibold text-slate-500 dark:text-slate-400"
+                class="text-[11px] font-semibold text-slate-600 dark:text-slate-500"
               >
                 {recordCount}
                 {recordCount === 1 ? "plan" : "planes"}
@@ -953,9 +953,9 @@ class="text-xs text-slate-600 dark:text-slate-500"
                   {record.asignatura}
                 </span>
                 <span
-                  class="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"
+                  class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400"
                 >
-                  <Icon icon="mdi:account-tie" class="text-sm text-slate-400" />
+                  <Icon icon="mdi:account-tie" class="text-sm text-slate-500" />
                   {record.docente}
                 </span>
                 <span
@@ -980,7 +980,7 @@ class="text-xs text-slate-600 dark:text-slate-500"
                 <span class="flex items-center gap-1">
                   <Icon icon="mdi:calendar-clock" class="text-xs" />
                   Límite:
-                  <span class="font-medium text-slate-500 dark:text-slate-400"
+                  <span class="font-medium text-slate-600 dark:text-slate-500"
                     >{formatDate(record.fecha_limite)}</span
                   >
                 </span>
@@ -999,7 +999,7 @@ class="text-xs text-slate-600 dark:text-slate-500"
         >
           <button
             onclick={closeStudentDetail}
-            class="px-4 py-2 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors"
+            class="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors"
           >
             Cerrar
           </button>
@@ -1018,14 +1018,20 @@ class="text-xs text-slate-600 dark:text-slate-500"
 
 <style>
   .stat-card {
-    background: #ffffff;
+    background: rgb(var(--card-bg));
     border-radius: 1rem;
     padding: 1.25rem;
-    border: 1px solid #e2e8f0;
+    border: 1px solid rgb(var(--border-primary));
     box-shadow:
       0 2px 8px rgba(148, 163, 184, 0.2),
       0 1px 2px rgba(0, 0, 0, 0.05);
     transition: all 0.3s ease;
+  }
+
+  :global(.dim) .stat-card {
+    background: rgba(51, 65, 85, 0.3);
+    border-color: rgba(148, 163, 184, 0.1);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
   }
 
   :global(.dark) .stat-card {
@@ -1038,6 +1044,11 @@ class="text-xs text-slate-600 dark:text-slate-500"
     box-shadow: 0 8px 28px rgba(148, 163, 184, 0.3);
     border-color: #cbd5e1;
     transform: translateY(-2px);
+  }
+
+  :global(.dim) .stat-card:hover {
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+    border-color: rgba(71, 85, 105, 0.5);
   }
 
   :global(.dark) .stat-card:hover {

@@ -79,11 +79,11 @@
         </button>
         <button onclick={toggleDark}
           class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all duration-200 text-white/80 hover:text-white"
-          title={$theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
-          {#if $theme === 'dark'}
-            <Sun class="text-lg" />
-          {:else}
+          title={$theme === 'light' ? 'Modo oscuro' : 'Modo claro'}>
+          {#if $theme === 'light'}
             <Moon class="text-lg" />
+          {:else}
+            <Sun class="text-lg" />
           {/if}
         </button>
         <button onclick={onBack}

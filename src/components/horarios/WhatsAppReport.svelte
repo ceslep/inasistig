@@ -78,7 +78,8 @@
 
   let generando = $state(false);
   let pdfBlob = $state<Blob | null>(null);
-  let pdfUrl = $state<string | null>(null);
+  // pdfDataUrl almacena la data URL base64 para el embed (evita errores de iframe con blob URLs)
+  let pdfDataUrl = $state<string | null>(null);
   let mostrandoPreview = $state(false);
   let generandoPDF = $state(false);
   let infoAdicional = $state("");
@@ -112,10 +113,8 @@
   }
 
   function horaReal(h: number): string {
-    const schedule = (infoHoras.horario_escolar as Record<string, {inicio: string; fin: string; bloque: string}[]>)[diaSeleccionado];
+    const schedule = (infoHoras.horario_escolar as Record<string, { inicio: string; fin: string; bloque: string }[]>)[diaSeleccionado];
     if (!schedule) return `Hora ${h}`;
-    // El array incluye bloques de Descanso/Almuerzo intercalados, por eso se busca
-    // el bloque por su nombre ("Hora N") en vez de indexar por posición.
     const slot = schedule.find((s) => s.bloque === `Hora ${h}`);
     return slot ? slot.inicio : `Hora ${h}`;
   }
@@ -325,7 +324,6 @@
     const totalPages = (doc as any).internal.pages.length - 1;
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
-      checkPageBreak(20);
       yPos = pageHeight - 25;
       doc.setDrawColor(180, 180, 180);
       doc.line(margin, yPos, pageWidth - margin, yPos);
@@ -339,26 +337,36 @@
     return doc.output('blob');
   }
 
+  // Convierte un Blob a una data URL base64 (necesario para embed, evita errores de CSP con blob URLs en iframe/embed)
+  function blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("Error al leer el blob"));
+      reader.readAsDataURL(blob);
+    });
+  }
+
   async function generarYMostrarPDF() {
     if (generandoPDF) return;
     generandoPDF = true;
     try {
-      if (pdfUrl) {
-        URL.revokeObjectURL(pdfUrl);
-        pdfUrl = null;
-      }
+      // Limpiar estado previo
+      pdfDataUrl = null;
+      pdfBlob = null;
+      mostrandoPreview = false;
+
       const blob = await generarPDFBlob();
       pdfBlob = blob;
-      const url = URL.createObjectURL(blob);
-      pdfUrl = url;
+
+      // Convertir a base64 data URL para el <embed> — los blob URLs son bloqueados por CSP en muchos navegadores
+      pdfDataUrl = await blobToDataUrl(blob);
       mostrandoPreview = true;
 
+      // En móvil, descargar directamente además de mostrar preview
       const esMovil = window.innerWidth < 768;
       if (esMovil) {
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `Coberturas_${fechaSeleccionada}.pdf`;
-        link.click();
+        descargarPDF();
       }
     } catch (e) {
       console.error(e);
@@ -366,6 +374,16 @@
     } finally {
       generandoPDF = false;
     }
+  }
+
+  function descargarPDF() {
+    if (!pdfBlob) return;
+    const url = URL.createObjectURL(pdfBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Coberturas_${fechaSeleccionada}.pdf`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
 
   function resumenWhatsAppTexto(): string {
@@ -408,7 +426,6 @@
     const archivo = new File([blob], `Coberturas_${fechaSeleccionada}.png`, { type: "image/png" });
     const texto = resumenWhatsAppTexto();
 
-    // Web Share API con archivos: única vía que adjunta la imagen real a WhatsApp (móvil).
     const navAny = navigator as Navigator & {
       canShare?: (data?: ShareData) => boolean;
       share?: (data: ShareData) => Promise<void>;
@@ -426,7 +443,6 @@
           text: texto,
         });
       } catch (e) {
-        // AbortError = usuario canceló el diálogo de compartir; no es un fallo.
         if ((e as DOMException)?.name !== "AbortError") {
           console.error(e);
         }
@@ -434,8 +450,6 @@
       return;
     }
 
-    // Fallback (escritorio sin Web Share): abrir WhatsApp con el texto. La imagen ya se
-    // descargó, debe adjuntarse manualmente.
     await Swal.fire({
       icon: "info",
       title: "Compartir por WhatsApp",
@@ -449,57 +463,58 @@
     if (generando) return;
     generando = true;
     try {
-      const elemento = document.getElementById("report-card");
-      if (!elemento) {
+      const elementos = document.querySelectorAll("#report-card");
+      if (elementos.length === 0) {
+        generando = false;
+        return;
+      }
+      const elemento = elementos[0] as HTMLElement;
+
+      const win = window.open("", "_blank", "width=800,height=600");
+      if (!win) {
+        Swal.fire("Error", "No se pudo abrir ventana para capturar", "error");
         generando = false;
         return;
       }
 
-      const modalContent = elemento.closest('[style*="max-h"]') as HTMLElement;
-      const scrollContainer = modalContent?.querySelector('[class*="overflow-y-auto"]') as HTMLElement;
+      const rect = elemento.getBoundingClientRect();
+      const scale = 2;
+      const stylesToMove = new Set<string>();
 
-      if (scrollContainer) {
-        const maxScroll = scrollContainer.scrollHeight;
-        scrollContainer.style.overflow = "visible";
-        scrollContainer.style.maxHeight = "none";
-        scrollContainer.scrollTop = maxScroll + 500;
-        await new Promise((r) => setTimeout(r, 300));
-      }
+      const tempDiv = win.document.createElement("div");
+      tempDiv.style.position = "absolute";
+      tempDiv.style.left = "-9999px";
+      tempDiv.style.top = "0";
+      tempDiv.style.width = `${rect.width}px`;
+      tempDiv.style.height = `${rect.height}px`;
+      tempDiv.style.backgroundColor = "#ffffff";
+      tempDiv.style.zIndex = "-1";
 
-      elemento.style.height = "auto";
-      elemento.style.maxHeight = "none";
-      elemento.style.overflow = "visible";
+      const clone = elemento.cloneNode(true) as HTMLElement;
+      clone.style.transform = "none";
+      clone.style.zoom = "1";
+      clone.id = "report-card-capture";
+      tempDiv.appendChild(clone);
+      win.document.body.appendChild(tempDiv);
+      win.document.body.style.margin = "0";
+      win.document.body.style.padding = "20px";
+      win.document.body.style.backgroundColor = "#ffffff";
 
-      await new Promise((r) => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 500));
 
-      const altoCompleto = elemento.scrollHeight;
-      const anchoCompleto = elemento.scrollWidth;
-
-      elemento.style.height = `${altoCompleto + 50}px`;
-
-      await new Promise((r) => setTimeout(r, 100));
-
-      const canvas = await html2canvas(elemento, {
-        scale: 2,
+      const canvas = await html2canvas(clone, {
+        scale,
         backgroundColor: "#ffffff",
         useCORS: true,
         logging: false,
         imageTimeout: 0,
-        width: Math.max(anchoCompleto, 400),
-        height: altoCompleto + 50,
-        windowWidth: Math.max(anchoCompleto + 50, 450),
-        windowHeight: altoCompleto + 100,
+        width: rect.width,
+        height: rect.height,
+        windowWidth: rect.width + 40,
+        windowHeight: rect.height + 40,
       });
 
-      elemento.style.height = "";
-      elemento.style.maxHeight = "";
-      elemento.style.overflow = "";
-
-      if (scrollContainer) {
-        scrollContainer.style.overflow = "";
-        scrollContainer.style.maxHeight = "";
-        scrollContainer.scrollTop = 0;
-      }
+      win.close();
 
       const blob: Blob | null = await new Promise((resolve) =>
         canvas.toBlob((b) => resolve(b), "image/png")
@@ -537,6 +552,8 @@
 
 <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background-color: rgba(0,0,0,0.5);">
   <div class="rounded-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col" style="background-color: rgb(var(--bg-primary)); border: 1px solid rgb(var(--border-primary));">
+
+    <!-- Header -->
     <div class="flex justify-between items-center p-4 border-b shrink-0" style="border-color: rgb(var(--border-primary));">
       <h3 class="text-lg font-bold" style="color: rgb(var(--text-primary));">{modoPDF ? "Reporte PDF" : "Reporte para WhatsApp"}</h3>
       <button
@@ -548,7 +565,10 @@
       </button>
     </div>
 
+    <!-- Body -->
     <div class="flex-1 overflow-y-auto p-4 min-h-0">
+
+      <!-- Info adicional -->
       <div class="mb-4">
         <label for="info-adicional" class="block text-sm font-medium mb-1" style="color: rgb(var(--text-secondary));">
           Información adicional (opcional)
@@ -556,7 +576,7 @@
         <textarea
           id="info-adicional"
           bind:value={infoAdicional}
-          placeholder="Ejemplos: Reunión de Docentes 1:30 pm, Comisión de Evaluación y Promoción, Consejo Directivo, Día de la Familia, Actividades Culturales, Cicla..."
+          placeholder="Ejemplos: Reunión de Docentes 1:30 pm, Comisión de Evaluación y Promoción, Consejo Directivo..."
           rows={3}
           class="w-full px-3 py-2 rounded-lg text-sm border resize-none focus-visible:outline-none focus-visible:ring-2"
           style="background-color: rgb(var(--card-bg)); color: rgb(var(--text-primary)); border-color: rgb(var(--border-primary)); --tw-ring-color: rgb(var(--accent-primary)); resize: vertical;"
@@ -578,9 +598,21 @@
         </div>
       </div>
 
+      <!-- Modo PDF -->
       {#if modoPDF}
-        {#if mostrandoPreview && pdfUrl}
-          <iframe src={pdfUrl} title="Vista previa del reporte PDF" class="w-full flex-1 min-h-[600px] border rounded"></iframe>
+        {#if mostrandoPreview && pdfDataUrl}
+          <!--
+            Se usa <embed> con data URL base64 en lugar de <iframe> con blob URL.
+            Los navegadores modernos bloquean blob URLs en iframes/embeds por CSP,
+            pero las data URLs base64 están permitidas.
+          -->
+          <embed
+            src={pdfDataUrl}
+            type="application/pdf"
+            class="w-full border rounded"
+            style="min-height: 600px;"
+            title="Vista previa del reporte PDF"
+          />
         {:else if generandoPDF}
           <div class="flex flex-col items-center justify-center py-16 gap-4">
             <svg class="animate-spin h-10 w-10" viewBox="0 0 24 24" aria-hidden="true" style="color: rgb(var(--accent-primary));">
@@ -590,7 +622,8 @@
             <p class="text-sm font-medium" style="color: rgb(var(--text-secondary));">Generando PDF...</p>
           </div>
         {:else}
-          <div id="report-card" class="bg-white text-black" style="font-family: Arial, sans-serif; background-color: #ffffff; color: #000000; padding: 40px 50px; max-width: 8.5in; margin: 0 auto;">
+          <!-- Vista previa del documento antes de generar -->
+          <div id="report-card" class="bg-white text-black" style="font-family: Arial, sans-serif; background-color: #ffffff; color: #000000; padding: 40px 50px; max-width: 8.5in; margin: 0 auto; will-change: transform; transform: translateZ(0);">
             <div class="mb-6 pb-3" style="border-bottom: 2px solid #000; display: flex; align-items: center; gap: 12px;">
               <img src={eieLogo} alt="Escudo" style="height: 70px; width: auto; object-fit: contain; flex-shrink: 0;" />
               <div class="flex-1">
@@ -688,24 +721,25 @@
             </div>
           </div>
         {/if}
+
+      <!-- Modo imagen / WhatsApp -->
       {:else if generando}
-          <div class="flex flex-col items-center justify-center py-16 gap-4">
-            <svg class="animate-spin h-10 w-10" viewBox="0 0 24 24" aria-hidden="true" style="color: rgb(var(--accent-primary));">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-            </svg>
-            <p class="text-sm font-medium" style="color: rgb(var(--text-secondary));">Generando imagen...</p>
+        <div class="flex flex-col items-center justify-center py-16 gap-4">
+          <svg class="animate-spin h-10 w-10" viewBox="0 0 24 24" aria-hidden="true" style="color: rgb(var(--accent-primary));">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+          <p class="text-sm font-medium" style="color: rgb(var(--text-secondary));">Generando imagen...</p>
+        </div>
+      {:else}
+        <div id="report-card" class="bg-white rounded-lg p-5 text-gray-800" style="font-family: Arial, sans-serif; background-color: #ffffff; color: #374151; will-change: transform; transform: translateZ(0);">
+          <div class="mb-5 pb-4 border-b flex items-center justify-center gap-3 text-center" style="border-color: #e5e7eb;">
+            <img src={eieLogo} alt="Escudo" style="height: 50px; width: auto; object-fit: contain; flex-shrink: 0;" />
+            <h1 class="text-xl font-bold" style="color: #1e40af;">INSTITUTO GUATICA</h1>
           </div>
-        {:else}
-        <div id="report-card" class="bg-white rounded-lg p-5 text-gray-800" style="font-family: Arial, sans-serif; background-color: #ffffff; color: #374151;">
-          <div class="mb-5 pb-4 border-b flex items-center gap-4" style="border-color: #e5e7eb;">
-            <img src={eieLogo} alt="Escudo" style="height: 60px; width: auto; object-fit: contain; flex-shrink: 0;" />
-            <div class="flex-1 text-center">
-              <h1 class="text-xl font-bold" style="color: #1e40af;">INSTITUTO GUATICA</h1>
-              <p class="text-base font-medium" style="color: #6b7280;">Reporte de Coberturas - {formatoDia(diaSeleccionado)}</p>
-              <p class="text-sm" style="color: #9ca3af;">{formatearFecha(fechaSeleccionada)}</p>
-            </div>
-            <div style="width: 60px; flex-shrink: 0;"></div>
+          <div class="mb-4">
+            <p class="text-base font-medium text-left" style="color: #6b7280;">Reporte de Coberturas - {formatoDia(diaSeleccionado)}</p>
+            <p class="text-sm text-left" style="color: #9ca3af;">{formatearFecha(fechaSeleccionada)}</p>
           </div>
 
           {#if gruposNoAsisten.length > 0 || gruposNoAsistenDesdeLiberados.length > 0}
@@ -830,18 +864,12 @@
       {/if}
     </div>
 
+    <!-- Footer con botones -->
     <div class="flex gap-3 p-4 border-t shrink-0" style="border-color: rgb(var(--border-primary));">
       {#if modoPDF}
         {#if mostrandoPreview}
           <button
-            onclick={() => {
-              if (pdfUrl) {
-                const link = document.createElement("a");
-                link.href = pdfUrl;
-                link.download = `Coberturas_${fechaSeleccionada}.pdf`;
-                link.click();
-              }
-            }}
+            onclick={descargarPDF}
             class="flex-1 py-2 rounded-lg font-medium transition-all flex items-center justify-center gap-2"
             style="background-color: rgb(var(--accent-primary)); color: white;"
           >

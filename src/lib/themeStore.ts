@@ -9,7 +9,7 @@ const getInitialTheme = (): Theme => {
       return savedTheme;
     }
   }
-  return "dark"; // Default to dark
+  return "light"; // Default to light
 };
 
 export const theme = writable<Theme>(getInitialTheme());
