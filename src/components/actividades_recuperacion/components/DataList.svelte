@@ -780,7 +780,7 @@
 
         <button
           onclick={() => openStudentDetail(student)}
-          class="student-card card border-t-4 {statusBorderClass} text-left cursor-pointer group stagger-item !bg-white dark:!bg-slate-800"
+          class="student-card card border-t-4 {statusBorderClass} text-left cursor-pointer group stagger-item"
           style="animation-delay: {Math.min(idx * 60, 600)}ms"
         >
           <!-- Alerta blink si tiene más de 2 registros -->
