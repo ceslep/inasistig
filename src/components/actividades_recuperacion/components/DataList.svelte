@@ -393,7 +393,7 @@
       <select bind:value={filterPeriodo} class="field-input">
         {#each peridosRange as p}
           {@const activo = isPeriodoActivo(p.nombre)}
-          <option value={p.nombre} disabled={!activo}>
+          <option value={p.nombre}>
             {getPeriodoLabel(p.nombre)} {!activo ? '(Fuera de rango)' : ''}
           </option>
         {/each}
