@@ -44,8 +44,9 @@ export const INFO_PADRES =
   "Registra el acta de reunión de padres conforme al Decreto 1286 de 2005 (artículo 23). Genera PDF, Excel y guarda en Drive.";
 
 // Acta de Reunión de Área
-export const SPREADSHEET_ID_ACTA = "PENDIENTE_CONFIGURAR";
+export const SPREADSHEET_ID_ACTA = "1Tifllb53X8JIZjtv7l11GwRIVeGqqSx8tYCzObABtdQ";
 export const SAVE_ACTA_URL = `${API_URL_GS}/save_acta_area.php`;
+export const GET_ACTA_URL = `${API_URL_GS}/get_acta_area.php`;
 export const WORKSHEET_TITLE_ACTA = "ActaArea";
 export const INFO_ACTA =
   "Registra el acta de reunión de área conforme a la Ley 115 de 1994 y el Decreto 1860 de 1994. El borrador se guarda automáticamente.";

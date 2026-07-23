@@ -3,7 +3,9 @@
   import { fade } from "svelte/transition";
   import Swal from "sweetalert2";
   import { docenteName, findMatchingDocente } from "../../lib/authStore";
-  import { getDocentes, getMaterias, savePlanAula, getAllPlanAula, type PlanAulaRow } from "../../../api/service";
+  import { getDocentes, getMaterias, saveActaArea, getAllActaArea } from "../../../api/service";
+  import { gdriveService, isUploading } from "../../lib/gdriveService";
+  import { GOOGLE_CLIENT_ID, SPREADSHEET_ID_ACTA, WORKSHEET_TITLE_ACTA } from "../../constants";
   import eieLogo from "../../assets/eie.png";
   import ModuleHeader from "../ModuleHeader.svelte";
   import TeacherSelector from "./TeacherSelector.svelte";
@@ -12,6 +14,8 @@
   import GradeSelector from "./GradeSelector.svelte";
   import IntensitySelector from "./IntensitySelector.svelte";
   import RecordFilter from "./RecordFilter.svelte";
+  import DriveFolderPicker from "../DriveFolderPicker.svelte";
+  import UploadProgressModal from "../UploadProgressModal.svelte";
 
   let { onBack }: { onBack: () => void } = $props();
 
@@ -36,6 +40,31 @@
   let saving = $state(false);
   let savedRows = $state<any[]>([]);
   let loadingHistory = $state(false);
+
+// PDF generation and Drive upload
+  let pdfBlob = $state<Blob | null>(null);
+  let pdfFileName = $state<string>('PlanAula.pdf');
+  let showFolderPickerPdf = $state(false);
+  let uploadPhasePdf = $state<'idle' | 'uploading' | 'done'>('idle');
+  let uploadCurrentPdf = $state(0);
+  let uploadTotalPdf = $state(0);
+  let uploadCurrentFilePdf = $state('');
+  let uploadSuccessCountPdf = $state(0);
+  let uploadFailedCountPdf = $state(0);
+  let showUploadProgressPdf = $state(false);
+
+  // Upload state for RecordFilter Drive saves
+  let showFolderPickerRecords = $state(false);
+  let recordsBlobToUpload = $state<Blob | null>(null);
+  let recordsFileNameToUpload = $state('');
+  let showUploadProgressRecords = $state(false);
+  let uploadPhaseRecords = $state<'idle' | 'uploading' | 'done'>('idle');
+  let uploadCurrentRecords = $state(0);
+  let uploadTotalRecords = $state(0);
+  let uploadCurrentFileRecords = $state('');
+  let uploadSuccessCountRecords = $state(0);
+  let uploadFailedCountRecords = $state(0);
+
 
   onMount(async () => {
     await loadInitialData();
@@ -69,12 +98,24 @@
   async function fetchHistory() {
     loadingHistory = true;
     try {
-      const result = await getAllPlanAula();
+      const result = await getAllActaArea();
       if (result && result.length > 0) {
-        savedRows = result.slice(1);
+        const headerRow = result[0];
+        const hasTimestamp = headerRow[0] && (
+          headerRow[0].toLowerCase().includes('time') ||
+          headerRow[0].toLowerCase().includes('marca') ||
+          headerRow[0].toLowerCase().includes('fecha') && headerRow[0].toLowerCase().includes('hora')
+        );
+        const dataRows = result.slice(hasTimestamp ? 1 : 0);
+        savedRows = hasTimestamp
+          ? dataRows.map((row: any[]) => row.slice(1))
+          : dataRows;
+      } else {
+        savedRows = [];
       }
     } catch (error) {
       console.error("Error al cargar historia:", error);
+      savedRows = [];
     } finally {
       loadingHistory = false;
     }
@@ -156,20 +197,30 @@
 
     saving = true;
     try {
-      const row = [
-        formData.area,
-        formData.docente,
-        formData.grado,
-        formData.intensidad,
-        formData.periodo,
-        formData.contenidos,
-        formData.indicadores,
-        formData.dba,
-        formData.criterios,
-        formData.actividades,
-      ];
+      const currentTimestamp = new Date().toLocaleString();
 
-      const result = await savePlanAula({ values: row } as any);
+      const payload: string[][] = [];
+
+      payload.push([
+        currentTimestamp,
+        formData.area || '',
+        formData.docente || '',
+        formData.grado || '',
+        formData.intensidad || '',
+        formData.periodo || '',
+        formData.contenidos || '',
+        formData.indicadores || '',
+        formData.dba || '',
+        formData.criterios || '',
+        formData.actividades || '',
+      ]);
+
+      const result = await saveActaArea({
+        spreadsheetId: SPREADSHEET_ID_ACTA,
+        worksheetTitle: WORKSHEET_TITLE_ACTA,
+        datos: payload,
+      });
+
       if (result.success) {
         Swal.fire("Éxito", result.message || "Plan de Aula guardado correctamente.", "success");
         await fetchHistory();
@@ -184,8 +235,219 @@
     }
   }
 
+  async function generatePdfBlob() {
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const { default: autoTable } = await import('jspdf-autotable');
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 15;
+      let yPos = 20;
+
+      // Header
+      doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0);
+      doc.text('PLAN DE AULA', margin, yPos);
+      yPos += 10;
+
+      doc.setFontSize(10);
+      doc.text(`Área: ${formData.area}`, margin, yPos);
+      yPos += 7;
+      doc.text(`Docente: ${formData.docente}`, margin, yPos);
+      yPos += 7;
+      doc.text(`Grado: ${formData.grado}`, margin, yPos);
+      yPos += 7;
+      doc.text(`Intensidad Semanal: ${formData.intensidad}`, margin, yPos);
+      yPos += 7;
+      doc.text(`Período: ${formData.periodo}`, margin, yPos);
+      yPos += 10;
+
+      // Sections
+      const sections = [
+        { label: 'CONTENIDOS', value: formData.contenidos },
+        { label: 'INDICADORES', value: formData.indicadores },
+        { label: 'DBA', value: formData.dba },
+        { label: 'CRITERIOS', value: formData.criterios },
+        { label: 'ACTIVIDADES Y RECURSOS', value: formData.actividades },
+      ];
+
+      for (const { label, value } of sections) {
+        if (value.trim() !== '') {
+          doc.setFontSize(12);
+          doc.setTextColor(0, 0, 150);
+          doc.text(label, margin, yPos);
+          yPos += 6;
+          doc.setFontSize(10);
+          doc.setTextColor(0, 0, 0);
+          const lines = doc.splitTextToSize(value, pageWidth - 2 * margin);
+          for (const line of lines) {
+            doc.text(line, margin, yPos);
+            yPos += 6;
+            if (yPos > pageHeight - 20) {
+              doc.addPage();
+              yPos = 20;
+            }
+          }
+          yPos += 4;
+        }
+      }
+
+      const blob = doc.output('blob');
+      const fileName = `PlanAula_${formData.docente || 'SinDocente'}_${formData.grado || 'SinGrado'}_${new Date().toISOString().slice(0,10)}.pdf`.replace(/[^\w.-]/g, '_');
+      return { blob, fileName };
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      throw error;
+    }
+  }
+
+  async function handleSavePdfToDrive() {
+    if (!formData.docente || !formData.grado) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Datos incompletos',
+        text: 'Por favor seleccione docente y grado antes de generar el PDF.',
+        confirmButtonColor: '#3085d6',
+      });
+      return;
+    }
+
+    try {
+      const { blob, fileName } = await generatePdfBlob();
+      pdfBlob = blob;
+      pdfFileName = fileName;
+      showFolderPickerPdf = true;
+    } catch (error) {
+      console.error('Error preparing PDF:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'No se pudo generar el PDF. Intente nuevamente.',
+        confirmButtonColor: '#ef4444',
+      });
+    }
+  }
+
+  function handleFolderSelectedPdf(folder: { id: string; name: string } | null) {
+    showFolderPickerPdf = false;
+    if (!folder) {
+      return;
+    }
+
+    showUploadProgressPdf = true;
+    uploadPhasePdf = 'uploading';
+    uploadCurrentPdf = 1;
+    uploadTotalPdf = 1;
+    uploadCurrentFilePdf = pdfFileName;
+
+    gdriveService.uploadFile(
+      pdfBlob!,
+      pdfFileName,
+      'application/pdf',
+      GOOGLE_CLIENT_ID,
+      folder.id
+    ).then((result: { success: boolean; fileId?: string; error?: string }) => {
+      if (result.success) {
+        uploadSuccessCountPdf = 1;
+      } else {
+        uploadFailedCountPdf = 1;
+        console.error('Upload error:', result.error);
+      }
+      uploadPhasePdf = 'done';
+
+      Swal.fire({
+        icon: uploadFailedCountPdf > 0 ? 'warning' : 'success',
+        title: uploadFailedCountPdf > 0 ? 'Advertencia' : 'Éxito',
+        text: uploadFailedCountPdf > 0
+          ? `El PDF no se pudo guardar: ${result.error}`
+          : 'El PDF se ha guardado exitosamente en Google Drive.',
+        confirmButtonColor: '#3b82f6',
+      });
+
+      // Reset
+      pdfBlob = null;
+      pdfFileName = 'PlanAula.pdf';
+      showUploadProgressPdf = false;
+    }).catch((error: unknown) => {
+      console.error('Upload failed:', error);
+      uploadFailedCountPdf = 1;
+      uploadPhasePdf = 'done';
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Error al subir el PDF a Google Drive.',
+        confirmButtonColor: '#ef4444',
+      });
+      pdfBlob = null;
+      pdfFileName = 'PlanAula.pdf';
+      showUploadProgressPdf = false;
+    });
+  }
+
   function handlePrint() {
     window.print();
+  }
+
+  function handleRecordsSaveToDrive(blob: Blob, fileName: string) {
+    recordsBlobToUpload = blob;
+    recordsFileNameToUpload = fileName;
+    showFolderPickerRecords = true;
+  }
+
+  async function handleFolderSelectedRecords(folder: { id: string; name: string } | null) {
+    showFolderPickerRecords = false;
+    if (!folder || !recordsBlobToUpload) return;
+
+    showUploadProgressRecords = true;
+    uploadPhaseRecords = 'uploading';
+    uploadCurrentRecords = 1;
+    uploadTotalRecords = 1;
+    uploadCurrentFileRecords = recordsFileNameToUpload;
+    uploadSuccessCountRecords = 0;
+    uploadFailedCountRecords = 0;
+
+    try {
+      const result = await gdriveService.uploadFile(
+        recordsBlobToUpload,
+        recordsFileNameToUpload,
+        'application/pdf',
+        GOOGLE_CLIENT_ID,
+        folder.id
+      );
+
+      if (result.success) {
+        uploadSuccessCountRecords = 1;
+      } else {
+        uploadFailedCountRecords = 1;
+        console.error('Upload error:', result.error);
+      }
+      uploadPhaseRecords = 'done';
+
+      Swal.fire({
+        icon: uploadFailedCountRecords > 0 ? 'warning' : 'success',
+        title: uploadFailedCountRecords > 0 ? 'Advertencia' : 'Éxito',
+        text: uploadFailedCountRecords > 0
+          ? `El PDF no se pudo guardar: ${result.error}`
+          : 'El PDF se ha guardado exitosamente en Google Drive.',
+        confirmButtonColor: '#3b82f6',
+      });
+    } catch (error) {
+      console.error('Upload failed:', error);
+      uploadFailedCountRecords = 1;
+      uploadPhaseRecords = 'done';
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Error al subir el PDF a Google Drive.',
+        confirmButtonColor: '#ef4444',
+      });
+    } finally {
+      recordsBlobToUpload = null;
+      recordsFileNameToUpload = '';
+      showUploadProgressRecords = false;
+    }
   }
 </script>
 
@@ -199,10 +461,10 @@
         Nuevo
       </button>
       <button
-        onclick={handlePrint}
+        onclick={handleSavePdfToDrive}
         class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-blue-700"
       >
-        Imprimir PDF
+        Guardar PDF en Drive
       </button>
       <button
         onclick={handleSave}
@@ -213,6 +475,44 @@
       </button>
     {/snippet}
   </ModuleHeader>
+
+  {#if showFolderPickerPdf}
+    <DriveFolderPicker
+      onSelect={handleFolderSelectedPdf}
+      onClose={() => { showFolderPickerPdf = false; pdfBlob = null; pdfFileName = 'PlanAula.pdf'; }}
+    />
+  {/if}
+
+  {#if showUploadProgressPdf}
+    <UploadProgressModal
+      phase={uploadPhasePdf}
+      current={uploadCurrentPdf}
+      total={uploadTotalPdf}
+      currentFile={uploadCurrentFilePdf}
+      successCount={uploadSuccessCountPdf}
+      failedCount={uploadFailedCountPdf}
+      fileType="pdf"
+    />
+  {/if}
+
+  {#if showFolderPickerRecords}
+    <DriveFolderPicker
+      onSelect={handleFolderSelectedRecords}
+      onClose={() => { showFolderPickerRecords = false; recordsBlobToUpload = null; recordsFileNameToUpload = ''; }}
+    />
+  {/if}
+
+  {#if showUploadProgressRecords}
+    <UploadProgressModal
+      phase={uploadPhaseRecords}
+      current={uploadCurrentRecords}
+      total={uploadTotalRecords}
+      currentFile={uploadCurrentFileRecords}
+      successCount={uploadSuccessCountRecords}
+      failedCount={uploadFailedCountRecords}
+      fileType="pdf"
+    />
+  {/if}
 
   <div class="flex flex-1 overflow-hidden" in:fade={{ duration: 300 }}>
     <aside class="w-72 flex-shrink-0 border-r border-[rgb(var(--border-primary))] bg-[rgb(var(--bg-secondary))]">
@@ -241,7 +541,7 @@
             <p class="text-sm text-[rgb(var(--text-muted))]">No hay registros guardados</p>
           </div>
         {:else}
-          <RecordFilter records={savedRows} onSelectRecord={selectRecord} />
+          <RecordFilter records={savedRows} onSelectRecord={selectRecord} onSaveToDrive={handleRecordsSaveToDrive} />
         {/if}
       </div>
     </aside>

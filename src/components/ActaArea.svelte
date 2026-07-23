@@ -24,7 +24,7 @@
     Search,
   } from '@lucide/svelte'
 
-  import { saveActa, getDocentes, getMaterias } from '../../api/service'
+  import { saveActa, getDocentes, getMaterias, getAllActaArea } from '../../api/service'
   import TimeRangePicker from './TimeRangePicker.svelte'
   import TimeSelector from './TimeSelector.svelte'
   import {
@@ -130,6 +130,13 @@
   let lastSaved = $state<Date | null>(null)
   let showKeyboardShortcuts = $state(false)
   let importError = $state<string | null>(null)
+
+  // Records sidebar
+  let savedRecords = $state<any[]>([])
+  let isLoadingRecords = $state(false)
+  let showRecordsSidebar = $state(false)
+  let selectedRecordIndex = $state<number | null>(null)
+  let recordsSearch = $state('')
 
   // Quick topic selector
   let selectedTemaIds = $state<Set<string>>(new Set())
@@ -342,6 +349,7 @@
       }
       if (e.key === 'Escape') {
         if (firmaTarget) closeFirma()
+        else if (showRecordsSidebar) showRecordsSidebar = false
         else if (asignaturaPickerOpen) asignaturaPickerOpen = false
         else if (showFolderPicker) showFolderPicker = false
         else if (showKeyboardShortcuts) showKeyboardShortcuts = false
@@ -392,7 +400,123 @@
       console.warn('No se pudo restaurar borrador acta:', e)
     }
     loadRefData()
+    loadSavedRecords()
   })
+
+  // --- Records sidebar helpers ---
+  const rowToActa = (row: any[]): ActaReunion => {
+    const safeJson = (val: any, fallback: any) => {
+      if (Array.isArray(val) || (typeof val === 'object' && val !== null)) return val
+      if (typeof val === 'string') {
+        try { return JSON.parse(val) } catch { return fallback }
+      }
+      return fallback
+    }
+    const participantes = safeJson(row[11], [])
+    const ordenDia = safeJson(row[12], [])
+    const desarrollo = safeJson(row[13], [])
+    const acuerdos = safeJson(row[14], [])
+    const proxima = safeJson(row[15], { fecha: '', hora: '', lugar: '' })
+    return {
+      id: row[1] || `acta_${Date.now()}`,
+      institucion: row[3] || '',
+      areaAcademica: row[4] || '',
+      asignaturas: (row[5] || '').split('; ').filter(Boolean),
+      grados: (row[6] || '').split('; ').filter(Boolean),
+      fecha: row[7] || '',
+      horaInicio: row[8] || '',
+      horaFin: row[9] || '',
+      lugar: row[10] || '',
+      participantes: Array.isArray(participantes) ? participantes : [],
+      ordenDia: Array.isArray(ordenDia) ? ordenDia : [],
+      desarrollo: Array.isArray(desarrollo) ? desarrollo : [],
+      acuerdos: Array.isArray(acuerdos) ? acuerdos : [],
+      proxima: typeof proxima === 'object' ? proxima : { fecha: '', hora: '', lugar: '' },
+      actaLeidaAprobada: row[16] === 'SI',
+      firmaCoordinador: row[17] === 'SI' ? 'aprobada' : '',
+      firmaSecretario: row[18] === 'SI' ? 'aprobada' : '',
+      docenteCreador: row[2] || '',
+      createdAt: row[0] || '',
+    }
+  }
+
+  const loadSavedRecords = async () => {
+    isLoadingRecords = true
+    try {
+      const data = await getAllActaArea()
+      savedRecords = data.filter(
+        (row: any) =>
+          Array.isArray(row) &&
+          row.length > 10 &&
+          row[1] &&
+          row[0] !== 'Timestamp' && // saltar fila de encabezados
+          row[1] !== 'ID',
+      )
+    } catch (e) {
+      console.warn('No se pudieron cargar actas guardadas:', e)
+    } finally {
+      isLoadingRecords = false
+    }
+  }
+
+  const filteredRecords = $derived(
+    !recordsSearch.trim() ? savedRecords : savedRecords.filter((row: any) =>
+      row.some((field: any) => field && field.toString().toLowerCase().includes(recordsSearch.toLowerCase()))
+    )
+  )
+
+  const generatePdfFromRecord = async (row: any[]) => {
+    isGeneratingPdf = true
+    let generado = false
+    try {
+      const parsedActa = rowToActa(row)
+      const blob = await generateActaPdf(parsedActa)
+      const fileName = buildActaFileName(parsedActa)
+      pendingPdfBlob = blob
+      pendingPdfName = fileName
+      generado = true
+      const choice = await Swal.fire({
+        icon: 'success',
+        title: 'PDF generado',
+        text: '¿Qué deseas hacer?',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: 'Subir a Drive',
+        denyButtonText: 'Descargar local',
+        cancelButtonText: 'Cerrar',
+        confirmButtonColor: '#4f46e5',
+        denyButtonColor: '#0ea5e9',
+        cancelButtonColor: '#64748b',
+        background: $theme === 'light' ? '#fff' : '#1e293b',
+        color: $theme === 'light' ? '#1e293b' : '#f1f5f9',
+      })
+      if (choice.isConfirmed) {
+        // handleFolderSelected consumirá y limpiará pendingPdfBlob.
+        showFolderPicker = true
+      } else if (choice.isDenied) {
+        downloadBlob(blob, fileName)
+        pendingPdfBlob = null
+        pendingPdfName = ''
+      } else {
+        pendingPdfBlob = null
+        pendingPdfName = ''
+      }
+    } catch (e) {
+      console.error('Error generando PDF desde registro:', e)
+      // Solo limpiar aquí si nunca abrimos el picker.
+      pendingPdfBlob = null
+      pendingPdfName = ''
+      if (generado) return
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'No fue posible generar el PDF.',
+        confirmButtonColor: '#ef4444',
+      })
+    } finally {
+      isGeneratingPdf = false
+    }
+  }
 
   // --- Asignaturas chips ---
   const addAsignatura = () => {
@@ -639,6 +763,7 @@
       })
       draft.clearDraft()
       acta = createInitialActa()
+      loadSavedRecords()
     } catch (e) {
       console.error('Error guardando acta:', e)
       await Swal.fire({
@@ -1624,6 +1749,14 @@
     <div class="sticky bottom-4 z-20 flex flex-col sm:flex-row gap-2 p-3 rounded-2xl bg-[rgb(var(--card-bg))] border border-[rgb(var(--card-border))] shadow-lg backdrop-blur-sm">
       <button
         type="button"
+        onclick={() => { showRecordsSidebar = true; loadSavedRecords() }}
+        class="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[rgb(var(--bg-secondary))] border border-[rgb(var(--border-primary))] hover:border-indigo-500 font-semibold transition-colors"
+      >
+        <Clock class="w-4 h-4" />
+        Ver actas guardadas
+      </button>
+      <button
+        type="button"
         onclick={handleGeneratePdf}
         disabled={isGeneratingPdf}
         class="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[rgb(var(--bg-secondary))] border border-[rgb(var(--border-primary))] hover:border-indigo-500 disabled:opacity-50 font-semibold transition-colors"
@@ -1788,6 +1921,106 @@
           class="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-sm font-semibold"
         >
           Listo
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Records sidebar -->
+{#if showRecordsSidebar}
+  <div
+    in:fade={{ duration: 150 }}
+    class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Actas guardadas"
+    onclick={(e) => { if (e.target === e.currentTarget) showRecordsSidebar = false }}
+    onkeydown={(e) => { if (e.key === 'Escape') showRecordsSidebar = false }}
+    tabindex="-1"
+  >
+    <div
+      in:fly={{ y: 20, duration: 200 }}
+      class="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-t-2xl sm:rounded-2xl bg-[rgb(var(--card-bg))] border border-[rgb(var(--card-border))]"
+    >
+      <div class="flex items-center justify-between p-4 border-b border-[rgb(var(--border-primary))]">
+        <h3 class="text-base font-bold flex items-center gap-2">
+          <Clock class="w-4 h-4 text-indigo-500" /> Actas guardadas ({savedRecords.length})
+        </h3>
+        <button
+          type="button"
+          onclick={() => (showRecordsSidebar = false)}
+          aria-label="Cerrar"
+          class="p-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+        >
+          <X class="w-5 h-5" />
+        </button>
+      </div>
+      <div class="p-3 border-b border-[rgb(var(--border-primary))]">
+        <input
+          type="text"
+          bind:value={recordsSearch}
+          placeholder="Buscar por área, docente, fecha…"
+          class={fieldClass}
+        />
+      </div>
+      <div class="flex-1 overflow-auto">
+        {#if isLoadingRecords}
+          <div class="flex items-center justify-center py-12">
+            <Loader2 class="w-6 h-6 animate-spin text-indigo-500" />
+          </div>
+        {:else if filteredRecords.length === 0}
+          <p class="px-4 py-8 text-sm text-center text-[rgb(var(--text-muted))] italic">
+            {savedRecords.length === 0 ? 'No hay actas guardadas aún.' : 'Sin coincidencias.'}
+          </p>
+        {:else}
+          {#each filteredRecords as row, i (row[1] || i)}
+            {@const area = row[4] || 'Sin área'}
+            {@const docente = row[2] || 'Sin docente'}
+            {@const fecha = row[7] || 'Sin fecha'}
+            {@const grados = row[6] || ''}
+            {@const hora = row[8] && row[9] ? `${row[8]} – ${row[9]}` : ''}
+            <div class="px-4 py-3 border-b border-[rgb(var(--border-primary))] last:border-b-0 hover:bg-[rgb(var(--bg-secondary))] transition-colors">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-semibold truncate">{area}</p>
+                  <p class="text-xs text-[rgb(var(--text-muted))]">{docente}</p>
+                  <div class="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+                    <span class="text-xs text-[rgb(var(--text-muted))]">{fecha}</span>
+                    {#if hora}<span class="text-xs text-[rgb(var(--text-muted))]">{hora}</span>{/if}
+                    {#if grados}<span class="text-xs text-[rgb(var(--text-muted))]">{grados}</span>{/if}
+                  </div>
+                </div>
+                <div class="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    type="button"
+                    onclick={() => generatePdfFromRecord(row)}
+                    disabled={isGeneratingPdf}
+                    class="p-2 rounded-lg text-indigo-500 hover:bg-indigo-500/10 disabled:opacity-50"
+                    title="Generar PDF"
+                  >
+                    {#if isGeneratingPdf}
+                      <Loader2 class="w-4 h-4 animate-spin" />
+                    {:else}
+                      <FileDown class="w-4 h-4" />
+                    {/if}
+                  </button>
+                </div>
+              </div>
+            </div>
+          {/each}
+        {/if}
+      </div>
+      <div class="p-3 border-t border-[rgb(var(--border-primary))] flex items-center justify-between">
+        <span class="text-xs text-[rgb(var(--text-muted))]">
+          {filteredRecords.length} de {savedRecords.length} acta{savedRecords.length === 1 ? '' : 's'}
+        </span>
+        <button
+          type="button"
+          onclick={() => (showRecordsSidebar = false)}
+          class="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-sm font-semibold"
+        >
+          Cerrar
         </button>
       </div>
     </div>

@@ -57,7 +57,8 @@
       "Skill(frontend-design:frontend-design)",
       "Bash(npx @sveltejs/mcp svelte-autofixer ./src/components/horarios/WhatsAppReport.svelte --svelte-version 5)",
       "Bash(npx @sveltejs/mcp svelte-autofixer ./src/components/horarios/AsignacionesView.svelte --svelte-version 5)",
-      "Bash(npx @sveltejs/mcp svelte-autofixer ./src/components/horarios/AnalisisView.svelte --svelte-version 5)"
+      "Bash(npx @sveltejs/mcp svelte-autofixer ./src/components/horarios/AnalisisView.svelte --svelte-version 5)",
+      "Bash(awk 'NR>=3595 && NR<=3615 || NR>=4075 && NR<=4085 || NR>=4715 && NR<=4730 || NR>=4950 && NR<=4965 || NR>=5140 && NR<=5155 || NR>=5525 && NR<=5540' src/components/ClassPlannerForm.svelte)"
     ],
     "allowedTools": [
       "Read",

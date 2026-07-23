@@ -95,6 +95,7 @@
     let pdfUrl = $state<string | null>(null);
     let pdfFileName = $state('Planeacion.pdf');
     let isGeneratingPdf = $state(false);
+    let pdfSource = $state<PlaneadorData | null>(null);
 
     // Drive Upload - Generar todos y enviar
     let isGeneratingAll = $state(false);
@@ -108,6 +109,12 @@
     let uploadFailedCount = $state(0);
     let showFolderPicker = $state(false);
     let selectedFolderId = $state<string | null>(null);
+
+    // Drive Upload - Single PDF
+    let showFolderPickerPdf = $state(false);
+    let selectedFolderIdPdf = $state<string | null>(null);
+    let pdfBlobToUpload = $state<Blob | null>(null);
+    let pdfFileNameToUpload = $state<string>('');
 
     // Temas del Docente (JSON)
     let isLoadingTemas = $state(false);
@@ -3080,123 +3087,81 @@ Los tiempos son en minutos y deben sumar entre 60 y 80. Tema: ${aiPrompt}`
 
         const validatePlaneacion = (data: PlaneadorData): ValidationResult => {
             const errors: string[] = [];
-            let firstStep = 0;
+            // Rastrea el step más bajo con error. Infinity = sin errores aún.
+            let firstStep = Number.POSITIVE_INFINITY;
+            const flag = (step: number) => {
+                if (step < firstStep) firstStep = step;
+            };
 
             // Step 0: Datos básicos
             if (!data.docente?.trim()) {
                 errors.push("Seleccione un docente");
-                if (firstStep === 0) firstStep = 0;
+                flag(0);
             }
             if (!data.grade?.trim()) {
                 errors.push("Seleccione un grado");
-                if (firstStep === 0) firstStep = 0;
+                flag(0);
             }
             if (!data.subject?.trim()) {
                 errors.push("Seleccione una materia");
-                if (firstStep === 0) firstStep = 0;
-            }
-            if (!data.period?.trim()) {
-                errors.push("Seleccione un período académico");
-                if (firstStep === 0) firstStep = 0;
+                flag(0);
             }
 
-            // Step 1: Temporalidad (Fechas reales)
+            // Step 1: Temporalidad (tipo, período y fechas reales)
+            if (!data.planeacion_tipo?.trim()) {
+                errors.push("Seleccione el tipo de planeación");
+                flag(1);
+            }
+            if (!data.periodo_academico?.trim()) {
+                errors.push("Seleccione el Período Académico");
+                flag(1);
+            }
             if (!data.fecha_inicio?.trim()) {
                 errors.push("Ingrese fecha de inicio");
-                if (firstStep === 0) firstStep = 1;
+                flag(1);
             }
             if (!data.fecha_fin?.trim()) {
                 errors.push("Ingrese fecha de fin");
-                if (firstStep === 0) firstStep = 1;
+                flag(1);
             }
 
-            // Step 2: Normativa (DBA/EBC) - HACER OPCIONAL
-            // Por ahora commenting esta validación para que sea opcional
-            /*
-            const tieneNormativaCargada = dbas.length > 0 || ebcs.length > 0;
-            if (materiaSinNormativa || !tieneNormativaCargada) {
-                // Verificar que haya algo en dba_manual
-                const dbaManualTrim = data.dba_manual?.trim() || "";
-                if (!dbaManualTrim || dbaManualTrim === "No Disponible") {
-                    errors.push("Escriba los estándares/temas en 'Entrada Manual de Estándares'");
-                    if (firstStep <= 1) firstStep = 2;
-                }
-            } else {
-                // Validación normal cuando hay normativa cargada
-                if (!data.dba?.length) {
-                    errors.push("Seleccione al menos un DBA");
-                    if (firstStep <= 1) firstStep = 2;
-                }
-                if (!data.standard?.length) {
-                    errors.push("Seleccione al menos un EBC");
-                    if (firstStep <= 1) firstStep = 2;
-                }
-
-                // Verificar que los IDs seleccionados sean válidos
-                if (data.dba?.length) {
-                    const dbaIds = new Set(dbas.map((d) => d.id));
-                    if (data.dba.some((id) => !dbaIds.has(id))) {
-                        errors.push("Un DBA seleccionado no corresponde al grado/área actual");
-                        if (firstStep <= 1) firstStep = 2;
-                    }
-                }
-                if (data.standard?.length) {
-                    const ebcIds = new Set(ebcs.map((e) => e.id));
-                    if (data.standard.some((id) => !ebcIds.has(id))) {
-                        errors.push("Un EBC seleccionado no corresponde al área actual");
-                        if (firstStep <= 1) firstStep = 2;
-                    }
-                }
-            }
-            */
+            // Step 2: Normativa (DBA/EBC) - OPCIONAL (validación desactivada)
 
             // Step 3: Secuencia didáctica (4 momentos)
             if (!data.exploration?.trim()) {
                 errors.push("Complete la fase de Exploración");
-                if (firstStep <= 2) firstStep = 3;
+                flag(3);
             }
             if (!data.structuring?.trim()) {
                 errors.push("Complete la fase de Estructuración");
-                if (firstStep <= 2) firstStep = 3;
+                flag(3);
             }
             if (!data.practice?.trim()) {
                 errors.push("Complete la fase de Práctica");
-                if (firstStep <= 2) firstStep = 3;
+                flag(3);
             }
             if (!data.transfer?.trim()) {
                 errors.push("Complete la fase de Transferencia");
-                if (firstStep <= 2) firstStep = 3;
+                flag(3);
             }
 
             // Step 4: Evaluación
             if (!data.eval_type?.trim()) {
                 errors.push("Seleccione un tipo de evaluación");
-                if (firstStep <= 3) firstStep = 4;
+                flag(4);
             }
             if (!data.eval_criteria?.trim()) {
                 errors.push("Ingrese los criterios de evaluación");
-                if (firstStep <= 3) firstStep = 4;
+                flag(4);
             }
 
             // Step 5: Recursos
             if (!data.resources?.trim()) {
                 errors.push("Describa los recursos didácticos");
-                if (firstStep <= 4) firstStep = 5;
+                flag(5);
             }
 
-            // Step 5: Temporalidad - Período Académico
-            if (!data.periodo_academico?.trim()) {
-                errors.push("Seleccione el Período Académico");
-                if (firstStep <= 0) firstStep = 1;
-            }
-
-            // Step 5: Recursos
-            if (!data.resources?.trim()) {
-                errors.push("Describa los recursos didácticos");
-                if (firstStep <= 4) firstStep = 5;
-            }
-
-            return { errors, firstStep };
+            return { errors, firstStep: Number.isFinite(firstStep) ? firstStep : 0 };
         };
 
         // Primero validamos

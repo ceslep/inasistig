@@ -20,6 +20,9 @@ import {
   SPREADSHEET_ID_PIAR,
   WORKSHEET_TITLE_PIAR,
   SAVE_ACTA_URL,
+  GET_ACTA_URL,
+  SPREADSHEET_ID_ACTA,
+  WORKSHEET_TITLE_ACTA,
   URL_DBAS,
   URL_EBCS,
   UPLOAD_TEMAS_URL,
@@ -1120,6 +1123,56 @@ export const getAllPlanAula = async (): Promise<any[]> => {
     return data.values || [];
   } catch (error) {
     console.error("Error fetching all plan de aula:", error);
+    throw error;
+  }
+};
+
+export interface ActaAreaPayload {
+  spreadsheetId: string;
+  worksheetTitle: string;
+  datos: string[][];
+}
+
+export const saveActaArea = async (payload: ActaAreaPayload) => {
+  if (!navigator.onLine) {
+    return offlineFallback(SAVE_ACTA_URL, payload, "saveActaArea");
+  }
+  try {
+    const response = await fetch(SAVE_ACTA_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    if (isNetworkError(error)) {
+      return offlineFallback(SAVE_ACTA_URL, payload, "saveActaArea");
+    }
+    console.error("Error saving acta area:", error);
+    throw error;
+  }
+};
+
+export const getAllActaArea = async (): Promise<any[]> => {
+  try {
+    const response = await fetch(
+      `${GET_ACTA_URL}?spreadsheetId=${SPREADSHEET_ID_ACTA}&worksheetTitle=${WORKSHEET_TITLE_ACTA}`
+    );
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data.values || [];
+  } catch (error) {
+    console.error("Error fetching acta area:", error);
     throw error;
   }
 };
