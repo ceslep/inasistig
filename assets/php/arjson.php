@@ -6,7 +6,7 @@
  * - POST: Recibe JSON y lo guarda en archivo
  * - GET: Devuelve el contenido del archivo JSON
  * 
- * URL: https://app.iedeoccidente.com/ig/arjson.php
+ * URL: https://app.iedeoccidente.com/v1/ig/arjson.php
  */
 
 include_once("cors.php");

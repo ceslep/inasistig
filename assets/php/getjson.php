@@ -2,7 +2,7 @@
 /**
  * getjson.php - Serve JSON file for temas del docente
  * 
- * URL: https://app.iedeoccidente.com/ig/getjson.php?file={filename}
+ * URL: https://app.iedeoccidente.com/v1/ig/getjson.php?file={filename}
  */
 
 include_once("cors.php");
